@@ -1,0 +1,8 @@
+# Feriados e suspensões de prazo que NÃO estão na tabela doc/feriados-brasil-*.md
+# Formato: DD/MM/AAAA ; ESCOPO ; descrição
+# ESCOPO: TODOS, JUSTIÇA FEDERAL, JUSTIÇA ESTADUAL, UF (ex.: CE) ou CIDADE/UF (ex.: SOBRAL/CE)
+# Já calculados pelo bot: nacionais, Lei 5.010/66 (Justiça Federal) e recesso 20/12–20/01.
+# Pontos facultativos (Carnaval na Justiça Estadual, Corpus Christi, Dia do Servidor)
+# só contam se cadastrados aqui, conforme a portaria do tribunal. Exemplos:
+# 28/10/2026 ; JUSTIÇA FEDERAL ; Dia do Servidor (portaria TRF5)
+# 24/05/2026 ; SOBRAL/CE ; feriado municipal (confirmar)
