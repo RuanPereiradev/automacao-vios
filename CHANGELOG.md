@@ -12,6 +12,13 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Versionamento
+- Projeto no GitHub: https://github.com/RuanPereiradev/automacao-vios (branch
+  `main`, 23/10/2026). Fora do repositório: `.env` (senha e chave de API),
+  `saida/` e `logs/` (dados de clientes) e prints em `doc/*.png|*.jpg`.
+- A skill da Controladoria (`doc/analise-intimacoes-controladoria/`) está no
+  repositório, por decisão do usuário.
+
 ### Adicionado — Agente de análise de intimações (IA)
 - `bot/analise.py`: agente que decide as tarefas VIOS de cada intimação usando a
   skill `analise-intimacoes-controladoria` como instruções da IA. Gera
