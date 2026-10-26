@@ -430,16 +430,24 @@ def recalcular(arquivo_intimacoes, arquivo_analise, caminho_env=".env", hoje=Non
     return resultados, agente
 
 
-def analisar_arquivo(arquivo, caminho_env=".env", pasta_saida=None):
-    """Analisa um saida/intimacoes_*.json e grava analise_*.json e analise_*.md ao lado."""
+def analisar_arquivo(arquivo, caminho_env=".env", pasta_saida=None, cis=None):
+    """Analisa um saida/intimacoes_*.json e grava analise_*.json e analise_*.md ao lado.
+    cis = lista de CIs para analisar só essas (o arquivo de saída ganha o sufixo _ci-<CIs>)."""
     arquivo = Path(arquivo)
     itens = json.loads(arquivo.read_text(encoding="utf-8"))
+    if cis:
+        itens = [i for i in itens if i.get("ci") in cis]
+        faltando = set(cis) - {i["ci"] for i in itens}
+        if faltando:
+            raise ValueError(f"CI(s) não encontrada(s) em {arquivo}: {', '.join(sorted(faltando))}")
     agente = Agente.do_env(caminho_env)
     log.info("Agente: %s / %s — %d intimações", agente.provedor, agente.modelo, len(itens))
     resultados = analisar_lista(agente, itens)
 
     pasta = Path(pasta_saida) if pasta_saida else arquivo.parent
     base = arquivo.stem.replace("intimacoes_", "analise_", 1)
+    if cis:
+        base += "_ci-" + "-".join(cis)
     saida_json, saida_md = pasta / f"{base}.json", pasta / f"{base}.md"
     saida_json.write_text(json.dumps(resultados, ensure_ascii=False, indent=2), encoding="utf-8")
     saida_md.write_text(relatorio_md(resultados, agente, arquivo), encoding="utf-8")

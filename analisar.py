@@ -11,6 +11,12 @@ def main(*args):
     log = logging.getLogger("analise")
     refazer = "--recalcular" in args
     args = [a for a in args if a != "--recalcular"]
+    # --ci 42431[,42432]: analisa só essas CIs
+    cis = None
+    if "--ci" in args:
+        i = args.index("--ci")
+        cis = [c.strip() for c in args[i + 1].split(",") if c.strip()]
+        del args[i:i + 2]
     arquivo = Path(args[0]) if args else None
     caminho_env = args[1] if len(args) > 1 else ".env"
     if not arquivo:
@@ -29,7 +35,7 @@ def main(*args):
             relatorio.write_text(relatorio_md(resultados, agente, arquivo), encoding="utf-8")
             total, erros = len(resultados), sum(1 for r in resultados if r.get("erro"))
         else:
-            relatorio, total, erros = analisar_arquivo(arquivo, caminho_env)
+            relatorio, total, erros = analisar_arquivo(arquivo, caminho_env, cis=cis)
     except Exception:
         log.exception("Falha na análise")
         return 1
@@ -38,5 +44,5 @@ def main(*args):
 
 
 if __name__ == "__main__":
-    # uso: python analisar.py [--recalcular] [saida/intimacoes_AAAA-MM-DD.json] [caminho/do/.env]
+    # uso: python analisar.py [--recalcular] [--ci 42431,42432] [saida/intimacoes_AAAA-MM-DD.json] [caminho/do/.env]
     sys.exit(main(*sys.argv[1:]))

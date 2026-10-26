@@ -12,6 +12,38 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Criação de tarefas no VIOS (etapa 5)
+- `bot/lancamento.py` + `lancar.py` / `rodar_lancamento.sh`: lança no VIOS as
+  tarefas da análise, pela tela **Lançar Intimação** (`int-lanca.php`).
+  Preenche Tarefa, Tipo de prazo = Data, Data para conclusão (data calculada
+  na análise; sem data, ex.: ciência = hoje), Observação (descrição da tarefa)
+  e mantém Responsáveis (advogado do processo; + Breno quando a regra pede) e
+  "Texto intimação" marcado.
+- O VIOS lança em dois passos: **Adicionar** põe a tarefa no quadro "Tarefas"
+  (provisório) e **Gravar** efetiva. O bot adiciona todas as tarefas da CI,
+  confere o quadro e só então grava.
+- Conferência depois de gravar pela tela `confere-intimacao-lancada.php`: a
+  tarefa tem que aparecer lá, não apagada; senão é erro.
+- Proteções contra duplicidade: não lança se a CI já tem tarefa ativa no VIOS
+  (tarefas apagadas são ignoradas) nem se já está em `saida/lancamentos.json`.
+  Não lança quando a análise pede conferência humana (tarefas especiais).
+- **Modo teste por padrão**: sem `--confirmar` o bot adiciona ao quadro e tira
+  print, mas não clica em Gravar.
+- `analisar.py --ci 42431[,...]`: analisa só as CIs informadas
+  (saída `analise_<periodo>_ci-<CIs>.json/.md`).
+- Nome da tarefa da skill casado com a opção do VIOS sem diferença de
+  acento/espaço (ou pelo nome do VIOS entre parênteses).
+- **Primeiro lançamento real (26/10/2026)**: CI 42431 — CIÊNCIA (TRABALHISTA)
+  2026, 26/10/2026, Francisco Johnys (tarefa CI 408941 no VIOS). Conferida:
+  saiu da pesquisa "sem tarefa" (21 → 20).
+- **Validado pelo usuário no VIOS (26/10/2026):** tarefa, data, responsável e
+  descrição da CI 42431 conferidos e aprovados.
+
+### Corrigido — Criação de tarefas
+- 1ª tentativa (10:53) só clicava em Adicionar e não gravava nada; o bot
+  confundiu com sucesso uma tarefa antiga, já apagada, da mesma CI. Corrigido
+  com o passo Gravar e a conferência que ignora tarefas apagadas.
+
 ### Adicionado — Versionamento
 - Projeto no GitHub: https://github.com/RuanPereiradev/automacao-vios (branch
   `main`, 23/10/2026). Fora do repositório: `.env` (senha e chave de API),
@@ -123,8 +155,7 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   mesmo total exibido pelo VIOS.
 
 ### Pendente
-- Controle de intimações já processadas (`comunicacao_id`).
-- Análise das intimações e criação de tarefas no VIOS.
+- Lançar todas as CIs do dia (hoje o lançamento é por CI, com `--ci`).
 
 ---
 

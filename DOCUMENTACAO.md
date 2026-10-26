@@ -1,7 +1,7 @@
 # Bot de Intimações — VIOS
 
 Bot em Python + Selenium que entra no sistema VIOS (`roneely.vios.com.br`),
-captura as intimações publicadas e, na próxima etapa, cria as tarefas no VIOS
+captura as intimações publicadas, analisa com IA e cria as tarefas no VIOS
 a partir dessas intimações.
 
 > Histórico de mudanças: veja [CHANGELOG.md](CHANGELOG.md).
@@ -16,7 +16,7 @@ a partir dessas intimações.
 | 2. Navegação | Vai direto para a pesquisa de intimações (`int-pesquisa.php`) | ✅ Pronto |
 | 3. Captura | Pesquisa as intimações de **ontem** (na segunda: sexta a domingo), lê a tabela e salva em JSON | ✅ Pronto (11 intimações de 22/10/2026) |
 | 4. Análise | Agente com IA + skill da Controladoria sugere as tarefas, com datas calculadas pelo código | ✅ Pronto (11 intimações de 22/10 analisadas com gpt-5.6) — em validação pela Controladoria |
-| 5. Criação de tarefas | Cria a tarefa no VIOS com descrição e prazo | ⏳ Pendente |
+| 5. Criação de tarefas | Cria a tarefa no VIOS com descrição e prazo | ✅ Pronto por CI (`--ci`) — 1º lançamento real: CI 42431 em 26/10/2026, validado |
 
 ---
 
@@ -172,6 +172,42 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - A tabela cobre 2026 e 2027 e só as **capitais**; cidades do interior entram
   em `doc/feriados.txt`.
 
+### Passo 14 — Criar a tarefa no VIOS
+- Fluxo por CI: `./rodar_analise.sh --ci 42431 saida/intimacoes_X.json` gera a
+  análise só dessa CI; `./rodar_lancamento.sh --ci 42431` lança.
+- O bot entra no VIOS e abre o link **Lançar Intimação**
+  (`index.php?pag=sys/publicacoes/int-lanca.php&imp_pub_id=<CI>`). Preenche
+  tudo por JavaScript (os campos são bootstrap-select/TinyMCE e há o popup de
+  Recado, que não é tocado):
+
+| Campo do VIOS | O que o bot põe |
+| --- | --- |
+| Tarefa (`form[processos_etapas_id]`) | A tarefa da análise (nome casado com a lista do VIOS) |
+| Tipo de prazo | Data |
+| Data para conclusão (`fo[data_prevista]`) | Data calculada na análise; tarefa sem data (ex.: ciência) = hoje |
+| Responsáveis | O que o VIOS já traz (advogado do processo) + BRENO quando a regra pede |
+| Texto intimação | Marcado (padrão do VIOS) |
+| Observação | Descrição da tarefa da análise |
+
+- **Dois passos no VIOS:** *Adicionar* põe a tarefa no quadro "Tarefas"
+  (provisório, some se a sessão acabar) e *Gravar* efetiva. O bot adiciona
+  todas as tarefas da CI, confere o quadro, tira print e só então grava.
+- **Conferência:** depois de gravar, o bot abre
+  `confere-intimacao-lancada.php` e exige que cada tarefa esteja lá, **não
+  apagada**. Lançamentos ficam em `saida/lancamentos.json`.
+- **Contra duplicidade:** não lança se a CI já tem tarefa ativa no VIOS
+  (tarefa apagada não conta) ou se já está em `saida/lancamentos.json`; não
+  lança se a análise pediu conferência humana.
+- **Modo teste é o padrão:** sem `--confirmar` o bot adiciona ao quadro e tira
+  print (`logs/lancamento_ci<CI>_*.png`), mas **não grava**.
+- Lição do 1º teste: clicar só em *Adicionar* não grava nada, e a CI 42431 tinha
+  uma tarefa antiga apagada igual à nossa — por isso a conferência ignora
+  tarefas apagadas.
+- **1º lançamento real (26/10/2026):** CI 42431 → CIÊNCIA (TRABALHISTA) 2026,
+  26/10/2026, Francisco Johnys. A CI saiu da pesquisa "sem tarefa".
+  **Validado pelo usuário no VIOS:** tudo correto (tarefa, data, responsável
+  e descrição).
+
 ---
 
 ## 3. Estrutura do projeto
@@ -182,6 +218,8 @@ selenium/
 ├── rodar.sh             # roda o bot usando a .venv e o .env do projeto
 ├── analisar.py          # analisa um intimacoes_*.json com o agente
 ├── rodar_analise.sh     # atalho para analisar.py
+├── lancar.py            # lança no VIOS as tarefas da análise (--ci, --confirmar)
+├── rodar_lancamento.sh  # atalho para lancar.py
 ├── bot/
 │   ├── config.py        # lê e valida o .env; converte seletores
 │   ├── navegador.py     # cria o Chrome e funções esperar/clicar/preencher
@@ -190,6 +228,7 @@ selenium/
 │   ├── extracao.py      # extrai tabela ou cards genéricos e salva .txt
 │   ├── intimacoes.py    # pesquisa intimações por data no VIOS e salva .json
 │   ├── analise.py       # agente: IA + skill -> tarefas sugeridas + relatório
+│   ├── lancamento.py    # preenche "Lançar Intimação", Adicionar → Gravar → confere
 │   ├── skill.py         # carrega a skill e a lista oficial de tarefas
 │   ├── prazos.py        # dias úteis, feriados, prazo fatal, D-2
 │   └── ia/              # provedores de IA: openai_ia.py, anthropic_ia.py
@@ -220,6 +259,14 @@ carregar .env ──► criar Chrome ──► login ──► navegação ─�
 ```
 
 Ou: `.venv/bin/python main.py`
+
+Analisar e lançar uma CI:
+
+```bash
+./rodar_analise.sh --ci 42431 saida/intimacoes_2026-10-23_a_2026-10-25.json
+./rodar_lancamento.sh --ci 42431              # modo teste: adiciona e NÃO grava
+./rodar_lancamento.sh --ci 42431 --confirmar  # grava no VIOS
+```
 
 Primeira instalação:
 
@@ -279,6 +326,9 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 - `saida/analise_<periodo>.md` — relatório do agente no padrão da skill (uma CI
   por bloco: tarefas com descrição pronta para copiar, prazos, alertas ⚠ e link
   "Lançar no VIOS"). `saida/analise_<periodo>.json` — o mesmo em dados.
+- `saida/lancamentos.json` — CIs lançadas no VIOS (data/hora, tarefa, data,
+  responsáveis); impede lançar a mesma CI de novo.
+- `logs/lancamento_ci<CI>_*.png` — prints do formulário e do quadro "Tarefas".
 - `logs/bot.log` — tudo o que o bot fez (a senha nunca é registrada).
 - `logs/erro_*.png` — screenshot da tela no momento de qualquer erro.
 - Card ou linha com problema é **pulado** e registrado como `WARNING`;
@@ -292,8 +342,8 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 2. **Evitar duplicidade**: guardar os `comunicacao_id` já processados.
 3. ~~Analisar cada intimação com a skill~~ ✅ agente pronto e testado (Passo 12) —
    falta a Controladoria comparar com o ChatGPT.
-4. **Criar a tarefa no VIOS** via Selenium, começando em modo de teste
-   (gera a lista sem criar) até validar com a Controladoria.
+4. ~~Criar a tarefa no VIOS~~ ✅ por CI (Passo 14). Próximo: lançar todas as CIs
+   do dia depois que a Controladoria validar as análises.
    Pré-requisito: Python 3.8 limita os SDKs (`openai` 2.2.0, `anthropic` 0.72);
    atualizar o Python para 3.10+ libera as versões novas.
 5. ~~Textos cortados em "Mostrar mais"~~ ✅ resolvido com a tabela.
