@@ -12,6 +12,21 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Prazo previsto em lei na skill
+- Skill da Controladoria (`references/regras-prazos-recursos.md` e
+  `SKILL.md`): quando a intimação não informa o número de dias, usar o prazo
+  previsto em lei e escrever na descrição "Prazo previsto em lei: N dias
+  úteis (meio)". Tabela passada pela Controladoria em 26/10/2026:
+  - Cível: recursos em geral (Apelação, Agravo de Instrumento, Agravo
+    Interno, REsp, RE) 15 dias úteis; Embargos de Declaração 5 dias úteis.
+  - Trabalhista: Recurso Ordinário, Recurso de Revista, Agravo de
+    Instrumento, Agravo de Petição e Embargos ao TST 8 dias úteis; Embargos de
+    Declaração e Embargos à Execução 5 dias úteis; Recurso Extraordinário 15.
+  - Com cabimento pendente, informar mesmo assim o prazo legal.
+- Instrução da IA (`bot/analise.py`): `dias` usa o prazo legal da skill
+  quando o ato não informa (antes ficava 0).
+- O `.zip` original da skill em `doc/` não foi alterado.
+
 ### Adicionado — Lançamento do período inteiro
 - **Usuário de login do VIOS trocado** no `.env` (feito pelo usuário em
   26/10/2026); login testado com o novo usuário.

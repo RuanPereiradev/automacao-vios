@@ -460,7 +460,9 @@ Sempre informar:
 - Prazo fatal;
 - `PRAZO FATAL (D-2)`.
 
-Se não houver dados suficientes para calcular, colocar:
+Se a intimação não informar o número de dias, usar o prazo previsto em lei (tabela em `references/regras-prazos-recursos.md`, seção "Prazo previsto em lei") e escrever na descrição da tarefa: `Prazo previsto em lei: N dias úteis ([meio]).`
+
+Só se o caso não estiver na tabela e não houver dados suficientes para calcular, colocar:
 PENDENTE – NÃO CONSTA NO DOCUMENTO.
 
 No Previdenciário:

@@ -55,6 +55,35 @@ PRAZO PARA EMBARGOS: DD/MM/AAAA
 PRAZO PARA RECURSO: DD/MM/AAAA
 ```
 
+## Prazo previsto em lei (quando o ato não informar o prazo)
+
+Quando a intimação não trouxer o número de dias, usar o prazo previsto em lei abaixo e escrever na descrição da tarefa que o prazo é o legal, por exemplo: `Prazo previsto em lei: 15 dias úteis (Apelação).`
+
+Só usar `PENDENTE – NÃO CONSTA NO DOCUMENTO` quando o caso não estiver nesta tabela nem nas regras do Previdenciário.
+
+### Processo Civil
+
+| Meio | Prazo |
+| --- | --- |
+| Prazo geral dos recursos: Apelação, Agravo de Instrumento, Agravo Interno, Recurso Especial e Recurso Extraordinário | 15 dias úteis |
+| Embargos de Declaração (qualquer que seja a decisão) | 5 dias úteis |
+
+### Processo do Trabalho
+
+| Meio | Prazo |
+| --- | --- |
+| Recursos em geral: Recurso Ordinário, Recurso de Revista, Agravo de Instrumento, Agravo de Petição, Embargos ao TST (Recurso de Embargos à SDI-1) | 8 dias úteis |
+| Embargos de Declaração (contra sentença ou acórdão, para sanar omissão, contradição, obscuridade ou manifesto equívoco) | 5 dias úteis |
+| Embargos à Execução (para o executado se manifestar ou contestar a penhora, após a notificação) | 5 dias úteis |
+| Recurso Extraordinário (ao STF, regra do CPC) | 15 dias úteis |
+
+### Contagem do prazo legal
+
+- Contar em dias úteis.
+- Excluir o dia do começo e incluir o dia do vencimento.
+- No Previdenciário continuam valendo as regras próprias: embargos em 5 dias, recurso em Juizado em 10 dias e recurso na Justiça Comum em 15 dias.
+- Quando o cabimento estiver pendente (`PENDENTE – CONFIRMAR CABIMENTO`), informar mesmo assim o prazo legal do meio, para não perder o prazo.
+
 ## Cuidados
 
 - Não afirmar cabimento de recurso quando o teor da decisão/sentença/acórdão não permitir concluir.

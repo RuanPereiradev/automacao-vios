@@ -50,11 +50,14 @@ Datas — NÃO calcule datas de prazo. O programa calcula prazo fatal, D-2,
 próximo dia útil e prazos de embargos/recurso com calendário de feriados.
 Você informa apenas:
 - `prazo`: o prazo principal da providência (manifestação, emenda, pagamento,
-  contrarrazões, quesitos...). `dias` = número de dias (0 se não houver prazo);
+  contrarrazões, quesitos...). `dias` = número de dias; se o ato não disser,
+  use o prazo previsto em lei da skill (0 só se não houver prazo nem na lei);
   `contagem` = UTEIS ou CORRIDOS conforme as regras; `trecho` = frase da
   intimação onde está o prazo ("" se não houver).
 - `embargos` e `recurso`: `situacao` e `dias` (0 quando não couber). Em
-  `recurso.nome` diga qual recurso ("" se não couber).
+  `recurso.nome` diga qual recurso ("" se não couber). Quando o ato não
+  informar os dias, use o prazo previsto em lei da skill, também se o
+  cabimento estiver pendente.
 - em cada tarefa, `tipo_data`:
   - `D-2`: data operacional = D-2 do prazo principal;
   - `PRIORIDADE_RPV`: RPV/precatório (dia útil seguinte à publicação);

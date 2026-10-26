@@ -138,6 +138,12 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   útil; D-2 = 2 dias úteis antes do fatal; RPV e emenda da Suhiane = próximo dia
   útil após a publicação; tarefa ANALISAR = o D-2 mais cedo entre embargos,
   recurso e prazo principal. Feriados locais vão em `doc/feriados.txt`.
+- **Prazo previsto em lei:** quando a intimação não diz quantos dias, a IA usa
+  a tabela de prazos legais da skill (`references/regras-prazos-recursos.md`):
+  Cível 15 dias úteis para recursos e 5 para embargos de declaração;
+  Trabalhista 8 dias úteis para recursos, 5 para embargos de declaração e à
+  execução, 15 para Recurso Extraordinário. A descrição da tarefa diz
+  "Prazo previsto em lei: N dias úteis (meio)".
 - **Custo:** a skill tem ~70 mil caracteres (~20 mil tokens) e é igual em toda
   chamada, então fica em cache no provedor; o log mostra os tokens usados.
 - **Como rodar:** `./rodar_analise.sh` (analisa a última captura) ou
