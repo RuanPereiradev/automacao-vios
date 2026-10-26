@@ -17,7 +17,7 @@ def main(*args):
     confirmar = "--confirmar" in args
     args = [a for a in args if a != "--confirmar"]
     if "--ci" not in args:
-        log.error("Informe as CIs: python lancar.py --ci 42431[,42432] [saida/analise_X.json] [--confirmar]")
+        log.error("Informe as CIs: python lancar.py --ci 42431[,42432]|todas [saida/analise_X.json] [--confirmar]")
         return 1
     i = args.index("--ci")
     cis = [c.strip() for c in args[i + 1].split(",") if c.strip()]
@@ -34,7 +34,7 @@ def main(*args):
     else:
         # a análise mais recente que tenha alguma das CIs
         analises = sorted(cfg.pasta_saida.glob("analise_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
-        arquivo = next((a for a in analises if any(r.get("ci") in cis for r in json.loads(a.read_text(encoding="utf-8")))), None)
+        arquivo = next((a for a in analises if cis == ["todas"] or any(r.get("ci") in cis for r in json.loads(a.read_text(encoding="utf-8")))), None)
         if not arquivo:
             log.error("Nenhuma análise com a(s) CI(s) %s. Rode ./rodar_analise.sh --ci ... antes.", ", ".join(cis))
             return 1
@@ -56,5 +56,5 @@ def main(*args):
 
 
 if __name__ == "__main__":
-    # uso: python lancar.py --ci 42431[,42432] [saida/analise_X.json] [caminho/do/.env] [--confirmar]
+    # uso: python lancar.py --ci 42431[,42432]|todas [saida/analise_X.json] [caminho/do/.env] [--confirmar]
     sys.exit(main(*sys.argv[1:]))

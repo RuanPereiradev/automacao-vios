@@ -23,6 +23,11 @@ log = logging.getLogger(__name__)
 SELECT_TAREFA = (By.ID, "processos_etapas_id")
 REGISTRO = "lancamentos.json"  # CIs já lançadas (evita lançar duas vezes)
 
+# nomes da skill com erro de digitação -> nome da tarefa no VIOS (conforme a própria skill)
+APELIDOS = {
+    "MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO) 2026)": "MINUTAR PETIÇÃO (EXECUÇÃO) 2026",
+}
+
 
 class LancamentoErro(Exception):
     pass
@@ -38,7 +43,7 @@ def achar_opcao(nome, opcoes):
     Aceita o nome da skill igual ao do VIOS (sem diferença de acento/espaço) ou o
     nome do VIOS entre parênteses, ex.: 'MINUTAR PETIÇÃO EXECUÇÃO 2026 (MINUTAR PETIÇÃO (EXECUÇÃO) 2026)'."""
     por_nome = {_normalizar(t): v for t, v in opcoes.items()}
-    candidatos = [nome]
+    candidatos = [nome] + ([APELIDOS[nome]] if nome in APELIDOS else [])
     m = re.search(r"\((.+\d{4})\)\s*$", nome)
     if m:
         candidatos.append(m.group(1))
@@ -47,6 +52,14 @@ def achar_opcao(nome, opcoes):
         if valor:
             return valor
     return None
+
+
+def _data_valida(texto):
+    try:
+        datetime.strptime(texto or "", "%d/%m/%Y")
+        return True
+    except ValueError:
+        return False
 
 
 def _data_conclusao(tarefa, hoje):
@@ -167,7 +180,7 @@ def _tarefas_adicionadas(driver):
         const bloco = [...document.querySelectorAll('.ibox')]
             .find(b => ((b.querySelector('.ibox-title') || {}).innerText || '').trim() === 'Tarefas');
         if (!bloco) return [];
-        return [...bloco.querySelectorAll("tr[id*='_linha_']")].map(tr => tr.innerText.replace(/\\s+/g, ' ').trim());
+        return [...bloco.querySelectorAll("tr[id*='_linha_']")].map(tr => tr.id + ' | ' + tr.innerText.replace(/\\s+/g, ' ').trim());
         """
     )
 
@@ -191,6 +204,8 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
     """Lança as tarefas das CIs pedidas. Devolve (lancadas, erros)."""
     hoje = hoje or date.today()
     arquivo_reg, registro = _registro(pasta_saida)
+    if cis == ["todas"]:
+        cis = [r["ci"] for r in resultados if r.get("ci")]
     escolhidos = [r for r in resultados if r.get("ci") in cis]
     faltando = set(cis) - {r["ci"] for r in escolhidos}
     if faltando:
@@ -215,6 +230,12 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
             log.warning("CI %s: análise pede conferência humana (%s): nada lançado", ci, "; ".join(especiais) or "sem tarefa")
             erros += 1
             continue
+        # só tarefa sem prazo (ciência) pode ficar sem data; prazo "PENDENTE" não vira a data de hoje
+        sem_data = [t["nome"] for t in r["tarefas"] if not _data_valida(t["data_tarefa"]) and t["tipo_data"] != "SEM_DATA"]
+        if sem_data:
+            log.warning("CI %s: data não calculada para %s: nada lançado (conferir manualmente)", ci, "; ".join(sem_data))
+            erros += 1
+            continue
 
         ja = [t for t in tarefas_lancadas(driver, r["link_lancar"], timeout) if not t["apagada"]]
         if ja:
@@ -227,6 +248,9 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
         adicionadas = []
         try:
             _abrir(driver, r["link_lancar"], timeout)
+            sobra = _tarefas_adicionadas(driver)
+            if sobra:
+                raise LancamentoErro(f"quadro Tarefas já tem {len(sobra)} linha(s) antes de adicionar: {sobra}")
             for n, t in enumerate(r["tarefas"], 1):
                 tela = preencher(driver, t, _data_conclusao(t, hoje), timeout)
                 log.info("CI %s tarefa %d: %s | prazo %s %s | responsáveis %s | texto da intimação: %s",

@@ -12,6 +12,24 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Lançamento do período inteiro
+- **Usuário de login do VIOS trocado** no `.env` (feito pelo usuário em
+  26/10/2026); login testado com o novo usuário.
+- `lancar.py --ci todas`: lança todas as CIs da análise.
+- Não lança a CI quando alguma tarefa com prazo ficou sem data calculada
+  ("PENDENTE"); só tarefa sem prazo (ciência) usa a data de hoje.
+- Quadro "Tarefas" tem que estar vazio antes de adicionar e, depois, ter
+  exatamente uma linha por tarefa. No modo teste o VIOS registrou uma vez o
+  Adicionar em dobro (CI 42429); a conferência barrou antes do Gravar.
+- Apelido para nome com erro de digitação na skill:
+  `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO) 2026)` → `MINUTAR PETIÇÃO (EXECUÇÃO) 2026`.
+- **Lançamento real de 23 a 25/10/2026 (26/10/2026):** 20 intimações
+  analisadas, 19 tarefas gravadas e conferidas (1 tarefa ativa por CI, sem
+  duplicata). Pesquisa "sem tarefa" do período ficou só com a CI 42419.
+- **CI 42419 não lançada:** sustentação oral previdenciária — nome da tarefa
+  na skill com erro (`SUSTENTAÇÃO ORAL PPREVIDENCIÁRIO) 2026`) e pendências
+  (cliente recorrente ou recorrido; formato da sessão). Lançar manualmente.
+
 ### Adicionado — Criação de tarefas no VIOS (etapa 5)
 - `bot/lancamento.py` + `lancar.py` / `rodar_lancamento.sh`: lança no VIOS as
   tarefas da análise, pela tela **Lançar Intimação** (`int-lanca.php`).

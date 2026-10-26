@@ -16,7 +16,7 @@ a partir dessas intimações.
 | 2. Navegação | Vai direto para a pesquisa de intimações (`int-pesquisa.php`) | ✅ Pronto |
 | 3. Captura | Pesquisa as intimações de **ontem** (na segunda: sexta a domingo), lê a tabela e salva em JSON | ✅ Pronto (11 intimações de 22/10/2026) |
 | 4. Análise | Agente com IA + skill da Controladoria sugere as tarefas, com datas calculadas pelo código | ✅ Pronto (11 intimações de 22/10 analisadas com gpt-5.6) — em validação pela Controladoria |
-| 5. Criação de tarefas | Cria a tarefa no VIOS com descrição e prazo | ✅ Pronto por CI (`--ci`) — 1º lançamento real: CI 42431 em 26/10/2026, validado |
+| 5. Criação de tarefas | Cria a tarefa no VIOS com descrição e prazo | ✅ Pronto (`--ci X` ou `--ci todas`) — 23 a 25/10/2026: 19 de 20 lançadas em 26/10/2026 |
 
 ---
 
@@ -207,6 +207,21 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   26/10/2026, Francisco Johnys. A CI saiu da pesquisa "sem tarefa".
   **Validado pelo usuário no VIOS:** tudo correto (tarefa, data, responsável
   e descrição).
+
+### Passo 15 — Lançar o período inteiro
+- O usuário do login do VIOS foi trocado no `.env` (26/10/2026).
+- Fluxo do dia: `./rodar.sh` (captura) → `./rodar_analise.sh` (analisa todas)
+  → `./rodar_lancamento.sh --ci todas` (teste) → `--ci todas --confirmar`.
+- Proteções novas: não lança CI com prazo sem data calculada; o quadro
+  "Tarefas" tem que começar vazio e terminar com uma linha por tarefa (pega
+  Adicionar registrado em dobro); nomes da skill com erro de digitação têm
+  apelido em `APELIDOS` (`bot/lancamento.py`).
+- A lista de tarefas do VIOS muda conforme o processo (ex.: `CIÊNCIA (CÍVEL)`
+  existe em processo cível); se o nome não existir, a CI fica para lançamento
+  manual e o erro aparece no log.
+- **Resultado (23 a 25/10/2026):** 20 intimações, 19 tarefas gravadas e
+  conferidas, 1 por CI. Ficou de fora a CI 42419 (sustentação oral
+  previdenciária — nome com erro na skill e pendências): lançar manualmente.
 
 ---
 
