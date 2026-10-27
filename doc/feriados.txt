@@ -35,3 +35,8 @@
 08/12/2026 ; JUSTIÇA ESTADUAL/SC ; Dia da Justiça — Resolução GP n. 1/2026 (fonte: https://www.tjsc.jus.br/calendario-institucional)
 30/10/2026 ; JUSTIÇA FEDERAL/CE ; Dia do Servidor Público transferido de 28/10 — Ato TRF5 nº 435/2026 (fonte: https://www.trf5.jus.br/index.php/noticias/leitura-de-noticias?/id=328252)
 30/10/2026 ; JUSTIÇA FEDERAL/SP ; Dia do Servidor Público transferido de 28/10 — Portaria CJF3R nº 764/2025 (fonte: https://web.trf3.jus.br/atos-normativos/atos-normativos-dir/Conselho%20da%20Justi%C3%A7a/Portarias/2025/Portaria0764.htm)
+
+# Pesquisa automática na internet em 27/10/2026 (bot/feriados_web.py) — pode editar ou apagar
+30/10/2026 ; JUSTIÇA ESTADUAL/ES ; Dia do Servidor Público transferido de 28/10 — Ato Normativo 176/2026 (fonte: https://www.tjes.jus.br/consultas/feriados/)
+07/12/2026 ; JUSTIÇA ESTADUAL/ES ; Ponto facultativo na véspera do Dia da Justiça — Ato Normativo 176/2026 (fonte: https://www.tjes.jus.br/consultas/feriados/) ; AVISO
+08/12/2026 ; JUSTIÇA ESTADUAL/ES ; Dia da Justiça — Ato Normativo 176/2026 (fonte: https://www.tjes.jus.br/consultas/feriados/)

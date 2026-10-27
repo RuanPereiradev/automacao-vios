@@ -12,6 +12,48 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Pesquisa de feriados mensal e mais barata
+- 1ª pesquisa (27/10/2026) custou ~US$ 2–4 para 8 tribunais: lê páginas e
+  PDFs inteiros. Semanal, sairia ~US$ 10–15/mês.
+- `bot/feriados_web.py`: pesquisa refeita só a cada 30 dias (antes 7), cobrindo
+  ~95 dias (um mês de publicações + prazos).
+- `bot/ia/openai_ia.py`: na pesquisa, no máximo 6 buscas por chamada
+  (`max_tool_calls`), só o trecho relevante das páginas
+  (`search_context_size: low`) e localização Brasil. Anthropic: `max_uses` 6.
+- `doc/feriados.txt`: datas do TJES achadas na pesquisa de 27/10 (30/10 e 08/12
+  contam; 07/12, só "ponto facultativo", ficou como AVISO).
+- Estimativa: ~US$ 3/mês. A pesquisa feita em 27/10 cobria só 60 dias, então
+  a próxima análise ainda pesquisa os tribunais uma vez no formato novo.
+
+### Adicionado — Análise em lote (Batch API, metade do preço)
+- A análise completa manda todas as intimações num lote da Batch API da
+  OpenAI (`/v1/responses`), que custa 50% menos. A resposta costuma vir em
+  minutos (a OpenAI garante até 24 h); como o bot vai rodar à meia-noite, dá
+  tempo antes do expediente.
+- `bot/ia/openai_ia.py`: `enviar_lote`, `status`, `resultados`, `cancelar`
+  (mesmo pedido da análise normal: modelo, esforço, schema estrito, cache).
+- `bot/analise.py` (`_analisar_em_lote`):
+  - o id do lote fica em `saida/lote_<análise>.json`: se o programa cair,
+    rodar de novo retoma o mesmo lote (já pago) em vez de mandar outro;
+  - passou de `LLM_LOTE_ESPERA_MIN` (padrão 360 min), cancela, aproveita o
+    que ficou pronto e analisa o resto uma a uma (preço normal);
+  - CI que falhou dentro do lote é analisada de novo uma a uma;
+  - sem créditos para tudo, como na análise normal.
+- `--ci` continua analisando na hora (sem lote). Anthropic: ainda sem lote.
+- `.env`: `LLM_LOTE=true` (padrão; `false` volta a analisar uma a uma) e
+  `LLM_LOTE_ESPERA_MIN=360`.
+- Testado com OpenAI simulada (lote normal, retomada após queda, cancelamento
+  por tempo, sem crédito). Teste real pendente: conta sem créditos em
+  27/10/2026.
+
+### Corrigido — Créditos da IA esgotados
+- Em 27/10/2026 os créditos da API OpenAI acabaram no meio da reanálise do lote
+  de 26/10: o bot seguiu tentando as 18 CIs restantes e terminou como
+  "Concluído" com 18 erros. Agora crédito esgotado (`insufficient_quota` /
+  `credit balance`) para a análise na hora com a mensagem "Sem créditos na API
+  da IA", como já acontecia com chave ou modelo errado. A análise anterior do
+  lote foi restaurada; a parcial ficou em `saida/antigas/`.
+
 ### Segurança
 - `.gitignore`: prints `doc/*.jpeg` também ficam fora do repositório (a foto do
   WhatsApp de 26/10/2026 tem dados de processo).

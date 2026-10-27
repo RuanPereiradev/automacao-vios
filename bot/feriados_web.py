@@ -12,8 +12,9 @@ possível, mas sem confirmação a data fica adiantada para não perder prazo.
 - a IA diz que não suspende prazos -> não grava.
 
 Cada (ramo, UF, cidade) pesquisado fica em saida/feriados_pesquisa.json e só é
-pesquisado de novo depois de DIAS_VALIDADE ou se o período pedido for além do já
-pesquisado.
+pesquisado de novo depois de DIAS_VALIDADE (1 vez por mês) ou se o período pedido
+for além do já pesquisado. Cada pesquisa cobre DIAS_PESQUISA dias, para o mês
+inteiro de publicações caber nela com folga para os prazos.
 """
 import json
 import logging
@@ -27,7 +28,8 @@ from bot import prazos
 log = logging.getLogger(__name__)
 
 DIAS_PERIODO = 60      # prazos de até ~30 dias úteis a partir da publicação
-DIAS_VALIDADE = 7      # pesquisa refeita depois de uma semana
+DIAS_PESQUISA = 95     # período pesquisado: 1 mês de publicações + DIAS_PERIODO
+DIAS_VALIDADE = 30     # pesquisa refeita 1 vez por mês (custo: ~US$ 0,30 por tribunal)
 CACHE = "feriados_pesquisa.json"
 
 SISTEMA = """
@@ -140,6 +142,7 @@ def pesquisar(ia, itens, tabela, arquivo_txt, pasta_saida, hoje=None):
 
     for (ramo, uf, nome_trib), g in sorted(_grupos(itens, tabela).items()):
         inicio, fim = g["inicio"], g["inicio"] + timedelta(days=DIAS_PERIODO)
+        ate = inicio + timedelta(days=DIAS_PESQUISA)
         chaves = {c: f"{ramo}|{uf}|{n}" for c, n in g["cidades"].items()}
         chaves[""] = f"{ramo}|{uf}|"
 
@@ -152,9 +155,9 @@ def pesquisar(ia, itens, tabela, arquivo_txt, pasta_saida, hoje=None):
             continue
         cidades = sorted(g["cidades"])
         pergunta = (f"Tribunal: {nome_trib}\nUF: {uf}\nCidades/comarcas: {', '.join(cidades) or 'não informadas'}\n"
-                    f"Período: {inicio:%d/%m/%Y} a {fim:%d/%m/%Y}\nData de hoje: {hoje:%d/%m/%Y}")
+                    f"Período: {inicio:%d/%m/%Y} a {ate:%d/%m/%Y}\nData de hoje: {hoje:%d/%m/%Y}")
         log.info("Feriados: pesquisando %s (%s), %s a %s", nome_trib, ", ".join(cidades) or uf,
-                 f"{inicio:%d/%m}", f"{fim:%d/%m}")
+                 f"{inicio:%d/%m}", f"{ate:%d/%m}")
         try:
             resposta = ia.responder(SISTEMA, pergunta, _schema(cidades), pesquisar=True)
         except Exception as e:
@@ -165,7 +168,7 @@ def pesquisar(ia, itens, tabela, arquivo_txt, pasta_saida, hoje=None):
         for d in resposta.get("datas", []):
             dia = _data(d["data"])
             # nacionais, Lei 5.010/66 e recesso (20/12–20/01) o calendário já conta
-            if not dia or not (inicio <= dia <= fim) or dia.weekday() >= 5 or cal.feriado(dia) or cal.suspenso(dia):
+            if not dia or not (inicio <= dia <= ate) or dia.weekday() >= 5 or cal.feriado(dia) or cal.suspenso(dia):
                 continue
             if d["suspende_prazos"] == "NAO":
                 continue
@@ -185,7 +188,7 @@ def pesquisar(ia, itens, tabela, arquivo_txt, pasta_saida, hoje=None):
                      "" if confirmado else " (AVISO: não confirmado, prazo não estendido)")
 
         for chave in chaves.values():
-            cache[chave] = {"em": f"{hoje:%d/%m/%Y}", "ate": f"{fim:%d/%m/%Y}"}
+            cache[chave] = {"em": f"{hoje:%d/%m/%Y}", "ate": f"{ate:%d/%m/%Y}"}
 
     if novas:
         texto = Path(arquivo_txt).read_text(encoding="utf-8") if Path(arquivo_txt).exists() else ""

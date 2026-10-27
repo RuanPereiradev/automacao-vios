@@ -203,12 +203,23 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 | Ponto facultativo sem efeito nos prazos | Nada |
 | Nacional, Lei 5.010/66 ou recesso 20/12–20/01 | Nada (o calendário já conta) |
 
-  - Mesmo tribunal/cidade só é pesquisado de novo depois de 7 dias (cache em
-    `saida/feriados_pesquisa.json`). Leva ~1 min por tribunal.
+  - **Mensal:** o mesmo tribunal/cidade só é pesquisado de novo depois de 30
+    dias (cache em `saida/feriados_pesquisa.json`); cada pesquisa cobre ~95 dias
+    (um mês de publicações + os prazos). Leva ~1 min por tribunal.
+  - Pesquisa econômica: no máximo 6 buscas por tribunal e só o trecho
+    relevante das páginas (`search_context_size=low`). Custo estimado:
+    ~US$ 0,30 por tribunal, ~US$ 3 por mês com 8 tribunais.
   - Desligar: `FERIADOS_PESQUISA=false` no `.env`. Recalcular uma análise
     antiga com pesquisa: `./rodar_analise.sh --recalcular --feriados`.
   - Vale conferir o bloco "Pesquisa automática" de vez em quando: linha
     errada pode ser apagada ou ganhar `; AVISO`.
+
+- **Análise em lote (27/10/2026):** a análise completa vai num lote da Batch
+  API da OpenAI, pela metade do preço. O log mostra "Lote: N intimações
+  enviadas" e o andamento ("in_progress — 12 de 45 prontas"). Se o programa
+  cair, rodar o mesmo comando retoma o lote (o id fica em
+  `saida/lote_<análise>.json`). Se passar de `LLM_LOTE_ESPERA_MIN`, cancela e
+  analisa o resto uma a uma. `--ci` não usa lote.
 
 ### Passo 14 — Criar a tarefa no VIOS
 - Fluxo por CI: `./rodar_analise.sh --ci 42431 saida/intimacoes_X.json` gera a
@@ -448,6 +459,8 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `SKILL_PASTA` | não | Pasta da skill extraída | `doc/analise-intimacoes-controladoria` |
 | `FERIADOS_TABELA` | não | Tabela de feriados (nacionais, estaduais, capitais, pontos facultativos) | `doc/feriados-brasil-2026-2027.md` |
 | `FERIADOS_ARQUIVO` | não | Feriados/suspensões extras: `DD/MM/AAAA ; ESCOPO ; descrição` | `doc/feriados.txt` |
+| `LLM_LOTE` | não | Análise em lote pela Batch API da OpenAI (metade do preço) | `true` |
+| `LLM_LOTE_ESPERA_MIN` | não | Minutos esperando o lote; depois cancela e faz o resto uma a uma | `360` |
 | `FERIADOS_PESQUISA` | não | Pesquisa feriados na internet antes da análise (`true`/`false`) | `true` |
 | `SAIDA_PASTA` | não | Pasta dos `.txt` | `saida` |
 | `HEADLESS` | não | Chrome sem janela | `false` |

@@ -11,12 +11,14 @@ import json
 import logging
 import os
 import re
+import time
 from datetime import date, datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 from bot import duplicidade, feriados_web, ia, prazos, skill
+from bot.ia import IAErro
 
 log = logging.getLogger(__name__)
 
@@ -152,14 +154,18 @@ class Agente:
             _tabela_do_env(),
         )
 
-    def analisar(self, item, hoje=None):
-        hoje = hoje or date.today()
-        entrada = {k: item.get(k, "") for k in (
+    def entrada(self, item, hoje):
+        """Texto enviado à IA para uma intimação."""
+        dados = {k: item.get(k, "") for k in (
             "ci", "auxiliares", "cliente", "advogado", "numeros", "publicacao", "disponibilizacao",
             "informacoes_extras", "cidade", "situacao", "sugestoes_tarefa", "texto",
         )}
-        entrada["data_analise"] = hoje.strftime("%d/%m/%Y")
-        resposta = self.ia.responder(self.sistema, json.dumps(entrada, ensure_ascii=False, indent=1), self.schema)
+        dados["data_analise"] = hoje.strftime("%d/%m/%Y")
+        return json.dumps(dados, ensure_ascii=False, indent=1)
+
+    def analisar(self, item, hoje=None):
+        hoje = hoje or date.today()
+        resposta = self.ia.responder(self.sistema, self.entrada(item, hoje), self.schema)
         return self._completar(item, resposta, hoje)
 
     # ---- datas e regras fixas (código, não IA) ----
@@ -415,21 +421,94 @@ def _duplicidades(resultados, itens):
                                 "conferir se a tarefa deve ser atualizada em vez de abrir outra.")
 
 
-def analisar_lista(agente, itens):
-    resultados = []
-    for n, item in enumerate(itens, 1):
-        log.info("Analisando %d/%d: CI %s", n, len(itens), item.get("ci"))
-        try:
-            resultados.append(agente.analisar(item))
-        except Exception as e:
-            if type(e).__name__ in ("AuthenticationError", "PermissionDeniedError", "NotFoundError"):
-                raise  # chave/modelo errado: não adianta tentar as outras
+def _erro_fatal(agente, e):
+    """Erro que vale para todas as CIs (chave, modelo, créditos): para a análise."""
+    if type(e).__name__ in ("AuthenticationError", "PermissionDeniedError", "NotFoundError"):
+        raise e  # chave/modelo errado: não adianta tentar as outras
+    if any(m in str(e).lower() for m in ("insufficient_quota", "credit_balance", "credit balance")):
+        raise IAErro(f"Sem créditos na API da IA ({agente.provedor}): adicionar créditos e rodar de novo") from e
 
+
+def _resultado_erro(item, e):
+    return {"ci": item.get("ci", ""), "processo": _processo(item), "cliente": item.get("cliente", ""),
+            "erro": str(e), "alertas": [f"ERRO NA ANÁLISE: {e}"]}
+
+
+def analisar_lista(agente, itens, arquivo_lote=None):
+    """Analisa as intimações. Com arquivo_lote (e provedor com lote), usa a Batch API
+    (metade do preço); o que o lote não devolver é analisado uma a uma."""
+    por_ci = {}
+    pendentes = itens
+    if arquivo_lote and getattr(agente.ia, "suporta_lote", False) and len(itens) > 1:
+        por_ci = _analisar_em_lote(agente, itens, Path(arquivo_lote))
+        pendentes = [i for i in itens if i.get("ci") not in por_ci]
+        if pendentes:
+            log.warning("Lote: %d CI(s) sem resposta, analisando uma a uma (preço normal)", len(pendentes))
+    for n, item in enumerate(pendentes, 1):
+        log.info("Analisando %d/%d: CI %s", n, len(pendentes), item.get("ci"))
+        try:
+            por_ci[item.get("ci")] = agente.analisar(item)
+        except Exception as e:
+            _erro_fatal(agente, e)
             log.exception("CI %s: falha na análise", item.get("ci"))
-            resultados.append({"ci": item.get("ci", ""), "processo": _processo(item), "cliente": item.get("cliente", ""),
-                               "erro": str(e), "alertas": [f"ERRO NA ANÁLISE: {e}"]})
+            por_ci[item.get("ci")] = _resultado_erro(item, e)
+    resultados = [por_ci[i.get("ci")] for i in itens]  # mantém a ordem original
     _duplicidades(resultados, itens)
     return resultados
+
+
+def _analisar_em_lote(agente, itens, arquivo_lote):
+    """Manda todas as intimações num lote da Batch API e espera o resultado.
+    O id do lote fica em arquivo_lote: se o programa cair, rodar de novo retoma o mesmo
+    lote (já pago) em vez de mandar outro. Passou de LLM_LOTE_ESPERA_MIN, cancela e
+    devolve só o que ficou pronto. Devolve {ci: resultado}."""
+    cis = [i.get("ci") for i in itens]
+    estado = json.loads(arquivo_lote.read_text(encoding="utf-8")) if arquivo_lote.exists() else {}
+    if estado.get("cis") == cis and estado.get("modelo") == agente.modelo:
+        hoje = _data(estado["hoje"])
+        log.info("Lote: retomando %s (enviado em %s)", estado["lote_id"], estado["enviado_em"])
+    else:
+        hoje = date.today()
+        pedidos = [(i.get("ci"), agente.entrada(i, hoje)) for i in itens]
+        lote_id = agente.ia.enviar_lote(agente.sistema, pedidos, agente.schema, descricao=arquivo_lote.stem)
+        estado = {"lote_id": lote_id, "cis": cis, "modelo": agente.modelo, "hoje": _br(hoje),
+                  "enviado_em": f"{datetime.now():%d/%m/%Y %H:%M}"}
+        arquivo_lote.write_text(json.dumps(estado, ensure_ascii=False, indent=2), encoding="utf-8")
+        log.info("Lote: %d intimações enviadas (%s), aguardando a OpenAI", len(pedidos), lote_id)
+
+    lote_id = estado["lote_id"]
+    espera = float(os.getenv("LLM_LOTE_ESPERA_MIN", "360")) * 60
+    intervalo = float(os.getenv("LLM_LOTE_INTERVALO_S", "60"))
+    inicio, ultimo, cancelado = time.monotonic(), None, False
+    while True:
+        status, prontos, falhas, total = agente.ia.status(lote_id)
+        if (status, prontos, falhas) != ultimo:
+            log.info("Lote: %s — %d de %d prontas, %d com erro", status, prontos, total, falhas)
+            ultimo = (status, prontos, falhas)
+        if status in ("completed", "failed", "expired", "cancelled"):
+            break
+        if not cancelado and time.monotonic() - inicio > espera:
+            log.warning("Lote: passou de %d min, cancelando (o que ficou pronto é aproveitado)", espera // 60)
+            agente.ia.cancelar(lote_id)
+            cancelado = True
+        time.sleep(intervalo)
+
+    por_ci, itens_por_ci = {}, {i.get("ci"): i for i in itens}
+    for ci, dados in agente.ia.resultados(lote_id).items():
+        item = itens_por_ci.get(ci)
+        if item is None:
+            continue
+        if isinstance(dados, Exception):
+            _erro_fatal(agente, dados)
+            log.warning("CI %s: falha no lote (%s), vai ser analisada de novo uma a uma", ci, dados)
+            continue
+        try:
+            por_ci[ci] = agente._completar(item, dados, hoje)
+        except Exception as e:
+            log.exception("CI %s: falha ao completar a análise do lote", ci)
+            por_ci[ci] = _resultado_erro(item, e)
+    arquivo_lote.unlink(missing_ok=True)
+    return por_ci
 
 
 def relatorio_md(resultados, agente, origem):
@@ -531,9 +610,12 @@ def analisar_arquivo(arquivo, caminho_env=".env", pasta_saida=None, cis=None):
     pasta = Path(pasta_saida) if pasta_saida else arquivo.parent
     pesquisar_feriados(agente, itens, pasta)
     log.info("Agente: %s / %s — %d intimações", agente.provedor, agente.modelo, len(itens))
-    resultados = analisar_lista(agente, itens)
-
     base = arquivo.stem.replace("intimacoes_", "analise_", 1)
+    # lote (Batch API, metade do preço) só na análise completa; --ci analisa na hora
+    lote = None if cis or os.getenv("LLM_LOTE", "true").strip().lower() in ("false", "0", "nao", "não") \
+        else pasta / f"lote_{base}.json"
+    resultados = analisar_lista(agente, itens, lote)
+
     if cis:
         base += "_ci-" + "-".join(cis)
     saida_json, saida_md = pasta / f"{base}.json", pasta / f"{base}.md"

@@ -13,6 +13,8 @@ class AnthropicIA:
     em extra_body/extra_headers. O prompt da skill fica em cache (cache_control).
     """
 
+    suporta_lote = False  # lote ainda só na OpenAI: aqui a análise é uma a uma
+
     def __init__(self, modelo, esforco=""):
         # 3 min por chamada, até 2 novas tentativas (o padrão do SDK é esperar 10 min)
         self.client = anthropic.Anthropic(timeout=180, max_retries=2)
@@ -21,7 +23,7 @@ class AnthropicIA:
 
     def responder(self, sistema, usuario, schema, pesquisar=False):
         """pesquisar=True libera a pesquisa na web (ferramenta web_search do servidor)."""
-        extra = {"tools": [{"type": "web_search_20250305", "name": "web_search", "max_uses": 8}]} if pesquisar else {}
+        extra = {"tools": [{"type": "web_search_20250305", "name": "web_search", "max_uses": 6}]} if pesquisar else {}
         output_config = {"format": {"type": "json_schema", "schema": schema}}
         if self.esforco:
             output_config["effort"] = self.esforco
