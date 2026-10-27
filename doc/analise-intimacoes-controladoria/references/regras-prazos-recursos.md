@@ -31,8 +31,8 @@ Preencher `[resultado]` com:
 
 - a data operacional em D-2, quando cabível e calculável;
 - `NÃO CABE`, quando o meio não for cabível;
-- `NÃO HOUVE ABERTURA DE PRAZO`, quando o ato trouxer essa informação expressa;
-- `PENDENTE – CONFIRMAR CABIMENTO`, quando o teor não permitir concluir.
+- com cabimento pendente (o teor não permite concluir), a data em D-2 pelo prazo legal — o advogado decide se recorre e precisa da data;
+- se não couber embargos nem recurso, omitir as duas linhas e deixar somente o `PRAZO FATAL (D-2)`.
 
 Não omitir nenhuma das duas linhas em tarefas de análise. Para tarefas diferentes de análise, exibir somente as linhas efetivamente aplicáveis.
 

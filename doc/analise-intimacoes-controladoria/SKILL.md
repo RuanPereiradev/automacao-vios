@@ -189,11 +189,10 @@ PRAZO FATAL (D-2): [DD/MM/AAAA ou PENDENTE – NÃO CONSTA NO DOCUMENTO, somente
 
 Regras deste modelo:
 
-- Sempre que a tarefa indicada for `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO`, exibir obrigatoriamente as duas linhas `PRAZO PARA EMBARGOS:` e `PRAZO PARA RECURSO:`, nesta ordem.
-- Preencher cada linha com a data em D-2 quando o prazo for cabível e calculável.
-- Quando não couber, preencher `NÃO CABE`.
-- Quando o ato disser expressamente que não houve abertura de prazo, preencher `NÃO HOUVE ABERTURA DE PRAZO`.
-- Quando o teor não permitir concluir o cabimento, preencher `PENDENTE – CONFIRMAR CABIMENTO`.
+- Toda tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` gera um prazo: sempre exibir `PRAZO FATAL (D-2):` (ou `PRAZO FATAL:` com o dia útil seguinte à publicação, quando o ato não tiver prazo nenhum).
+- Se couber, ou puder caber, embargos ou recurso, exibir as duas linhas `PRAZO PARA EMBARGOS:` e `PRAZO PARA RECURSO:`, nesta ordem, **sempre com data em D-2**. Se a intimação não informar o prazo, usar o prazo previsto em lei. Mesmo com cabimento pendente (ex.: recurso imediato a confirmar), indicar a data: o advogado decide se recorre e precisa dela.
+- Na linha do meio que não couber, preencher `NÃO CABE`.
+- Se não couber embargos nem recurso, não exibir essas duas linhas: deixar somente o `PRAZO FATAL (D-2)`.
 - Para tarefas diferentes de análise, usar as linhas somente quando efetivamente couberem.
 - As datas exibidas nas linhas de prazo devem ser em D-2 do prazo fatal, quando a finalidade for lançamento da tarefa no VIOS.
 - Exibir a data operacional sempre com o rótulo exato `PRAZO FATAL (D-2):`. Nunca usar `Prazo interno VIOS`, `Prazo interno` ou outra variação como título desse campo.
@@ -281,14 +280,19 @@ Aplicar `references/roteamento-interno.md`:
 - Toda tarefa relacionada a RPV/precatório deve ser lançada para o dia útil seguinte à publicação ou recebimento, mantendo o prazo jurídico fatal separado.
 - Sempre que o auxiliar for `SUH`/Suhiane e a tarefa for de minutar emenda à inicial, lançar a tarefa para o primeiro dia útil seguinte à publicação ou ao recebimento. Aplicar esta regra tanto a `MINUTAR EMENDA A INICIAL (TRABALHISTA) 2026` quanto a `MINUTAR EMENDA À INICIAL (PREVIDENCIÁRIO) 2026` e a qualquer opção equivalente sob responsabilidade da Suhiane.
 - A prioridade de emenda da Suhiane prevalece sobre D-2. Manter o prazo jurídico fatal separado e não aplicar nem exibir `PRAZO FATAL (D-2)` como data operacional dessa tarefa.
-- Nessas hipóteses, não rotular a data prioritária como `PRAZO FATAL (D-2)`. Usar `DATA DA TAREFA NO VIOS — PRIORIDADE RPV` ou `DATA DA TAREFA NO VIOS — PRIORIDADE EMENDA/SUHIANE`.
+- Nessas hipóteses, não rotular a data prioritária como `PRAZO FATAL (D-2)`. Usar apenas `PRAZO FATAL: DD/MM/AAAA` (sem D-2), em negrito e vermelho na descrição da tarefa.
 
 Para emenda trabalhista ou previdenciária da Suhiane, usar obrigatoriamente:
 
 ```text
-Prazo fatal: DD/MM/AAAA
-DATA DA TAREFA NO VIOS — PRIORIDADE EMENDA/SUHIANE: DD/MM/AAAA
+PRAZO FATAL: DD/MM/AAAA
 ```
+
+## Regra obrigatória — não lançar quando faltar informação
+
+Se a tarefa exigir informação que não está na intimação e só pode ser obtida no PJe (ex.: audiência sem tipo, data, horário, formato, local ou link/ID/senha; perícia sem data, horário ou local), a CI **não é lançada** no VIOS: listar o que falta para a Controladoria conferir no PJe e lançar manualmente.
+
+Também não lançar quando a área da tarefa divergir do auxiliar responsável (ver `references/roteamento-interno.md`): tarefa de Execução com auxiliar que não é a Tamira, ou tarefa de outra área com a Tamira como única responsável.
 
 ## Perguntas ao usuário
 
@@ -343,7 +347,7 @@ Se `Auxiliar = SUH` e a tarefa for qualquer `MINUTAR EMENDA À INICIAL`, não fi
 - a data da tarefa corresponde ao primeiro dia útil seguinte à publicação ou ao recebimento;
 - o prazo jurídico fatal foi preservado separadamente;
 - não foi aplicado D-2;
-- foi usado o rótulo `DATA DA TAREFA NO VIOS — PRIORIDADE EMENDA/SUHIANE`.
+- foi usado o rótulo `PRAZO FATAL: DD/MM/AAAA` (data do dia útil seguinte).
 
 **Tarefa no VIOS:**
 [nome exato da tarefa]
@@ -354,8 +358,8 @@ Se `Auxiliar = SUH` e a tarefa for qualquer `MINUTAR EMENDA À INICIAL`, não fi
 **Cabe recurso?**
 [sim/não/depende de análise]
 
-[PRAZO PARA EMBARGOS: data em D-2 / NÃO CABE / NÃO HOUVE ABERTURA DE PRAZO / PENDENTE – CONFIRMAR CABIMENTO; obrigatório em tarefa de análise]
-[PRAZO PARA RECURSO: data em D-2 / NÃO CABE / NÃO HOUVE ABERTURA DE PRAZO / PENDENTE – CONFIRMAR CABIMENTO; obrigatório em tarefa de análise]
+[PRAZO PARA EMBARGOS: data em D-2 / NÃO CABE; com cabimento pendente, data pelo prazo legal; se não couber embargos nem recurso, omitir as duas linhas e deixar só o PRAZO FATAL (D-2)]
+[PRAZO PARA RECURSO: data em D-2 / NÃO CABE; com cabimento pendente, data pelo prazo legal; se não couber embargos nem recurso, omitir as duas linhas e deixar só o PRAZO FATAL (D-2)]
 
 
 ## Regra obrigatória — perícia médica previdenciária
@@ -429,8 +433,8 @@ PRAZO FATAL (D-2):
 Cabe recurso?
 [Não / Cabe análise do advogado / Sim, indicar qual recurso]
 
-PRAZO PARA EMBARGOS: [data em D-2 / NÃO CABE / NÃO HOUVE ABERTURA DE PRAZO / PENDENTE – CONFIRMAR CABIMENTO; obrigatório em tarefa de análise]
-PRAZO PARA RECURSO: [data em D-2 / NÃO CABE / NÃO HOUVE ABERTURA DE PRAZO / PENDENTE – CONFIRMAR CABIMENTO; obrigatório em tarefa de análise]
+PRAZO PARA EMBARGOS: [data em D-2 / NÃO CABE; com cabimento pendente, data pelo prazo legal; se não couber embargos nem recurso, omitir as duas linhas e deixar só o PRAZO FATAL (D-2)]
+PRAZO PARA RECURSO: [data em D-2 / NÃO CABE; com cabimento pendente, data pelo prazo legal; se não couber embargos nem recurso, omitir as duas linhas e deixar só o PRAZO FATAL (D-2)]
 
 Resumo para tarefa:
 PRAZO FATAL (D-2): [DD/MM/AAAA ou PENDENTE – NÃO CONSTA NO DOCUMENTO, somente quando houver prazo]
@@ -482,7 +486,7 @@ PRAZO PARA RECURSO: DD/MM/AAAA
 
 As datas de embargos e recurso devem ser sempre em D-2.
 
-Quando a tarefa for `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO`, não omitir nenhuma das duas linhas, ainda que apenas um meio seja cabível ou não exista prazo aberto. Usar, conforme o caso, `NÃO CABE`, `NÃO HOUVE ABERTURA DE PRAZO` ou `PENDENTE – CONFIRMAR CABIMENTO`.
+Quando a tarefa for `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` e couber (ou puder caber) embargos ou recurso, exibir as duas linhas, sempre com data em D-2 — pelo prazo legal quando a intimação não informar, inclusive com cabimento pendente. Na linha do meio que não couber, `NÃO CABE`. Se não couber nenhum dos dois, omitir as duas linhas e deixar somente o `PRAZO FATAL (D-2)`: toda tarefa de analisar gera um prazo.
 
 ## Sustentação oral
 
@@ -650,7 +654,7 @@ Antes de finalizar a resposta, conferir:
 - cada CI tem cliente, processo, tarefa e resumo;
 - se havia prazo no texto, o prazo fatal foi informado;
 - se havia prazo no texto, o campo `PRAZO FATAL (D-2)` foi informado;
-- se a tarefa for emenda à inicial da Suhiane, trabalhista ou previdenciária, foi usada a data do primeiro dia útil seguinte e o rótulo `DATA DA TAREFA NO VIOS — PRIORIDADE EMENDA/SUHIANE`, sem aplicação de D-2;
+- se a tarefa for emenda à inicial da Suhiane, trabalhista ou previdenciária, foi usada a data do primeiro dia útil seguinte e o rótulo `PRAZO FATAL: DD/MM/AAAA` (data do dia útil seguinte), sem aplicação de D-2;
 - se não foi possível calcular prazo, foi marcada pendência;
 - toda audiência está no padrão com tipo, data, horário, formato e link/local;
 - toda perícia está no padrão com tipo, data, hora e local;

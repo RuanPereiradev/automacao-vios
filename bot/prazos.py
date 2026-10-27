@@ -4,7 +4,7 @@ Fontes de feriados:
 - nacionais: calculados no código (fixos + Sexta-feira Santa) e a tabela doc/feriados-brasil-*.md;
 - Justiça Federal: Lei 5.010/66, art. 62 (Carnaval, quarta e quinta da Semana Santa, 11/08, 01 e 02/11, 08/12);
 - estaduais e municipais (capitais): tabela doc/feriados-brasil-*.md;
-- manuais: doc/feriados.txt ("DD/MM/AAAA ; ESCOPO ; descrição").
+- manuais: doc/feriados.txt ("DD/MM/AAAA ; ESCOPO ; descrição [; AVISO]").
 
 Regra conservadora: só estende prazo o feriado que certamente vale para o processo.
 O resto (pontos facultativos, feriado local em processo federal, cidade sem
@@ -115,24 +115,33 @@ class Tabela:
             dia = datetime.strptime(partes[0], "%d/%m/%Y").date()
             escopo = normalizar(partes[1]) if len(partes) > 1 and partes[1] else "TODOS"
             nome = partes[2] if len(partes) > 2 else "feriado manual"
-            self.manuais.append((dia, escopo, nome))
+            # 4ª coluna AVISO: suspensão não confirmada — não conta no prazo, só avisa
+            so_aviso = len(partes) > 3 and normalizar(partes[3]) == "AVISO"
+            self.manuais.append((dia, escopo, nome, so_aviso))
 
     def cidades(self):
         return set(self.municipais)
 
 
 class Calendario:
-    """Calendário de um processo: federal ou não, UF e cidade."""
+    """Calendário de um processo: ramo da Justiça (federal, trabalho ou estadual), UF e cidade."""
 
-    def __init__(self, tabela=None, uf="", cidade="", federal=False):
+    def __init__(self, tabela=None, uf="", cidade="", federal=False, trabalho=False):
         self.tabela = tabela or Tabela()
         self.uf, self.cidade, self.federal = uf.upper(), normalizar(cidade), federal
+        self.trabalho = trabalho and not federal
         self.feriados, self.avisos = {}, {}  # data -> nome
         self._anos = set()
 
+    @property
+    def ramo(self):
+        """Escopo do ramo como em doc/feriados.txt."""
+        return "JUSTIÇA FEDERAL" if self.federal else "JUSTIÇA DO TRABALHO" if self.trabalho else "JUSTIÇA ESTADUAL"
+
     def descricao(self):
         local = f"{self.cidade}/{self.uf}" if self.cidade else (self.uf or "local não informado")
-        return ("Justiça Federal" if self.federal else "Justiça Estadual/Trabalho") + f" — {local}"
+        ramo = "Justiça Federal" if self.federal else "Justiça do Trabalho" if self.trabalho else "Justiça Estadual"
+        return f"{ramo} — {local}"
 
     def _carregar(self, ano):
         if ano in self._anos:
@@ -151,17 +160,22 @@ class Calendario:
         else:
             conta.update({d: f"{n} ({self.uf})" for d, n in estaduais.items()})
             conta.update({d: f"{n} ({self.cidade.title()})" for d, n in municipais.items()})
-        for dia, escopo, nome in t.manuais:
+        ramo = normalizar(self.ramo)
+        for dia, escopo, nome, so_aviso in t.manuais:
             if dia.year != ano:
                 continue
             vale = (
                 escopo == "TODOS"
-                or (escopo == "JUSTICA FEDERAL" and self.federal)
-                or (escopo in ("JUSTICA ESTADUAL", "ESTADUAL") and not self.federal)
+                or escopo == ramo
+                or (escopo == "ESTADUAL" and ramo == "JUSTICA ESTADUAL")
+                or escopo == f"{ramo}/{self.uf}"  # ex.: JUSTIÇA ESTADUAL/CE (só o TJCE)
+                or escopo == f"{ramo}/{self.cidade}/{self.uf}"  # ex.: JUSTIÇA ESTADUAL/SOBRAL/CE
                 or escopo == self.uf
                 or escopo == f"{self.cidade}/{self.uf}"
             )
-            if vale:
+            if vale and so_aviso:
+                aviso[dia] = f"{nome} (não confirmado: prazo não estendido)"
+            elif vale:
                 conta[dia] = f"{nome} (manual)"
         for d in conta:
             aviso.pop(d, None)
@@ -226,7 +240,10 @@ class Calendario:
 
 
 def contexto(item):
-    """Extrai (uf, cidade, federal) de uma intimação capturada do VIOS."""
+    """Extrai (uf, cidade, federal, trabalho) de uma intimação capturada do VIOS.
+    O ramo vem do dígito J do número CNJ (NNNNNNN-DD.AAAA.J.TR.OOOO): 4 federal, 5 trabalho."""
     cidade, _, uf = item.get("cidade", "").rpartition("/")
-    federal = "JUSTICA FEDERAL" in normalizar(item.get("informacoes_extras", ""))
-    return uf.strip(), cidade.strip(), federal
+    cnj = re.search(r"\d{7}-\d{2}\.\d{4}\.(\d)\.\d{2}\.\d{4}", item.get("numeros", ""))
+    j = cnj.group(1) if cnj else ""
+    federal = "JUSTICA FEDERAL" in normalizar(item.get("informacoes_extras", "")) or j == "4"
+    return uf.strip(), cidade.strip(), federal, j == "5"

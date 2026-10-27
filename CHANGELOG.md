@@ -12,6 +12,167 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Segurança
+- `.gitignore`: prints `doc/*.jpeg` também ficam fora do repositório (a foto do
+  WhatsApp de 26/10/2026 tem dados de processo).
+
+### Adicionado — Pesquisa de feriados na internet
+- `bot/feriados_web.py`: antes de analisar, junta os tribunais e cidades do
+  lote (tribunal pelo número CNJ: TJ da UF, TRT da região, Justiça Federal da
+  seção) e pede à IA, com pesquisa na web, os feriados e suspensões de
+  expediente/prazo dos próximos 60 dias, com o link da fonte. Grava as datas
+  novas em `doc/feriados.txt` num bloco "Pesquisa automática" (dá para editar
+  ou apagar).
+  - Fonte oficial (`.jus.br`; feriado municipal também `.gov.br`/`.leg.br`) e
+    suspensão confirmada → conta no prazo. Sem fonte oficial ou incerto →
+    `AVISO` (data fica adiantada). Ponto facultativo sem efeito nos prazos não
+    é gravado. Nacionais, Lei 5.010/66 e recesso 20/12–20/01 são ignorados
+    (o calendário já conta).
+  - Cache em `saida/feriados_pesquisa.json`: o mesmo tribunal/cidade só é
+    pesquisado de novo depois de 7 dias.
+  - Falha na pesquisa não impede a análise.
+- `bot/ia/`: `responder(..., pesquisar=True)` liga a ferramenta de pesquisa na
+  web (OpenAI `web_search`; Anthropic `web_search_20250305`).
+- `bot/prazos.py`: novo escopo ramo + cidade (ex.: `JUSTIÇA ESTADUAL/SOBRAL/CE`).
+- `.env`: `FERIADOS_PESQUISA=true` (padrão; `false` desliga).
+  `analisar.py --recalcular --feriados` pesquisa antes de recalcular.
+- 1ª pesquisa (27/10/2026, 8 tribunais, ~9 min): confirmou 30/10 no TRT7
+  (Portaria 518/2025, calendário de 2026) e na JFCE (Ato TRF5 435/2026), além de
+  feriados municipais (São Benedito 25/11, Chaval 27/11) e 08/12 (TJCE). Com
+  isso as datas dos processos de 26/10 batem com as da revisão. As linhas
+  manuais com AVISO para TRT7/JFCE foram retiradas; as de 07/12 descritas só
+  como "ponto facultativo" (TRT7, TJPA, TJPI) ficaram como AVISO.
+
+### Alterado — Regras da revisão de 27/10/2026 (Controladoria)
+- **Prazos na tarefa de análise** (`bot/analise.py`, `_meio` e `_descricao`):
+  se cabe ou pode caber embargos ou recurso, as duas linhas com data D-2,
+  pelo prazo legal quando a intimação não informa; cabimento pendente também
+  leva data (antes: "PENDENTE – CONFIRMAR CABIMENTO", sem data). Se não cabe
+  nenhum, as linhas "NÃO CABE" saem e fica só `PRAZO FATAL (D-2)`. A linha do
+  prazo fatal passa a ser a data da própria tarefa (antes faltava quando só
+  havia prazo de embargos/recurso, ex.: 0011460-69). Análise sem prazo nenhum:
+  `PRAZO FATAL:` com o dia útil seguinte à publicação (antes: data de hoje).
+- **Área pelo responsável:** auxiliar TAMI = Execução. A conferência de área ×
+  auxiliar deixou de ser só alerta: divergência bloqueia o lançamento
+  (`_conferir_area`). Base: 3002281-94 (Execução lançada com auxiliar JOAN).
+- **Não lançar quando falta informação:** campo novo `faltam_dados` na
+  resposta da IA (ex.: audiência com dados incompletos, que exige o PJe). A
+  análise gera `bloqueios` e `bot/lancamento.py` pula a CI com o motivo no log.
+- Skill atualizada (`SKILL.md`, `references/roteamento-interno.md`,
+  `regras-prazos-recursos.md`, `pop-fluxo-intimacoes.md`).
+
+### Corrigido — Feriado do Dia do Servidor 2026 (30/10)
+- Revisão das tarefas de 26/10/2026: os prazos que passavam por 30/10 ficaram
+  um dia antes (ex.: 3005926-13, apelação: bot 17/11, correto 18/11; D-2
+  13/11 → 16/11). O TJCE transferiu o Dia do Servidor de 28/10 para 30/10 e o
+  bot contava 30/10 como dia útil. Não houve perda de prazo (data antecipada).
+- `doc/feriados.txt`: 30/10/2026 cadastrado como feriado no TJCE; no TRT7 e na
+  JFCE como `AVISO` (portaria de 2026 não encontrada).
+- Regra combinada: contar o máximo de feriados possível; sem confirmação, a
+  data fica adiantada para não perder prazo.
+
+### Adicionado — Feriado por tribunal e suspensão não confirmada
+- `bot/prazos.py`: o calendário separa Justiça Estadual, do Trabalho e Federal
+  pelo dígito J do número CNJ (antes: Estadual e Trabalho juntos; federal só
+  pela "Esfera"). Novos escopos em `doc/feriados.txt`: `JUSTIÇA DO TRABALHO`
+  e ramo + UF (`JUSTIÇA ESTADUAL/CE`, `JUSTIÇA DO TRABALHO/CE`,
+  `JUSTIÇA FEDERAL/CE`). O escopo `JUSTIÇA ESTADUAL` deixa de valer para a
+  Justiça do Trabalho.
+- 4ª coluna opcional `AVISO`: a data não estende o prazo e a análise alerta
+  "não confirmado: prazo não estendido".
+
+### Alterado — Formatação da descrição no VIOS
+- Pedido da Controladoria (foto em `doc/WhatsApp Image 2026-10-26 at
+  16.49.56.jpeg`): todo o texto que o robô escreve na Observação vai em
+  **negrito** (nome do ato, ex.: DESPACHO, e o resumo); as linhas de prazo
+  fatal ficam em negrito e **vermelho**, agora também `PRAZO FATAL (D-2):`
+  (antes só `PRAZO FATAL:` da RPV/emenda). O teor que o VIOS acrescenta
+  ("---------- Intimação: ...") continua normal. Mesma regra na prévia da
+  página de revisão.
+
+### Adicionado — Detecção de duplicatas
+- `bot/duplicidade.py`: acha a mesma publicação em mais de uma CI do mesmo
+  processo (texto igual tirando links, números e códigos; no máximo 10
+  palavras diferentes). A original é a CI endereçada ao cliente; se não der
+  para saber, a de texto mais completo; empate, a de número menor.
+- Análise (`bot/analise.py`): a cópia ganha `duplicada_de` e o alerta
+  "DUPLICADA DA CI X... Não abrir nova tarefa"; a original ganha a observação
+  de que tem cópia. Mesmo processo com ato diferente (ex.: perícia designada e
+  depois redesignada) não é duplicata: alerta para atualizar a tarefa em vez
+  de abrir outra. Funciona também no `--recalcular`.
+- Lançamento (`bot/lancamento.py`): CI duplicada é ignorada (log "duplicada da
+  CI X, ignorada").
+- Página: novo estado "Duplicada (ignorada)", com aviso mostrando a original,
+  o motivo e a diferença entre os textos (ex.: "Só na CI 42476: SERVICOS
+  ADMINISTRATIVOS MEDEIROS LTDA / Só nesta: TIAGO ARAUJO DE OLIVEIRA");
+  botão "Revisar como intimação separada" se não for duplicata. A original
+  avisa qual CI é a cópia. Reimportar a análise atualiza a duplicidade das CIs
+  ainda não revisadas.
+- Skill (`references/roteamento-interno.md`, seção Duplicidades): a mais
+  completa é a original e a outra é ignorada; só mudando o destinatário,
+  vale a endereçada ao cliente; ato diferente não é duplicata.
+- 26/10/2026: CIs 42475 (cópia da 42476) e 42471 (cópia da 42472).
+
+### Adicionado — Página de revisão humana
+- `revisar.py` / `rodar_revisao.sh`: importa uma `saida/analise_*.json` para o
+  banco `saida/revisao.db` e abre a página local http://127.0.0.1:5000.
+- `bot/revisao.py`: banco SQLite com a análise, o teor, as tarefas editadas,
+  o estado (aguardando, na fila, lançando, lançada, erro, descartada), quem
+  validou e quando. Reimportar não apaga edições.
+- `bot/web.py` + `bot/templates/revisao.html`: lista de CIs por estado,
+  dados do processo, alertas, teor, edição das tarefas (lista oficial, data,
+  descrição com prévia do `PRAZO FATAL` em vermelho, BRENO), adicionar e
+  remover tarefa; Validar (com conferência), Salvar rascunho, Descartar e
+  Reabrir.
+- Dependência nova: `flask==3.0.3` (último compatível com Python 3.8).
+- Ainda não lança: as CIs validadas ficam na fila para a próxima etapa.
+- Data das tarefas em texto DD/MM/AAAA (com barra automática e aviso de
+  data inválida), em vez do calendário do navegador, que aparecia em
+  formato americano (mês/dia).
+- Datas relativas ao dia são refeitas na página: a análise é da véspera, então
+  `MESMO_DIA` vira a data de hoje e `DIA_SEGUINTE` o próximo dia útil, com o
+  aviso "Data recalculada para hoje; na análise estava ...". Data editada à
+  mão não é recalculada (`bot/revisao.py`, `datas_relativas`).
+- Responsáveis por tarefa na página. **Padrão: "Automático pelo VIOS"** — o
+  robô não mexe no campo e o VIOS marca sozinho, como nos 19 lançamentos de
+  26/10/2026 (lá o VIOS marcou o auxiliar da intimação, não o advogado do
+  processo RONEELY FEITOSA; nas Ciências, AMANDA LEITE MENDES). A página
+  mostra quem o VIOS deve marcar (sigla do auxiliar → nome: SUH → SUHIANE,
+  TAMI → TAMIRA, JOHN → FRANCISCO JOHNYS...). "Escolher outras pessoas" passa
+  para a escolha manual (começa pelos auxiliares; dá para tirar, adicionar
+  qualquer pessoa da lista do VIOS e "usar estes em todas as tarefas");
+  "Voltar para o automático do VIOS" desfaz. Cabeçalho da CI separa
+  "Auxiliar (responsável pela tarefa)" de "Advogado do processo".
+- `./rodar_revisao.sh --atualizar-responsaveis`: entra no VIOS, abre o
+  formulário de uma CI (sem preencher) e salva as pessoas do campo
+  Responsáveis em `saida/responsaveis.json` (42 pessoas em 26/10/2026).
+- `bot/lancamento.py`: tarefa com lista `responsaveis` marca exatamente essas
+  pessoas no VIOS e confere na tela antes de adicionar (sem a lista, segue o
+  comportamento antigo: padrão do VIOS + BRENO). Ainda não testado no VIOS.
+- Novo visual da página de revisão, seguindo a skill de front-end
+  (`doc/SKILL.md`):
+  - Duas colunas: a intimação para ler à esquerda (teor em fonte de leitura,
+    Literata, visível sem clicar) e as tarefas para conferir à direita.
+  - Fila agrupada por situação ("Para validar", "Na fila do robô"...) em vez
+    dos filtros no topo, e progresso "N de 45 revisadas".
+  - Cabeçalho da CI com cliente, processo, ato, publicação, prazo fatal em
+    vermelho, D-2, advogado, auxiliar e link para o VIOS.
+  - Data da tarefa em destaque com o dia da semana; sábado e domingo aparecem
+    em vermelho ("fim de semana").
+  - Descrição mostra primeiro como fica no VIOS; "Editar texto" abre o campo.
+  - Alertas em "Conferir antes de validar"; pendências abertas; prazos,
+    observações e sugestão do VIOS recolhidos.
+  - Ctrl+Enter valida. Fonte da interface: Public Sans. Sem rótulos em
+    caixa alta. Funciona em tela pequena (uma coluna).
+
+### Alterado — Rótulo da data em RPV e emenda da Suhiane
+- Na descrição da tarefa (Observação do VIOS), a linha
+  "DATA DA TAREFA NO VIOS — PRIORIDADE EMENDA/SUHIANE: DD/MM/AAAA" (e a de
+  PRIORIDADE RPV) virou apenas "PRAZO FATAL: DD/MM/AAAA", em negrito e
+  vermelho. A data continua a mesma (dia útil seguinte à publicação). Base:
+  processo 0038150-04.2026.4.05.8103. Skill (`SKILL.md` e
+  `references/roteamento-interno.md`) atualizada com o novo rótulo.
+
 ### Adicionado — Prazo previsto em lei na skill
 - Skill da Controladoria (`references/regras-prazos-recursos.md` e
   `SKILL.md`): quando a intimação não informa o número de dias, usar o prazo

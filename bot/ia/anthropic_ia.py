@@ -19,7 +19,9 @@ class AnthropicIA:
         self.modelo = modelo
         self.esforco = esforco
 
-    def responder(self, sistema, usuario, schema):
+    def responder(self, sistema, usuario, schema, pesquisar=False):
+        """pesquisar=True libera a pesquisa na web (ferramenta web_search do servidor)."""
+        extra = {"tools": [{"type": "web_search_20250305", "name": "web_search", "max_uses": 8}]} if pesquisar else {}
         output_config = {"format": {"type": "json_schema", "schema": schema}}
         if self.esforco:
             output_config["effort"] = self.esforco
@@ -31,12 +33,14 @@ class AnthropicIA:
             # se o modelo recusar, a própria API tenta outro modelo
             extra_headers={"anthropic-beta": "server-side-fallback-2026-07-01"},
             extra_body={"output_config": output_config, "fallbacks": "default"},
+            **extra,
         )
         if r.stop_reason == "refusal":
             raise IAErro("Anthropic recusou a análise (stop_reason=refusal)")
         if r.stop_reason == "max_tokens":
             raise IAErro("Resposta cortada por max_tokens")
-        texto = next((b.text for b in r.content if b.type == "text"), "")
+        # com pesquisa a resposta vem em vários blocos; o JSON é o último texto
+        texto = next((b.text for b in reversed(r.content) if b.type == "text"), "")
         if not texto:
             raise IAErro("Anthropic não devolveu texto")
         u = r.usage

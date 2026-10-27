@@ -16,7 +16,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from bot import ia, prazos, skill
+from bot import duplicidade, feriados_web, ia, prazos, skill
 
 log = logging.getLogger(__name__)
 
@@ -57,7 +57,8 @@ Você informa apenas:
 - `embargos` e `recurso`: `situacao` e `dias` (0 quando não couber). Em
   `recurso.nome` diga qual recurso ("" se não couber). Quando o ato não
   informar os dias, use o prazo previsto em lei da skill, também se o
-  cabimento estiver pendente.
+  cabimento estiver pendente. Se couber ou puder caber embargos ou recurso,
+  `dias` nunca fica 0: o advogado decide se recorre e precisa da data.
 - em cada tarefa, `tipo_data`:
   - `D-2`: data operacional = D-2 do prazo principal;
   - `PRIORIDADE_RPV`: RPV/precatório (dia útil seguinte à publicação);
@@ -72,13 +73,26 @@ Você informa apenas:
 Tarefas — `nome` deve ser exatamente um item da lista oficial. Em `resumo`
 escreva a descrição que vai na tarefa do VIOS seguindo o modelo da tarefa, mas
 SEM as linhas "PRAZO FATAL (D-2):", "PRAZO PARA EMBARGOS:", "PRAZO PARA RECURSO:",
-"Responsável a marcar na tarefa:" e "DATA DA TAREFA NO VIOS" — o programa insere
+"PRAZO FATAL:", "Responsável a marcar na tarefa:" e "DATA DA TAREFA NO VIOS" — o programa insere
 essas linhas com as datas calculadas. Coloque a tarefa principal primeiro e as
 complementares depois.
 
 Use `observacoes` para observações obrigatórias da skill (cadastro, duplicidade,
 audiência de réu sem contestação etc.) e `pendencias` para o que precisa ser
 confirmado. Não invente dados: use "PENDENTE – NÃO CONSTA NO DOCUMENTO".
+
+`faltam_dados`: informações que a tarefa EXIGE e que não estão na intimação,
+obrigando a consultar o PJe antes de lançar — ex.: audiência sem tipo, data,
+horário, formato, local ou link/ID/senha (se virtual); perícia sem data,
+horário ou local; data do ato que não consta. Se a lista não estiver vazia, o
+programa NÃO lança a CI no VIOS. Deixe vazia quando a tarefa puder ser lançada
+com o que a intimação traz (pendências de conferência não entram aqui).
+
+Área — conferir pelo departamento e também pelo auxiliar responsável: se o
+auxiliar for só TAMI (Tamira, Departamento de Execução), a tarefa é de
+Execução. Com auxiliar de outra área (JOAQ, JOAN, LILI, SUH, CARL, JOHN), não
+use tarefa de Execução: o programa não lança a CI, por precisar confirmar o
+departamento.
 """.strip()
 
 
@@ -112,6 +126,7 @@ def schema(nomes_tarefas):
         })},
         "observacoes": lista_texto,
         "pendencias": lista_texto,
+        "faltam_dados": lista_texto,
     })
 
 
@@ -155,12 +170,13 @@ class Agente:
         return self.cal.prazo_fatal(publicacao, dias, corridos)
 
     def _meio(self, meio, publicacao, corridos):
-        """Devolve (texto da linha, D-2, fatal) para embargos/recurso."""
-        if meio["situacao"] != "CABE":
+        """Devolve (texto da linha, D-2, fatal) para embargos/recurso.
+        Cabimento pendente também leva data: o advogado decide se recorre e precisa dela."""
+        if meio["situacao"] not in ("CABE", "PENDENTE_CONFIRMAR_CABIMENTO"):
             return TEXTO_SITUACAO[meio["situacao"]], None, None
         fatal = self._fatal(publicacao, meio["dias"], corridos)
         if not fatal:
-            return "PENDENTE – CONFIRMAR CABIMENTO", None, None
+            return PENDENTE, None, None
         d2 = self.cal.d2(fatal)
         return _br(d2), d2, fatal
 
@@ -189,7 +205,7 @@ class Agente:
             if tipo == "D-2":
                 rotulo, data_tarefa = "PRAZO FATAL (D-2)", _br(d2) if d2 else PENDENTE
             elif tipo in ("PRIORIDADE_RPV", "PRIORIDADE_EMENDA_SUHIANE"):
-                rotulo = "DATA DA TAREFA NO VIOS — " + ("PRIORIDADE RPV" if tipo == "PRIORIDADE_RPV" else "PRIORIDADE EMENDA/SUHIANE")
+                rotulo = "PRAZO FATAL"
                 data_tarefa = _br(self.cal.proximo_util(publicacao)) if publicacao else PENDENTE
             elif tipo == "MESMO_DIA":
                 data_tarefa = _br(hoje)
@@ -197,8 +213,12 @@ class Agente:
                 data_tarefa = _br(self.cal.proximo_util(hoje))
             elif tipo == "DATA_INFORMADA":
                 data_tarefa = t["data_informada"] if _data(t["data_informada"]) else PENDENTE
-            if t["nome"].startswith("ANALISAR SENTENÇA") and datas_analise:
-                data_tarefa = _br(min(datas_analise))
+            if t["nome"].startswith("ANALISAR SENTENÇA"):
+                # toda tarefa de analisar gera um prazo; sem prazo no ato, dia útil seguinte à publicação
+                if datas_analise:
+                    rotulo, data_tarefa = "PRAZO FATAL (D-2)", _br(min(datas_analise))
+                elif publicacao:
+                    rotulo, data_tarefa = "PRAZO FATAL", _br(self.cal.proximo_util(publicacao))
             tarefas.append({
                 "nome": t["nome"], "finalidade": t["finalidade"], "tipo_data": tipo,
                 "data_tarefa": data_tarefa, "rotulo_data": rotulo, "resumo": t["resumo"].strip(),
@@ -208,8 +228,16 @@ class Agente:
         alertas += self._conferir(item, tarefas, d2)
         considerados, avisos_cal = self._feriados_do_periodo(publicacao, [fatal, embargos_fatal, recurso_fatal], alertas)
 
+        # motivos para NÃO lançar no VIOS (falta informação que só o PJe ou a Controladoria têm)
+        bloqueios = [f"Falta no documento: {f}" for f in r.get("faltam_dados", [])]
+        bloqueios += self._conferir_area(item, tarefas)
+        if any(t["nome"].startswith("ANALISAR SENTENÇA") for t in tarefas):
+            for nome, texto in (("embargos", embargos), ("recurso", recurso)):
+                if texto == PENDENTE:
+                    bloqueios.append(f"Cabe {nome}, mas sem prazo para calcular a data.")
+
         for t in tarefas:
-            t["descricao"] = _descricao(t, embargos, recurso, d2)
+            t["descricao"] = _descricao(t, r["embargos"]["situacao"], r["recurso"]["situacao"], embargos, recurso)
 
         return {
             "ci": item.get("ci", ""),
@@ -235,6 +263,7 @@ class Agente:
             "observacoes": r["observacoes"],
             "pendencias": r["pendencias"],
             "alertas": alertas,
+            "bloqueios": bloqueios,
             "link_lancar": item.get("link_lancar", ""),
             "uso": r.pop("_uso", {}),
             "ia": r,  # resposta original da IA, para recalcular datas sem nova chamada
@@ -252,18 +281,34 @@ class Agente:
             alertas.append(f"Dia não contado como feriado no prazo: {a}. Se o tribunal suspendeu o expediente, "
                            "os prazos vencem depois — conferir a portaria e cadastrar em doc/feriados.txt.")
         if not self.cal.federal and (self.cal.cidade, self.cal.uf) not in self.tabela.cidades() and not any(
-            e == f"{self.cal.cidade}/{self.cal.uf}" for _, e, _ in self.tabela.manuais
+            e == f"{self.cal.cidade}/{self.cal.uf}" for _, e, _, _ in self.tabela.manuais
         ):
             alertas.append(f"Feriados municipais de {self.cal.cidade}/{self.cal.uf} não cadastrados "
                            "(doc/feriados.txt): conferir se há feriado local no prazo.")
         return considerados, avisos
+
+    def _conferir_area(self, item, tarefas):
+        """Área da tarefa × auxiliar responsável (departamento). Divergência = não lançar.
+        Com mais de um auxiliar (ex.: "TAMI / SUH") só a IA decide."""
+        aux = [a.strip().upper() for a in re.split(r"[/,;]", item.get("auxiliares", "")) if a.strip()]
+        if len(aux) != 1:
+            return []
+        aux, nomes = aux[0], [t["nome"] for t in tarefas]
+        exec_ = any("EXECUÇÃO" in n or "EXECUCÃO" in n for n in nomes)
+        outra = any(a in n for n in nomes for a in ("(CÍVEL)", "(TRABALHISTA)", "PREVIDENCI"))
+        if aux == "TAMI" and outra and not exec_:
+            return ["Auxiliar TAMI (Execução), mas a tarefa é de outra área: confirmar o departamento."]
+        if aux in ("JOAQ", "JOAN", "LILI", "SUH", "CARL", "JOHN") and exec_:
+            return [f"Tarefa de Execução com auxiliar {aux}: confirmar se o processo já foi transferido para a Execução (Tamira)."]
+        if aux == "SUH" and any("(CÍVEL)" in n for n in nomes):
+            return ["Auxiliar SUH: a tarefa deveria ser Trabalhista — Reclamante ou Previdenciário."]
+        return []
 
     def _conferir(self, item, tarefas, d2):
         """Regras fixas da skill conferidas pelo código. Só alerta; não muda a decisão da IA,
         exceto a data da instrução de perícia social (tem que ser a mesma do aviso)."""
         alertas = []
         nomes = [t["nome"] for t in tarefas]
-        aux = item.get("auxiliares", "").upper()
 
         for n in nomes:
             if n in skill.ESPECIAIS:
@@ -273,14 +318,6 @@ class Agente:
 
         def tem(trecho):
             return any(trecho in n for n in nomes)
-
-        exec_ = tem("(EXECUÇÃO)") or tem("(EXECUCÃO)") or tem("EXECUÇÃO 2026")
-        if "SUH" in aux and (tem("(CÍVEL)") or exec_):
-            alertas.append("Auxiliar SUH: a tarefa deveria ser Trabalhista — Reclamante ou Previdenciário. Revisar.")
-        if any(a in aux for a in ("JOAQ", "JOAN", "LILI")) and exec_:
-            alertas.append(f"Tarefa de Execução com auxiliar {aux}: confirmar a transferência do processo para a Tamira.")
-        if "TAMI" in aux and (tem("(CÍVEL)") or tem("(TRABALHISTA)") or tem("PREVIDENCI")):
-            alertas.append("OBSERVAÇÃO DE CADASTRO: a tarefa não é de Execução, mas o processo aparece com a Tamira. Confirmar o auxiliar.")
 
         if tem("PERÍCIA SOCIAL"):
             instr = [t for t in tarefas if t["nome"].startswith("INSTRUÇÃO PERÍCIA SOCIAL")]
@@ -328,29 +365,54 @@ def _processo(item):
     return achados[0] if achados else PENDENTE
 
 
-def _descricao(t, embargos, recurso, d2):
+def _descricao(t, sit_embargos, sit_recurso, embargos, recurso):
+    """Na análise: se cabe (ou pode caber) embargos ou recurso, as duas linhas com data;
+    se não cabe nenhum, só o PRAZO FATAL — toda tarefa de analisar tem prazo."""
     linhas = []
     if t["marcar_breno"]:
         linhas.append("Responsável a marcar na tarefa: BRENO")
     if t["nome"].startswith("ANALISAR SENTENÇA"):
-        linhas += [f"PRAZO PARA EMBARGOS: {embargos}", f"PRAZO PARA RECURSO: {recurso}"]
-        if d2:
-            linhas.append(f"PRAZO FATAL (D-2): {_br(d2)}")
+        if {sit_embargos, sit_recurso} & {"CABE", "PENDENTE_CONFIRMAR_CABIMENTO"}:
+            linhas += [f"PRAZO PARA EMBARGOS: {embargos}", f"PRAZO PARA RECURSO: {recurso}"]
+        if t["rotulo_data"]:
+            linhas.append(f"{t['rotulo_data']}: {t['data_tarefa']}")
     elif t["rotulo_data"]:
         linhas.append(f"{t['rotulo_data']}: {t['data_tarefa']}")
     linhas.append(t["resumo"])
     return "\n".join(linhas)
 
 
-def _duplicidades(resultados):
+def _duplicidades(resultados, itens):
+    """Mesma publicação em mais de uma CI: a mais completa é a original e a outra é
+    ignorada (duplicada_de). Mesmo processo com atos diferentes só gera alerta."""
+    duplicadas = duplicidade.detectar(itens)
+    por_ci = {r["ci"]: r for r in resultados}
+    for ci, d in duplicadas.items():
+        r, original = por_ci.get(ci), por_ci.get(d["original"])
+        if not r or not original:
+            continue
+        r["duplicada_de"] = d["original"]
+        r["duplicidade"] = d
+        r.setdefault("alertas", []).append(
+            f"DUPLICADA DA CI {d['original']} ({d['motivo']}). Não abrir nova tarefa: "
+            "esta CI é ignorada no lançamento e vale a tarefa da CI original.")
+        original.setdefault("duplicatas", []).append(ci)
+    for r in resultados:
+        if r.get("duplicatas"):
+            r.setdefault("observacoes", []).append(
+                f"CI original: a(s) CI(s) {', '.join(r['duplicatas'])} é(são) cópia(s) desta e será(ão) ignorada(s).")
+
     por_processo = {}
     for r in resultados:
-        if r.get("processo") and r["processo"] != PENDENTE:
+        if r.get("processo") and r["processo"] != PENDENTE and not r.get("duplicada_de"):
             por_processo.setdefault(r["processo"], []).append(r["ci"])
     for r in resultados:
+        if r.get("duplicada_de"):
+            continue
         outras = [ci for ci in por_processo.get(r.get("processo"), []) if ci != r["ci"]]
         if outras:
-            r["alertas"].append(f"Mesmo processo da(s) CI(s) {', '.join(outras)}: conferir duplicidade antes de lançar.")
+            r["alertas"].append(f"Mesmo processo da(s) CI(s) {', '.join(outras)}, com ato diferente: "
+                                "conferir se a tarefa deve ser atualizada em vez de abrir outra.")
 
 
 def analisar_lista(agente, itens):
@@ -366,7 +428,7 @@ def analisar_lista(agente, itens):
             log.exception("CI %s: falha na análise", item.get("ci"))
             resultados.append({"ci": item.get("ci", ""), "processo": _processo(item), "cliente": item.get("cliente", ""),
                                "erro": str(e), "alertas": [f"ERRO NA ANÁLISE: {e}"]})
-    _duplicidades(resultados)
+    _duplicidades(resultados, itens)
     return resultados
 
 
@@ -385,6 +447,9 @@ def relatorio_md(resultados, agente, origem):
     for n, r in enumerate(resultados, 1):
         linhas += ["", "---", "", f"## {n}. CI {r['ci']} — Processo {r['processo']}", ""]
         linhas.append(f"**Cliente:** {r.get('cliente', '')}")
+        if r.get("duplicada_de"):
+            linhas += ["", f"**DUPLICADA DA CI {r['duplicada_de']}.** Não abrir nova tarefa. "
+                           "Utilizar a tarefa indicada na CI mais completa."]
         if r.get("erro"):
             linhas += ["", f"**ERRO NA ANÁLISE:** {r['erro']}"]
             continue
@@ -407,6 +472,9 @@ def relatorio_md(resultados, agente, origem):
             linhas.append(f"Calendário: {r['calendario']} — feriados contados no prazo: {feriados}")
         linhas += ["", "**Cabe recurso?**", r["cabe_recurso"]]
         linhas += ["", f"PRAZO PARA EMBARGOS: {r['embargos']}", f"PRAZO PARA RECURSO: {r['recurso']}"]
+        if r.get("bloqueios"):
+            linhas += ["", "**NÃO SERÁ LANÇADA NO VIOS — conferir no PJe e lançar manualmente:**"]
+            linhas += [f"- {b}" for b in r["bloqueios"]]
         obs = r["observacoes"] + [f"PENDENTE: {p}" for p in r["pendencias"]] + [f"⚠ {a}" for a in r["alertas"]]
         if obs:
             linhas += ["", "**Observação:**"] + [f"- {o}" for o in obs]
@@ -415,10 +483,13 @@ def relatorio_md(resultados, agente, origem):
     return "\n".join(linhas) + "\n"
 
 
-def recalcular(arquivo_intimacoes, arquivo_analise, caminho_env=".env", hoje=None):
-    """Refaz datas, conferências e relatório a partir das respostas da IA já salvas (sem custo de API)."""
+def recalcular(arquivo_intimacoes, arquivo_analise, caminho_env=".env", hoje=None, feriados=False):
+    """Refaz datas, conferências e relatório a partir das respostas da IA já salvas (sem custo de API).
+    feriados=True pesquisa antes os feriados na internet (custo pequeno de API)."""
     load_dotenv(caminho_env, override=True)
     itens = {i["ci"]: i for i in json.loads(Path(arquivo_intimacoes).read_text(encoding="utf-8"))}
+    if feriados:
+        pesquisar_feriados(Agente.do_env(caminho_env), list(itens.values()), Path(arquivo_analise).parent)
     agente = Agente.__new__(Agente)
     agente.provedor, agente.modelo = "recalculado", os.getenv("LLM_MODELO", "")
     agente.tabela = _tabela_do_env()
@@ -429,8 +500,21 @@ def recalcular(arquivo_intimacoes, arquivo_analise, caminho_env=".env", hoje=Non
             continue
         novo = agente._completar(itens[antigo["ci"]], dict(antigo["ia"], _uso=antigo.get("uso", {})), hoje or date.today())
         resultados.append(novo)
-    _duplicidades(resultados)
+    _duplicidades(resultados, list(itens.values()))
     return resultados, agente
+
+
+def pesquisar_feriados(agente, itens, pasta_saida):
+    """Pesquisa na internet feriados/suspensões dos tribunais do lote (FERIADOS_PESQUISA=true,
+    padrão) e recarrega o calendário. Falha na pesquisa não impede a análise."""
+    if os.getenv("FERIADOS_PESQUISA", "true").strip().lower() in ("false", "0", "nao", "não"):
+        return
+    try:
+        feriados_web.pesquisar(agente.ia, itens, agente.tabela,
+                               os.getenv("FERIADOS_ARQUIVO", "doc/feriados.txt").strip(), pasta_saida)
+    except Exception:
+        log.exception("Pesquisa de feriados falhou; seguindo com os feriados já cadastrados")
+    agente.tabela = _tabela_do_env()
 
 
 def analisar_arquivo(arquivo, caminho_env=".env", pasta_saida=None, cis=None):
@@ -444,10 +528,11 @@ def analisar_arquivo(arquivo, caminho_env=".env", pasta_saida=None, cis=None):
         if faltando:
             raise ValueError(f"CI(s) não encontrada(s) em {arquivo}: {', '.join(sorted(faltando))}")
     agente = Agente.do_env(caminho_env)
+    pasta = Path(pasta_saida) if pasta_saida else arquivo.parent
+    pesquisar_feriados(agente, itens, pasta)
     log.info("Agente: %s / %s — %d intimações", agente.provedor, agente.modelo, len(itens))
     resultados = analisar_lista(agente, itens)
 
-    pasta = Path(pasta_saida) if pasta_saida else arquivo.parent
     base = arquivo.stem.replace("intimacoes_", "analise_", 1)
     if cis:
         base += "_ci-" + "-".join(cis)

@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revisão de intimações</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Tinta (azul dos autos), papel, prazo (vermelho do VIOS), validado, alerta */
+  :root {
+    --tinta: #1C2B4A; --tinta-2: #3B4D70; --suave: #5D6B80; --linha: #D5DBE3;
+    --fundo: #ECEFF3; --papel: #FFFFFF; --campo: #F6F8FA;
+    --prazo: #B3261E; --prazo-fundo: #FBEAE8;
+    --ok: #2E6B45; --ok-fundo: #E3F1E8;
+    --alerta: #8A5A00; --alerta-fundo: #FFF3D1; --alerta-linha: #E9C46A;
+    --fila: #2D5DA8; --fila-fundo: #E5EDF9;
+    --ui: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --leitura: "Literata", Georgia, "Times New Roman", serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; font: 15px/1.5 var(--ui); color: var(--tinta); background: var(--fundo); }
+  button, select, input, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--fila); outline-offset: 2px; }
+  a { color: var(--fila); }
+
+  /* ---------- topo ---------- */
+  .topo { display: flex; align-items: center; gap: 24px; padding: 0 24px; height: 56px; background: var(--tinta); color: #fff; }
+  .topo h1 { font-size: 17px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+  .progresso { display: flex; align-items: center; gap: 12px; margin-left: auto; font-size: 14px; color: #C9D3E3; }
+  .progresso strong { color: #fff; font-variant-numeric: tabular-nums; }
+  .barra { width: 180px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.18); overflow: hidden; }
+  .barra span { display: block; height: 100%; background: #7FC59A; }
+
+  .tela { display: grid; grid-template-columns: 290px minmax(0, 1fr); height: calc(100vh - 56px); }
+
+  /* ---------- fila de CIs ---------- */
+  .fila { overflow-y: auto; background: var(--papel); border-right: 1px solid var(--linha); }
+  .grupo h2 { position: sticky; top: 0; z-index: 1; margin: 0; padding: 12px 16px 8px; font-size: 13px; font-weight: 600;
+              color: var(--suave); background: var(--papel); border-bottom: 1px solid var(--linha); }
+  .grupo h2 span { font-variant-numeric: tabular-nums; font-weight: 500; }
+  .item { display: block; padding: 10px 16px 10px 13px; border-left: 3px solid transparent; border-bottom: 1px solid #EEF1F4;
+          color: inherit; text-decoration: none; }
+  .item:hover { background: var(--campo); }
+  .item.atual { background: var(--fila-fundo); border-left-color: var(--fila); }
+  .item .cliente { display: block; font-weight: 600; font-size: 14px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .sobre { display: flex; justify-content: space-between; gap: 8px; margin-top: 2px; font-size: 12.5px; color: var(--suave); }
+  .item .avisos { color: var(--alerta); font-weight: 600; white-space: nowrap; }
+  .item.e-na_fila .cliente::after, .item.e-lancada .cliente::after { content: " ✓"; color: var(--ok); }
+  .item.e-erro { border-left-color: var(--prazo); }
+  .item.e-descartada .cliente, .item.e-duplicada .cliente { color: var(--suave); text-decoration: line-through; }
+
+  /* ---------- CI ---------- */
+  .ci { overflow-y: auto; display: flex; flex-direction: column; }
+  .cabeca { padding: 20px 28px 16px; background: var(--papel); border-bottom: 1px solid var(--linha); }
+  .cabeca .linha1 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 16px; }
+  .cabeca h2 { margin: 0; font-size: 22px; line-height: 1.25; font-weight: 700; letter-spacing: -.015em; }
+  .cabeca .ref { color: var(--suave); font-size: 14px; }
+  .situacao { display: inline-block; margin-left: auto; padding: 3px 10px; border-radius: 4px; font-size: 13px; font-weight: 600; }
+  .s-aguardando { background: var(--alerta-fundo); color: var(--alerta); }
+  .s-na_fila, .s-lancando { background: var(--fila-fundo); color: var(--fila); }
+  .s-lancada { background: var(--ok-fundo); color: var(--ok); }
+  .s-erro { background: var(--prazo-fundo); color: var(--prazo); }
+  .s-descartada, .s-duplicada { background: var(--campo); color: var(--suave); }
+  .dup { margin: 0; padding: 14px 28px; background: var(--fila-fundo); border-bottom: 1px solid var(--linha); font-size: 14.5px; }
+  .dup p { margin: 0; }
+  .dup p + p { margin-top: 6px; }
+  .dup table { margin-top: 8px; border-collapse: collapse; font-size: 14px; }
+  .dup td { padding: 3px 14px 3px 0; vertical-align: top; }
+  .dup td:first-child { color: var(--suave); white-space: nowrap; }
+  .dup .vale { font-weight: 600; }
+  .resumo { display: flex; flex-wrap: wrap; gap: 4px 28px; margin: 14px 0 0; padding: 0; }
+  .resumo div { min-width: 0; }
+  .resumo dt { font-size: 12.5px; color: var(--suave); }
+  .resumo dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .resumo .fatal dd { color: var(--prazo); }
+  .resumo .leve { font-weight: 500; color: var(--tinta-2); }
+  .auto p { margin: 0; font-size: 14px; }
+  .auto .nota { margin-top: 4px; }
+  .auto .alternar { margin-top: 8px; }
+  .selo-auto { display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 4px; background: var(--ok-fundo); color: var(--ok); font-size: 13px; font-weight: 600; }
+  .nota.manual { margin: 0 0 8px; color: var(--alerta); font-weight: 600; }
+  .voltar { display: block; margin-top: 10px; }
+
+  .faixa { margin: 0; padding: 10px 28px; font-size: 14px; }
+  .faixa.ok { background: var(--ok-fundo); color: var(--ok); }
+  .faixa.erro { background: var(--prazo-fundo); color: var(--prazo); }
+  .faixa.info { background: var(--fila-fundo); color: var(--fila); }
+
+  .colunas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 24px; padding: 20px 28px 24px; flex: 1; align-items: start; }
+  .colunas h3 { margin: 0 0 10px; font-size: 16px; font-weight: 700; }
+
+  /* coluna da intimação: a folha dos autos */
+  .conferir { margin: 0 0 16px; padding: 12px 16px; background: var(--alerta-fundo); border-left: 4px solid var(--alerta-linha); border-radius: 0 6px 6px 0; }
+  .conferir strong { display: block; color: var(--alerta); margin-bottom: 4px; }
+  .conferir ul { margin: 0; padding-left: 18px; font-size: 14px; }
+  .conferir li + li { margin-top: 4px; }
+  .folha { background: var(--papel); border: 1px solid var(--linha); border-radius: 6px; padding: 22px 26px; }
+  .folha .trata { margin: 0 0 14px; font-weight: 500; }
+  .teor { font-family: var(--leitura); font-size: 15.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere;
+          max-width: 72ch; padding-top: 14px; border-top: 1px solid var(--linha); }
+  .extras { margin-top: 14px; font-size: 14px; }
+  .extras details { border-top: 1px solid var(--linha); padding: 8px 0; }
+  .extras summary { cursor: pointer; font-weight: 600; color: var(--tinta-2); }
+  .extras ul { margin: 6px 0 0; padding-left: 18px; }
+  .extras p { margin: 6px 0 0; }
+
+  /* coluna das tarefas */
+  .tarefa { background: var(--papel); border: 1px solid var(--linha); border-radius: 6px; margin-bottom: 14px; }
+  .tarefa > header { display: flex; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--linha); }
+  .tarefa > header p { margin: 0; font-size: 14px; color: var(--suave); }
+  .tarefa > header b { color: var(--tinta); }
+  .tarefa .corpo { padding: 14px 16px 16px; display: grid; gap: 14px; }
+  .rotulo { display: block; font-size: 13px; font-weight: 600; color: var(--tinta-2); margin-bottom: 5px; }
+  select, input[type=text], textarea { width: 100%; padding: 8px 10px; border: 1px solid #B9C2CE; border-radius: 5px; background: var(--papel); }
+  select:disabled, input:disabled, textarea[readonly] { background: var(--campo); color: var(--tinta-2); }
+
+  .prazo { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .prazo input { width: 9.5em; font-size: 22px; font-weight: 700; letter-spacing: .01em; font-variant-numeric: tabular-nums; padding: 6px 10px; }
+  .prazo .dia { font-size: 15px; color: var(--tinta-2); }
+  .prazo .dia.fimsemana { color: var(--prazo); font-weight: 600; }
+  .nota { margin: 6px 0 0; font-size: 13.5px; color: var(--suave); }
+  .nota.erro { color: var(--prazo); font-weight: 600; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: inline-flex; align-items: center; gap: 2px; padding: 4px 4px 4px 11px; border-radius: 999px; background: var(--fila-fundo);
+          color: var(--tinta); font-size: 13.5px; font-weight: 600; }
+  .chip.fixo { padding-right: 11px; }
+  .chip button { border: 0; background: none; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; font-size: 16px; line-height: 1; color: var(--tinta-2); }
+  .chip button:hover { background: rgba(28,43,74,.12); }
+  .sem-resp { color: var(--prazo); font-size: 14px; font-weight: 600; }
+  .mais { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .mais select { width: auto; max-width: 100%; font-size: 14px; padding: 5px 8px; }
+  .sug { border: 1px dashed #93A6C4; background: var(--papel); border-radius: 999px; padding: 4px 11px; font-size: 13.5px; cursor: pointer; }
+  .sug:hover { border-style: solid; background: var(--campo); }
+  .sug em { font-style: normal; color: var(--suave); }
+
+  .desc-topo { display: flex; justify-content: space-between; align-items: baseline; }
+  .alternar { border: 0; background: none; color: var(--fila); font-weight: 600; font-size: 13.5px; cursor: pointer; padding: 0; }
+  .previa { border: 1px solid var(--linha); border-radius: 5px; padding: 10px 12px; background: var(--campo); font-size: 14px; overflow-wrap: anywhere; }
+  .previa p { margin: 0 0 3px; }
+  textarea { min-height: 190px; resize: vertical; font-size: 14px; line-height: 1.5; }
+
+  .remover { border: 0; background: none; color: var(--prazo); cursor: pointer; font-size: 13.5px; padding: 0; white-space: nowrap; }
+  .nova { width: 100%; padding: 10px; border: 1px dashed #93A6C4; border-radius: 6px; background: transparent; color: var(--fila); font-weight: 600; cursor: pointer; }
+  .nova:hover { background: var(--papel); }
+
+  /* ---------- ações ---------- */
+  .acoes { position: sticky; bottom: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; padding: 12px 28px;
+           background: var(--papel); border-top: 1px solid var(--linha); }
+  .btn { border-radius: 5px; padding: 9px 16px; font-weight: 600; cursor: pointer; border: 1px solid #B9C2CE; background: var(--papel); }
+  .btn:hover { background: var(--campo); }
+  .btn.principal { background: var(--ok); border-color: var(--ok); color: #fff; padding: 10px 20px; }
+  .btn.principal:hover { background: #255A3A; }
+  .btn.perigo { color: var(--prazo); border-color: #E3B3AE; }
+  .quem { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--suave); }
+  .quem input { width: 150px; padding: 7px 9px; }
+  .proxima { margin-left: auto; font-weight: 600; text-decoration: none; }
+  .proxima:hover { text-decoration: underline; }
+
+  .vazio { max-width: 560px; margin: 80px auto; padding: 0 24px; }
+  .vazio code { background: var(--papel); padding: 2px 6px; border-radius: 4px; }
+
+  @media (max-width: 1200px) { .colunas { grid-template-columns: 1fr; } }
+  @media (max-width: 760px) {
+    .tela { grid-template-columns: 1fr; height: auto; }
+    .fila { max-height: 40vh; border-right: 0; border-bottom: 1px solid var(--linha); }
+    .barra { display: none; }
+    .cabeca, .colunas, .acoes, .faixa { padding-left: 16px; padding-right: 16px; }
+    .proxima { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+{% set ordem = [('aguardando', 'Para validar'), ('erro', 'Com erro no lançamento'), ('na_fila', 'Na fila do robô'),
+                ('lancando', 'Lançando agora'), ('lancada', 'Lançadas no VIOS'), ('duplicada', 'Duplicadas (ignoradas)'),
+                ('descartada', 'Descartadas')] %}
+{% set total = cis|length %}
+{% set revisadas = total - contagem.get('aguardando', 0) - contagem.get('erro', 0) %}
+<header class="topo">
+  <h1>Revisão de intimações</h1>
+  {% if total %}
+  <div class="progresso" aria-label="Progresso da revisão">
+    <span><strong>{{ revisadas }}</strong> de <strong>{{ total }}</strong> revisadas</span>
+    <div class="barra"><span style="width: {{ (100 * revisadas / total)|round }}%"></span></div>
+  </div>
+  {% endif %}
+</header>
+
+{% if not atual %}
+  <div class="vazio">
+    <h2>Nenhuma intimação para revisar</h2>
+    <p>Importe a análise do dia para começar:</p>
+    <p><code>./rodar_revisao.sh saida/analise_AAAA-MM-DD.json</code></p>
+  </div>
+{% else %}
+{% set a = atual.analise %}{% set i = atual.intimacao %}
+<div class="tela">
+  <nav class="fila" aria-label="Intimações">
+    {% for chave, titulo in ordem %}
+      {% set doGrupo = cis|selectattr('estado', 'equalto', chave)|list %}
+      {% if doGrupo %}
+      <section class="grupo">
+        <h2>{{ titulo }} <span>({{ doGrupo|length }})</span></h2>
+        {% for c in doGrupo %}
+          <a href="{{ url_for('ver', ci=c.ci) }}" class="item e-{{ c.estado }}{{ ' atual' if c.ci == atual.ci }}"
+             {% if c.ci == atual.ci %}aria-current="page"{% endif %}>
+            <span class="cliente">{{ c.analise.cliente }}</span>
+            <span class="sobre">
+              <span>CI {{ c.ci }}, {{ c.analise.ato|ato }}</span>
+              {% if c.analise.alertas and c.estado in ('aguardando', 'erro') %}<span class="avisos">{{ c.analise.alertas|length }} a conferir</span>{% endif %}
+            </span>
+          </a>
+        {% endfor %}
+      </section>
+      {% endif %}
+    {% endfor %}
+  </nav>
+
+  <main class="ci">
+    <section class="cabeca">
+      <div class="linha1">
+        <h2>{{ a.cliente }}</h2>
+        <span class="ref">CI {{ atual.ci }}, processo {{ a.processo }}</span>
+        <span class="situacao s-{{ atual.estado }}">{{ rotulos[atual.estado] }}</span>
+      </div>
+      <dl class="resumo">
+        <div><dt>Ato</dt><dd>{{ a.ato|ato }}, {{ a.area|lower }}</dd></div>
+        <div><dt>Publicação</dt><dd>{{ a.publicacao }}</dd></div>
+        <div class="fatal"><dt>Prazo fatal</dt><dd>{{ a.prazo_fatal or 'sem prazo' }}</dd></div>
+        {% if a.prazo_d2 %}<div><dt>D-2</dt><dd>{{ a.prazo_d2 }}</dd></div>{% endif %}
+        <div><dt>Auxiliar (responsável pela tarefa)</dt><dd>{% for x in auxiliares %}{{ x.nome or x.sigla }}{% if not loop.last %}, {% endif %}{% else %}não informado{% endfor %}</dd></div>
+        <div><dt>Advogado do processo</dt><dd class="leve">{{ i.advogado or 'não informado' }}</dd></div>
+        {% if a.link_lancar %}<div><dt>No VIOS</dt><dd><a href="{{ a.link_lancar }}" target="_blank" rel="noopener">Abrir intimação</a></dd></div>{% endif %}
+      </dl>
+    </section>
+
+    {% for categoria, texto in get_flashed_messages(with_categories=true) %}
+      <p class="faixa {{ categoria }}" role="status">{{ texto }}</p>
+    {% endfor %}
+    {% if a.duplicatas and atual.estado != 'duplicada' %}
+      <p class="faixa info">Esta é a CI original. {% for c in a.duplicatas %}A CI <a href="{{ url_for('ver', ci=c) }}">{{ c }}</a>{% if not loop.last %} e {% endif %}{% endfor %} é a mesma publicação e será ignorada.</p>
+    {% endif %}
+    {% if atual.estado == 'na_fila' %}
+      <p class="faixa info">Validada por {{ atual.validado_por }} em {{ atual.validado_em }}. O robô lança esta CI no VIOS (lançamento automático ainda não ligado).</p>
+    {% elif atual.estado == 'duplicada' and a.duplicidade %}
+      {% set d = a.duplicidade %}
+      <div class="dup" role="status">
+        <p><b>Duplicada da CI {{ d.original }}.</b> É a mesma publicação ({{ (d.semelhanca * 100)|round|int }}% do texto igual).
+          A CI {{ d.original }} é a original ({{ d.motivo }}) e esta é ignorada: não gera tarefa.
+          <a href="{{ url_for('ver', ci=d.original) }}">Ver a CI {{ d.original }}</a></p>
+        <table>
+          <tr><td>Só na CI {{ d.original }}</td><td class="vale">{{ d.so_na_original or 'nada' }}</td></tr>
+          <tr><td>Só nesta CI</td><td>{{ d.so_nesta or 'nada' }}</td></tr>
+        </table>
+        <p>Se não for duplicata, use "Revisar como intimação separada".</p>
+      </div>
+    {% elif atual.estado == 'descartada' %}
+      <p class="faixa info">Descartada: esta CI não vai gerar tarefa.{% if atual.mensagem %} Motivo: {{ atual.mensagem }}{% endif %}</p>
+    {% elif atual.mensagem %}
+      <p class="faixa {{ 'erro' if atual.estado == 'erro' else 'info' }}">{{ atual.mensagem }}</p>
+    {% endif %}
+
+    <form method="post" id="form" class="colunas-form">
+      <input type="hidden" name="tarefas_json" id="tarefas_json">
+      <div class="colunas">
+        <section aria-labelledby="t-intimacao">
+          <h3 id="t-intimacao">Intimação</h3>
+          {% if a.alertas %}
+          <div class="conferir">
+            <strong>Conferir antes de validar</strong>
+            <ul>{% for al in a.alertas %}<li>{{ al }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+          <article class="folha">
+            <p class="trata">{{ a.do_que_se_trata }}</p>
+            <div class="teor">{{ i.texto or 'O teor não veio na captura. Abra a intimação no VIOS.' }}</div>
+          </article>
+          <div class="extras">
+            {% if a.pendencias %}<details open><summary>Pendências ({{ a.pendencias|length }})</summary>
+              <ul>{% for p in a.pendencias %}<li>{{ p }}</li>{% endfor %}</ul></details>{% endif %}
+            <details><summary>Prazos e recursos</summary>
+              <p>Embargos: {{ a.embargos }}</p>
+              <p>Recurso{% if a.recurso_nome %} ({{ a.recurso_nome }}){% endif %}: {{ a.recurso }}</p>
+              {% if a.prazo_trecho %}<p>Trecho do prazo: “{{ a.prazo_trecho }}”</p>{% endif %}
+              {% if a.cabe_recurso %}<p>{{ a.cabe_recurso }}</p>{% endif %}
+              <p>Calendário usado: {{ a.calendario }}</p>
+            </details>
+            {% if a.posicao_cliente or a.observacoes %}<details><summary>Observações da análise</summary>
+              {% if a.posicao_cliente %}<p>Posição do cliente: {{ a.posicao_cliente }}</p>{% endif %}
+              <ul>{% for o in a.observacoes %}<li>{{ o }}</li>{% endfor %}</ul></details>{% endif %}
+            {% if i.sugestoes_tarefa %}<details><summary>Sugestão de tarefa do VIOS</summary>
+              <p>{{ i.sugestoes_tarefa|join(', ') if i.sugestoes_tarefa is not string else i.sugestoes_tarefa }}</p></details>{% endif %}
+          </div>
+        </section>
+
+        <section aria-labelledby="t-tarefas">
+          <h3 id="t-tarefas">{{ 'Tarefas sugeridas (não serão lançadas)' if atual.estado in ('duplicada', 'descartada') else 'Tarefas para lançar' }}</h3>
+          <div id="tarefas"></div>
+          {% if editavel %}<button type="button" class="nova" id="adicionar">Adicionar outra tarefa</button>{% endif %}
+          {% if atual.editado_em %}<p class="nota">Rascunho salvo em {{ atual.editado_em }}.</p>{% endif %}
+        </section>
+      </div>
+
+      <div class="acoes">
+        {% if editavel %}
+          <button class="btn principal" name="acao" value="validar" id="validar" title="Atalho: Ctrl+Enter">Validar e enviar ao robô</button>
+          <button class="btn" name="acao" value="salvar">Salvar rascunho</button>
+          <button class="btn perigo" name="acao" value="descartar"
+                  onclick="return confirm('Descartar esta CI? Ela não vai gerar tarefa no VIOS.')">Descartar CI</button>
+          <label class="quem">Validado por <input type="text" name="por" id="por" placeholder="seu nome" autocomplete="name"></label>
+        {% elif atual.estado == 'duplicada' %}
+          <button class="btn" name="acao" value="reabrir">Revisar como intimação separada</button>
+        {% elif atual.estado in ('na_fila', 'descartada') %}
+          <button class="btn" name="acao" value="reabrir">Reabrir para editar</button>
+        {% endif %}
+        {% if proxima %}<a class="proxima" href="{{ url_for('ver', ci=proxima.ci) }}">Próxima para validar: CI {{ proxima.ci }}</a>{% endif %}
+      </div>
+    </form>
+  </main>
+</div>
+
+<script>
+const OFICIAIS = {{ oficiais|tojson }};
+const PESSOAS = {{ pessoas|tojson }};
+const SUGESTOES = {{ sugestoes|tojson }};
+const AUXILIARES = {{ auxiliares|tojson }};
+const EDITAVEL = {{ editavel|tojson }};
+let tarefas = {{ atual.tarefas|tojson }};
+
+const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const DIAS = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+function dataDe(br) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(br || "");
+  if (!m) return null;
+  const d = new Date(+m[3], +m[2] - 1, +m[1]);
+  return d.getDate() === +m[1] && d.getMonth() === +m[2] - 1 ? d : null;
+}
+const dataOk = br => !!dataDe(br);
+// digita só números e a barra entra sozinha: 26102026 -> 26/10/2026
+const mascara = v => { const n = v.replace(/\D/g, "").slice(0, 8);
+  return n.length > 4 ? `${n.slice(0, 2)}/${n.slice(2, 4)}/${n.slice(4)}` : n.length > 2 ? `${n.slice(0, 2)}/${n.slice(2)}` : n; };
+
+// mesma regra do lançamento: tudo em negrito; linhas "PRAZO FATAL..." (inclusive D-2) em vermelho
+function previa(texto) {
+  return (texto || "").split("\n").map(l => {
+    if (!l.trim()) return "<p>&nbsp;</p>";
+    let h = esc(l);
+    if (l.startsWith("PRAZO FATAL")) h = `<span style="color:#ff0000">${h}</span>`;
+    return `<p><strong>${h}</strong></p>`;
+  }).join("");
+}
+
+// dia da semana ao lado da data; sábado e domingo em vermelho
+function diaDaSemana(el, br) {
+  const d = dataDe(br);
+  el.textContent = d ? DIAS[d.getDay()] + (d.getDay() % 6 === 0 ? ", fim de semana" : "") : "";
+  el.classList.toggle("fimsemana", !!d && d.getDay() % 6 === 0);
+}
+
+function desenhar() {
+  const caixa = document.getElementById("tarefas");
+  caixa.innerHTML = tarefas.length ? "" : '<p class="nota erro">Nenhuma tarefa. Adicione uma ou descarte a CI.</p>';
+  tarefas.forEach((t, n) => {
+    const nomes = OFICIAIS.includes(t.nome) || !t.nome ? OFICIAIS : [t.nome, ...OFICIAIS];
+    const opcoes = nomes.map(o => `<option ${o === t.nome ? "selected" : ""}>${esc(o)}</option>`).join("");
+    const bloqueio = EDITAVEL ? "" : "disabled";
+    const d = document.createElement("article");
+    d.className = "tarefa";
+    d.innerHTML = `
+      <header>
+        <p>${tarefas.length > 1 ? `<b>Tarefa ${n + 1} de ${tarefas.length}.</b> ` : ""}${esc(t.finalidade || "")}</p>
+        ${EDITAVEL ? `<button type="button" class="remover">Remover tarefa</button>` : ""}
+      </header>
+      <div class="corpo">
+        <div><label class="rotulo" for="nome${n}">Tarefa no VIOS</label>
+          <select id="nome${n}" class="nome" ${bloqueio}>${t.nome ? "" : "<option value='' selected>Escolha a tarefa</option>"}${opcoes}</select></div>
+        <div><label class="rotulo" for="data${n}">Data para conclusão</label>
+          <div class="prazo"><input id="data${n}" type="text" class="data" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10"
+            value="${esc(t.data_tarefa || "")}" ${bloqueio}><span class="dia"></span></div>
+          ${t.data_analise ? `<p class="nota aviso-data">Recalculada para hoje (${t.tipo_data === "MESMO_DIA" ? "tarefa do mesmo dia" : "tarefa do dia útil seguinte"}). Na análise estava ${esc(t.data_analise)}.</p>` : ""}
+          <p class="nota erro erro-data" ${t.data_tarefa && !dataOk(t.data_tarefa) ? "" : "hidden"}>Data inválida. Use o formato DD/MM/AAAA.</p></div>
+        <div><span class="rotulo">Responsáveis</span><div class="resp"></div></div>
+        <div><div class="desc-topo"><span class="rotulo">Descrição na Observação do VIOS</span>
+            ${EDITAVEL ? `<button type="button" class="alternar editar-texto">Editar texto</button>` : ""}</div>
+          <div class="previa">${previa(t.descricao)}</div>
+          <textarea class="texto" hidden aria-label="Texto da descrição" ${EDITAVEL ? "" : "readonly"}>${esc(t.descricao)}</textarea></div>
+      </div>`;
+
+    d.querySelector(".nome").onchange = e => { t.nome = e.target.value; };
+    desenharResp(d.querySelector(".resp"), t);
+
+    const texto = d.querySelector(".texto"), vista = d.querySelector(".previa"), alternar = d.querySelector(".editar-texto");
+    texto.oninput = () => { t.descricao = texto.value; vista.innerHTML = previa(t.descricao); };
+    if (alternar) alternar.onclick = () => {
+      const editando = texto.hidden;
+      texto.hidden = !editando; vista.hidden = editando;
+      alternar.textContent = editando ? "Ver como fica no VIOS" : "Editar texto";
+      if (editando) texto.focus();
+    };
+
+    const campo = d.querySelector(".data"), dia = d.querySelector(".dia"), erro = d.querySelector(".erro-data");
+    diaDaSemana(dia, t.data_tarefa);
+    let ultimaOk = dataOk(t.data_tarefa) ? t.data_tarefa : "";
+    campo.oninput = () => {
+      campo.value = mascara(campo.value);
+      t.data_tarefa = campo.value;
+      t.data_editada = true;
+      const aviso = d.querySelector(".aviso-data");
+      if (aviso) aviso.remove();
+      diaDaSemana(dia, t.data_tarefa);
+      if (dataOk(t.data_tarefa)) {
+        erro.hidden = true;
+        // a linha "PRAZO FATAL: ..." acompanha a data da tarefa
+        if (ultimaOk && t.rotulo_data === "PRAZO FATAL") {
+          t.descricao = t.descricao.replace(`PRAZO FATAL: ${ultimaOk}`, `PRAZO FATAL: ${t.data_tarefa}`);
+          texto.value = t.descricao; vista.innerHTML = previa(t.descricao);
+        }
+        ultimaOk = t.data_tarefa;
+      }
+    };
+    campo.onblur = () => { erro.hidden = !(t.data_tarefa && !dataOk(t.data_tarefa)); };
+
+    const rem = d.querySelector(".remover");
+    if (rem) rem.onclick = () => { if (confirm("Remover esta tarefa?")) { tarefas.splice(n, 1); desenhar(); } };
+    caixa.appendChild(d);
+  });
+}
+
+// responsáveis: lista vazia = automático (o robô não mexe e o VIOS marca sozinho, em geral o auxiliar);
+// "Escolher outras pessoas" passa para a escolha manual, começando pelos auxiliares
+const previstos = t => [...AUXILIARES.filter(a => a.nome).map(a => a.nome), ...(t.marcar_breno ? ["BRENO SILVA MOTA"] : [])];
+function desenharResp(caixa, t) {
+  t.responsaveis = t.responsaveis || [];
+  if (!t.responsaveis.length) {
+    const quem = AUXILIARES.length
+      ? AUXILIARES.map(a => a.nome ? `<b>${esc(a.nome)}</b> (${esc(a.sigla)})` : `o auxiliar <b>${esc(a.sigla)}</b>`).join(" e ")
+      : "o responsável cadastrado para esta tarefa";
+    caixa.innerHTML = `<div class="auto">
+        <p><span class="selo-auto">Automático pelo VIOS</span> O VIOS marca o auxiliar da intimação: ${quem}.${t.marcar_breno ? " O robô também marca <b>BRENO SILVA MOTA</b>." : ""}</p>
+        <p class="nota">Em algumas tarefas, como Ciência, o próprio VIOS escolhe outra pessoa.</p>
+        ${EDITAVEL ? `<button type="button" class="alternar trocar">Escolher outras pessoas</button>` : ""}</div>`;
+    const trocar = caixa.querySelector(".trocar");
+    if (trocar) trocar.onclick = () => {
+      t.responsaveis = previstos(t);
+      if (!t.responsaveis.length && PESSOAS.length) { t._manual = true; }
+      desenharResp(caixa, t);
+    };
+    if (!t._manual) return;
+  }
+  const chips = t.responsaveis.map((p, k) => EDITAVEL
+    ? `<span class="chip">${esc(p)}<button type="button" data-k="${k}" aria-label="Tirar ${esc(p)}">×</button></span>`
+    : `<span class="chip fixo">${esc(p)}</span>`).join("");
+  let mais = "";
+  if (EDITAVEL) {
+    const livres = PESSOAS.filter(p => !t.responsaveis.includes(p));
+    const sug = SUGESTOES.filter(s => !t.responsaveis.includes(s.nome))
+      .map(s => `<button type="button" class="sug" data-nome="${esc(s.nome)}">Adicionar ${esc(s.nome)} <em>(${esc(s.origem)})</em></button>`).join("");
+    const todas = tarefas.length > 1 ? `<button type="button" class="sug aplicar">Usar estes em todas as tarefas</button>` : "";
+    const lista = PESSOAS.length
+      ? `<select class="add-pessoa" aria-label="Adicionar responsável"><option value="">Adicionar outra pessoa</option>${livres.map(p => `<option>${esc(p)}</option>`).join("")}</select>`
+      : `<span class="nota">A lista de pessoas do VIOS não foi carregada. Rode <code>./rodar_revisao.sh --atualizar-responsaveis</code>.</span>`;
+    mais = `<div class="mais">${sug}${lista}${todas}</div>
+      <button type="button" class="alternar voltar">Voltar para o automático do VIOS</button>`;
+  }
+  caixa.innerHTML = `<p class="nota manual">Escolha manual: o robô marca exatamente estas pessoas no VIOS.</p>
+    <div class="chips">${chips || '<span class="sem-resp">Ninguém escolhido ainda.</span>'}</div>${mais}`;
+  caixa.querySelectorAll(".chip button").forEach(b => b.onclick = () => { t.responsaveis.splice(+b.dataset.k, 1); t._manual = true; desenharResp(caixa, t); });
+  caixa.querySelectorAll(".sug[data-nome]").forEach(b => b.onclick = () => { t.responsaveis.push(b.dataset.nome); desenharResp(caixa, t); });
+  const sel = caixa.querySelector(".add-pessoa");
+  if (sel) sel.onchange = () => { if (sel.value) { t.responsaveis.push(sel.value); desenharResp(caixa, t); } };
+  const ap = caixa.querySelector(".aplicar");
+  if (ap) ap.onclick = () => { tarefas.forEach(o => { o.responsaveis = [...t.responsaveis]; o._manual = !!t.responsaveis.length; }); desenhar(); };
+  const volta = caixa.querySelector(".voltar");
+  if (volta) volta.onclick = () => { t.responsaveis = []; t._manual = false; desenharResp(caixa, t); };
+}
+
+const add = document.getElementById("adicionar");
+if (add) add.onclick = () => {
+  tarefas.push({nome: "", data_tarefa: "", descricao: "", marcar_breno: false, tipo_data: "MANUAL", rotulo_data: "",
+                finalidade: "Incluída na revisão.", responsaveis: [...((tarefas[0] || {}).responsaveis || [])]});
+  desenhar();
+};
+
+const form = document.getElementById("form");
+form.onsubmit = () => {
+  document.getElementById("tarefas_json").value = JSON.stringify(tarefas);
+  try { localStorage.setItem("revisao_por", document.getElementById("por").value); } catch (e) {}
+};
+document.addEventListener("keydown", e => {
+  const validar = document.getElementById("validar");
+  if (validar && e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); validar.click(); }
+});
+try { const p = document.getElementById("por"); if (p) p.value = localStorage.getItem("revisao_por") || ""; } catch (e) {}
+desenhar();
+</script>
+{% endif %}
+</body>
+</html>

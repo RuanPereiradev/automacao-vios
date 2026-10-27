@@ -70,8 +70,19 @@ def _data_conclusao(tarefa, hoje):
         return hoje
 
 
+def _linha_html(linha):
+    """Texto do robô em negrito; "PRAZO FATAL: ..." e "PRAZO FATAL (D-2): ..." em negrito e vermelho.
+    O teor que o VIOS acrescenta depois ("---------- Intimação: ...") não passa por aqui e fica normal."""
+    if not linha.strip():
+        return "<p>&nbsp;</p>"
+    texto = html.escape(linha)
+    if linha.startswith("PRAZO FATAL"):
+        texto = f'<span style="color: #ff0000;">{texto}</span>'
+    return f"<p><strong>{texto}</strong></p>"
+
+
 def _html(descricao):
-    return "".join(f"<p>{html.escape(l) or '&nbsp;'}</p>" for l in descricao.splitlines())
+    return "".join(_linha_html(l) for l in descricao.splitlines())
 
 
 def _esperar_ajax(driver, timeout):
@@ -111,14 +122,19 @@ def preencher(driver, tarefa, data_conclusao, timeout):
 
     driver.execute_script(
         """
-        const [data, obs, breno] = arguments;
+        const [data, obs, breno, nomes] = arguments;
         const $p = jQuery('#tp_prazo');
         $p.val('data').trigger('change');
         if ($p.selectpicker) $p.selectpicker('refresh');
         const campo = document.querySelector("input[name='fo[data_prevista]']");
         campo.value = data;
         jQuery(campo).trigger('change');
-        if (breno) {
+        if (nomes.length) {
+            // responsáveis escolhidos na revisão: marca exatamente essas pessoas
+            const $r = jQuery('#responsaveis');
+            [...$r[0].options].forEach(o => { o.selected = nomes.includes(o.text.trim().toUpperCase()); });
+            $r.trigger('change'); if ($r.selectpicker) $r.selectpicker('refresh');
+        } else if (breno) {
             const $r = jQuery('#responsaveis');
             const op = [...$r[0].options].find(o => o.text.trim().toUpperCase().startsWith('BRENO'));
             if (op) { op.selected = true; $r.trigger('change'); if ($r.selectpicker) $r.selectpicker('refresh'); }
@@ -130,8 +146,9 @@ def preencher(driver, tarefa, data_conclusao, timeout):
         data_conclusao.strftime("%d/%m/%Y"),
         _html(tarefa["descricao"]),
         bool(tarefa.get("marcar_breno")),
+        [n.strip().upper() for n in tarefa.get("responsaveis") or []],
     )
-    return driver.execute_script(
+    tela = driver.execute_script(
         """
         const sel = id => [...document.getElementById(id).selectedOptions].map(o => o.text.trim());
         return {
@@ -143,6 +160,19 @@ def preencher(driver, tarefa, data_conclusao, timeout):
             obs: tinymce.get('fo[obs]').getContent({format: 'text'}),
         };
         """
+    )
+    pedidos = {_normalizar(n) for n in tarefa.get("responsaveis") or []}
+    if pedidos and pedidos != {_normalizar(n) for n in tela["responsaveis"]}:
+        raise LancamentoErro(f"Responsáveis não conferem: pedido {sorted(tarefa['responsaveis'])}, "
+                             f"na tela {tela['responsaveis']}")
+    return tela
+
+
+def ler_responsaveis(driver, link_lancar, timeout):
+    """Pessoas do campo Responsáveis do formulário de lançamento (só lê, não preenche)."""
+    _abrir(driver, link_lancar, timeout)
+    return driver.execute_script(
+        "return [...document.getElementById('responsaveis').options].map(o => o.text.trim()).filter(t => t);"
     )
 
 
@@ -218,11 +248,19 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
             log.error("CI %s: análise com erro, nada lançado", ci)
             erros += 1
             continue
+        if r.get("duplicada_de"):
+            log.info("CI %s: duplicada da CI %s, ignorada (vale a tarefa da original)", ci, r["duplicada_de"])
+            continue
         if confirmar and ci in registro:
             log.warning("CI %s já foi lançada em %s: pulando", ci, registro[ci]["quando"])
             continue
         if not r.get("link_lancar"):
             log.error("CI %s: sem link 'Lançar Intimação'", ci)
+            erros += 1
+            continue
+        if r.get("bloqueios"):
+            log.warning("CI %s: falta informação, nada lançado (conferir no PJe e lançar manualmente): %s",
+                        ci, "; ".join(r["bloqueios"]))
             erros += 1
             continue
         especiais = [t["nome"] for t in r["tarefas"] if t["nome"] in skill.ESPECIAIS]

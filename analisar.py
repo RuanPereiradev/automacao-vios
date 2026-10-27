@@ -10,7 +10,8 @@ def main(*args):
     configurar_log()
     log = logging.getLogger("analise")
     refazer = "--recalcular" in args
-    args = [a for a in args if a != "--recalcular"]
+    feriados = "--feriados" in args
+    args = [a for a in args if a not in ("--recalcular", "--feriados")]
     # --ci 42431[,42432]: analisa só essas CIs
     cis = None
     if "--ci" in args:
@@ -29,7 +30,7 @@ def main(*args):
         if refazer:
             # refaz datas, conferências e relatório com as respostas da IA já salvas (sem custo)
             saida = arquivo.with_name(arquivo.name.replace("intimacoes_", "analise_", 1))
-            resultados, agente = recalcular(arquivo, saida, caminho_env)
+            resultados, agente = recalcular(arquivo, saida, caminho_env, feriados=feriados)
             saida.write_text(__import__("json").dumps(resultados, ensure_ascii=False, indent=2), encoding="utf-8")
             relatorio = saida.with_suffix(".md")
             relatorio.write_text(relatorio_md(resultados, agente, arquivo), encoding="utf-8")
@@ -44,5 +45,5 @@ def main(*args):
 
 
 if __name__ == "__main__":
-    # uso: python analisar.py [--recalcular] [--ci 42431,42432] [saida/intimacoes_AAAA-MM-DD.json] [caminho/do/.env]
+    # uso: python analisar.py [--recalcular [--feriados]] [--ci 42431,42432] [saida/intimacoes_AAAA-MM-DD.json] [caminho/do/.env]
     sys.exit(main(*sys.argv[1:]))

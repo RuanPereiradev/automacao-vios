@@ -18,14 +18,17 @@ class OpenAIIA:
         self.modelo = modelo
         self.esforco = esforco
 
-    def responder(self, sistema, usuario, schema):
+    def responder(self, sistema, usuario, schema, pesquisar=False):
+        """pesquisar=True libera a pesquisa na web (ferramenta web_search)."""
         extra = {"reasoning": {"effort": self.esforco}} if self.esforco else {}
+        if pesquisar:
+            extra["tools"] = [{"type": "web_search"}]
         r = self.client.responses.create(
             model=self.modelo,
             instructions=sistema,
             input=usuario,
             text={"format": {"type": "json_schema", "name": "analise_intimacao", "schema": schema, "strict": True}},
-            prompt_cache_key="analise-intimacoes",
+            prompt_cache_key="pesquisa-feriados" if pesquisar else "analise-intimacoes",
             **extra,
         )
         if r.status != "completed" or not r.output_text:

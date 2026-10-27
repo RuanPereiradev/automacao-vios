@@ -18,11 +18,11 @@ Não classificar somente pelo número CNJ, classe, fase ou auxiliar. Um processo
 
 | Auxiliar | Área normalmente relacionada | Conferência obrigatória |
 | --- | --- | --- |
-| Joaquim/JOAQ | Cível | Se a tarefa for Execução, conferir se houve transferência para Tamira. |
-| Joana/JOAN | Cível | Se a tarefa for Execução, conferir se houve transferência para Tamira. |
-| Lili/LILI | Cível | Se a tarefa for Execução, conferir se houve transferência para Tamira. |
+| Joaquim/JOAQ | Cível | Se a tarefa for Execução, não lançar: confirmar se houve transferência para Tamira. |
+| Joana/JOAN | Cível | Se a tarefa for Execução, não lançar: confirmar se houve transferência para Tamira. |
+| Lili/LILI | Cível | Se a tarefa for Execução, não lançar: confirmar se houve transferência para Tamira. |
 | Suhiane/SUH | Trabalhista Reclamante ou Previdenciário | Diferenciar pelo teor, órgão, partes e número CNJ. |
-| Tamira/TAMI | Execução; também pode constar em processo de outra área | Não decidir somente pelo nome; conferir fase e providência. |
+| Tamira/TAMI | Execução | Conferir pelo departamento e também pelo responsável: se a Tamira é a responsável, a tarefa é de Execução. Se a tarefa ficar em outra área, não lançar e confirmar o departamento. |
 | Carlos/CARL | Trabalhista Reclamada | Conferir cliente e teor. |
 | Johnys/JOHN | Trabalhista Reclamada | Conferir cliente e teor. |
 | Breno | Petições da Execução da Tamira | Marcar nas tarefas `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO)`. |
@@ -64,14 +64,13 @@ Tratar como prioritária toda intimação relacionada a determinação ou minuta
 - Usar:
 
 ```text
-Prazo fatal: DD/MM/AAAA
-DATA DA TAREFA NO VIOS — PRIORIDADE RPV: DD/MM/AAAA
+PRAZO FATAL: DD/MM/AAAA
 ```
 
 No resumo:
 
 ```text
-DATA DA TAREFA NO VIOS — PRIORIDADE RPV: DD/MM/AAAA
+PRAZO FATAL: DD/MM/AAAA
 PRIORIDADE RPV/PRECATÓRIO
 [providência]
 ```
@@ -103,14 +102,13 @@ Quando o auxiliar for Suhiane/SUH e a tarefa for qualquer tarefa de minutar emen
 - usar:
 
 ```text
-Prazo fatal: DD/MM/AAAA
-DATA DA TAREFA NO VIOS — PRIORIDADE EMENDA/SUHIANE: DD/MM/AAAA
+PRAZO FATAL: DD/MM/AAAA
 ```
 
 No resumo:
 
 ```text
-DATA DA TAREFA NO VIOS — PRIORIDADE EMENDA/SUHIANE: DD/MM/AAAA
+PRAZO FATAL: DD/MM/AAAA
 MINUTAR EMENDA À INICIAL
 [documentos ou informações exigidos]
 ```
@@ -142,7 +140,10 @@ Aplicar a dados bancários, documentos, alvará, RPV/precatório, cálculos, pro
 
 - Manter cada CI em sua posição e numeração originais, mesmo quando duplicada.
 - Nunca fundir cabeçalhos como `26 e 45. CIs...`.
-- Identificar a CI mais completa e não abrir tarefas repetidas.
+- Identificar a CI mais completa e não abrir tarefas repetidas. A CI mais completa é a original; a outra é ignorada (não gera tarefa).
+- Duplicata é a mesma publicação em mais de uma CI do mesmo processo: o texto é praticamente igual e muda só o destinatário, o link ou o código da comunicação (o VIOS costuma trazer uma cópia para cada parte). Quando só muda o destinatário, a original é a CI endereçada ao cliente do escritório; a cópia endereçada à outra parte é ignorada.
+- Mesmo processo com ato diferente (ex.: perícia designada e depois redesignada) não é duplicata: analisar cada CI e, se a mais nova mudar data ou local, atualizar a tarefa existente em vez de abrir outra.
+- O programa detecta as duplicatas automaticamente, marca a cópia como `DUPLICADA DA CI [NÚMERO]` e não a lança no VIOS.
 - Na menos completa, informar:
 
 ```text

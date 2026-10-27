@@ -17,6 +17,7 @@ a partir dessas intimações.
 | 3. Captura | Pesquisa as intimações de **ontem** (na segunda: sexta a domingo), lê a tabela e salva em JSON | ✅ Pronto (11 intimações de 22/10/2026) |
 | 4. Análise | Agente com IA + skill da Controladoria sugere as tarefas, com datas calculadas pelo código | ✅ Pronto (11 intimações de 22/10 analisadas com gpt-5.6) — em validação pela Controladoria |
 | 5. Criação de tarefas | Cria a tarefa no VIOS com descrição e prazo | ✅ Pronto (`--ci X` ou `--ci todas`) — 23 a 25/10/2026: 19 de 20 lançadas em 26/10/2026 |
+| 6. Revisão humana | Página local onde a pessoa confere, edita e valida as tarefas antes do lançamento | 🚧 Página pronta (26/10/2026); falta ligar o robô à fila e agendar às 17h |
 
 ---
 
@@ -128,7 +129,7 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 | --- | --- |
 | IA (OpenAI por padrão) | Lê a intimação, classifica o ato, escolhe tarefas **da lista oficial** (o schema não aceita outro nome), informa os dias de prazo e escreve os resumos |
 | Código (`bot/prazos.py`) | Calcula prazo fatal, D-2, próximo dia útil, embargos e recurso com feriados e recesso |
-| Código (`bot/analise.py`) | Confere as regras fixas da skill e marca alertas ⚠; insere Breno; detecta duplicidade |
+| Código (`bot/analise.py`, `bot/duplicidade.py`) | Confere as regras fixas da skill e marca alertas ⚠; insere Breno; detecta duplicatas (a cópia é ignorada) |
 | Pessoa | Revisa `saida/analise_*.md` antes de lançar no VIOS |
 
 - **Trocar de IA:** `LLM_PROVEDOR=openai` ou `anthropic` no `.env` (+ a chave).
@@ -167,7 +168,7 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 | Todos os processos | Nacionais da tabela; recesso 20/12–20/01 | Pontos facultativos (Dia do Servidor, Carnaval estadual, Corpus Christi, vésperas) |
 | Justiça Federal | Lei 5.010/66 art. 62: Carnaval, quarta e quinta Santa, 11/08, 01/11, 08/12 | Feriados estaduais e municipais |
 | Justiça Estadual / Trabalho | Estaduais da UF; municipais da cidade (se capital na tabela) | Cidade fora da tabela (ex.: Sobral) |
-| `doc/feriados.txt` | Linha com escopo que vale para o processo | — |
+| `doc/feriados.txt` | Linha com escopo que vale para o processo | Linha com `; AVISO` no fim (suspensão não confirmada) |
 
 - **Por que conservador:** contar um feriado que não existe empurra o prazo
   para depois e pode causar perda de prazo. Na dúvida, o bot mantém a data mais
@@ -177,6 +178,37 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   rodar `./rodar_analise.sh --recalcular` (sem custo de API).
 - A tabela cobre 2026 e 2027 e só as **capitais**; cidades do interior entram
   em `doc/feriados.txt`.
+- **Feriado por tribunal:** o ramo da Justiça sai do número CNJ do processo
+  (`.8.` estadual, `.5.` trabalho, `.4.` federal). Escopos de `doc/feriados.txt`:
+  `JUSTIÇA ESTADUAL/CE` (só TJCE), `JUSTIÇA DO TRABALHO/CE` (TRT7),
+  `JUSTIÇA FEDERAL/CE` (JFCE), `CE` (todos os ramos no Ceará), além de
+  `TODOS`, `JUSTIÇA FEDERAL`, `JUSTIÇA ESTADUAL`, `JUSTIÇA DO TRABALHO` e `CIDADE/UF`.
+- **Regra combinada com a Controladoria (27/10/2026):** contar o máximo de
+  feriados possível, porque os advogados reclamam quando um feriado não é
+  contado; mas, se a suspensão não estiver confirmada, a data fica adiantada
+  para não perder prazo. Para isso, a linha com `; AVISO` no fim não estende
+  o prazo, só gera o alerta "não confirmado". Confirmada a portaria, apagar o
+  `; AVISO` e recalcular.
+- Exemplo (Dia do Servidor 2026, transferido de 28/10 para 30/10): confirmado
+  no TJCE, TRT7 (Portaria 518/2025) e JFCE (Ato TRF5 435/2026).
+- **Pesquisa na internet (`bot/feriados_web.py`, 27/10/2026):** antes de cada
+  análise o bot pergunta à IA, com pesquisa na web, os feriados e suspensões
+  dos tribunais e cidades do lote nos próximos 60 dias, e grava em
+  `doc/feriados.txt` com o link da fonte:
+
+| Resultado da pesquisa | O que o bot grava |
+| --- | --- |
+| Suspensão confirmada em fonte oficial (`.jus.br`; municipal também `.gov.br`/`.leg.br`) | Linha normal: conta no prazo |
+| Fonte não oficial ou efeito nos prazos incerto | Linha com `; AVISO`: data adiantada + alerta |
+| Ponto facultativo sem efeito nos prazos | Nada |
+| Nacional, Lei 5.010/66 ou recesso 20/12–20/01 | Nada (o calendário já conta) |
+
+  - Mesmo tribunal/cidade só é pesquisado de novo depois de 7 dias (cache em
+    `saida/feriados_pesquisa.json`). Leva ~1 min por tribunal.
+  - Desligar: `FERIADOS_PESQUISA=false` no `.env`. Recalcular uma análise
+    antiga com pesquisa: `./rodar_analise.sh --recalcular --feriados`.
+  - Vale conferir o bloco "Pesquisa automática" de vez em quando: linha
+    errada pode ser apagada ou ganhar `; AVISO`.
 
 ### Passo 14 — Criar a tarefa no VIOS
 - Fluxo por CI: `./rodar_analise.sh --ci 42431 saida/intimacoes_X.json` gera a
@@ -191,9 +223,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 | Tarefa (`form[processos_etapas_id]`) | A tarefa da análise (nome casado com a lista do VIOS) |
 | Tipo de prazo | Data |
 | Data para conclusão (`fo[data_prevista]`) | Data calculada na análise; tarefa sem data (ex.: ciência) = hoje |
-| Responsáveis | O que o VIOS já traz (advogado do processo) + BRENO quando a regra pede |
+| Responsáveis | O que o VIOS marca sozinho ao escolher a tarefa (em geral o auxiliar da intimação) + BRENO quando a regra pede; ou exatamente as pessoas escolhidas manualmente na revisão |
 | Texto intimação | Marcado (padrão do VIOS) |
-| Observação | Descrição da tarefa da análise |
+| Observação | Descrição da tarefa, toda em **negrito**; as linhas `PRAZO FATAL (D-2): ...` e `PRAZO FATAL: ...` (RPV e emenda da Suhiane) em **negrito e vermelho**. O teor que o VIOS acrescenta depois fica normal |
 
 - **Dois passos no VIOS:** *Adicionar* põe a tarefa no quadro "Tarefas"
   (provisório, some se a sessão acabar) e *Gravar* efetiva. O bot adiciona
@@ -222,12 +254,86 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   "Tarefas" tem que começar vazio e terminar com uma linha por tarefa (pega
   Adicionar registrado em dobro); nomes da skill com erro de digitação têm
   apelido em `APELIDOS` (`bot/lancamento.py`).
+- **Não lança quando falta informação (27/10/2026)** — a CI fica para a
+  Controladoria conferir no PJe e lançar à mão; o motivo aparece no log e no
+  relatório ("NÃO SERÁ LANÇADA NO VIOS"). Casos:
+  - a IA lista em `faltam_dados` o que a tarefa exige e a intimação não traz
+    (ex.: audiência sem tipo, data, horário, formato, local ou link/ID/senha;
+    perícia sem data, horário ou local);
+  - área da tarefa × auxiliar responsável: tarefa de Execução com JOAQ, JOAN,
+    LILI, SUH, CARL ou JOHN; tarefa de outra área com só TAMI (Tamira =
+    Execução); Cível com SUH. Com dois auxiliares (ex.: "TAMI / SUH") vale a IA;
+  - tarefa de análise em que cabe embargos ou recurso, mas sem prazo para
+    calcular a data.
+- **Descrição da tarefa de análise (27/10/2026):** se cabe (ou pode caber)
+  embargos ou recurso, as duas linhas `PRAZO PARA EMBARGOS` e `PRAZO PARA
+  RECURSO` sempre com data D-2 (prazo legal quando a intimação não diz,
+  inclusive com cabimento pendente); o meio que não cabe fica `NÃO CABE`. Se
+  não cabe nenhum, só `PRAZO FATAL (D-2)`. Toda análise tem prazo: sem prazo
+  no ato, `PRAZO FATAL:` com o dia útil seguinte à publicação.
 - A lista de tarefas do VIOS muda conforme o processo (ex.: `CIÊNCIA (CÍVEL)`
   existe em processo cível); se o nome não existir, a CI fica para lançamento
   manual e o erro aparece no log.
 - **Resultado (23 a 25/10/2026):** 20 intimações, 19 tarefas gravadas e
   conferidas, 1 por CI. Ficou de fora a CI 42419 (sustentação oral
   previdenciária — nome com erro na skill e pendências): lançar manualmente.
+
+### Passo 16 — Página de revisão humana
+- Novo fluxo combinado (26/10/2026): o robô captura e analisa às 17h; na
+  manhã seguinte uma pessoa confere a análise numa página, edita se precisar e
+  **valida**; só então o robô lança a versão editada.
+- `./rodar_revisao.sh saida/analise_X.json` importa a análise para o banco
+  `saida/revisao.db` (SQLite) e abre a página em http://127.0.0.1:5000.
+  Importar de novo não apaga edições: CI que já está no banco é mantida.
+- Tela: à esquerda a fila agrupada por situação (Para validar, Na fila do
+  robô, Lançadas...) e o progresso "N de 45 revisadas"; no centro, a
+  intimação para ler (alertas "Conferir antes de validar", resumo e teor) ao
+  lado das tarefas. A data mostra o dia da semana e avisa fim de semana.
+  Ctrl+Enter valida.
+- Na página, por CI: dados do processo, prazos, alertas ⚠, pendências, teor da
+  intimação e as tarefas editáveis (tarefa da lista oficial, data, descrição
+  com prévia de como fica no VIOS — `PRAZO FATAL:` em vermelho — e
+  responsáveis).
+  Dá para adicionar e remover tarefas.
+- Ações: **Validar e enviar ao robô** (confere tarefa oficial, data e
+  descrição, e pede o nome de quem validou), **Salvar rascunho**,
+  **Descartar** (não gera tarefa) e **Reabrir** (tira da fila).
+- Estados: aguardando → na fila → lançando → lançada / erro; ou descartada.
+- **Responsáveis:** o padrão é **automático pelo VIOS**: o robô não mexe no
+  campo e o VIOS marca sozinho. Em geral é o **auxiliar** da intimação (SUH →
+  SUHIANE, TAMI → TAMIRA, JOHN → FRANCISCO JOHNYS...), não o advogado do
+  processo (RONEELY FEITOSA aparece em quase todos); em algumas tarefas, como
+  Ciência, o VIOS escolhe outra pessoa (ex.: AMANDA LEITE MENDES). Para uma
+  exceção, "Escolher outras pessoas" passa para a escolha manual e o robô
+  marca exatamente quem foi escolhido. A lista de pessoas vem
+  de `saida/responsaveis.json`; para atualizar quando entrar ou sair alguém:
+  `./rodar_revisao.sh --atualizar-responsaveis` (só lê o formulário do VIOS).
+- Datas em DD/MM/AAAA (digita só os números). Como a análise é da véspera,
+  a página refaz as datas que dependem do dia: `MESMO_DIA` (ex.: verificar
+  sustentação) vira hoje e `DIA_SEGUINTE` (ex.: aviso de perícia social) o
+  próximo dia útil, com aviso mostrando a data original. Data editada à mão
+  fica como a pessoa deixou.
+- **Ainda não lança:** a CI validada fica "na fila". Próximo passo: o
+  lançamento ler a fila (iniciado pelo clique em Validar, com rodada de
+  segurança agendada), refazendo as datas relativas ao dia na hora de lançar.
+- A página só escuta em 127.0.0.1 (sem login ainda).
+
+### Passo 17 — Duplicatas
+- Antes do robô, a advogada pedia o CSV das intimações, perguntava ao ChatGPT
+  se havia duplicatas e apagava no VIOS a que não estava no nome do cliente.
+- Agora o código detecta (`bot/duplicidade.py`): mesmo processo e texto
+  praticamente igual (tirando links, números e códigos, no máximo 10 palavras
+  diferentes). É o caso do VIOS trazer uma cópia para cada parte.
+- A original é a CI mais completa: primeiro a endereçada ao cliente (as
+  palavras que só ela tem batem com o nome do cliente, inclusive iniciais
+  como D.D.E.L.L.), depois a de texto maior, depois a de número menor.
+- A cópia vira "Duplicada (ignorada)" na página e o robô não lança. Se não for
+  duplicata, "Revisar como intimação separada".
+- Mesmo processo com ato diferente não é duplicata (ex.: 26/10, perícia
+  designada e depois redesignada): fica o alerta para atualizar a tarefa.
+- **Não apaga nada no VIOS**: a cópia continua lá como intimação pendente.
+- Resultado 26/10/2026: 42475 → cópia da 42476 (TIAGO ARAUJO DE OLIVEIRA ×
+  SERVICOS ADMINISTRATIVOS MEDEIROS LTDA); 42471 → cópia da 42472.
 
 ---
 
@@ -241,6 +347,8 @@ selenium/
 ├── rodar_analise.sh     # atalho para analisar.py
 ├── lancar.py            # lança no VIOS as tarefas da análise (--ci, --confirmar)
 ├── rodar_lancamento.sh  # atalho para lancar.py
+├── revisar.py           # importa análises e abre a página de revisão
+├── rodar_revisao.sh     # atalho para revisar.py
 ├── bot/
 │   ├── config.py        # lê e valida o .env; converte seletores
 │   ├── navegador.py     # cria o Chrome e funções esperar/clicar/preencher
@@ -251,6 +359,10 @@ selenium/
 │   ├── analise.py       # agente: IA + skill -> tarefas sugeridas + relatório
 │   ├── lancamento.py    # preenche "Lançar Intimação", Adicionar → Gravar → confere
 │   ├── skill.py         # carrega a skill e a lista oficial de tarefas
+│   ├── duplicidade.py   # detecta a mesma publicação em duas CIs (a cópia é ignorada)
+│   ├── revisao.py       # banco SQLite da revisão (CIs, tarefas editadas, estados)
+│   ├── web.py           # página de revisão (Flask)
+│   ├── templates/       # HTML da página de revisão
 │   ├── prazos.py        # dias úteis, feriados, prazo fatal, D-2
 │   └── ia/              # provedores de IA: openai_ia.py, anthropic_ia.py
 ├── .env                 # configuração real (NÃO versionar — tem senha)
@@ -287,6 +399,14 @@ Analisar e lançar uma CI:
 ./rodar_analise.sh --ci 42431 saida/intimacoes_2026-10-23_a_2026-10-25.json
 ./rodar_lancamento.sh --ci 42431              # modo teste: adiciona e NÃO grava
 ./rodar_lancamento.sh --ci 42431 --confirmar  # grava no VIOS
+```
+
+Revisar e validar na página (abre em http://127.0.0.1:5000):
+
+```bash
+./rodar_revisao.sh saida/analise_2026-10-26.json   # importa e abre
+./rodar_revisao.sh                                   # só abre (CIs já importadas)
+./rodar_revisao.sh --atualizar-responsaveis          # relê do VIOS a lista de responsáveis
 ```
 
 Primeira instalação:
@@ -328,6 +448,7 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `SKILL_PASTA` | não | Pasta da skill extraída | `doc/analise-intimacoes-controladoria` |
 | `FERIADOS_TABELA` | não | Tabela de feriados (nacionais, estaduais, capitais, pontos facultativos) | `doc/feriados-brasil-2026-2027.md` |
 | `FERIADOS_ARQUIVO` | não | Feriados/suspensões extras: `DD/MM/AAAA ; ESCOPO ; descrição` | `doc/feriados.txt` |
+| `FERIADOS_PESQUISA` | não | Pesquisa feriados na internet antes da análise (`true`/`false`) | `true` |
 | `SAIDA_PASTA` | não | Pasta dos `.txt` | `saida` |
 | `HEADLESS` | não | Chrome sem janela | `false` |
 | `TIMEOUT` | não | Espera máxima (s) | `20` |
@@ -349,6 +470,9 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
   "Lançar no VIOS"). `saida/analise_<periodo>.json` — o mesmo em dados.
 - `saida/lancamentos.json` — CIs lançadas no VIOS (data/hora, tarefa, data,
   responsáveis); impede lançar a mesma CI de novo.
+- `saida/revisao.db` — banco da página de revisão: tarefas editadas, estado
+  de cada CI, quem validou e quando.
+- `saida/responsaveis.json` — pessoas do campo Responsáveis do VIOS.
 - `logs/lancamento_ci<CI>_*.png` — prints do formulário e do quadro "Tarefas".
 - `logs/bot.log` — tudo o que o bot fez (a senha nunca é registrada).
 - `logs/erro_*.png` — screenshot da tela no momento de qualquer erro.
@@ -360,7 +484,8 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 ## 7. Próximos passos
 
 1. ~~Separar cada intimação em campos~~ ✅ feito no Passo 9.
-2. **Evitar duplicidade**: guardar os `comunicacao_id` já processados.
+2. ~~Duplicatas no mesmo dia~~ ✅ detectadas e ignoradas (Passo 17). Falta: duplicata que volta
+   em outro dia (guardar os textos/`comunicacao_id` já processados).
 3. ~~Analisar cada intimação com a skill~~ ✅ agente pronto e testado (Passo 12) —
    falta a Controladoria comparar com o ChatGPT.
 4. ~~Criar a tarefa no VIOS~~ ✅ por CI (Passo 14). Próximo: lançar todas as CIs

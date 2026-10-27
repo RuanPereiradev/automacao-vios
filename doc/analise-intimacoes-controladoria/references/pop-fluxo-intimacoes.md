@@ -170,4 +170,4 @@ PRAZO PARA RECURSO: DD/MM/AAAA
 
 Se couber apenas um deles, informe somente o aplicável.
 
-Exceção obrigatória: sempre que a tarefa for `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO`, exibir as duas linhas. Se algum meio não couber, não tiver prazo aberto ou depender de confirmação, preencher respectivamente `NÃO CABE`, `NÃO HOUVE ABERTURA DE PRAZO` ou `PENDENTE – CONFIRMAR CABIMENTO`.
+Exceção obrigatória: na tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO`, se couber (ou puder caber) embargos ou recurso, exibir as duas linhas com data em D-2 (prazo legal quando a intimação não informar, inclusive com cabimento pendente); o meio que não couber fica `NÃO CABE`. Se não couber nenhum, deixar somente o `PRAZO FATAL (D-2)`.

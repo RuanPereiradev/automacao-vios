@@ -1,6 +1,6 @@
 """Escolhe o provedor de IA pelo .env (LLM_PROVEDOR=openai|anthropic).
 
-Cada provedor expõe responder(sistema, usuario, schema) -> dict, sempre com
+Cada provedor expõe responder(sistema, usuario, schema, pesquisar=False) -> dict, sempre com
 saída JSON validada pelo schema. Para trocar de provedor basta mudar o .env.
 """
 
