@@ -12,6 +12,44 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Análise em lote no Claude
+- `bot/ia/anthropic_ia.py`: lote pela Message Batches API (metade do preço),
+  com a mesma interface do lote da OpenAI; triagem, teto de gasto e retomada
+  funcionam igual. No lote não vai o fallback de recusa (a API não aceita):
+  CI recusada é refeita uma a uma, com fallback.
+- Pesquisa de feriados no Claude com a busca nova (`web_search_20260209`,
+  localização Brasil); no Haiku continua a antiga.
+- `anthropic==0.72.0` passa a constar no `requirements.txt` (último
+  compatível com Python 3.8). Testado com API simulada; falta testar com
+  crédito de verdade.
+
+### Adicionado — Triagem por importância e teto de gasto
+- `LLM_MODELO_SIMPLES` (vazio = desligado): intimações simples vão para um
+  modelo mais barato. O código procura no teor sentença, acórdão, decisão,
+  audiência, RPV/precatório, tutela/liminar, embargos, apelação ou recurso
+  (sem contar o nome da classe do processo); achou, vai direto para o
+  `LLM_MODELO`. A resposta do barato com ato importante, embargos/recurso que
+  cabem, área pendente, falta de dados, bloqueio, tarefa/data pendente ou erro
+  é refeita pelo `LLM_MODELO` (no lote, numa 2ª rodada da Batch API).
+- `LLM_MODELO_FERIADOS`: modelo próprio para a pesquisa de feriados.
+- `LLM_LIMITE_US`: teto de gasto por execução. O bot estima o custo antes de
+  cada chamada/lote; o que não cabe fica com erro (não é lançado) e a pesquisa
+  de feriados fica para a próxima. Novo `bot/custo.py` com a tabela de preços
+  (corrigível por `LLM_PRECOS`).
+- Relatório e log mostram o modelo de cada CI, o motivo da triagem e o gasto
+  estimado; o JSON guarda `modelo`, `triagem` e `custo_us`. O uso das
+  respostas passa a contar as pesquisas na web (`buscas`).
+- Testado com IA simulada (lote, uma a uma, teto, recálculo, feriados): no
+  lote de 26/10, 29 de 45 CIs no modelo barato, 7 reanalisadas; custo
+  simulado de US$ 1,14 para US$ 0,73 (com o modelo barato a ~1/5 do preço).
+  Falta testar com a API de verdade e comparar a qualidade do modelo barato
+  com as correções da revisão de 27/10 antes de ligar.
+- Tabela de preços com os valores oficiais de Claude Opus 5.5 (4/20),
+  Sonnet 5.5 (2/10) e Haiku 5.5 (0,10/0,50) por milhão de tokens.
+- Corrigido: "Billing hard limit has been reached" (limite de gasto da conta
+  OpenAI) também para a análise com a mensagem "Sem créditos na API da IA",
+  inclusive no envio do lote.
+
 ### Alterado — Pesquisa de feriados mensal e mais barata
 - 1ª pesquisa (27/10/2026) custou ~US$ 2–4 para 8 tribunais: lê páginas e
   PDFs inteiros. Semanal, sairia ~US$ 10–15/mês.

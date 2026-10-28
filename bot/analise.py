@@ -17,7 +17,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from bot import duplicidade, feriados_web, ia, prazos, skill
+from bot import custo, duplicidade, feriados_web, ia, prazos, skill
+from bot.custo import LimiteGasto
 from bot.ia import IAErro
 
 log = logging.getLogger(__name__)
@@ -33,6 +34,15 @@ TEXTO_SITUACAO = {
 TIPOS_DATA = ["D-2", "PRIORIDADE_RPV", "PRIORIDADE_EMENDA_SUHIANE", "MESMO_DIA", "DIA_SEGUINTE", "DATA_INFORMADA", "SEM_DATA"]
 PENDENTE = "PENDENTE – NÃO CONSTA NO DOCUMENTO"
 CNJ = re.compile(r"\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}")
+
+# Triagem (LLM_MODELO_SIMPLES): intimação que cita um destes atos vai direto para o
+# modelo principal; as outras passam antes pelo modelo barato (texto sem acento)
+IMPORTANTES = re.compile(r"\b(SENTENCA|ACORDAO|DECISAO|AUDIENCIA|RPV|REQUISICAO DE PEQUENO VALOR|PRECATORIO"
+                         r"|TUTELA|LIMINAR|EMBARGOS|APELACAO|RECURSO)\b")
+# nome da classe do processo ("Classe: Recurso Inominado", "Cumprimento de Sentença") não conta
+NEUTROS = re.compile(r"\bCUMPRIMENTO D[AE] SENTENCA\b|\bCLASSE: *(RECURSO|APELACAO|AGRAVO|EMBARGOS)( \w+){0,3}")
+# resposta do modelo barato com um destes atos é refeita pelo modelo principal
+ATOS_IMPORTANTES = {"SENTENÇA", "ACÓRDÃO", "DECISÃO", "AUDIÊNCIA", "RPV/PRECATÓRIO", "PROPOSTA DE ACORDO"}
 
 ADENDO = """
 # MODO AUTOMÁTICO — instruções do programa que usa esta skill
@@ -133,9 +143,16 @@ def schema(nomes_tarefas):
 
 
 class Agente:
-    def __init__(self, provedor, modelo, esforco, pasta_skill, tabela_feriados):
+    def __init__(self, provedor, modelo, esforco, pasta_skill, tabela_feriados,
+                 modelo_simples="", modelo_feriados="", gasto=None):
         self.ia = ia.criar(provedor, modelo, esforco)
         self.provedor, self.modelo = provedor, modelo
+        # triagem: modelo barato para as intimações simples (vazio ou igual ao principal = desligada)
+        self.modelo_simples = modelo_simples if modelo_simples and modelo_simples != modelo else ""
+        self.ia_simples = ia.criar(provedor, self.modelo_simples, esforco) if self.modelo_simples else None
+        self.modelo_feriados = modelo_feriados or modelo
+        self.ia_feriados = ia.criar(provedor, self.modelo_feriados, esforco) if self.modelo_feriados != modelo else self.ia
+        self.gasto = gasto or custo.Gasto()
         self.nomes = skill.tarefas_oficiais(pasta_skill)
         self.sistema = skill.carregar_texto(pasta_skill) + "\n\n" + ADENDO
         self.schema = schema(self.nomes)
@@ -152,6 +169,9 @@ class Agente:
             os.getenv("LLM_ESFORCO", "medium").strip(),
             os.getenv("SKILL_PASTA", "doc/analise-intimacoes-controladoria").strip(),
             _tabela_do_env(),
+            os.getenv("LLM_MODELO_SIMPLES", "").strip(),
+            os.getenv("LLM_MODELO_FERIADOS", "").strip(),
+            custo.Gasto.do_env(),
         )
 
     def entrada(self, item, hoje):
@@ -163,10 +183,41 @@ class Agente:
         dados["data_analise"] = hoje.strftime("%d/%m/%Y")
         return json.dumps(dados, ensure_ascii=False, indent=1)
 
+    def triagem(self, item):
+        """Motivo para ir direto ao modelo principal ("" = começa pelo modelo barato)."""
+        if not self.ia_simples:
+            return "principal"
+        # só o teor: as sugestões do VIOS quase sempre trazem "ANALISAR SENTENÇA..."
+        texto = prazos.normalizar(item.get("texto", ""))
+        m = IMPORTANTES.search(NEUTROS.sub(" ", texto))
+        return f"texto cita {m.group(1)}" if m else ""
+
     def analisar(self, item, hoje=None):
+        """Com triagem: intimação simples vai ao modelo barato; se a resposta mostrar que
+        não era simples (reanalise()), é refeita pelo modelo principal."""
         hoje = hoje or date.today()
-        resposta = self.ia.responder(self.sistema, self.entrada(item, hoje), self.schema)
-        return self._completar(item, resposta, hoje)
+        motivo = self.triagem(item)
+        if not motivo:
+            r = self._chamar(self.ia_simples, self.modelo_simples, item, hoje)
+            motivo = reanalise(r)
+            if not motivo:
+                return _marcar(r, self.modelo_simples, "simples")
+            try:
+                novo = self._chamar(self.ia, self.modelo, item, hoje)
+            except LimiteGasto as e:
+                return _marcar(r, self.modelo_simples, f"simples; precisava de reanálise ({motivo})", str(e))
+            return _marcar(novo, self.modelo, f"reanalisada: {motivo}", custo_antes=r["custo_us"])
+        return _marcar(self._chamar(self.ia, self.modelo, item, hoje), self.modelo,
+                       "" if motivo == "principal" else motivo)
+
+    def _chamar(self, cliente, modelo, item, hoje):
+        entrada = self.entrada(item, hoje)
+        self.gasto.conferir(self.gasto.estimar(modelo, self.sistema, entrada), f"análise da CI {item.get('ci')}")
+        resposta = cliente.responder(self.sistema, entrada, self.schema)
+        valor = self.gasto.registrar(modelo, resposta.get("_uso"))
+        r = self._completar(item, resposta, hoje)
+        r["custo_us"] = round(valor, 4)
+        return r
 
     # ---- datas e regras fixas (código, não IA) ----
 
@@ -425,13 +476,46 @@ def _erro_fatal(agente, e):
     """Erro que vale para todas as CIs (chave, modelo, créditos): para a análise."""
     if type(e).__name__ in ("AuthenticationError", "PermissionDeniedError", "NotFoundError"):
         raise e  # chave/modelo errado: não adianta tentar as outras
-    if any(m in str(e).lower() for m in ("insufficient_quota", "credit_balance", "credit balance")):
+    if any(m in str(e).lower() for m in ("insufficient_quota", "credit_balance", "credit balance",
+                                         "billing_hard_limit", "billing hard limit")):
         raise IAErro(f"Sem créditos na API da IA ({agente.provedor}): adicionar créditos e rodar de novo") from e
 
 
 def _resultado_erro(item, e):
     return {"ci": item.get("ci", ""), "processo": _processo(item), "cliente": item.get("cliente", ""),
             "erro": str(e), "alertas": [f"ERRO NA ANÁLISE: {e}"]}
+
+
+def reanalise(r):
+    """Motivo para o modelo principal refazer a resposta do modelo barato ("" = pode ficar)."""
+    ia_ = r.get("ia") or {}
+    if r.get("erro"):
+        return "erro no modelo barato"
+    if r.get("ato") in ATOS_IMPORTANTES:
+        return f"ato {r['ato']}"
+    for nome in ("embargos", "recurso"):
+        if (ia_.get(nome) or {}).get("situacao") in ("CABE", "PENDENTE_CONFIRMAR_CABIMENTO"):
+            return f"{nome} cabe ou pode caber"
+    if r.get("area") == "PENDENTE":
+        return "área pendente"
+    if r.get("bloqueios"):
+        return "bloqueio: " + r["bloqueios"][0]
+    if any(a.startswith(("Tarefa não definida", "Nenhuma tarefa", "Há prazo no texto")) for a in r.get("alertas", [])):
+        return "tarefa ou prazo indefinido"
+    if r.get("prazo_fatal") == PENDENTE or any(t["data_tarefa"] == PENDENTE for t in r.get("tarefas", [])):
+        return "data pendente"
+    return ""
+
+
+def _marcar(r, modelo, triagem, bloqueio="", custo_antes=0.0):
+    """Anota no resultado qual modelo analisou e por quê; bloqueio = não lançar no VIOS."""
+    r["modelo"], r["triagem"] = modelo, triagem
+    if custo_antes:
+        r["custo_us"] = round(r.get("custo_us", 0) + custo_antes, 4)
+    if bloqueio:
+        r["bloqueio_triagem"] = bloqueio
+        r.setdefault("bloqueios", []).append(f"Não reanalisada pelo modelo principal: {bloqueio}")
+    return r
 
 
 def analisar_lista(agente, itens, arquivo_lote=None):
@@ -448,6 +532,9 @@ def analisar_lista(agente, itens, arquivo_lote=None):
         log.info("Analisando %d/%d: CI %s", n, len(pendentes), item.get("ci"))
         try:
             por_ci[item.get("ci")] = agente.analisar(item)
+        except LimiteGasto as e:
+            log.warning("CI %s: %s", item.get("ci"), e)
+            por_ci[item.get("ci")] = _resultado_erro(item, e)
         except Exception as e:
             _erro_fatal(agente, e)
             log.exception("CI %s: falha na análise", item.get("ci"))
@@ -458,56 +545,169 @@ def analisar_lista(agente, itens, arquivo_lote=None):
 
 
 def _analisar_em_lote(agente, itens, arquivo_lote):
-    """Manda todas as intimações num lote da Batch API e espera o resultado.
-    O id do lote fica em arquivo_lote: se o programa cair, rodar de novo retoma o mesmo
-    lote (já pago) em vez de mandar outro. Passou de LLM_LOTE_ESPERA_MIN, cancela e
-    devolve só o que ficou pronto. Devolve {ci: resultado}."""
-    cis = [i.get("ci") for i in itens]
-    estado = json.loads(arquivo_lote.read_text(encoding="utf-8")) if arquivo_lote.exists() else {}
-    if estado.get("cis") == cis and estado.get("modelo") == agente.modelo:
-        hoje = _data(estado["hoje"])
-        log.info("Lote: retomando %s (enviado em %s)", estado["lote_id"], estado["enviado_em"])
-    else:
-        hoje = date.today()
-        pedidos = [(i.get("ci"), agente.entrada(i, hoje)) for i in itens]
-        lote_id = agente.ia.enviar_lote(agente.sistema, pedidos, agente.schema, descricao=arquivo_lote.stem)
-        estado = {"lote_id": lote_id, "cis": cis, "modelo": agente.modelo, "hoje": _br(hoje),
-                  "enviado_em": f"{datetime.now():%d/%m/%Y %H:%M}"}
-        arquivo_lote.write_text(json.dumps(estado, ensure_ascii=False, indent=2), encoding="utf-8")
-        log.info("Lote: %d intimações enviadas (%s), aguardando a OpenAI", len(pedidos), lote_id)
+    """Análise pela Batch API, em até duas rodadas:
+    1. intimações importantes (triagem) num lote do modelo principal e as simples num
+       lote do modelo barato (sem triagem, tudo no principal);
+    2. as respostas do barato que não eram simples (reanalise()) num lote do principal.
+    O estado de cada lote fica em arquivo_lote (+ sufixo da etapa): se o programa cair,
+    rodar de novo retoma os mesmos lotes (já pagos). Passou de LLM_LOTE_ESPERA_MIN,
+    cancela e usa só o que ficou pronto. Devolve {ci: resultado}."""
+    estados = []
+    prazo = time.monotonic() + float(os.getenv("LLM_LOTE_ESPERA_MIN", "360")) * 60
+    hoje = _hoje_do_lote(arquivo_lote) or date.today()
+    por_ci, triagem = {}, {i.get("ci"): agente.triagem(i) for i in itens}
 
+    rodada = []
+    simples = [i for i in itens if not triagem[i.get("ci")]]
+    if simples:
+        rodada.append((agente.ia_simples, agente.modelo_simples, simples, "simples"))
+    principais = [i for i in itens if triagem[i.get("ci")]]
+    if principais:
+        rodada.append((agente.ia, agente.modelo, principais, "principal"))
+    lotes = []
+    for cliente, modelo, grupo, etapa in rodada:
+        grupo = _dentro_do_teto(agente, modelo, grupo, por_ci)
+        if grupo:
+            arquivo = arquivo_lote.with_name(f"{arquivo_lote.stem}_{etapa}.json")
+            try:
+                lotes.append((cliente, modelo, grupo, _enviar_lote(agente, cliente, modelo, grupo, arquivo, hoje)))
+            except Exception as e:
+                _erro_fatal(agente, e)  # sem créditos/chave errada: mensagem clara e para
+                raise
+            estados.append(arquivo)
+
+    reanalisar = []
+    for cliente, modelo, grupo, lote in lotes:
+        for ci, r in _receber_lote(agente, cliente, modelo, grupo, lote, prazo, hoje).items():
+            if modelo == agente.modelo_simples:
+                motivo = reanalise(r)
+                if motivo:
+                    reanalisar.append((ci, r, motivo))
+                    continue
+                por_ci[ci] = _marcar(r, modelo, "simples")
+            else:
+                por_ci[ci] = _marcar(r, modelo, "" if triagem[ci] == "principal" else triagem[ci])
+        # simples sem resposta do lote: vão direto para o principal
+        for item in grupo:
+            if modelo == agente.modelo_simples and item.get("ci") not in por_ci \
+                    and all(item.get("ci") != ci for ci, _, _ in reanalisar):
+                reanalisar.append((item.get("ci"), None, "sem resposta do modelo barato"))
+
+    if reanalisar:
+        log.info("Triagem: %d CI(s) do modelo barato vão para o modelo principal", len(reanalisar))
+        itens_por_ci = {i.get("ci"): i for i in itens}
+        grupo = [itens_por_ci[ci] for ci, _, _ in reanalisar]
+        cabem = {i.get("ci") for i in _dentro_do_teto(agente, agente.modelo, grupo, {})}
+        grupo = [i for i in grupo if i.get("ci") in cabem]
+        novos = {}
+        if len(grupo) > 0:
+            arquivo = arquivo_lote.with_name(f"{arquivo_lote.stem}_reanalise.json")
+            lote = _enviar_lote(agente, agente.ia, agente.modelo, grupo, arquivo, hoje)
+            estados.append(arquivo)
+            novos = _receber_lote(agente, agente.ia, agente.modelo, grupo, lote, prazo, hoje)
+        for ci, antigo, motivo in reanalisar:
+            if ci in novos:
+                por_ci[ci] = _marcar(novos[ci], agente.modelo, f"reanalisada: {motivo}",
+                                     custo_antes=(antigo or {}).get("custo_us", 0))
+            elif antigo is None:
+                continue  # sem resposta de nenhum modelo: analisar_lista faz uma a uma
+            elif ci in cabem:
+                # o lote do principal falhou para esta CI: tenta uma a uma
+                try:
+                    por_ci[ci] = _marcar(agente._chamar(agente.ia, agente.modelo, itens_por_ci[ci], hoje),
+                                         agente.modelo, f"reanalisada: {motivo}", custo_antes=antigo.get("custo_us", 0))
+                except Exception as e:
+                    _erro_fatal(agente, e)
+                    log.warning("CI %s: reanálise pelo modelo principal falhou (%s)", ci, e)
+                    por_ci[ci] = _marcar(antigo, agente.modelo_simples, f"simples; precisava de reanálise ({motivo})", str(e))
+            else:
+                por_ci[ci] = _marcar(antigo, agente.modelo_simples, f"simples; precisava de reanálise ({motivo})",
+                                     f"teto de gasto (LLM_LIMITE_US={agente.gasto.limite:g})")
+
+    for arquivo in estados:
+        arquivo.unlink(missing_ok=True)
+    return por_ci
+
+
+def _hoje_do_lote(arquivo_lote):
+    """Data de análise de um lote já enviado (para retomar com as mesmas datas)."""
+    for arquivo in sorted(arquivo_lote.parent.glob(f"{arquivo_lote.stem}_*.json")):
+        try:
+            return _data(json.loads(arquivo.read_text(encoding="utf-8")).get("hoje"))
+        except (ValueError, OSError):
+            continue
+    return None
+
+
+def _dentro_do_teto(agente, modelo, grupo, por_ci):
+    """Itens do grupo que cabem no teto de gasto; os outros viram erro em por_ci (não são lançados)."""
+    cabem = []
+    for item in grupo:
+        estimativa = agente.gasto.estimar(modelo, agente.sistema, agente.entrada(item, date.today()), lote=True)
+        if agente.gasto.cabe(estimativa):
+            agente.gasto.reservado += estimativa
+            cabem.append(item)
+        else:
+            por_ci[item.get("ci")] = _resultado_erro(item, LimiteGasto(
+                f"Teto de gasto atingido (LLM_LIMITE_US={agente.gasto.limite:g}): CI não analisada"))
+    if len(cabem) < len(grupo):
+        log.warning("Teto de gasto: %d de %d CI(s) ficaram de fora do lote (%s)", len(grupo) - len(cabem), len(grupo), modelo)
+    return cabem
+
+
+def _enviar_lote(agente, cliente, modelo, grupo, arquivo, hoje):
+    """Envia (ou retoma, se arquivo tem um lote com as mesmas CIs e modelo) e devolve o estado."""
+    cis = [i.get("ci") for i in grupo]
+    estado = json.loads(arquivo.read_text(encoding="utf-8")) if arquivo.exists() else {}
+    if estado.get("cis") == cis and estado.get("modelo") == modelo:
+        log.info("Lote: retomando %s (%s, enviado em %s)", estado["lote_id"], modelo, estado["enviado_em"])
+        return estado
+    pedidos = [(i.get("ci"), agente.entrada(i, hoje)) for i in grupo]
+    lote_id = cliente.enviar_lote(agente.sistema, pedidos, agente.schema, descricao=arquivo.stem)
+    estado = {"lote_id": lote_id, "cis": cis, "modelo": modelo, "hoje": _br(hoje),
+              "enviado_em": f"{datetime.now():%d/%m/%Y %H:%M}"}
+    arquivo.write_text(json.dumps(estado, ensure_ascii=False, indent=2), encoding="utf-8")
+    log.info("Lote: %d intimações enviadas (%s, %s), aguardando a IA", len(pedidos), modelo, lote_id)
+    return estado
+
+
+def _receber_lote(agente, cliente, modelo, grupo, estado, prazo, hoje):
+    """Espera o lote terminar (cancela depois do prazo) e devolve {ci: resultado} do que veio."""
     lote_id = estado["lote_id"]
-    espera = float(os.getenv("LLM_LOTE_ESPERA_MIN", "360")) * 60
     intervalo = float(os.getenv("LLM_LOTE_INTERVALO_S", "60"))
-    inicio, ultimo, cancelado = time.monotonic(), None, False
+    ultimo, cancelado = None, False
     while True:
-        status, prontos, falhas, total = agente.ia.status(lote_id)
+        status, prontos, falhas, total = cliente.status(lote_id)
         if (status, prontos, falhas) != ultimo:
-            log.info("Lote: %s — %d de %d prontas, %d com erro", status, prontos, total, falhas)
+            log.info("Lote %s: %s — %d de %d prontas, %d com erro", modelo, status, prontos, total, falhas)
             ultimo = (status, prontos, falhas)
         if status in ("completed", "failed", "expired", "cancelled"):
             break
-        if not cancelado and time.monotonic() - inicio > espera:
-            log.warning("Lote: passou de %d min, cancelando (o que ficou pronto é aproveitado)", espera // 60)
-            agente.ia.cancelar(lote_id)
+        if not cancelado and time.monotonic() > prazo:
+            log.warning("Lote: passou de LLM_LOTE_ESPERA_MIN, cancelando (o que ficou pronto é aproveitado)")
+            cliente.cancelar(lote_id)
             cancelado = True
         time.sleep(intervalo)
 
-    por_ci, itens_por_ci = {}, {i.get("ci"): i for i in itens}
-    for ci, dados in agente.ia.resultados(lote_id).items():
+    por_ci, itens_por_ci = {}, {i.get("ci"): i for i in grupo}
+    for item in grupo:  # libera a reserva: daqui em diante vale o custo real
+        agente.gasto.reservado -= agente.gasto.estimar(modelo, agente.sistema, agente.entrada(item, date.today()), lote=True)
+    agente.gasto.reservado = max(agente.gasto.reservado, 0.0)
+    for ci, dados in cliente.resultados(lote_id).items():
         item = itens_por_ci.get(ci)
         if item is None:
             continue
         if isinstance(dados, Exception):
             _erro_fatal(agente, dados)
-            log.warning("CI %s: falha no lote (%s), vai ser analisada de novo uma a uma", ci, dados)
+            log.warning("CI %s: falha no lote (%s), vai ser analisada de novo", ci, dados)
             continue
+        valor = agente.gasto.registrar(modelo, dados.get("_uso"), lote=True)
         try:
             por_ci[ci] = agente._completar(item, dados, hoje)
+            por_ci[ci]["custo_us"] = round(valor, 4)
         except Exception as e:
             log.exception("CI %s: falha ao completar a análise do lote", ci)
             por_ci[ci] = _resultado_erro(item, e)
-    arquivo_lote.unlink(missing_ok=True)
     return por_ci
 
 
@@ -516,10 +716,13 @@ def relatorio_md(resultados, agente, origem):
         "# Análise de intimações",
         "",
         f"- Origem: `{origem}`",
-        f"- Gerado em: {datetime.now():%d/%m/%Y %H:%M} — {agente.provedor} / {agente.modelo}",
+        f"- Gerado em: {datetime.now():%d/%m/%Y %H:%M} — {agente.provedor} / {agente.modelo}"
+        + (f" (triagem: simples com {agente.modelo_simples})" if getattr(agente, "modelo_simples", "") else ""),
         f"- Intimações: {len(resultados)} — com alerta: {sum(1 for r in resultados if r.get('alertas'))}",
         "- **Sugestão automática: revisar antes de lançar no VIOS.**",
     ]
+    if getattr(agente, "gasto", None) and agente.gasto.total:
+        linhas.append(f"- Gasto estimado com a IA nesta execução: {agente.gasto.resumo()}")
     linhas.append("- Datas: dias úteis com feriados nacionais, Lei 5.010/66 (Justiça Federal), estaduais e "
                   "municipais da tabela de feriados e de doc/feriados.txt, recesso 20/12–20/01. "
                   "Pontos facultativos e feriados incertos não mudam a data: viram alerta ⚠.")
@@ -533,6 +736,8 @@ def relatorio_md(resultados, agente, origem):
             linhas += ["", f"**ERRO NA ANÁLISE:** {r['erro']}"]
             continue
         linhas += ["", f"**Auxiliar:** {r['auxiliar']} · **Área:** {r['area']} · **Ato:** {r['ato']} · **Publicação:** {r['publicacao']}"]
+        if r.get("modelo"):
+            linhas.append(f"Modelo: {r['modelo']}" + (f" ({r['triagem']})" if r.get("triagem") else ""))
         linhas += ["", "**Do que se trata:**", r["do_que_se_trata"]]
         for i, t in enumerate(r["tarefas"], 1):
             titulo = "Tarefa no VIOS" if i == 1 else f"Tarefa complementar {i - 1}"
@@ -578,6 +783,10 @@ def recalcular(arquivo_intimacoes, arquivo_analise, caminho_env=".env", hoje=Non
             resultados.append(antigo)
             continue
         novo = agente._completar(itens[antigo["ci"]], dict(antigo["ia"], _uso=antigo.get("uso", {})), hoje or date.today())
+        if "custo_us" in antigo:
+            novo["custo_us"] = antigo["custo_us"]
+        if antigo.get("modelo"):
+            _marcar(novo, antigo["modelo"], antigo.get("triagem", ""), antigo.get("bloqueio_triagem", ""))
         resultados.append(novo)
     _duplicidades(resultados, list(itens.values()))
     return resultados, agente
@@ -589,8 +798,9 @@ def pesquisar_feriados(agente, itens, pasta_saida):
     if os.getenv("FERIADOS_PESQUISA", "true").strip().lower() in ("false", "0", "nao", "não"):
         return
     try:
-        feriados_web.pesquisar(agente.ia, itens, agente.tabela,
-                               os.getenv("FERIADOS_ARQUIVO", "doc/feriados.txt").strip(), pasta_saida)
+        feriados_web.pesquisar(agente.ia_feriados, itens, agente.tabela,
+                               os.getenv("FERIADOS_ARQUIVO", "doc/feriados.txt").strip(), pasta_saida,
+                               gasto=agente.gasto, modelo=agente.modelo_feriados)
     except Exception:
         log.exception("Pesquisa de feriados falhou; seguindo com os feriados já cadastrados")
     agente.tabela = _tabela_do_env()
@@ -609,7 +819,8 @@ def analisar_arquivo(arquivo, caminho_env=".env", pasta_saida=None, cis=None):
     agente = Agente.do_env(caminho_env)
     pasta = Path(pasta_saida) if pasta_saida else arquivo.parent
     pesquisar_feriados(agente, itens, pasta)
-    log.info("Agente: %s / %s — %d intimações", agente.provedor, agente.modelo, len(itens))
+    log.info("Agente: %s / %s%s — %d intimações", agente.provedor, agente.modelo,
+             f" (triagem: simples com {agente.modelo_simples})" if agente.modelo_simples else "", len(itens))
     base = arquivo.stem.replace("intimacoes_", "analise_", 1)
     # lote (Batch API, metade do preço) só na análise completa; --ci analisa na hora
     lote = None if cis or os.getenv("LLM_LOTE", "true").strip().lower() in ("false", "0", "nao", "não") \
@@ -625,5 +836,11 @@ def analisar_arquivo(arquivo, caminho_env=".env", pasta_saida=None, cis=None):
     uso = [r.get("uso", {}) for r in resultados]
     log.info("Tokens: entrada %d (cache %d), saída %d",
              sum(u.get("entrada", 0) for u in uso), sum(u.get("entrada_cache", 0) for u in uso), sum(u.get("saida", 0) for u in uso))
+    log.info("Gasto estimado com a IA: %s", agente.gasto.resumo())
+    if agente.modelo_simples:
+        log.info("Triagem: %d no modelo barato, %d no principal (%d reanalisadas)",
+                 sum(1 for r in resultados if r.get("modelo") == agente.modelo_simples),
+                 sum(1 for r in resultados if r.get("modelo") == agente.modelo),
+                 sum(1 for r in resultados if str(r.get("triagem", "")).startswith("reanalisada")))
     erros = sum(1 for r in resultados if r.get("erro"))
     return saida_md, len(resultados), erros

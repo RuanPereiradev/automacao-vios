@@ -214,12 +214,42 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   - Vale conferir o bloco "Pesquisa automática" de vez em quando: linha
     errada pode ser apagada ou ganhar `; AVISO`.
 
-- **Análise em lote (27/10/2026):** a análise completa vai num lote da Batch
-  API da OpenAI, pela metade do preço. O log mostra "Lote: N intimações
+- **Análise em lote (27/10/2026; Claude desde 28/10/2026):** a análise completa vai num lote da Batch
+  API da OpenAI ou da Message Batches API do Claude (`LLM_PROVEDOR=anthropic`), pela metade do preço.
+  No Claude o lote não tem fallback de recusa: CI recusada é refeita uma a uma, com fallback. O log mostra "Lote: N intimações
   enviadas" e o andamento ("in_progress — 12 de 45 prontas"). Se o programa
   cair, rodar o mesmo comando retoma o lote (o id fica em
-  `saida/lote_<análise>.json`). Se passar de `LLM_LOTE_ESPERA_MIN`, cancela e
+  `saida/lote_<análise>_<etapa>.json`). Se passar de `LLM_LOTE_ESPERA_MIN`, cancela e
   analisa o resto uma a uma. `--ci` não usa lote.
+
+- **Triagem por importância (28/10/2026, `LLM_MODELO_SIMPLES`):** com um modelo
+  barato configurado, a análise passa a ter dois modelos:
+  1. o código (sem IA) procura no teor da intimação sentença, acórdão, decisão,
+     audiência, RPV/precatório, tutela/liminar, embargos, apelação ou recurso
+     (o nome da classe, ex. "Cumprimento de Sentença" ou "Classe: Recurso
+     Inominado", não conta). Achou -> vai direto para o `LLM_MODELO`;
+  2. as outras (despachos, laudos, ciências...) vão para o modelo barato;
+  3. se a resposta do barato tiver ato sentença/acórdão/decisão/audiência/RPV/
+     proposta de acordo, embargos ou recurso que cabem ou podem caber, área
+     PENDENTE, falta de dados, bloqueio, tarefa ou data pendente, ou erro, a
+     intimação é refeita pelo `LLM_MODELO` (no lote, numa 2ª rodada).
+  - O relatório mostra em cada CI o modelo e o motivo ("texto cita SENTENCA",
+    "simples", "reanalisada: ato DECISÃO"); o JSON guarda `modelo`, `triagem`
+    e `custo_us`.
+  - Nas análises de 22 a 26/10, 41 de 76 intimações iriam para o modelo barato.
+  - A pesquisa de feriados pode usar outro modelo: `LLM_MODELO_FERIADOS`.
+
+- **Teto de gasto (`LLM_LIMITE_US`):** antes de cada chamada (ou lote) o bot
+  estima o custo e não chama a IA se passar do teto da execução. As CIs que
+  ficam de fora saem com "Teto de gasto atingido" e **não são lançadas**; a
+  pesquisa de feriados sem espaço no teto fica para a próxima execução (usa os
+  feriados já cadastrados). Se a reanálise pelo modelo principal não couber, a
+  CI fica com a resposta do barato e bloqueada para lançamento. A estimativa é
+  de propósito um pouco acima do custo real (~US$ 0,035 por intimação no lote
+  com `gpt-5.6`, contra ~US$ 0,025 reais). O log e o relatório mostram o gasto
+  estimado da execução. Preços na tabela de `bot/custo.py` (corrigir pelo
+  `LLM_PRECOS` se a OpenAI mudar). A trava definitiva é na conta da OpenAI:
+  crédito pré-pago sem recarga automática e orçamento do projeto.
 
 ### Passo 14 — Criar a tarefa no VIOS
 - Fluxo por CI: `./rodar_analise.sh --ci 42431 saida/intimacoes_X.json` gera a
@@ -459,8 +489,12 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `SKILL_PASTA` | não | Pasta da skill extraída | `doc/analise-intimacoes-controladoria` |
 | `FERIADOS_TABELA` | não | Tabela de feriados (nacionais, estaduais, capitais, pontos facultativos) | `doc/feriados-brasil-2026-2027.md` |
 | `FERIADOS_ARQUIVO` | não | Feriados/suspensões extras: `DD/MM/AAAA ; ESCOPO ; descrição` | `doc/feriados.txt` |
-| `LLM_LOTE` | não | Análise em lote pela Batch API da OpenAI (metade do preço) | `true` |
+| `LLM_LOTE` | não | Análise em lote pela Batch API da OpenAI ou Message Batches do Claude (metade do preço) | `true` |
 | `LLM_LOTE_ESPERA_MIN` | não | Minutos esperando o lote; depois cancela e faz o resto uma a uma | `360` |
+| `LLM_MODELO_SIMPLES` | não | Modelo barato para as intimações simples (triagem); vazio = desligado | vazio |
+| `LLM_MODELO_FERIADOS` | não | Modelo da pesquisa de feriados (vazio = `LLM_MODELO`) | vazio |
+| `LLM_LIMITE_US` | não | Teto de gasto com IA por execução, em US$ (vazio/0 = sem teto) | vazio |
+| `LLM_PRECOS` | não | Corrige preços da tabela: `modelo=entrada/saída` por milhão de tokens, separados por vírgula | vazio |
 | `FERIADOS_PESQUISA` | não | Pesquisa feriados na internet antes da análise (`true`/`false`) | `true` |
 | `SAIDA_PASTA` | não | Pasta dos `.txt` | `saida` |
 | `HEADLESS` | não | Chrome sem janela | `false` |

@@ -23,7 +23,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from bot import prazos
+from bot import custo, prazos
 
 log = logging.getLogger(__name__)
 
@@ -130,9 +130,10 @@ def _data(texto):
         return None
 
 
-def pesquisar(ia, itens, tabela, arquivo_txt, pasta_saida, hoje=None):
+def pesquisar(ia, itens, tabela, arquivo_txt, pasta_saida, hoje=None, gasto=None, modelo=""):
     """Pesquisa os grupos do lote e acrescenta as datas novas em arquivo_txt.
-    Devolve o número de linhas gravadas. Erro em um grupo não para os outros."""
+    Devolve o número de linhas gravadas. Erro em um grupo não para os outros.
+    gasto (custo.Gasto): sem espaço no teto, o grupo não é pesquisado (fica para a próxima)."""
     hoje = hoje or date.today()
     arquivo_cache = Path(pasta_saida) / CACHE
     cache = json.loads(arquivo_cache.read_text(encoding="utf-8")) if arquivo_cache.exists() else {}
@@ -158,8 +159,13 @@ def pesquisar(ia, itens, tabela, arquivo_txt, pasta_saida, hoje=None):
                     f"Período: {inicio:%d/%m/%Y} a {ate:%d/%m/%Y}\nData de hoje: {hoje:%d/%m/%Y}")
         log.info("Feriados: pesquisando %s (%s), %s a %s", nome_trib, ", ".join(cidades) or uf,
                  f"{inicio:%d/%m}", f"{ate:%d/%m}")
+        if gasto and not gasto.cabe(custo.PESQUISA_ESTIMADA_US):
+            log.warning("Feriados: teto de gasto atingido, %s não pesquisado (usa os feriados já cadastrados)", nome_trib)
+            continue
         try:
             resposta = ia.responder(SISTEMA, pergunta, _schema(cidades), pesquisar=True)
+            if gasto:
+                gasto.registrar(modelo, resposta.pop("_uso", {}))
         except Exception as e:
             log.warning("Feriados: falha na pesquisa de %s: %s", nome_trib, e)
             continue

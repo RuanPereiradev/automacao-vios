@@ -51,6 +51,7 @@ class OpenAIIA:
         cache = getattr(getattr(uso, "input_tokens_details", None), "cached_tokens", 0) if uso else 0
         dados = json.loads(r.output_text)
         dados["_uso"] = {"entrada": uso.input_tokens, "entrada_cache": cache, "saida": uso.output_tokens} if uso else {}
+        dados["_uso"]["buscas"] = sum(1 for o in r.output if o.type == "web_search_call")
         return dados
 
     # ---- lote (Batch API) ----
