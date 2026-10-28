@@ -12,6 +12,40 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Segundo usuário do VIOS (função nova, em definição)
+- Branch `nova-funcao` para desenvolver a função nova sem afetar o robô de
+  intimações no `main`.
+- `.env.usuario2.example`: modelo do `.env` do segundo usuário (mesmo
+  escritório, outro login), com pasta de saída própria (`saida_usuario2`).
+- `rodar_usuario2.bat`: roda o bot com o `.env.usuario2` no Windows (dois
+  cliques ou `.\rodar_usuario2.bat`). Login testado em 28/10/2026.
+- Depois do login, o segundo usuário vai para a tela de **Relatórios**
+  (`?pag=sys/relatorios/relatorios.php`, em `NAVEGACAO_URL_FINAL`). Testado
+  em 28/10/2026: a tela abre com a lista de relatórios. O que fazer nela
+  ainda será definido.
+
+### Adicionado — Relatório de processos por Grupo Cliente
+- `relatorio_processos.py` + `bot/processos_grupo.py`: na tela Processos
+  (`processos-lista.php`), escolhe o **Grupo Cliente**, põe "Mostrar" em 500,
+  pesquisa e lê a tabela. Gera **um .txt por grupo** em
+  `saida_usuario2/relatorios/AAAA-MM-DD/<GRUPO>.txt`, com resumo (por empresa,
+  área e posição do cliente) e um bloco por processo em linguagem simples,
+  para outra IA escrever o relatório para o cliente.
+- Só lê: não usa Apagar/Editar nem "Processar" (ações em lote) da tela.
+- `.env.usuario2`: `PROCESSOS_GRUPOS` (grupos separados por `|`, ou `todos`)
+  e `RELATORIO_PASTA` (vazio = `saida_usuario2/relatorios`). Na linha de
+  comando: `--grupo "3A FRIOS"`; o nome do grupo não depende de acento nem de
+  maiúsculas.
+- `rodar_usuario2.bat` passa a gerar o relatório.
+- Teste 28/10/2026: 3A FRIOS, 17 processos, 0 erros, igual à tabela do VIOS.
+
+### Segurança
+- `imgs/` no `.gitignore`: prints de tela têm dados de clientes.
+
+### Segurança
+- `.gitignore` passa a ignorar qualquer `.env.*` (ex.: `.env.usuario2`) e as
+  pastas `saida_*/`; só os modelos `*.example` são versionados.
+
 ### Adicionado — Análise em lote no Claude
 - `bot/ia/anthropic_ia.py`: lote pela Message Batches API (metade do preço),
   com a mesma interface do lote da OpenAI; triagem, teto de gasto e retomada
