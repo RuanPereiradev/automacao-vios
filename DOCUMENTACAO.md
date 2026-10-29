@@ -460,57 +460,10 @@ cp .env.example .env       # e preencher
 
 O chromedriver é baixado automaticamente pelo Selenium Manager.
 
-### Segundo usuário do VIOS (função nova — em definição)
+### Segundo usuário do VIOS — Relatório de processos por Grupo Cliente
 
-Mesmo escritório, outro login, com outras permissões. Desenvolvido no branch
-`nova-funcao`. Cada usuário tem seu `.env` e sua pasta de saída, para não
-misturar os dados com o robô de intimações:
-
-```bash
-cp .env.usuario2.example .env.usuario2   # e preencher usuário e senha
-./rodar.sh .env.usuario2                  # login + navegação com o 2º usuário
-```
-
-No Windows: dois cliques em `rodar_usuario2.bat`, ou no terminal
-`.\rodar_usuario2.bat` (na pasta do projeto). O aviso
-`Error terminating service process` no fim é do Selenium no Windows e pode
-ser ignorado; o que vale é a linha "Login OK".
-
-`.env.usuario2` e `saida_*/` ficam fora do GitHub (`.gitignore`).
-
-Hoje o robô faz login e abre a tela de **Relatórios**
-(`https://roneely.vios.com.br/?pag=sys/relatorios/relatorios.php`, em
-`NAVEGACAO_URL_FINAL`). O que fazer nessa tela ainda será definido.
-
-#### Relatório de processos por Grupo Cliente (`relatorio_processos.py`)
-- Vai para **Processos** (`processos-lista.php`), escolhe o grupo no filtro
-  **Grupo Cliente** (82 grupos, ex.: 3A FRIOS), põe "Mostrar" em 500 e clica em
-  Pesquisar. Os outros filtros ficam no padrão da tela (**Ativos, Não
-  migrados**). Lê a tabela pelo `data-id` de cada célula, como nas intimações.
-- **Só lê**: não usa os botões Apagar/Editar nem o "Processar" (ações em lote).
-- Gera **um .txt por grupo** em `saida_usuario2/relatorios/AAAA-MM-DD/<GRUPO>.txt`:
-  resumo (quantos processos por empresa, por área e se o cliente é autor ou
-  réu) e, por empresa, um bloco por processo com número, área, tipo de ação,
-  assunto, onde tramita, partes, posição do cliente, advogado, vínculo
-  (principal/apenso), contrato e CI. O .txt vai para outra IA escrever o
-  relatório em linguagem para leigos.
-- Ficam de fora (uso interno): siglas dos auxiliares, etiquetas como
-  "Cliente OURO" e a coluna "Processo" (repete a área).
-- O rodapé "Total (N)" da tabela é conferido com as linhas lidas; diferença
-  aparece como aviso no log.
-
-| Variável (`.env.usuario2`) | Uso | Valor atual |
-| --- | --- | --- |
-| `PROCESSOS_GRUPOS` | Grupos, separados por `\|`, ou `todos` | `3A FRIOS` |
-| `RELATORIO_PASTA` | Pasta dos .txt (vazio = `<SAIDA_PASTA>/relatorios`); depois, a pasta do Google Drive | vazio |
-
-```bash
-.\rodar_usuario2.bat                        # grupos do PROCESSOS_GRUPOS
-.\rodar_usuario2.bat --grupo "pao mix"      # outro grupo (sem acento funciona)
-.\rodar_usuario2.bat --grupo todos          # todos os 82 grupos
-```
-
-- Teste 28/10/2026: 3A FRIOS, 17 processos, 0 erros, igual à tabela do VIOS.
+Outro robô, com outro login do VIOS, que gera um `.txt` por grupo de clientes.
+Documentação própria em [RELATORIO_PROCESSOS.md](RELATORIO_PROCESSOS.md).
 
 ---
 

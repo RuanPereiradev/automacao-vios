@@ -42,6 +42,13 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 ### Segurança
 - `imgs/` no `.gitignore`: prints de tela têm dados de clientes.
 
+### Alterado — Documentação do relatório de processos
+- Novo `RELATORIO_PROCESSOS.md` com a documentação completa do relatório por
+  Grupo Cliente (passo a passo, .txt gerado, como rodar, instalação no
+  Windows, configuração, segurança, pontos de atenção e testes). A seção em
+  `DOCUMENTACAO.md` virou um link para ele.
+- `CLAUDE.md`: mudança no relatório também atualiza o `RELATORIO_PROCESSOS.md`.
+
 ### Segurança
 - `.gitignore` passa a ignorar qualquer `.env.*` (ex.: `.env.usuario2`) e as
   pastas `saida_*/`; só os modelos `*.example` são versionados.
