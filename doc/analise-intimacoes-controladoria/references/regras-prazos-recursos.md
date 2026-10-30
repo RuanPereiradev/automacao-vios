@@ -32,7 +32,9 @@ Preencher `[resultado]` com:
 - a data operacional em D-2, quando cabível e calculável;
 - `NÃO CABE`, quando o meio não for cabível;
 - com cabimento pendente (o teor não permite concluir), a data em D-2 pelo prazo legal — o advogado decide se recorre e precisa da data;
-- se não couber embargos nem recurso, omitir as duas linhas e deixar somente o `PRAZO FATAL (D-2)`.
+- se não couber embargos nem recurso, omitir as duas linhas e deixar somente o `PRAZO FATAL (D-2)` do ato, se houver.
+
+A tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` fica para o **mesmo dia** da análise, nunca para o D-2: as datas de embargos e de recurso (em D-2) ficam só na descrição. Não usar a linha `PRAZO FATAL (D-2)` quando houver as linhas de embargos e recurso.
 
 Não omitir nenhuma das duas linhas em tarefas de análise. Para tarefas diferentes de análise, exibir somente as linhas efetivamente aplicáveis.
 
@@ -67,6 +69,7 @@ Só usar `PENDENTE – NÃO CONSTA NO DOCUMENTO` quando o caso não estiver nest
 | --- | --- |
 | Prazo geral dos recursos: Apelação, Agravo de Instrumento, Agravo Interno, Recurso Especial e Recurso Extraordinário | 15 dias úteis |
 | Embargos de Declaração (qualquer que seja a decisão) | 5 dias úteis |
+| Manifestação sobre laudo pericial (art. 477, § 1º, CPC), inclusive no Juizado e no Previdenciário | 15 dias úteis |
 
 ### Processo do Trabalho
 

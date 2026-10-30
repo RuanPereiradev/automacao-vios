@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Envio ao VIOS</title>
+{% if tela == "envio" and envio.estado == "enviando" %}<meta http-equiv="refresh" content="3">{% endif %}
+<style>
+  :root { --fundo: #f5f6f8; --cartao: #fff; --texto: #1f2933; --suave: #616e7c; --borda: #d9dee4;
+          --azul: #1f4e8c; --verde: #1e7b45; --vermelho: #b42318; --ambar: #8a5a00; --cinza: #6b7280; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--fundo); color: var(--texto); }
+  header { background: var(--azul); color: #fff; padding: 14px 24px; }
+  header a { color: #fff; text-decoration: none; font-weight: 600; }
+  main { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+  .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+  h1 { font-size: 20px; margin: 0 0 12px; }
+  h2 { font-size: 16px; margin: 0 0 8px; }
+  .suave { color: var(--suave); }
+  pre { background: #f0f2f5; border-radius: 6px; padding: 10px; white-space: pre-wrap; margin: 6px 0 0; font-size: 13px; }
+  button, .botao { font: inherit; border: 0; border-radius: 6px; padding: 9px 16px; cursor: pointer; }
+  .primario { background: var(--azul); color: #fff; }
+  .perigo { background: var(--verde); color: #fff; }
+  .secundario { background: #e4e7eb; color: var(--texto); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .erro { color: var(--vermelho); }
+  .aviso { color: var(--ambar); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 8px; border-top: 1px solid var(--borda); }
+  th { font-size: 13px; color: var(--suave); border-top: 0; }
+  .selo { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+  .s-ok { background: #e3f4ea; color: var(--verde); }
+  .s-erro { background: #fde8e6; color: var(--vermelho); }
+  .s-ja { background: #eceef1; color: var(--cinza); }
+  .s-andamento { background: #e6eefa; color: var(--azul); }
+  .tarefa + .tarefa { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--borda); }
+  ul { margin: 6px 0 0; padding-left: 18px; }
+  .acoes { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  details summary { cursor: pointer; color: var(--azul); }
+  label { display: block; font-size: 13px; color: var(--suave); }
+  input:not([type=checkbox]), textarea { display: block; width: 100%; margin-top: 3px; font: inherit; color: var(--texto);
+    border: 1px solid var(--borda); border-radius: 6px; padding: 7px 9px; background: #fff; }
+  textarea { resize: vertical; font-size: 14px; }
+  .mono { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  .grade { display: grid; grid-template-columns: 2fr 130px 90px 2fr auto; gap: 10px; align-items: end; margin-bottom: 8px; }
+  .remover { white-space: nowrap; padding-bottom: 8px; }
+  .ci-topo { display: flex; gap: 12px; align-items: end; }
+  .campo-ci { width: 110px; font-weight: 600; }
+  .com-problema { border-left: 4px solid var(--vermelho); }
+  .barra-salvar { position: sticky; bottom: 0; background: var(--fundo); padding: 12px 0; text-align: right; }
+  @media (max-width: 860px) { .grade { grid-template-columns: 1fr 1fr; } .grade .largo { grid-column: 1 / -1; } }
+  @media (max-width: 720px) { td:nth-child(3) { display: none; } }
+</style>
+</head>
+<body>
+<header><a href="{{ url_for('inicio') }}">Envio de tarefas ao VIOS</a></header>
+<main>
+{% if tela == "inicio" %}
+  <div class="cartao">
+    <h1>Subir o arquivo .txt</h1>
+    <p class="suave">O arquivo com as tarefas já ajustadas (resposta do chat no formato do robô). Nada é gravado
+      antes de você conferir e clicar em enviar.</p>
+    {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+    <form action="{{ url_for('ler') }}" method="post" enctype="multipart/form-data" class="acoes">
+      <input type="file" name="arquivo" accept=".txt,text/plain" required>
+      <button class="primario">Ler arquivo</button>
+    </form>
+    {% if ocupado %}<p class="aviso">O robô está lançando outro arquivo agora; dá para ler este, mas o envio espera o outro terminar.</p>{% endif %}
+  </div>
+  <div class="cartao">
+    <details>
+      <summary>Formato do arquivo</summary>
+      <p class="suave">Um bloco por tarefa, separados por uma linha só com <code>---</code>. A <code>DESCRIÇÃO:</code> vem por último:
+        tudo abaixo dela vai para a Observação da tarefa. Duas tarefas da mesma CI ficam em blocos seguidos.</p>
+<pre>CI: 42484
+TAREFA: MINUTAR PETIÇÃO (EXECUÇÃO) 2026
+DATA: 29/10/2026
+HORA:
+RESPONSÁVEIS: TAMIRA LOIOLA, BRENO SILVA MOTA
+DESCRIÇÃO:
+PRAZO FATAL: 29/10/2026
+MINUTAR PETIÇÃO PARA INFORMAR OS DEMAIS DADOS NECESSÁRIOS PARA A CONFECÇÃO DOS REQUISITÓRIOS (RPV/PRECATÓRIO)
+Despacho: considerando a certidão de ID 192859275, intime-se a parte exequente para, no prazo de 5 dias, ...
+---
+CI: 42502
+TAREFA: AUDIÊNCIA UNA/INSTRUÇÃO (TRABALHISTA) 2026
+DATA: 22/01/2027
+HORA: 08:20
+RESPONSÁVEIS: automático
+DESCRIÇÃO:
+AUDIÊNCIA UNA
+DATA: 22/01/2027
+HORA: 08:20
+FORMATO: TELEPRESENCIAL (ZOOM)
+LINK/LOCAL: https://trt7-jus-br.zoom.us/j/85164513045
+ID da reunião: 851 6451 3045
+SENHA: 355957</pre>
+      <ul class="suave">
+        <li><b>TAREFA</b>: nome exato da lista oficial do VIOS.</li>
+        <li><b>DATA</b>: DD/MM/AAAA. Só a CIÊNCIA pode ficar sem data (vai para o dia do envio).</li>
+        <li><b>HORA</b>: HH:MM. Obrigatória em audiência, perícia e sustentação oral; vazia nas demais.</li>
+        <li><b>RESPONSÁVEIS</b>: <code>automático</code> (o VIOS marca o auxiliar) ou os nomes, separados por vírgula.</li>
+      </ul>
+    </details>
+  </div>
+  {% if recentes %}
+  <div class="cartao">
+    <h2>Envios desta sessão</h2>
+    <ul>{% for id, e in recentes %}<li><a href="{{ url_for('ver', envio_id=id) }}">{{ e.arquivo }}</a>
+      <span class="suave">— {{ e.criado.strftime('%H:%M') }}, {{ e.estado }}</span></li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+{% else %}
+  {% set com_problema = envio.cis | selectattr("problemas") | list %}
+  {% set ja = envio.cis | selectattr("ja_lancada") | list %}
+  <div class="cartao">
+    <h1>{{ envio.arquivo }}</h1>
+    <p>{{ envio.cis | length }} CI(s) no arquivo: <b>{{ aptas | length }} pronta(s) para enviar</b>,
+      <span class="erro">{{ com_problema | length }} com problema</span>,
+      <span class="suave">{{ ja | length }} já lançada(s)</span>.
+      CIs com problema ou já lançadas não são enviadas.</p>
+    <p class="suave">Duplicatas: conferidas agora com as intimações que o robô capturou{% if nao_capturadas %}
+      ({{ nao_capturadas | length }} CI(s) deste arquivo não foram capturadas){% endif %} e de novo no envio, lendo no VIOS
+      o texto de cada CI antes de gravar. A cópia não é lançada.</p>
+
+    {% if envio.estado == "enviando" %}
+      <p class="selo s-andamento">{{ "Gravando no VIOS" if envio.confirmar else "Testando (não grava)" }}… a página atualiza sozinha.</p>
+    {% elif envio.estado == "concluido" %}
+      <p class="selo s-ok">Envio concluído</p>
+    {% elif envio.estado == "falhou" %}
+      <p class="erro">O envio parou: {{ envio.falha }}. Confira o log (logs/bot.log) e tente de novo.</p>
+    {% endif %}
+
+    {% if editavel %}
+    <form method="post" action="{{ url_for('enviar', envio_id=envio_id) }}" class="acoes" id="form-enviar">
+      {% if envio.estado != "testado" %}
+      <button class="secundario" {% if not aptas or ocupado %}disabled{% endif %}>Testar sem gravar</button>
+      {% endif %}
+      <button class="perigo" name="confirmar" value="1" {% if not aptas or ocupado %}disabled{% endif %}
+        onclick="return confirm('Gravar {{ aptas | length }} CI(s) no VIOS?')">Enviar ao VIOS ({{ aptas | length }})</button>
+      <a class="botao secundario" href="{{ url_for('inicio') }}">Subir outro arquivo</a>
+      {% if ocupado %}<span class="aviso">O robô está ocupado com outro envio.</span>{% endif %}
+      <span class="aviso" id="nao-salvo" hidden>Há alterações não salvas: clique em "Salvar e conferir" antes de enviar.</span>
+    </form>
+    <p class="suave">Corrija os erros nos campos abaixo e clique em <b>Salvar e conferir</b>: a página confere de novo e libera as CIs corrigidas.
+      "Testar sem gravar" preenche o formulário do VIOS e tira print, sem gravar.</p>
+    {% if envio.estado == "testado" %}<p class="suave">Teste concluído (prints em logs/). Se estiver tudo certo, envie.</p>{% endif %}
+    {% endif %}
+  </div>
+
+  {% if editavel %}
+  <form method="post" action="{{ url_for('salvar', envio_id=envio_id) }}" id="form-editar">
+    <datalist id="lista-tarefas">{% for n in oficiais %}<option value="{{ n }}">{% endfor %}</datalist>
+    <datalist id="lista-pessoas"><option value="automático">{% for p in pessoas %}<option value="{{ p }}">{% endfor %}</datalist>
+    {% for c in envio.cis %}{% set g = loop.index0 %}
+    <div class="cartao ci {% if c.problemas %}com-problema{% endif %}">
+      <div class="ci-topo">
+        <label>CI <input name="g{{ g }}_ci" value="{{ c.ci }}" class="campo-ci" inputmode="numeric"></label>
+        {% if c.resultado == "gravada" %}<span class="selo s-ok">Gravada no VIOS</span>
+        {% elif c.resultado == "testada" %}<span class="selo s-ok">Teste ok</span>
+        {% elif c.resultado == "pulada" %}<span class="selo s-ja">Já tinha tarefa no VIOS</span>
+        {% elif c.resultado == "duplicada" %}<span class="selo s-ja">Duplicata (não lançada)</span>
+        {% elif c.resultado == "erro" %}<span class="selo s-erro">Erro no VIOS</span>
+        {% elif c.problemas %}<span class="selo s-erro">Corrigir antes de enviar</span>
+        {% elif c.ja_lancada %}<span class="selo s-ja">Já lançada</span>
+        {% else %}<span class="selo s-ok">Pronta</span>{% endif %}
+      </div>
+      {% if c.problemas %}<ul class="erro">{% for p in c.problemas %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
+      {% if c.avisos %}<ul class="aviso">{% for a in c.avisos %}<li>{{ a }}</li>{% endfor %}</ul>{% endif %}
+      {% if c.mensagens %}<details><summary>Detalhes do VIOS</summary><ul class="suave">{% for m in c.mensagens %}<li>{{ m }}</li>{% endfor %}</ul></details>{% endif %}
+      {% for t in c.tarefas %}{% set p = "g" ~ g ~ "_t" ~ loop.index0 ~ "_" %}
+      <div class="tarefa">
+        <div class="grade">
+          <label class="largo">Tarefa <input name="{{ p }}nome" value="{{ t.nome }}" list="lista-tarefas"></label>
+          <label>Data <input name="{{ p }}data" value="{{ t.data_tarefa }}" maxlength="10"
+            placeholder="{{ 'vazio = dia do envio' if t.nome.startswith('CIÊNCIA') else 'DD/MM/AAAA' }}"
+            title="{{ 'CIÊNCIA não tem prazo: vazio, vai para o dia em que for enviada ao VIOS' if t.nome.startswith('CIÊNCIA') else 'Data da tarefa no VIOS' }}"></label>
+          <label>Hora <input name="{{ p }}hora" value="{{ t.hora }}" placeholder="HH:MM" maxlength="5"></label>
+          <label class="largo">Responsáveis <input name="{{ p }}responsaveis" list="lista-pessoas"
+            value="{{ t.responsaveis | join(', ') if t.responsaveis else 'automático' }}"></label>
+          <label class="remover"><input type="checkbox" name="{{ p }}remover" value="1"> Remover tarefa</label>
+        </div>
+        <label>Descrição (vai para a Observação no VIOS)
+          <textarea name="{{ p }}descricao" rows="{{ [t.descricao.count('\n') + 2, 14] | min }}">{{ t.descricao }}</textarea></label>
+        {% if t.soltas %}
+        <label class="erro">Linhas fora do formato (apague, ou passe para a descrição)
+          <textarea name="{{ p }}soltas" rows="{{ t.soltas | length + 1 }}">{{ t.soltas | join('\n') }}</textarea></label>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    <div class="barra-salvar"><button class="primario">Salvar e conferir</button></div>
+  </form>
+
+  <div class="cartao">
+    <details>
+      <summary>Editar como texto (para colar ou acrescentar blocos)</summary>
+      <form method="post" action="{{ url_for('salvar', envio_id=envio_id) }}">
+        <input type="hidden" name="modo" value="texto">
+        <textarea name="texto" rows="24" class="mono">{{ texto }}</textarea>
+        <p><button class="primario">Salvar texto e conferir</button></p>
+      </form>
+    </details>
+  </div>
+  <script>
+    // alteração não salva: bloqueia o envio até salvar (senão iria a versão anterior)
+    document.getElementById('form-editar').addEventListener('input', () => {
+      document.getElementById('nao-salvo').hidden = false;
+      document.querySelectorAll('#form-enviar button').forEach(b => b.disabled = true);
+    });
+  </script>
+
+  {% else %}
+  <div class="cartao">
+    <table>
+      <tr><th>CI</th><th>Tarefa(s)</th><th>Descrição</th><th>Situação</th></tr>
+      {% for c in envio.cis %}
+      <tr>
+        <td><b>{{ c.ci or "?" }}</b></td>
+        <td>{% for t in c.tarefas %}<div class="tarefa">
+          {{ t.nome }}<br>
+          <span class="suave">{{ t.data_tarefa or "dia do envio" }}{% if t.hora %} às {{ t.hora }}{% endif %} ·
+            {{ t.responsaveis | join(", ") if t.responsaveis else ("automático + BRENO" if t.marcar_breno else "automático") }}</span>
+        </div>{% endfor %}</td>
+        <td>{% for t in c.tarefas %}<div class="tarefa"><pre>{{ t.descricao }}</pre></div>{% endfor %}</td>
+        <td>
+          {% if c.resultado == "gravada" %}<span class="selo s-ok">Gravada no VIOS</span>
+          {% elif c.resultado == "testada" %}<span class="selo s-ok">Teste ok</span>
+          {% elif c.resultado == "lançando" %}<span class="selo s-andamento">Lançando…</span>
+          {% elif c.resultado == "conferindo" %}<span class="selo s-andamento">Conferindo duplicata no VIOS…</span>
+          {% elif c.resultado == "duplicada" %}<span class="selo s-ja">Duplicata (não lançada)</span>
+          {% elif c.resultado == "pulada" %}<span class="selo s-ja">Já tinha tarefa no VIOS</span>
+          {% elif c.resultado == "erro" %}<span class="selo s-erro">Erro</span>
+          {% elif c.problemas %}<span class="selo s-erro">Não será enviada</span>
+          {% elif c.ja_lancada %}<span class="selo s-ja">Já lançada</span>
+          {% else %}<span class="selo s-ok">Aguardando</span>{% endif %}
+          {% if c.mensagens %}<details><summary>Detalhes</summary><ul class="suave">{% for m in c.mensagens %}<li>{{ m }}</li>{% endfor %}</ul></details>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+{% endif %}
+</main>
+</body>
+</html>

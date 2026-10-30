@@ -23,9 +23,21 @@ def _normalizar(texto):
     return unicodedata.normalize("NFKD", texto or "").encode("ascii", "ignore").decode().upper()
 
 
+def teor(texto):
+    """Só o teor: tira o cabeçalho de datas ("Data da Disponibilização..." na captura,
+    "Disponibilização:..." na tela de lançamento) e o que vem depois do comunicacao_id
+    (Comarca, Diário, Esfera na tela de lançamento)."""
+    texto = texto or ""
+    inicio = re.search(r"Publica[cç][aã]o\s+Processo", texto, re.I)
+    if inicio:
+        texto = texto[inicio.start():]
+    fim = re.search(r"comunicacao_id:\s*\d+\s*\|?", texto)
+    return texto[:fim.end()] if fim else texto
+
+
 def palavras(texto):
     """Palavras do teor sem links, números e códigos (que mudam entre as cópias)."""
-    texto = re.sub(r"https?://\S+", " ", _normalizar(texto))
+    texto = re.sub(r"https?://\S+", " ", _normalizar(teor(texto)))
     texto = re.sub(r"\S*\d\S*", " ", texto)
     return re.findall(r"[A-Z]+", texto)
 
@@ -94,3 +106,17 @@ def detectar(itens):
         while d["original"] in resultado:
             d["original"] = resultado[d["original"]]["original"]
     return resultado
+
+
+def marcar(itens):
+    """Marca nas capturas a cópia (duplicada_de = CI original). Devolve o resultado de detectar()."""
+    duplicadas = detectar(itens)
+    for i in itens:
+        d = duplicadas.get(i.get("ci"))
+        if d:
+            i["duplicada_de"] = d["original"]
+            i["duplicidade_motivo"] = d["motivo"]
+        else:
+            i.pop("duplicada_de", None)
+            i.pop("duplicidade_motivo", None)
+    return duplicadas

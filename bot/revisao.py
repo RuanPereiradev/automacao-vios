@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS cis (
 )
 """
 
-CAMPOS_TAREFA = ("nome", "data_tarefa", "descricao", "marcar_breno", "tipo_data", "rotulo_data", "finalidade",
+CAMPOS_TAREFA = ("nome", "data_tarefa", "hora", "descricao", "marcar_breno", "tipo_data", "rotulo_data", "finalidade",
                  "data_editada", "responsaveis")
 ARQUIVO_RESPONSAVEIS = "responsaveis.json"  # pessoas do campo Responsáveis do VIOS
 

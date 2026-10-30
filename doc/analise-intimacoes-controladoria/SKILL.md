@@ -110,6 +110,7 @@ Aplicar as regras somente quando o cliente for a parte responsável pelo pagamen
 - Se o acordo ou outro documento necessário não estiver disponível, registrar `PENDENTE – CONFERIR A SENTENÇA COM O ACORDO E DOCUMENTOS DOS AUTOS`, mantendo a tarefa de análise. Não afirmar que a homologação está correta apenas pelo relato da sentença.
 - Incluir na finalidade e no resumo da análise a necessidade de dar sequência ao contato com o cliente para informar o resultado, explicar o encerramento e esclarecer eventuais providências. A análise abrange conferência jurídica e comunicação ao cliente; não depende de intenção de recorrer. Seguir o fluxo de contato da área, sem criar automaticamente tarefa complementar fora das hipóteses previstas.
 - Exibir sempre `PRAZO PARA EMBARGOS:` e `PRAZO PARA RECURSO:` conforme as regras de prazos. Avaliar cabimento e eventual renúncia/aceitação; não presumir ausência de prazo ou impossibilidade de correção apenas pelo resultado favorável. Se depender de documentos ausentes, registrar a pendência. Não abrir minuta de recurso automaticamente.
+- Sentença ou acórdão, favorável ou desfavorável, gera sempre `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO`, nunca tarefa de minutar (nem `MINUTAR RECURSO/CONTRARRAZÕES`): quem decide se cabe recurso e o que fazer é o advogado, na análise.
 - Esta regra prevalece sobre todas as regras gerais de ciência, inclusive a de decisão de Execução sem providência para o cliente, quando o ato encerrar o processo/fase do cliente ou homologar acordo que o envolva.
 
 Resumo-base para adaptar ao caso:
@@ -189,10 +190,10 @@ PRAZO FATAL (D-2): [DD/MM/AAAA ou PENDENTE – NÃO CONSTA NO DOCUMENTO, somente
 
 Regras deste modelo:
 
-- Toda tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` gera um prazo: sempre exibir `PRAZO FATAL (D-2):` (ou `PRAZO FATAL:` com o dia útil seguinte à publicação, quando o ato não tiver prazo nenhum).
+- A tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` fica para o **mesmo dia** da análise, nunca para o D-2: as datas de embargos e de recurso (em D-2) ficam só na descrição. Não usar a linha `PRAZO FATAL (D-2)` quando houver as linhas de embargos e recurso.
 - Se couber, ou puder caber, embargos ou recurso, exibir as duas linhas `PRAZO PARA EMBARGOS:` e `PRAZO PARA RECURSO:`, nesta ordem, **sempre com data em D-2**. Se a intimação não informar o prazo, usar o prazo previsto em lei. Mesmo com cabimento pendente (ex.: recurso imediato a confirmar), indicar a data: o advogado decide se recorre e precisa dela.
 - Na linha do meio que não couber, preencher `NÃO CABE`.
-- Se não couber embargos nem recurso, não exibir essas duas linhas: deixar somente o `PRAZO FATAL (D-2)`.
+- Se não couber embargos nem recurso, não exibir essas duas linhas: deixar somente o `PRAZO FATAL (D-2)` do ato, se houver.
 - Para tarefas diferentes de análise, usar as linhas somente quando efetivamente couberem.
 - As datas exibidas nas linhas de prazo devem ser em D-2 do prazo fatal, quando a finalidade for lançamento da tarefa no VIOS.
 - Exibir a data operacional sempre com o rótulo exato `PRAZO FATAL (D-2):`. Nunca usar `Prazo interno VIOS`, `Prazo interno` ou outra variação como título desse campo.
@@ -268,8 +269,8 @@ Consulte `references/pop-fluxo-intimacoes.md` para detalhes. Regras de maior ate
 
 ## Regra obrigatória — marcar Breno nas tarefas de petição da Execução
 
-- Sempre que indicar a tarefa `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO) 2026)` ou qualquer opção equivalente do VIOS denominada `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO)`, lembrar expressamente a Controladoria de marcar **Breno** na tarefa.
-- Exibir obrigatoriamente, logo abaixo do nome da tarefa: `Responsável a marcar na tarefa: BRENO`.
+- Sempre que indicar a tarefa `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO) 2026)` ou qualquer opção equivalente do VIOS denominada `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO)`, **Breno** é marcado como responsável da tarefa (junto com a Tamira).
+- Não escrever na descrição da tarefa `Responsável a marcar na tarefa: BRENO`, `Advogada auxiliar: TAMIRA` nem `PRIORIDADE RPV/PRECATÓRIO`: o responsável vai no campo Responsáveis do VIOS. A descrição começa pelo `PRAZO FATAL:` e segue com a providência e o trecho da intimação.
 - Aplicar a regra a todas as tarefas com esse nome, independentemente do conteúdo da petição, inclusive dados bancários, RPV/precatório, alvará, juntada de documentos e demais manifestações da Execução.
 - Não aplicar automaticamente a outras tarefas de Execução que possuam nome diferente.
 
@@ -287,6 +288,14 @@ Para emenda trabalhista ou previdenciária da Suhiane, usar obrigatoriamente:
 ```text
 PRAZO FATAL: DD/MM/AAAA
 ```
+
+## Regra obrigatória — tarefas com horário
+
+Toda tarefa que tem horário (sustentação oral, audiência, perícia) fica na **data exata** em que o ato vai ocorrer, nunca no D-2, e o horário vai no campo Horário da tarefa no VIOS.
+
+## Regra obrigatória — intimação que só indica o evento
+
+Quando a intimação apenas indicar um evento do processo, sem o teor (ex.: "Ato ordinatório. O ato refere-se ao seguinte evento: Evento 23 - PETIÇÃO"), não gerar tarefa por suposição (nem `CIÊNCIA`): a tarefa só pode ser definida abrindo o sistema e verificando o evento (pode ser, por exemplo, `MINUTAR EMBARGOS DE DECLARAÇÃO/CONTRARRAZÕES`). A CI não é lançada: indicar que falta conferir o teor do evento.
 
 ## Regra obrigatória — não lançar quando faltar informação
 
@@ -486,7 +495,7 @@ PRAZO PARA RECURSO: DD/MM/AAAA
 
 As datas de embargos e recurso devem ser sempre em D-2.
 
-Quando a tarefa for `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` e couber (ou puder caber) embargos ou recurso, exibir as duas linhas, sempre com data em D-2 — pelo prazo legal quando a intimação não informar, inclusive com cabimento pendente. Na linha do meio que não couber, `NÃO CABE`. Se não couber nenhum dos dois, omitir as duas linhas e deixar somente o `PRAZO FATAL (D-2)`: toda tarefa de analisar gera um prazo.
+Quando a tarefa for `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` e couber (ou puder caber) embargos ou recurso, exibir as duas linhas, sempre com data em D-2 — pelo prazo legal quando a intimação não informar, inclusive com cabimento pendente. Na linha do meio que não couber, `NÃO CABE`. Se não couber nenhum dos dois, omitir as duas linhas e deixar somente o `PRAZO FATAL (D-2)` do ato, se houver. A tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` fica para o **mesmo dia** da análise, nunca para o D-2: as datas de embargos e de recurso (em D-2) ficam só na descrição. Não usar a linha `PRAZO FATAL (D-2)` quando houver as linhas de embargos e recurso.
 
 ## Sustentação oral
 
@@ -497,7 +506,7 @@ indicar também a tarefa:
 SUSTENTAÇÃO ORAL
 
 A tarefa de verificar viabilidade deve ficar para o mesmo dia.
-A tarefa de sustentação oral deve ficar para o dia da sustentação.
+A tarefa de sustentação oral deve ficar para o dia da sustentação (na sessão virtual, o primeiro dia da sessão), nunca no D-2 nem no prazo de envio da sustentação gravada.
 
 A tarefa SUSTENTAÇÃO ORAL deve vir neste padrão:
 
@@ -505,6 +514,13 @@ SUSTENTAÇÃO ORAL
 DATA:
 HORA:
 LINK:
+
+Exemplo de sessão virtual (início às 09:00 de 06/11/2026 e término às 09:00 de 13/11/2026):
+
+SUSTENTAÇÃO ORAL
+DATA: De 06/11/2026 a 13/11/2026.
+HORA: até 09:00
+LINK: https://pje-plenario-virtual.tjce.jus.br/
 
 Se faltar data, hora ou link, preencher com:
 PENDENTE – NÃO CONSTA NO DOCUMENTO.
@@ -542,14 +558,29 @@ Se a intimação apenas informar que a perícia foi designada, mas não trouxer 
 
 ## Audiência
 
-Sempre que houver audiência, mandar no padrão:
+Sempre que houver audiência, a descrição da tarefa segue exatamente este padrão, uma informação por linha, sem parágrafos ou observações a mais:
 
-AUDIÊNCIA DE [TIPO]
+AUDIÊNCIA [TIPO]
 DATA:
-HORÁRIO:
+HORA:
 FORMATO:
 LINK/LOCAL:
-OBS: É necessário ter atenção ao tipo de audiência, para que o advogado saiba como se preparar.
+ID da reunião:
+SENHA:
+
+- `LINK/LOCAL`: só o link (audiência virtual) ou o endereço (presencial). ID da reunião e senha vão nas linhas próprias, não junto do link.
+- `ID da reunião` e `SENHA` só na audiência virtual/telepresencial; na presencial, omitir as duas linhas.
+- Não acrescentar na descrição explicações sobre a audiência (depoimentos, testemunhas, consequência da ausência etc.) nem `OBS:`. O que a Controladoria precisar saber vai nas observações da análise, fora da tarefa.
+
+Exemplo:
+
+AUDIÊNCIA UNA
+DATA: 22/01/2027
+HORA: 08:20
+FORMATO: TELEPRESENCIAL (ZOOM)
+LINK/LOCAL: https://trt7-jus-br.zoom.us/j/85164513045
+ID da reunião: 851 6451 3045
+SENHA: 355957
 
 Quando a audiência for inicial, não indicar automaticamente como UNA, pois pode ser audiência de instrução ou conciliação. Identificar corretamente o tipo pelo teor da intimação. Se não constar, marcar como pendente.
 
@@ -650,7 +681,7 @@ Antes de finalizar a resposta, conferir:
 
 - todas as CIs da planilha foram analisadas;
 - toda tarefa está na mesma área do departamento/auxiliar informado na planilha; se não estiver, há justificativa expressa na observação;
-- toda tarefa `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO)` contém o lembrete `Responsável a marcar na tarefa: BRENO`;
+- toda tarefa `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO)` tem Breno (e Tamira) como responsáveis, sem esse lembrete na descrição;
 - cada CI tem cliente, processo, tarefa e resumo;
 - se havia prazo no texto, o prazo fatal foi informado;
 - se havia prazo no texto, o campo `PRAZO FATAL (D-2)` foi informado;

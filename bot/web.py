@@ -1,6 +1,7 @@
 """Página local de revisão: a pessoa confere, edita e valida as tarefas antes do lançamento."""
 import json
 import os
+import re
 from datetime import date, datetime
 from pathlib import Path
 
@@ -38,6 +39,8 @@ def conferir(tarefas, oficiais, pessoas=()):
         sem_prazo = t.get("tipo_data") == "SEM_DATA" or t["nome"].startswith("CIÊNCIA")
         if not _data_valida(t["data_tarefa"]) and not (sem_prazo and not t["data_tarefa"]):
             problemas.append(f"Tarefa {n}: data inválida ou vazia.")
+        if t.get("hora") and not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", t["hora"]):
+            problemas.append(f"Tarefa {n}: horário inválido. Use o formato HH:MM.")
         if not t["descricao"].strip():
             problemas.append(f"Tarefa {n}: descrição vazia.")
         fora = [p for p in t["responsaveis"] if pessoas and p not in pessoas]
@@ -52,6 +55,7 @@ def _tarefas_do_form(form):
         tarefas.append({c: t.get(c, False if c == "marcar_breno" else "") for c in revisao.CAMPOS_TAREFA})
         tarefas[-1]["nome"] = tarefas[-1]["nome"].strip()
         tarefas[-1]["data_tarefa"] = tarefas[-1]["data_tarefa"].strip()
+        tarefas[-1]["hora"] = (tarefas[-1]["hora"] or "").strip()
         tarefas[-1]["marcar_breno"] = bool(tarefas[-1]["marcar_breno"])
         tarefas[-1]["data_editada"] = bool(tarefas[-1]["data_editada"])
         tarefas[-1]["responsaveis"] = [p.strip() for p in t.get("responsaveis") or [] if p.strip()]

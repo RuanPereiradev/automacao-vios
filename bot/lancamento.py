@@ -1,7 +1,7 @@
 """Lança no VIOS as tarefas sugeridas pela análise (tela "Lançar Intimação", int-lanca.php).
 
 Para cada tarefa da análise o bot abre o link "Lançar Intimação" da CI, escolhe a
-tarefa, define a data para conclusão, escreve a descrição em Observação e clica
+tarefa, define a data para conclusão (e o horário, em audiência/perícia/sustentação), escreve a descrição em Observação e clica
 em Adicionar. Sem confirmar=True ele só preenche e tira um print (modo teste).
 """
 import html
@@ -63,7 +63,10 @@ def _data_valida(texto):
 
 
 def _data_conclusao(tarefa, hoje):
-    """Data da tarefa calculada na análise; sem data (ex.: ciência), hoje."""
+    """Data da tarefa calculada na análise; sem data (ex.: ciência), hoje.
+    Tarefa do mesmo dia (análise, verificar viabilidade) é sempre para o dia do lançamento."""
+    if tarefa.get("tipo_data") == "MESMO_DIA" and not tarefa.get("data_editada"):
+        return hoje
     try:
         return datetime.strptime(tarefa["data_tarefa"], "%d/%m/%Y").date()
     except (KeyError, ValueError):
@@ -122,13 +125,16 @@ def preencher(driver, tarefa, data_conclusao, timeout):
 
     driver.execute_script(
         """
-        const [data, obs, breno, nomes] = arguments;
+        const [data, obs, breno, nomes, hora] = arguments;
         const $p = jQuery('#tp_prazo');
         $p.val('data').trigger('change');
         if ($p.selectpicker) $p.selectpicker('refresh');
         const campo = document.querySelector("input[name='fo[data_prevista]']");
         campo.value = data;
         jQuery(campo).trigger('change');
+        // audiência, perícia, sustentação: horário do ato
+        const h = document.getElementById('fo[hora_prevista]');
+        if (h) { h.value = hora; jQuery(h).trigger('input').trigger('change'); }
         if (nomes.length) {
             // responsáveis escolhidos na revisão: marca exatamente essas pessoas
             const $r = jQuery('#responsaveis');
@@ -147,6 +153,7 @@ def preencher(driver, tarefa, data_conclusao, timeout):
         _html(tarefa["descricao"]),
         bool(tarefa.get("marcar_breno")),
         [n.strip().upper() for n in tarefa.get("responsaveis") or []],
+        tarefa.get("hora") or "",
     )
     tela = driver.execute_script(
         """
@@ -155,12 +162,15 @@ def preencher(driver, tarefa, data_conclusao, timeout):
             tarefa: sel('processos_etapas_id')[0],
             tipo_prazo: document.getElementById('tp_prazo').value,
             data_prevista: document.querySelector("input[name='fo[data_prevista]']").value,
+            hora: (document.getElementById('fo[hora_prevista]') || {value: ''}).value,
             responsaveis: sel('responsaveis'),
             texto_intimacao: document.getElementById('fo[texto_int]').checked,
             obs: tinymce.get('fo[obs]').getContent({format: 'text'}),
         };
         """
     )
+    if (tarefa.get("hora") or "") != tela["hora"]:
+        raise LancamentoErro(f"Horário não confere: pedido '{tarefa.get('hora') or ''}', na tela '{tela['hora']}'")
     pedidos = {_normalizar(n) for n in tarefa.get("responsaveis") or []}
     if pedidos and pedidos != {_normalizar(n) for n in tela["responsaveis"]}:
         raise LancamentoErro(f"Responsáveis não conferem: pedido {sorted(tarefa['responsaveis'])}, "
@@ -173,6 +183,21 @@ def ler_responsaveis(driver, link_lancar, timeout):
     _abrir(driver, link_lancar, timeout)
     return driver.execute_script(
         "return [...document.getElementById('responsaveis').options].map(o => o.text.trim()).filter(t => t);"
+    )
+
+
+def ler_intimacao(driver, link_lancar, timeout):
+    """Teor, processo e cliente da intimação, lidos na tela de lançamento (só lê, não preenche).
+    Mesmos campos da captura, para a conferência de duplicatas (bot/duplicidade.py)."""
+    _abrir(driver, link_lancar, timeout)
+    return driver.execute_script(
+        """
+        const linha = rotulo => [...document.querySelectorAll('tr')].find(tr =>
+            ((tr.querySelector('td b') || {}).innerText || '').trim() === rotulo);
+        const valor = rotulo => { const tr = linha(rotulo); return tr ? tr.cells[1].innerText.trim() : ''; };
+        const painel = document.getElementById('vj-copy-intimacao');
+        return {numeros: valor('Nro CNJ'), cliente: valor('Cliente'), texto: painel ? painel.innerText.trim() : ''};
+        """
     )
 
 
@@ -291,8 +316,8 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
                 raise LancamentoErro(f"quadro Tarefas já tem {len(sobra)} linha(s) antes de adicionar: {sobra}")
             for n, t in enumerate(r["tarefas"], 1):
                 tela = preencher(driver, t, _data_conclusao(t, hoje), timeout)
-                log.info("CI %s tarefa %d: %s | prazo %s %s | responsáveis %s | texto da intimação: %s",
-                         ci, n, tela["tarefa"], tela["tipo_prazo"], tela["data_prevista"],
+                log.info("CI %s tarefa %d: %s | prazo %s %s %s | responsáveis %s | texto da intimação: %s",
+                         ci, n, tela["tarefa"], tela["tipo_prazo"], tela["data_prevista"], tela["hora"],
                          ", ".join(tela["responsaveis"]), "sim" if tela["texto_intimacao"] else "não")
                 log.info("Observação:\n%s", tela["obs"])
                 _print_formulario(driver, Path(pasta_logs) / f"lancamento_ci{ci}_{n}_{datetime.now():%H%M%S}.png")

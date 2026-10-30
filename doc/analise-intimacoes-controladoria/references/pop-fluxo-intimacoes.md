@@ -33,7 +33,7 @@ Para a prioridade de emenda da Suhiane, considerar obrigatoriamente tanto `MINUT
 
 - Sempre que a tarefa for `VERIFICAR VIABILIDADE DE REALIZAR SUSTENTAÇÃO ORAL`, indicar também a tarefa `SUSTENTAÇÃO ORAL`.
 - A tarefa `VERIFICAR VIABILIDADE DE REALIZAR SUSTENTAÇÃO ORAL` fica para o mesmo dia.
-- A tarefa `SUSTENTAÇÃO ORAL` fica para o dia da sustentação.
+- A tarefa `SUSTENTAÇÃO ORAL` fica para o dia da sustentação (na sessão virtual, o primeiro dia da sessão), com o horário no campo Horário do VIOS. Tarefas com horário (sustentação, audiência, perícia) nunca vão para o D-2.
 - Modelo da tarefa de sustentação oral:
 
 ```text
@@ -59,13 +59,16 @@ LINK:
 Quando houver audiência, informar no padrão:
 
 ```text
-AUDIÊNCIA DE [TIPO]
-
+AUDIÊNCIA [TIPO]
 DATA:
-HORÁRIO:
+HORA:
 FORMATO:
 LINK/LOCAL:
+ID da reunião:
+SENHA:
 ```
+
+Uma informação por linha, sem parágrafos ou `OBS:` a mais na descrição. `ID da reunião` e `SENHA` só na audiência virtual (na presencial, `LINK/LOCAL` é o endereço). Ver o padrão completo na seção "Audiência" da skill.
 
 Identifique corretamente o tipo de audiência para que o advogado saiba como se preparar.
 
@@ -125,8 +128,8 @@ Tarefas de minutar podem ser abertas pela Controladoria quando a intimação já
 
 ## Responsável pelas petições da Execução
 
-- Sempre que a tarefa for `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO)` ou a opção equivalente disponível no VIOS, informar obrigatoriamente: `Responsável a marcar na tarefa: BRENO`.
-- Aplicar esse lembrete em todas as petições com esse nome, inclusive apresentação de dados bancários, providências relacionadas a RPV/precatório, alvarás, documentos e outras manifestações da Execução.
+- Sempre que a tarefa for `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO)` ou a opção equivalente disponível no VIOS, marcar Breno como responsável da tarefa (sem escrever o lembrete na descrição).
+- Aplicar essa regra em todas as petições com esse nome, inclusive apresentação de dados bancários, providências relacionadas a RPV/precatório, alvarás, documentos e outras manifestações da Execução.
 
 ## Pagamento pelo cliente — Trabalhista
 
@@ -170,4 +173,4 @@ PRAZO PARA RECURSO: DD/MM/AAAA
 
 Se couber apenas um deles, informe somente o aplicável.
 
-Exceção obrigatória: na tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO`, se couber (ou puder caber) embargos ou recurso, exibir as duas linhas com data em D-2 (prazo legal quando a intimação não informar, inclusive com cabimento pendente); o meio que não couber fica `NÃO CABE`. Se não couber nenhum, deixar somente o `PRAZO FATAL (D-2)`.
+Exceção obrigatória: na tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO`, se couber (ou puder caber) embargos ou recurso, exibir as duas linhas com data em D-2 (prazo legal quando a intimação não informar, inclusive com cabimento pendente); o meio que não couber fica `NÃO CABE`. Se não couber nenhum, deixar somente o `PRAZO FATAL (D-2)` do ato, se houver. A tarefa de análise fica para o mesmo dia da análise.

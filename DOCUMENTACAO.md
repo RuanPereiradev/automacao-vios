@@ -129,21 +129,30 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 | --- | --- |
 | IA (OpenAI por padrão) | Lê a intimação, classifica o ato, escolhe tarefas **da lista oficial** (o schema não aceita outro nome), informa os dias de prazo e escreve os resumos |
 | Código (`bot/prazos.py`) | Calcula prazo fatal, D-2, próximo dia útil, embargos e recurso com feriados e recesso |
-| Código (`bot/analise.py`, `bot/duplicidade.py`) | Confere as regras fixas da skill e marca alertas ⚠; insere Breno; detecta duplicatas (a cópia é ignorada) |
+| Código (`bot/analise.py`, `bot/duplicidade.py`) | Confere as regras fixas da skill e marca alertas ⚠; marca Breno como responsável (sem lembrete na descrição); apaga da descrição "Responsável a marcar", "Advogada auxiliar" e "PRIORIDADE RPV/EMENDA"; detecta duplicatas (a cópia é ignorada) |
 | Pessoa | Revisa `saida/analise_*.md` antes de lançar no VIOS |
 
 - **Trocar de IA:** `LLM_PROVEDOR=openai` ou `anthropic` no `.env` (+ a chave).
   Cada provedor fica num arquivo em `bot/ia/`; os dois devolvem o mesmo JSON.
+- **Disponibilização × publicação:** os arquivos `intimacoes_*`/`analise_*` levam
+  a data de **disponibilização** pesquisada no VIOS; a publicação é o 1º dia útil
+  seguinte (Lei 11.419/2006, art. 4º, § 3º). O relatório mostra as duas datas no
+  cabeçalho e em cada CI (ex.: `analise_2026-10-27` = disponibilizadas em 27/10,
+  publicadas em 28/10).
 - **Contagem de prazo:** começa no 1º dia útil após a **publicação**; dias úteis
   (ou corridos, se a IA indicar); vencimento em dia não útil vai para o próximo
   útil; D-2 = 2 dias úteis antes do fatal; RPV e emenda da Suhiane = próximo dia
-  útil após a publicação; tarefa ANALISAR = o D-2 mais cedo entre embargos,
-  recurso e prazo principal. Feriados locais vão em `doc/feriados.txt`.
+  útil após a publicação; tarefa ANALISAR = **mesmo dia** (a data de
+  lançamento), com as datas de embargos e recurso em D-2 só na descrição
+  (sem a linha `PRAZO FATAL (D-2)`); tarefa com horário (audiência, perícia,
+  sustentação oral) = data exata do ato, nunca D-2 (sessão virtual = 1º dia
+  da sessão). Feriados locais vão em `doc/feriados.txt`.
 - **Prazo previsto em lei:** quando a intimação não diz quantos dias, a IA usa
   a tabela de prazos legais da skill (`references/regras-prazos-recursos.md`):
   Cível 15 dias úteis para recursos e 5 para embargos de declaração;
   Trabalhista 8 dias úteis para recursos, 5 para embargos de declaração e à
-  execução, 15 para Recurso Extraordinário. A descrição da tarefa diz
+  execução, 15 para Recurso Extraordinário; manifestação sobre laudo
+  pericial 15 dias úteis (inclusive Juizado e Previdenciário). A descrição da tarefa diz
   "Prazo previsto em lei: N dias úteis (meio)".
 - **Custo:** a skill tem ~70 mil caracteres (~20 mil tokens) e é igual em toda
   chamada, então fica em cache no provedor; o log mostra os tokens usados.
@@ -263,7 +272,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 | --- | --- |
 | Tarefa (`form[processos_etapas_id]`) | A tarefa da análise (nome casado com a lista do VIOS) |
 | Tipo de prazo | Data |
-| Data para conclusão (`fo[data_prevista]`) | Data calculada na análise; tarefa sem data (ex.: ciência) = hoje |
+| Data para conclusão (`fo[data_prevista]`) | Data calculada na análise; tarefa sem data (ex.: ciência) e tarefa do mesmo dia (análise, verificar sustentação) = dia do lançamento |
+| Horário (`fo[hora_prevista]`) | Horário do ato em audiência, perícia e sustentação oral (HH:MM); vazio nas demais. Conferido na tela antes de adicionar |
 | Responsáveis | O que o VIOS marca sozinho ao escolher a tarefa (em geral o auxiliar da intimação) + BRENO quando a regra pede; ou exatamente as pessoas escolhidas manualmente na revisão |
 | Texto intimação | Marcado (padrão do VIOS) |
 | Observação | Descrição da tarefa, toda em **negrito**; as linhas `PRAZO FATAL (D-2): ...` e `PRAZO FATAL: ...` (RPV e emenda da Suhiane) em **negrito e vermelho**. O teor que o VIOS acrescenta depois fica normal |
@@ -301,11 +311,17 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   - a IA lista em `faltam_dados` o que a tarefa exige e a intimação não traz
     (ex.: audiência sem tipo, data, horário, formato, local ou link/ID/senha;
     perícia sem data, horário ou local);
+  - tarefa com horário (audiência, perícia, sustentação oral) sem o horário;
+  - intimação que só indica um evento do processo, sem o teor (eproc: "O ato
+    refere-se ao seguinte evento: Evento 23 - PETIÇÃO"): a tarefa só pode ser
+    definida abrindo o evento no sistema (28/10/2026);
   - área da tarefa × auxiliar responsável: tarefa de Execução com JOAQ, JOAN,
     LILI, SUH, CARL ou JOHN; tarefa de outra área com só TAMI (Tamira =
     Execução); Cível com SUH. Com dois auxiliares (ex.: "TAMI / SUH") vale a IA;
   - tarefa de análise em que cabe embargos ou recurso, mas sem prazo para
-    calcular a data.
+    calcular a data;
+  - sentença ou acórdão sem a tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` (ex.:
+    só `MINUTAR RECURSO`): quem decide se recorre é o advogado (29/10/2026).
 - **Descrição da tarefa de análise (27/10/2026):** se cabe (ou pode caber)
   embargos ou recurso, as duas linhas `PRAZO PARA EMBARGOS` e `PRAZO PARA
   RECURSO` sempre com data D-2 (prazo legal quando a intimação não diz,
@@ -353,7 +369,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   a página refaz as datas que dependem do dia: `MESMO_DIA` (ex.: verificar
   sustentação) vira hoje e `DIA_SEGUINTE` (ex.: aviso de perícia social) o
   próximo dia útil, com aviso mostrando a data original. Data editada à mão
-  fica como a pessoa deixou.
+  fica como a pessoa deixou. Campo **Horário** (HH:MM) para audiência,
+  perícia e sustentação oral; vai no campo Horário do VIOS.
 - **Ainda não lança:** a CI validada fica "na fila". Próximo passo: o
   lançamento ler a fila (iniciado pelo clique em Validar, com rodada de
   segurança agendada), refazendo as datas relativas ao dia na hora de lançar.
@@ -373,8 +390,76 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - Mesmo processo com ato diferente não é duplicata (ex.: 26/10, perícia
   designada e depois redesignada): fica o alerta para atualizar a tarefa.
 - **Não apaga nada no VIOS**: a cópia continua lá como intimação pendente.
+- **Duas conferências (29/10/2026):** (1) na **leitura**, a captura marca a
+  cópia em `intimacoes_*.json` (`duplicada_de`); (2) no **envio do .txt**, a
+  página confere com as capturas ao subir e, na hora de enviar, o robô lê no
+  VIOS o teor de cada CI do arquivo (tela "Lançar Intimação", só leitura) e
+  compara com as outras CIs e com as capturas. Cópia de CI já lançada ou que
+  está no arquivo: não grava ("Duplicata (não lançada)"); cópia de CI que não
+  está no arquivo nem foi lançada: erro, para a pessoa conferir. A comparação
+  usa só o teor (sem cabeçalho de datas e sem Comarca/Diário/Esfera).
 - Resultado 26/10/2026: 42475 → cópia da 42476 (TIAGO ARAUJO DE OLIVEIRA ×
   SERVICOS ADMINISTRATIVOS MEDEIROS LTDA); 42471 → cópia da 42472.
+
+### Passo 18 — Skill em arquivo único (chat de validação)
+- A Controladoria confere as análises do bot num chat com a skill. Para o chat
+  seguir as mesmas regras, `gerar_skill_unica.py` junta num arquivo só:
+  `SKILL.md`, as 4 referências (como seções) e
+  `doc/skill-unica/regras-do-programa.md` (o que o bot faz no código: contagem
+  de prazo, D-2, data de cada tarefa, o que não vai na descrição, quando não
+  lançar, alertas e duplicidade).
+- Saída: `doc/skill-unica/analise-intimacoes-controladoria/SKILL.md` e o
+  `.zip` para subir no chat. A parte "modo automático" (JSON) fica de fora.
+- Toda vez que a skill ou uma regra do código mudar: atualizar
+  `regras-do-programa.md` (se for regra do código) e rodar
+  `.venv/bin/python gerar_skill_unica.py`.
+
+### Passo 19 — Página de envio do .txt (sem gastar tokens da API)
+- Para reduzir o gasto com a API (29/10/2026): a análise é feita no chat com a
+  skill única, que entrega o **arquivo para o robô** (`.txt`); a pessoa
+  confere/ajusta, sobe na página e o robô só lança no VIOS — sem chamar a IA.
+- `./rodar_envio.sh` abre a página em http://127.0.0.1:5001. Com
+  `ENVIO_REDE=true` (ou `--rede`) fica aberta para a rede em
+  `http://<IP desta máquina>:5001`, e aí **exige senha** (`ENVIO_SENHA`; o
+  navegador pede usuário — qualquer um — e a senha). Sem `ENVIO_SENHA` a
+  página não abre na rede, porque grava no VIOS com o usuário do robô. O
+  navegador do robô abre nesta máquina (não no computador de quem enviou).
+  Se outro computador não conseguir abrir, liberar a porta no firewall:
+  `sudo ufw allow 5001/tcp`.
+- Formato (`doc/skill-unica/arquivo-para-o-robo.md`): um bloco por tarefa,
+  separados por `---`, com `CI:`, `TAREFA:`, `DATA:`, `HORA:`,
+  `RESPONSÁVEIS:` e, por último, `DESCRIÇÃO:` (tudo abaixo vai para a
+  Observação). Blocos seguidos da mesma CI viram uma CI com várias tarefas.
+- Ao ler (`bot/envio_txt.py`), a página confere e mostra cada CI:
+  - **não envia** (problema): CI inválida, tarefa fora da lista oficial, data
+    inválida (só CIÊNCIA pode ficar sem data → dia do envio), horário fora de
+    HH:MM, audiência/perícia/sustentação sem horário, responsável fora da
+    lista do VIOS (`saida/responsaveis.json`), descrição vazia, linha fora do
+    formato, mesma CI em dois lugares do arquivo;
+    CI que a análise do bot marcou como cópia de outra (`duplicada_de`);
+  - **avisa**: data já passada, data no fim de semana, descrição com
+    "Responsável a marcar", "Advogada auxiliar" ou "PRIORIDADE ...";
+  - **já lançada**: CI que está em `saida/lancamentos.json`.
+- **Edição na página:** depois de subir, cada tarefa aparece num formulário
+  (CI, tarefa com a lista oficial para escolher, data, hora, responsáveis,
+  descrição e "Remover tarefa"). A pessoa corrige os erros e clica em
+  **Salvar e conferir**: a página refaz o `.txt` com os campos e confere de
+  novo (mesmas regras da subida). Há também **Editar como texto**, para colar
+  ou acrescentar blocos. Com alteração não salva, os botões de envio ficam
+  bloqueados. Depois de um envio, dá para corrigir as CIs com erro e enviar de
+  novo (as já gravadas aparecem como "Já lançada" e não vão outra vez).
+- Botões: **Testar sem gravar** (preenche o formulário do VIOS e tira print,
+  como o modo teste) e **Enviar ao VIOS** (grava). O robô entra no VIOS uma
+  vez e lança CI por CI com a mesma rotina do `lancar.py` (Adicionar → Gravar
+  → confere na Conferência; pula CI que já tem tarefa no VIOS). A página
+  atualiza sozinha e mostra o resultado de cada CI. Um envio por vez.
+- Link de lançamento: o capturado em `saida/intimacoes_*.json`; se a CI não
+  estiver em nenhuma captura, o robô monta pelo número (`imp_pub_id`).
+- `RESPONSÁVEIS: automático` deixa o VIOS marcar (auxiliar); com nomes, o robô
+  marca exatamente essas pessoas e confere na tela.
+- Depois de ajustar a análise no chat, a pessoa cola o texto de
+  `doc/skill-unica/pedido-arquivo-robo.txt` para o chat gerar o arquivo no
+  padrão (mesmas regras da seção "Arquivo para o robô" da skill única).
 
 ---
 
@@ -390,6 +475,9 @@ selenium/
 ├── rodar_lancamento.sh  # atalho para lancar.py
 ├── revisar.py           # importa análises e abre a página de revisão
 ├── rodar_revisao.sh     # atalho para revisar.py
+├── gerar_skill_unica.py # skill + referências + regras do programa num arquivo só (chat de validação)
+├── enviar.py            # página de envio: sobe o .txt ajustado e lança no VIOS (sem IA)
+├── rodar_envio.sh       # atalho para enviar.py
 ├── bot/
 │   ├── config.py        # lê e valida o .env; converte seletores
 │   ├── navegador.py     # cria o Chrome e funções esperar/clicar/preencher
@@ -403,6 +491,8 @@ selenium/
 │   ├── duplicidade.py   # detecta a mesma publicação em duas CIs (a cópia é ignorada)
 │   ├── revisao.py       # banco SQLite da revisão (CIs, tarefas editadas, estados)
 │   ├── web.py           # página de revisão (Flask)
+│   ├── envio_txt.py     # lê e confere o .txt da página de envio
+│   ├── envio_web.py     # página de envio do .txt (Flask)
 │   ├── templates/       # HTML da página de revisão
 │   ├── prazos.py        # dias úteis, feriados, prazo fatal, D-2
 │   └── ia/              # provedores de IA: openai_ia.py, anthropic_ia.py
@@ -448,6 +538,18 @@ Revisar e validar na página (abre em http://127.0.0.1:5000):
 ./rodar_revisao.sh saida/analise_2026-10-26.json   # importa e abre
 ./rodar_revisao.sh                                   # só abre (CIs já importadas)
 ./rodar_revisao.sh --atualizar-responsaveis          # relê do VIOS a lista de responsáveis
+```
+
+Subir o .txt com as tarefas já ajustadas e lançar (abre em http://127.0.0.1:5001):
+
+```bash
+./rodar_envio.sh
+```
+
+Gerar a skill em arquivo único para o chat de validação:
+
+```bash
+.venv/bin/python gerar_skill_unica.py
 ```
 
 Primeira instalação:
@@ -500,6 +602,8 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `HEADLESS` | não | Chrome sem janela | `false` |
 | `TIMEOUT` | não | Espera máxima (s) | `20` |
 | `MANTER_ABERTO` | não | Não fecha o Chrome no fim | `true` |
+| `ENVIO_REDE` | não | Página de envio aberta para a rede (padrão: só nesta máquina) | `true` |
+| `ENVIO_SENHA` | com `ENVIO_REDE=true` | Senha pedida pela página de envio | (definir no `.env`) |
 
 ---
 

@@ -71,9 +71,11 @@ No resumo:
 
 ```text
 PRAZO FATAL: DD/MM/AAAA
-PRIORIDADE RPV/PRECATÓRIO
 [providência]
+[trecho da intimação]
 ```
+
+Não escrever `PRIORIDADE RPV/PRECATÓRIO` na descrição.
 
 Não chamar a data prioritária de `PRAZO FATAL (D-2)`.
 
@@ -117,12 +119,7 @@ Não aplicar automaticamente a outras tarefas da Suhiane. A regra é obrigatóri
 
 ## Petição de Execução da Tamira e Breno
 
-Quando a tarefa for `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO) 2026)` ou equivalente e pertencer à Tamira, exibir:
-
-```text
-Advogada auxiliar: TAMIRA
-Responsável a marcar na tarefa: BRENO
-```
+Quando a tarefa for `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO) 2026)` ou equivalente e pertencer à Tamira, Tamira e Breno são os responsáveis da tarefa no VIOS. Não escrever `Advogada auxiliar: TAMIRA` nem `Responsável a marcar na tarefa: BRENO` na descrição da tarefa.
 
 Aplicar a dados bancários, documentos, alvará, RPV/precatório, cálculos, prosseguimento, bloqueio, penhora e demais petições intermediárias da Execução. Não substituir Tamira por Breno.
 
@@ -143,7 +140,7 @@ Aplicar a dados bancários, documentos, alvará, RPV/precatório, cálculos, pro
 - Identificar a CI mais completa e não abrir tarefas repetidas. A CI mais completa é a original; a outra é ignorada (não gera tarefa).
 - Duplicata é a mesma publicação em mais de uma CI do mesmo processo: o texto é praticamente igual e muda só o destinatário, o link ou o código da comunicação (o VIOS costuma trazer uma cópia para cada parte). Quando só muda o destinatário, a original é a CI endereçada ao cliente do escritório; a cópia endereçada à outra parte é ignorada.
 - Mesmo processo com ato diferente (ex.: perícia designada e depois redesignada) não é duplicata: analisar cada CI e, se a mais nova mudar data ou local, atualizar a tarefa existente em vez de abrir outra.
-- O programa detecta as duplicatas automaticamente, marca a cópia como `DUPLICADA DA CI [NÚMERO]` e não a lança no VIOS.
+- O robô confere duplicatas em dois momentos: ao capturar as intimações do VIOS (marca a cópia) e ao enviar o arquivo para o robô (lê no VIOS o texto de cada CI antes de gravar e não grava a cópia). Mesmo assim, na análise feita no chat, conferir as duplicatas e não colocar a cópia no arquivo para o robô: listar como `DUPLICADA DA CI [NÚMERO]`.
 - Na menos completa, informar:
 
 ```text
