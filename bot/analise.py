@@ -39,9 +39,9 @@ COM_HORARIO = ("AUDIÊNCIA", "PERÍCIA TÉCNICA", "PERÍCIA MÉDICA", "SUSTENTA�
 HORA = re.compile(r"\b([01]?\d|2[0-3]) *(?::|H) *([0-5]\d)\b", re.I)
 # eproc: "O ato refere-se ao seguinte evento: Evento 23 - 22/10/2026 - PETICAO" (sem o teor do evento)
 SO_EVENTO = re.compile(r"refere-se ao seguinte evento: *(Evento \d+[^|]*)", re.I)
-# linhas que não vão na descrição da tarefa (responsável vai no campo Responsáveis; revisão de 29/10)
-FORA_DA_DESCRICAO = re.compile(r"^\s*(RESPONSÁVEL A MARCAR NA TAREFA|ADVOGADA? AUXILIAR|PRIORIDADE RPV|PRIORIDADE EMENDA)\b",
-                               re.I)
+# linhas que não vão na descrição da tarefa (responsável vai no campo Responsáveis; revisão de 29/10).
+# "PRIORIDADE RPV" voltou a ir na descrição com a skill de 30/10
+FORA_DA_DESCRICAO = re.compile(r"^\s*(RESPONSÁVEL A MARCAR NA TAREFA|ADVOGADA? AUXILIAR)\b", re.I)
 # sentença e acórdão sempre geram ANALISAR (o advogado decide se recorre)
 ATOS_DE_ANALISE = {"SENTENÇA", "ACÓRDÃO"}
 

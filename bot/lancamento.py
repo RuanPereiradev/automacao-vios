@@ -74,7 +74,7 @@ def _data_conclusao(tarefa, hoje):
 
 
 def _linha_html(linha):
-    """Texto do robô em negrito; "PRAZO FATAL: ..." e "PRAZO FATAL (D-2): ..." em negrito e vermelho.
+    """Texto do robô em negrito; linhas "PRAZO FATAL..." (": ", " (D-2): ", " D -2: ") em negrito e vermelho.
     O teor que o VIOS acrescenta depois ("---------- Intimação: ...") não passa por aqui e fica normal."""
     if not linha.strip():
         return "<p>&nbsp;</p>"

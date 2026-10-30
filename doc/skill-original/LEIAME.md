@@ -44,7 +44,7 @@ Pacote recebido da Controladoria (arquivos de 20/10), antes do robô. Idêntico 
 - Reconstruída a partir do texto enviado à IA em 28/10 (não estava no git);
   conferida: o `SKILL.md` tem o mesmo tamanho (44.277 bytes) da versão daquele dia.
 
-## 5 — 29/10/2026 — atual
+## 5 — 29/10/2026
 - Descrição sem `Responsável a marcar na tarefa: BRENO`, `Advogada auxiliar: TAMIRA`
   e `PRIORIDADE RPV/PRECATÓRIO` (Breno vai como responsável no VIOS).
 - Audiência no padrão linha a linha: `AUDIÊNCIA [TIPO]`, `DATA`, `HORA`, `FORMATO`,
@@ -53,3 +53,19 @@ Pacote recebido da Controladoria (arquivos de 20/10), antes do robô. Idêntico 
 - Sentença ou acórdão sempre gera ANALISAR, nunca minuta.
 - Duplicatas: o robô confere na captura e no envio; o chat também não deve colocar
   a cópia no arquivo para o robô.
+
+## 6 — 30/10/2026 — contagem simplificada (atual)
+Skill revisada pela Controladoria (pacote "skill att de verdade agora").
+- **Contagem simplificada:** só sábado e domingo ficam de fora; feriados, pontos
+  facultativos, recesso e suspensões contam como dias úteis. Não pesquisar feriados.
+- Análise e ciência: mesmo dia até 12h; depois das 12h, próximo dia de segunda a sexta.
+- Análise de sentença/acórdão/decisão: `PRAZO DE EMBARGOS:` e `PRAZO DE RECURSO:`
+  sempre com data D-2 (nunca `NÃO CABE`), sem `PRAZO FATAL`.
+- Minutas: `PRAZO FATAL D -2:` (antes `PRAZO FATAL (D-2):`).
+- RPV/precatório: data da tarefa = prioridade (próximo dia de segunda a sexta);
+  `PRAZO FATAL:` = D-2 do vencimento, seguido da linha `PRIORIDADE RPV` (volta a ir
+  na descrição, exceto na minuta de dados de requisitórios).
+- Pagamento pelo cliente no Cível: só análise + minuta (sem tarefa de contato).
+- Correções de responsável: Carlos trabalhista → Johnys; Tamira previdenciário → Suhiane.
+- Audiência: usar o link encurtado quando houver.
+- Nova referência `validacao-lancamento.md` (quando não lançar e checagem final).

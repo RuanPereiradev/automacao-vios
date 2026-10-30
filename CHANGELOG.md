@@ -12,6 +12,41 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Skill nova da Controladoria (30/10/2026)
+- `doc/analise-intimacoes-controladoria/` trocada pela skill revisada (cópia em
+  `doc/skill-original/6_2026-10-30_contagem-simplificada/`, com o `.zip` recebido;
+  `LEIAME.md` resume as mudanças): contagem simplificada (só sábado e domingo
+  ficam de fora, feriados contam), corte das 12h para análise/ciência,
+  `PRAZO DE EMBARGOS:`/`PRAZO DE RECURSO:` sempre com data, `PRAZO FATAL D -2:`
+  nas minutas, `PRIORIDADE RPV` de volta na descrição.
+- Nova referência `validacao-lancamento.md` em `bot/skill.py` (prompt do bot e
+  skill única).
+- `gerar_skill_unica.py`: troca os links markdown `[x.md](references/x.md)` e as
+  menções a "SKILL.md" pelo nome da seção. Skill única regerada.
+- `doc/skill-unica/regras-do-programa.md` reescrito: agora descreve só o que o
+  robô confere e bloqueia no envio do `.txt` (as regras de data e descrição são
+  as da skill). `arquivo-para-o-robo.md` e `pedido-arquivo-robo.txt` com os
+  rótulos novos e exemplos recalculados (conferidos pelo leitor do robô).
+- `bot/analise.py`: `PRIORIDADE RPV`/`PRIORIDADE EMENDA` saíram da lista de
+  linhas proibidas na descrição (a página de envio não avisa mais).
+- Pendente: a análise pela API (`bot/prazos.py`, `bot/analise.py`) ainda usa as
+  regras antigas de data e descrição.
+
+### Adicionado — Rodar no Mac e no Linux
+- `instalar.sh`: cria a `.venv` (recria se veio copiada de outro computador),
+  instala as dependências, cria `saida/` e `logs/` e avisa se faltar `.env` ou o
+  Chrome. Exige Python 3.8 a 3.12 (procura o `python3.12` primeiro). Testado no
+  Linux numa cópia limpa; pacotes conferidos para Mac (Apple Silicon e Intel)
+  com Python 3.12.
+
+### Alterado
+- `rodar*.sh`: `cd "$(dirname "$0")"` no lugar de `readlink -f` (não existe em
+  macOS antigos).
+
+### Removido
+- `pkg_resources==0.0.0` do `requirements.txt` (resto do Ubuntu; o `pip` falha
+  com ele no Mac).
+
 ### Adicionado — Skill original recuperada
 - `doc/skill-original/`: as versões da skill ao longo do tempo, uma pasta por
   versão (skill aberta + `.zip`), para a Controladoria achar em qual momento a

@@ -1,579 +1,297 @@
 ---
 name: analise-intimacoes-controladoria
-description: use quando a solicitação envolver análise de intimações recebidas pelo DJEN/VIOS, planilhas de intimações, definição de tarefa VIOS, ciência, despacho, decisão, sentença, acórdão, audiência, perícia, prazo, recurso, embargos, contrarrazões, sustentação oral, RPV/precatório, guias, depósito judicial ou providência operacional da Controladoria Jurídica.
+description: Analisar e revisar intimações DJEN/VIOS, identificar duplicidades e erros, definir tarefas oficiais, responsáveis, prazos jurídicos e datas operacionais da Controladoria. Usar para planilhas de intimações, ciência, despacho, decisão, sentença, acórdão, audiência, perícia, laudo, emenda, recursos, contrarrazões, sustentação oral, RPV/precatório, guias, depósitos e providências da Controladoria Jurídica.
 ---
 
 # Análise de Intimações da Controladoria
 
-Esta skill padroniza a triagem de intimações recebidas no VIOS/DJEN e indica a tarefa VIOS adequada, prazo fatal, prazo operacional D-2, cabimento de recurso e descrição sugerida para o advogado.
+Analisar todas as CIs, sem pular nenhuma. Distinguir providência jurídica, departamento interno, auxiliar, vencimento jurídico e data da tarefa. Não inventar dados nem presumir conferência nos autos.
 
-## Fontes
+## Fontes e referências obrigatórias
 
-Use as fontes nesta ordem:
+1. Ler integralmente o documento atual enviado pelo usuário. Se for relatório de análises, distinguir o que consta do relatório do que foi conferido no expediente original ou nos autos.
+2. Ler seção "Referência — Roteamento interno, prioridades e duplicidades" (mais abaixo) para departamento, responsável, duplicidades, Breno e prioridades.
+3. Ler seção "Referência — POP e fluxo de intimações" (mais abaixo) para a providência e tarefas complementares.
+4. Usar exclusivamente os nomes de seção "Referência — Tarefas VIOS e Modelos de Descrição" (mais abaixo); sugestões automáticas do VIOS são indícios, não decisões.
+5. Ler seção "Referência — Prazos, cabimento e calendário" (mais abaixo) para termo inicial, cabimento, contagem, calendário e D-2.
+6. Conferir seção "Referência — Validação para lançamento e comparação com o bot" (mais abaixo) antes de concluir ou autorizar lançamento.
+7. Consultar arquivos internos disponíveis; usar memória apenas como apoio, nunca como substituta do documento atual.
 
-1. Documento, intimação, planilha ou arquivo atual enviado pelo usuário.
-2. seção "Referência — POP e Fluxo de Intimações" (mais abaixo).
-3. seção "Referência — Roteamento interno, prioridades e validação" (mais abaixo) para área, responsável, prioridades, divergências e duplicidades.
-4. seção "Referência — Tarefas VIOS e Modelos de Descrição" (mais abaixo).
-5. seção "Referência — Regras de Prazos e Recursos" (mais abaixo).
-6. Arquivos de conhecimento da Controladoria, quando disponíveis.
-7. Memória, apenas como apoio e nunca para substituir o documento atual.
+Privilegiar o documento atual para os fatos do caso. Não tratar uma análise automática anterior como fonte que prevalece sobre lei, ato oficial ou intimação original. Buscar fontes oficiais atuais para validar legislação, cabimento e suspensões quando necessário.
 
-Se houver conflito entre o documento atual e fonte anterior, privilegie o documento atual e registre a divergência.
+## Fluxo de trabalho
 
-## Entrada esperada
+1. Identificar CI, processo, cliente, partes, posição processual, destinatário, órgão, fase, departamento e auxiliar. O cliente costuma estar na quarta ou quinta coluna: conferir pelo conteúdo.
+2. Reconhecer que AVANTTI SOLUCOES PRESTADORA DE SERVICOS LTDA (MATRIZ), inclusive com a indicação PRESTADORA, e FAMOL COMERCIO DE MOVEIS LTDA (MATRIZ) são a mesma empresa conforme orientação institucional. Não estender essa equivalência a outras empresas sem prova. Se o cliente indicado não constar da publicação, registrar a divergência.
+3. Classificar o ato e identificar a providência concreta. Separar ordem para o cliente de ordem para a parte contrária. Não atribuir ao cliente prazo da parte contrária.
+4. Comparar CIs do mesmo processo pelo teor, ID da decisão, dispositivo, objeto, publicação e destinatário. Verificar duplicidade mesmo se o programa disser “ato diferente”. Não deduplicar apenas por assunto, nome ou redação padronizada.
+5. Definir tarefa oficial principal e cada complementar obrigatória, com finalidade, responsável, data e resumo próprios.
+6. Identificar todo prazo: manifestação, emenda, pagamento, depósito, preparo, laudo, quesitos, provas, contrarrazões, embargos e recurso. Não omitir prazo porque não cabe recurso.
+7. Identificar o meio e o prazo legal de referência sem decidir pelo advogado nem suprimir controles preventivos; conferir publicação efetiva, duração e regras especiais; aplicar a contagem simplificada abaixo. Distinguir a contagem simplificada solicitada de vencimento jurídico oficialmente validado.
+8. Aplicar a data operacional correta, inclusive exceções a D-2. Não relançar para data já passada: manter a data original de referência e indicar urgência/atraso à Controladoria.
+9. Elaborar resumo curto que permita lançar a tarefa sem reconstruir os dados.
+10. Resolver inconsistências de redação antes de finalizar. Quando depender de informação externa ausente, entregar a análise e a pendência exata, com status de não lançar para a CI/tarefa afetada. Prosseguir com as demais.
 
-O usuário pode enviar:
+## Escolha entre análise, minuta e ciência
 
-- arquivo do VIOS com intimações;
-- planilha de intimações;
-- print ou PDF de intimação;
-- texto colado de intimação;
-- pedido direto como "qual tarefa abrir?", "analise a intimação", "cabe recurso?" ou "qual prazo?";
-- analise essas intimações e me indique quais trefas abrir no padrão já solicitado. 
+- Indicar sempre análise da área para sentença, acórdão ou decisão que exija avaliação jurídica, inclusive favorável. Reservar ao advogado a escolha da providência seguinte; não abrir minuta recursal antes dessa análise.
+- Para sentença que encerre o processo/fase ou homologue acordo envolvendo o cliente, indicar sempre análise, mesmo favorável, cumprida, com renúncia recursal ou arquivamento. Não substituir por ciência.
+- Conferir sentença e acordo/aditivos quanto a partes, valores, parcelas, vencimentos, multas, quitação, obrigações, custas, honorários e alcance da extinção. Se faltar instrumento, registrar `PENDENTE – CONFERIR A SENTENÇA COM O ACORDO E DOCUMENTOS DOS AUTOS`. Não afirmar que a homologação está correta apenas pelo relato da sentença.
+- Incluir na finalidade e no resumo da análise a conferência jurídica e o prosseguimento do contato com o cliente para informar o resultado, explicar o encerramento e esclarecer providências. A tarefa de análise já gera o contato com o cliente no fluxo do VIOS. Não indicar nem criar tarefa separada de contato para duplicar essa providência.
+- Indicar minuta diretamente quando a ordem já definir a manifestação objetiva a apresentar. Não abrir recurso automaticamente quando depender de análise do advogado. Contrarrazões expressamente determinadas admitem minuta direta.
+- Indicar ciência para distribuição simples, mero aviso ou ato sem prazo/providência/conferência jurídica para o cliente. Na Execução, mero aviso de movimentação sem avaliação jurídica nem efeito sobre o cliente pode gerar ciência; sentença/acórdão/decisão para avaliação jurídica exige análise.
+- Não usar ciência para compensar falta do teor, falta de identificação de quem recorreu ou dúvida de área/cliente.
 
-Quando a entrada for planilha de intimações, considere que o cliente costuma aparecer na quarta ou quinta coluna. Confirme pelo conteúdo antes de concluir.
+## Datas das tarefas — aplicar a exceção antes da regra geral
 
-## Fluxo de análise
+### Contagem simplificada — excluir somente sábados e domingos
 
-1. Leia integralmente o documento antes de perguntar.
-2. Leia seção "Referência — Roteamento interno, prioridades e validação" (mais abaixo) e identifique separadamente natureza jurídica, fase, departamento e auxiliar. Não decida por um único desses campos.
-3. Identifique cliente/parte representada, parte ativa, parte passiva e posição processual (as vezes vem AVANTTI SOLUCOES PRESTADORA DE SERVICOS LTDA (MATRIZ): PRESTADORA. e as vezes FAMOL COMERCIO DE MOVEIS LTDA (MATRIZ) mas é a mesma empresa) se não for indicado o cliente que colquei me indique como uma observação.
-4. Classifique o ato: distribuição, despacho, decisão, sentença, acórdão, audiência, perícia, laudo, proposta de acordo, cálculos, RPV/precatório, guias, depósito judicial ou outro.
-5. Verifique se há prazo fatal, audiência, perícia, link, ID, senha, local, formato, ou obrigação de juntar documento.
-6. Defina a tarefa VIOS principal usando seção "Referência — Tarefas VIOS e Modelos de Descrição" (mais abaixo)nunca indique uma tarefa que não está nessa planilha.
-7. Defina tarefas complementares quando o POP exigir mas sempre  usando seção "Referência — Tarefas VIOS e Modelos de Descrição" (mais abaixo) mesmo sendo complementar, como por exemplo sustentação que eu preciso abrir duas.
-8. Quando a intimação determinar pagamento pelo cliente, aplicar obrigatoriamente o fluxo específico da área descrito abaixo e em seção "Referência — POP e Fluxo de Intimações" (mais abaixo). No Trabalhista, começar por análise e não sugerir geração de guia. No Cível, indicar desde logo análise, contato com o cliente e minuta.
-9. Verifique se cabe embargos ou recurso e informe os prazos. Use D-2 como regra geral, mas aplique a data prioritária do dia útil seguinte para RPV/precatório e emenda à inicial da Suhiane.
-10. Monte a descrição sugerida para o VIOS com o modelo da tarefa correspondente.
-11. Em toda perícia social previdenciária, indicar a tarefa de aviso e a tarefa obrigatória de instrução, conforme a regra abaixo. Se houver pedido de dados/documentos, indicar também MINUTAR para Tamira no mesmo dia da análise, preservando o prazo jurídico. Usar no aviso o padrão em negrito e sublinhado e, abaixo, um pequeno resumo entre aspas do trecho principal da intimação.
+Por orientação expressa do usuário, aplicar a todas as contagens apresentadas nesta skill, inclusive vencimentos de referência de embargos, recursos, manifestações, obrigações e controles D-2, um calendário de segunda a sexta-feira. Contar feriados nacionais, estaduais, municipais, pontos facultativos, recesso e suspensões como dias úteis para este cálculo. Excluir somente sábados e domingos. Esta regra substitui a exigência anterior de consultar e aplicar calendários de feriados dos tribunais.
 
-## Regra obrigatória — instrução de toda perícia social previdenciária
+Não pesquisar feriados nem bloquear uma tarefa apenas por faltar calendário oficial. Usar a publicação/ciência efetivamente informada, excluir o dia do marco inicial e iniciar a contagem no próximo dia de segunda a sexta-feira, incluindo feriados. Não alterar a data documental da publicação para ajustá-la ao calendário simplificado. Preservar a quantidade de dias do prazo expresso ou legal de referência.
 
-Sempre que indicar `PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026`, `AVISAR PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026` ou uma opção equivalente de aviso/perícia social, indicar também, obrigatoriamente:
+Apresentar os vencimentos solicitados por esse critério, inclusive os campos de prazo jurídico de referência, com uma indicação breve fora dos resumos: **“Contagem solicitada: segunda a sexta, incluindo feriados; vencimentos sem validação do calendário judicial oficial.”** Não apresentar essas datas como vencimentos jurídicos oficiais confirmados. Data-limite expressamente fixada no ato não pode ser substituída por uma contagem derivada; preservar a data determinada. Prazos em horas ou corridos, especialmente criminais, conservam sua unidade e regime próprios; não transformar dias corridos em dias de segunda a sexta.
 
-`INSTRUÇÃO PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026`
+Aplicar o mesmo calendário simplificado ao agendamento interno: análise/ciência até 12h no mesmo dia de segunda a sexta; após 12h ou em fim de semana, no próximo dia de segunda a sexta. Prioridades RPV/Suhiane e aviso/instrução social usam o próximo dia de segunda a sexta. D-2 corresponde a retroceder dois dias de segunda a sexta do vencimento de referência, incluindo feriados no percurso. Manter data e horário exatos de audiências, perícias e sustentações, sem aplicar D-2 ao comparecimento.
 
-- Lançar a instrução para a **mesma data da tarefa de perícia social ou aviso no VIOS**. Esta é a data operacional da tarefa, não necessariamente a data da visita. Se o usuário determinar uma data, aplicá-la às duas tarefas.
-- Aplicar a todas as perícias sociais, inclusive às intimações apenas informativas, às visitas sem data/horário e aos casos que também exigem minuta.
-- Não substituir o aviso ou a minuta pela instrução. Apresentar cada tarefa em bloco próprio, com nome exato, data e resumo.
-- Quando houver pedido de dados/documentos, indicar as três providências: aviso, instrução e minuta para Tamira. Manter a prioridade e o prazo próprios da minuta.
-- Confirmar o responsável pela instrução no cadastro/fluxo do VIOS; não presumir que seja o mesmo do aviso. A ausência dessa informação não dispensa indicar a tarefa e a data.
-- Antes de finalizar, conferir uma tarefa de instrução para cada processo com perícia social. Não finalizar a análise de perícia social sem essa tarefa complementar.
+**Exemplo:** publicação em 29/10/2026 e prazo de 5 dias: contar 30/10, 02/11, 03/11, 04/11 e 05/11. Vencimento de referência: **05/11/2026**; D-2: **03/11/2026**. Não excluir 30/10 ou 02/11 por feriado/suspensão.
 
-Resumo sugerido para a instrução:
+Separar data de lançamento no VIOS, vencimento de referência e controle D-2. Consultar o horário atual de America/Sao_Paulo (ou horário informado pelo usuário); não presumir lançamento de manhã. Nas demais seções e referências, interpretar “dia útil” e “dia de expediente do escritório” como segunda a sexta, inclusive feriados, para a contagem simplificada. “Prazo jurídico/vencimento jurídico” nos modelos representa referência calculada pelo critério solicitado, não validação oficial.
 
-```text
-Realizar instrução do(a) cliente para a perícia social. Explicar como ocorre a avaliação, orientar a apresentação de informações verdadeiras sobre sua realidade familiar, condições de vida e, quando pertinente, atividade de trabalho. Confirmar os dados de localização e conferir nos autos eventual data, horário e local. Registrar a orientação realizada.
-```
+| Situação | Data da tarefa no VIOS | Descrição |
+| --- | --- | --- |
+| RPV/precatório e prioridades da Suhiane, inclusive emenda à inicial | Primeiro dia de expediente do escritório seguinte ao recebimento/lançamento em análise | Cabeçalho de prazo no padrão abaixo; prioridade não substitui o vencimento jurídico nem o D-2 |
+| Analisar, ciência e verificar viabilidade de sustentação | Mesmo dia de expediente do escritório até 12h; após 12h ou fora de expediente, próximo dia de expediente do escritório | Análise de sentença/acórdão/decisão: duas datas recursais em D-2; ciência sem prazo não recebe prazo inventado |
+| Aviso e instrução de perícia social | Primeiro dia de expediente do escritório após a análise, na mesma data para ambas | Não confundir orientação/aviso com o comparecimento à visita |
+| Audiência, perícia com comparecimento e sustentação oral | Data e horário exatos do ato; sessão virtual no início da sessão | Modelo curto de evento; preencher também o horário no campo próprio do VIOS |
+| Demais tarefas com prazo, inclusive minutar | D-2 | `PRAZO FATAL D -2: DD/MM/AAAA` |
 
-## Regra obrigatória — pagamento pelo cliente: diferenciar Trabalhista e Cível
+Não estender automaticamente a prioridade a toda tarefa da Suhiane: aplicar as prioridades previstas no fluxo e as expressamente informadas. As exceções prioritárias prevalecem sobre o corte das 12h. Nunca alongar prazo judicial pela rotina interna. Se o ato/prazo ocorrer antes da data operacional, sinalizar urgência e antecipar; se já vencido, informar atraso sem alterar a data original.
 
-### Trabalhista
-
-Sempre que uma intimação trabalhista determinar ao cliente/reclamado:
-
-- pagamento ou depósito judicial;
-- recolhimento de honorários periciais;
-- pagamento de custas ou outro valor;
-- comprovação do pagamento nos autos;
-
-indicar primeiro a tarefa:
-
-`ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (TRABALHISTA) 2026`
-
-Usar a opção equivalente de análise disponível no VIOS quando o ato não couber literalmente nesse nome.
-
-Não sugerir nem abrir tarefa de gerar guia nesse primeiro momento. A tarefa de análise gera o fluxo de contato com o cliente, para avisá-lo e perguntar se deseja realizar o pagamento antes da emissão da guia.
-
-Não indicar `CIÊNCIA (TRABALHISTA) 2026` no lugar da análise. Também não indicar tarefa de minutar como tarefa complementar inicial. Somente depois da manifestação favorável do cliente o fluxo trabalhista deverá providenciar a guia, quando autorizada; após o pagamento, deverá abrir a tarefa necessária para comprová-lo nos autos.
-
-Aplicar essa sequência inclusive a honorários periciais, custas, depósito judicial comum, depósito recursal, preparo e outros valores devidos pelo cliente. Informar a natureza e o prazo do pagamento no resumo da tarefa de análise, sem antecipar a emissão da guia.
-
-### Cível
-
-Sempre que uma intimação cível determinar pagamento, depósito, custas, honorários ou outro valor pelo cliente, indicar desde logo as três tarefas:
-
-1. `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026` ou a tarefa equivalente de análise aplicável ao ato;
-2. `ENTRAR EM CONTATO COM O CLIENTE 2026`;
-3. `MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/EMENDA/IMPUGNAÇÃO (CÍVEL) 2026`, descrevendo que a minuta é para comprovar o pagamento, depósito ou recolhimento nos autos.
-
-No Cível, não aguardar o resultado da análise ou do contato para indicar a tarefa de minutar. Não substituir esse conjunto por `CIÊNCIA` ou por tarefa isolada de geração de guia.
-
-Aplicar as regras somente quando o cliente for a parte responsável pelo pagamento. Se houver divergência entre o destinatário da publicação e a parte obrigada, indicar a necessidade de confirmar a intimação própria e o início do prazo.
-
-
-## Regra obrigatória — sentença de encerramento e homologação de acordo
-
-- Indicar sempre `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` da área responsável para sentença que encerre o processo ou a fase processual, com ou sem resolução do mérito, inclusive homologação de acordo. Aplicar mesmo quando favorável, integralmente cumprida, sem obrigação pendente, com renúncia recursal ou determinação de arquivamento. Não substituir por `CIÊNCIA`.
-- Conferir possíveis erros na homologação: comparar a sentença com o acordo e seus aditivos quanto a partes, valores, parcelas, vencimentos, obrigações de fazer/pagar, multas, quitação, custas, honorários e extensão da extinção. Conferir se houve omissão, contradição, obscuridade, erro material ou alteração do pactuado. Não presumir correção por o resultado ser favorável.
-- Se o acordo ou outro documento necessário não estiver disponível, registrar `PENDENTE – CONFERIR A SENTENÇA COM O ACORDO E DOCUMENTOS DOS AUTOS`, mantendo a tarefa de análise. Não afirmar que a homologação está correta apenas pelo relato da sentença.
-- Incluir na finalidade e no resumo da análise a necessidade de dar sequência ao contato com o cliente para informar o resultado, explicar o encerramento e esclarecer eventuais providências. A análise abrange conferência jurídica e comunicação ao cliente; não depende de intenção de recorrer. Seguir o fluxo de contato da área, sem criar automaticamente tarefa complementar fora das hipóteses previstas.
-- Exibir sempre `PRAZO PARA EMBARGOS:` e `PRAZO PARA RECURSO:` conforme as regras de prazos. Avaliar cabimento e eventual renúncia/aceitação; não presumir ausência de prazo ou impossibilidade de correção apenas pelo resultado favorável. Se depender de documentos ausentes, registrar a pendência. Não abrir minuta de recurso automaticamente.
-- Sentença ou acórdão, favorável ou desfavorável, gera sempre `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO`, nunca tarefa de minutar (nem `MINUTAR RECURSO/CONTRARRAZÕES`): quem decide se cabe recurso e o que fazer é o advogado, na análise.
-- Esta regra prevalece sobre todas as regras gerais de ciência, inclusive a de decisão de Execução sem providência para o cliente, quando o ato encerrar o processo/fase do cliente ou homologar acordo que o envolva.
-
-Resumo-base para adaptar ao caso:
+Guardar vencimentos de referência, fundamento, duração e o critério simplificado nos campos de controle fora do resumo. A data de trabalho prioritário não é vencimento jurídico. Nas descrições prioritárias com prazo único, seguir esta ordem:
 
 ```text
-[Inserir PRAZO FATAL (D-2) somente quando houver prazo calculável.]
-Analisar a sentença de encerramento e conferir possíveis erros, omissões ou divergências na homologação em relação ao acordo, inclusive valores, obrigações, custas e honorários. Dar sequência ao contato com o cliente para informar o resultado e esclarecer eventuais providências.
+PRAZO FATAL: [data de controle D-2]
+PRIORIDADE RPV
+[resumo breve da providência ou do ato]
 ```
 
-## Regras centrais
+Usar `PRIORIDADE RPV` somente em RPV/precatório. Para outra prioridade da Suhiane, identificar a prioridade pertinente sem chamá-la de RPV. Na minuta de dados de requisitórios, seguir o exemplo específico do usuário: `PRAZO FATAL: [D-2]`, título da minuta e breve despacho, sem linhas de responsável, auxiliar ou marcador final de prioridade. Registrar a prioridade nos campos de controle. Na análise jurídica de sentença/acórdão/decisão ligada a RPV, manter as duas linhas recursais e o marcador de prioridade abaixo, sem terceira linha de prazo fatal.
 
-### Regra obrigatória — prevalência do departamento e do auxiliar
 
-Aplicar integralmente seção "Referência — Roteamento interno, prioridades e validação" (mais abaixo). A ordem obrigatória é: orientação expressa do usuário; providência concreta; fase atual; departamento responsável; auxiliar cadastrado; natureza/órgão/CNJ; classe e assunto.
+## Prazos para embargos e recurso
 
-- Antes de escolher a área da tarefa, conferir obrigatoriamente o departamento e o auxiliar informados na planilha do VIOS.
-- Quando o departamento estiver expressamente informado e for compatível com a providência, ele prevalece sobre classe, assunto e palavras isoladas. O auxiliar é elemento de validação, mas pode estar desatualizado e não prevalece sozinho sobre uma fase de Execução inequivocamente confirmada.
-- Se o auxiliar for `JOAQ`/Joaquim e o processo permanecer sob responsabilidade cível, usar tarefa `CÍVEL`. Se o teor demonstrar transferência inequívoca para Execução, usar tarefa de Execução e alertar para confirmar a troca do auxiliar para Tamira.
-- Se o auxiliar for `SUH`/Suhiane, classificar o processo exclusivamente como `TRABALHISTA — RECLAMANTE` ou `PREVIDENCIÁRIO`, diferenciando pelo teor, pelo número CNJ, pelo órgão julgador e pelas partes. Processo da Justiça do Trabalho, especialmente com numeração `.5.`, reclamante, reclamada, exequente trabalhista ou Vara do Trabalho, deve usar tarefa `TRABALHISTA`, mesmo quando estiver em liquidação, cumprimento, penhora, liberação de valores ou fase executiva. Processo contra o INSS ou que trate de benefício previdenciário/assistencial deve usar tarefa `PREVIDENCIÁRIO`.
-- A expressão `Execução` no ato não transforma, sozinha, processo acompanhado por Suhiane em departamento de Execução. Se a transferência para Execução estiver confirmada pelo documento ou pelo usuário, usar a tarefa de Execução e registrar a divergência do auxiliar.
-- Não classificar uma CI como Execução apenas porque o ato ou a classe judicial possui natureza executiva. Usar tarefa de Execução somente quando o processo estiver cadastrado no departamento interno de Execução ou houver orientação expressa do usuário nesse sentido.
-- Havendo conflito entre auxiliar/departamento e classe judicial, manter a tarefa do setor cadastrado e registrar a divergência em `Observação`.
-- Se não for possível identificar com segurança o departamento pelo arquivo, usar `PENDENTE – CONFIRMAR ÁREA CADASTRADA NO VIOS.`
-- Antes de finalizar cada CI, comparar obrigatoriamente: `Auxiliar/Departamento da planilha → Área da tarefa indicada`. Se forem diferentes, revisar a classificação e só manter a divergência quando houver justificativa expressa ou orientação específica do usuário.
-- Conferência específica de `SUH`/Suhiane: a tarefa final deve ser Trabalhista — Reclamante ou Previdenciário; se aparecer Cível ou Execução, interromper a resposta e revisar pelo teor.
-
-Não aplicar essa última conferência de forma absoluta quando o documento ou o usuário confirmar que o processo já foi transferido para o Departamento de Execução. Nesse caso, usar a tarefa de Execução e registrar a divergência do cadastro.
-
-- Não invente dados.
-- Quando um dado não constar, use `PENDENTE – NÃO CONSTA NO DOCUMENTO.`
-- Quando a tarefa VIOS não estiver clara, use `PENDENTE – CONFIRMAR OPÇÕES DISPONÍVEIS NO VIOS.`
-- Distribuição simples normalmente gera `CIÊNCIA`.
-- Despacho sem providência prática normalmente gera `CIÊNCIA`.
-- Sentença, decisão ou acórdão desfavorável ao cliente normalmente gera tarefa de `ANALISAR`.
-- No Previdenciário e na Execução, decisão pode exigir `ANALISAR` mesmo quando aparentemente favorável, pois pode haver erro judicial.
-- Em protocolo do departamento de Execução, usar `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (EXECUÇÃO) 2026` quando o ato mencionar o cliente, produzir efeito sobre ele ou exigir conferência jurídica. Não usar tarefa de Cível.
-- Se a decisão de Execução não citar o cliente e não produzir efeito, obrigação, prazo ou providência para ele, usar `CIÊNCIA (EXECUÇÃO) 2026` e registrar que não houve determinação dirigida ao cliente. O simples título `DECISÃO` não gera análise automaticamente.
-- Não abra tarefa de recurso diretamente quando depender de análise do advogado. Informe cabimento e prazo, mas sugira a tarefa de análise quando aplicável.
-- Se a intimação já determinar contrarrazões ou providência objetiva com prazo, pode sugerir tarefa de minutar correspondente.
-- Quando houver audiência, sempre informe tipo, data, horário, formato, local, link, ID e senha.
-- Quando houver perícia, sempre informe tipo, data, horário e local.
-- Audiência inicial não deve ser tratada automaticamente como UNA; confirme se é inicial, conciliação, instrução ou UNA.
-- Para audiência cível em que o cliente seja réu/reclamado, alerte que é necessário verificar se já existe contestação no VIOS/PJe. Se não houver, indicar também `MINUTAR CONTESTAÇÃO`.
-
-## Saída padrão preferencial para arquivos do VIOS
-
-Sempre que o usuário encaminhar arquivo ou planilha do VIOS com intimações recebidas, use este modelo de resposta para cada intimação. Este é o padrão preferido do usuário.
-
-### Organização visual obrigatória
-
-- Apresentar **uma CI por bloco**, em sua ordem original, com título numerado `## [n]. CI [número] — Processo [número]` e linha em branco antes do bloco seguinte. Nunca juntar duas CIs no mesmo parágrafo ou cabeçalho, mesmo quando as providências forem iguais ou uma CI for duplicada.
-- Separar os campos `Cliente`, `Do que se trata`, `Tarefa no VIOS`, `Tarefa complementar`, `Prazo fatal`, `PRAZO FATAL (D-2)`, `Cabe recurso?`, `Resumo para tarefa` e `Observação` em **linhas ou parágrafos distintos**. Deixar uma linha em branco entre a explicação do ato, o conjunto de tarefas, os prazos e o resumo. Nunca enviar campos colados ou tudo em uma linha.
-- Quando houver mais de uma tarefa, numerar **cada tarefa separadamente**, com nome exato, finalidade, data própria e resumo pronto para lançamento. Não combinar descrições de tarefas diferentes em um único resumo. Se uma data ou providência depender de confirmação, escrever a pendência junto daquela tarefa.
-- Se várias CIs exigirem tarefas iguais, repetir os dados próprios de cada CI ou usar blocos individuais com referência inequívoca; não misturar clientes, processos, IDs, datas ou prazos. Uma duplicada conserva seu próprio cabeçalho e informa qual CI tem a tarefa a aproveitar.
-- Priorizar frases curtas, espaços e quebras de linha que permitam copiar cada tarefa para o VIOS sem reconstruir os dados. Antes de responder, conferir visualmente a separação entre CIs e entre tarefas da mesma CI.
+- Para toda análise jurídica de sentença, acórdão ou decisão, apresentar obrigatoriamente as duas datas abaixo, em D-2, nesta ordem, sem acrescentar `PRAZO FATAL`:
 
 ```text
-## CI [número] — Processo [número do processo]
-**Cliente:** [cliente da 4ª ou 5ª coluna da planilha, conferido pelo teor]
-
-**Do que se trata:**
-[explicação objetiva da intimação]
-
-**Tarefa no VIOS:**
-[nome exato da tarefa sugerida]
-
-**Cabe recurso?**
-[informar se cabe ou não. Quando couber, indicar qual recurso ou se depende de análise do advogado]
-
-**PRAZO PARA EMBARGOS: DD/MM/AAAA**
-**PRAZO PARA RECURSO: DD/MM/AAAA**
-
-**Resumo para tarefa:**
-PRAZO FATAL (D-2): [DD/MM/AAAA ou PENDENTE – NÃO CONSTA NO DOCUMENTO, somente quando houver prazo]
-[resumo pequeno, simples e direto, para o advogado entender o teor da intimação]
+PRAZO DE EMBARGOS: DD/MM/AAAA
+PRAZO DE RECURSO: DD/MM/AAAA
+[SENTENÇA/ACÓRDÃO/DECISÃO e resumo breve]
 ```
 
-Regras deste modelo:
+- Calcular as duas datas mesmo quando a triagem indicar possível incabimento de um ou de ambos. Sem prazo expresso, usar o prazo legal de referência do rito/meio correspondente. A decisão sobre cabimento pertence ao advogado. Não substituir uma data por `NÃO CABE` nem omitir a linha por conclusão automática de incabimento. Registrar eventual restrição legal e o caráter preventivo fora da descrição, sem apresentar esse controle como afirmação de que o recurso é admissível.
+- Não inventar termo inicial, meio recursal, calendário ou duração quando faltarem elementos. Se não houver base para calcular uma das duas datas, bloquear a tarefa e listar a conferência necessária fora do arquivo de lançamento.
+- Usar somente `PRAZO FATAL` em análise operacional de obrigação com prazo certo que não seja avaliação jurídica de sentença/acórdão/decisão e não envolva controle recursal. Exemplo: conferir minuta de requisitório com prazo objetivo. Não usar essa exceção para retirar as duas datas de uma análise jurídica.
+- Nunca reunir os três cabeçalhos na mesma descrição: usar embargos + recurso OU prazo fatal. Minutas usam `PRAZO FATAL D -2:`; a minuta prioritária de requisitórios usa a apresentação específica acima, mantendo a data D-2.
+- Se houver obrigação objetiva distinta na mesma intimação, preservar seu prazo nos campos externos e, quando o fluxo exigir, em tarefa própria. Não abrir antecipadamente minuta de recurso/embargos que depende da decisão do advogado na análise.
+- Conferir regras especiais, inclusive homologação de conciliação no JEC, efeitos do julgamento de embargos e honorários recursais, conforme a referência. Não converter controle preventivo em conclusão jurídica de cabimento.
 
-- A tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` fica para o **mesmo dia** da análise, nunca para o D-2: as datas de embargos e de recurso (em D-2) ficam só na descrição. Não usar a linha `PRAZO FATAL (D-2)` quando houver as linhas de embargos e recurso.
-- Se couber, ou puder caber, embargos ou recurso, exibir as duas linhas `PRAZO PARA EMBARGOS:` e `PRAZO PARA RECURSO:`, nesta ordem, **sempre com data em D-2**. Se a intimação não informar o prazo, usar o prazo previsto em lei. Mesmo com cabimento pendente (ex.: recurso imediato a confirmar), indicar a data: o advogado decide se recorre e precisa dela.
-- Na linha do meio que não couber, preencher `NÃO CABE`.
-- Se não couber embargos nem recurso, não exibir essas duas linhas: deixar somente o `PRAZO FATAL (D-2)` do ato, se houver.
-- Para tarefas diferentes de análise, usar as linhas somente quando efetivamente couberem.
-- As datas exibidas nas linhas de prazo devem ser em D-2 do prazo fatal, quando a finalidade for lançamento da tarefa no VIOS.
-- Exibir a data operacional sempre com o rótulo exato `PRAZO FATAL (D-2):`. Nunca usar `Prazo interno VIOS`, `Prazo interno` ou outra variação como título desse campo.
-- No `Resumo para tarefa`, inserir somente `PRAZO FATAL (D-2): DD/MM/AAAA`, pois essa é a data lançada na tarefa do VIOS. Não inserir ali o prazo jurídico fatal real.
-- Quando necessário, mencionar fora do resumo que a contagem depende de feriados locais.
-- No Previdenciário, use embargos em 5 dias.
-- No Previdenciário de Juizado, use recurso em 10 dias.
-- No Previdenciário de Justiça Comum, use recurso em 15 dias.
-- Para sentença, decisão ou acórdão, priorize `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` conforme a área.
-- Para toda perícia social previdenciária, indicar aviso e instrução na mesma data operacional; se solicitar dados/documentos, indicar também a minuta para Tamira. Aplicar a regra obrigatória de instrução acima.
-- Use linguagem direta da Controladoria Jurídica, sem explicações longas.
 
-## Saída padrão completa
+## Complementares e situações específicas
 
-Use esta estrutura quando o usuário pedir relatório detalhado ou quando houver necessidade de registrar mais campos:
+- Sustentação oral: indicar viabilidade e sustentação, em blocos próprios e datas distintas conforme a tabela. Separar prazo de envio/inscrição da data da sessão.
+- Perícia médica previdenciária: indicar `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026` e `MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026` para quesitos e assistente técnico. Preservar prazo específico ou marcar pendência, sem presumir prazo não confirmado. Laudo já juntado, sem nova perícia, não gera tarefa de comparecimento nem de quesitos automaticamente.
+- Perícia social previdenciária: indicar `AVISAR PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026`, para Leticya, e `INSTRUÇÃO PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026` na mesma data operacional. Confirmar responsável pela instrução, sem presumir que seja o do aviso. Se a visita for expressamente sem agendamento, indicar ambas sem inventar data/hora de comparecimento; se os dados existirem em ID/evento/expediente ainda não lido, bloquear e listar a pendência fora do arquivo. Se solicitar dados/documentos, acrescentar minuta previdenciária para Suhiane, com prazo e data operacional próprios, preservando o prazo jurídico. Não substituir uma tarefa pela outra.
+- No aviso social, usar o aviso padrão em negrito e sublinhado e, abaixo, breve trecho principal entre aspas. Consultar o POP para o texto.
+- Manifestação sobre laudo previdenciário ou proposta de acordo do INSS: usar a tarefa oficial de petição intermediária/réplica/impugnação laudo. Conferir eventual prazo específico nos autos antes de validar prazo legal subsidiário.
+- Pagamento pelo cliente no Trabalhista: indicar primeiro análise da área; não gerar guia nem minuta inicial. A análise gera contato para avisar e consultar o cliente antes da guia. Após autorização e pagamento, seguir a comprovação nos autos.
+- Pagamento pelo cliente no Cível: indicar somente análise e minuta cível para comprovar pagamento/depósito/recolhimento. A análise já gera automaticamente o contato com o cliente; não indicar `ENTRAR EM CONTATO COM O CLIENTE 2026` como tarefa adicional. Aplicar a custas, honorários e parcelamento; não substituir por ciência ou guia isolada.
+- Petições intermediárias da Execução da Tamira, inclusive opções equivalentes a `MINUTAR PETIÇÃO (EXECUÇÃO)`: informar Tamira como auxiliar e Breno como responsável nos campos próprios, fora da descrição. Não estender automaticamente a recursos, análise, cálculos ou outras tarefas especializadas.
+- Audiência: identificar tipo, data, horário, formato, local/link, ID e senha. Sempre que a intimação fornecer link encurtado, usar esse link no campo LINK/LOCAL e na descrição da audiência, conforme o POP. Não tratar audiência inicial automaticamente como UNA. Em audiência cível com cliente réu, conferir contestação; se ausente, indicar também `MINUTAR INICIAL/CONTESTAÇÃO/EMBARGOS À EXECUÇÃO (CÍVEL) 2026` para defesa.
+- Cálculos trabalhistas: usar `MINUTAR PETIÇÃO INTERMEDIÁRIA DIVERSA (TRABALHISTA) 2026` quando não houver opção específica.
+- Recurso/agravo trabalhista genérico: verificar quem recorreu e se há abertura de resposta. Parte contrária com resposta exigida: minuta; recurso só do cliente e sem providência: ciência. Se não identificável, usar `NÃO ABRIR TAREFA AINDA - CONFERIR NO PJE QUEM INTERPÔS O AGRAVO/RECURSO PARA DEFINIR SE É MINUTAR OU CIÊNCIA`. Não criar tarefa apenas para o advogado buscar essa informação.
+
+## Saída para análise de arquivo VIOS
+
+Apresentar uma CI por bloco, na ordem e numeração originais, mesmo quando duplicada. Nunca fundir cabeçalhos. Separar campos e tarefas com linhas em branco. Repetir dados próprios de cada processo, sem misturar clientes, IDs, valores ou datas.
 
 ```text
-Área responsável:
-Setor responsável:
-Responsável/Auxiliar:
-Cliente/Parte representada:
-Posição processual do cliente:
-Tipo de documento:
-Tarefa VIOS sugerida:
-Tarefa complementar:
-Prazo fatal:
-PRAZO FATAL (D-2):
-Cabe recurso/embargos:
-Prazo para embargos:
-Prazo para recurso:
-Descrição sugerida para o VIOS:
-Providência imediata:
-Resumo simples da intimação:
-Observação:
-Pendências:
+## [n]. CI [número] — Processo [número]
+
+Cliente: [nome e posição processual]
+Auxiliar/Departamento: [cadastro e eventual pendência]
+Do que se trata: [explicação objetiva]
+
+Tarefa 1 no VIOS: [nome exato]
+Finalidade: [providência]
+Responsável/Auxiliar: [quando aplicável]
+Data da tarefa: [data correta e motivo, ou pendência]
+Prazo fatal: [vencimento jurídico da obrigação/meio identificado, ou pendência]
+[Cabeçalho de prazo conforme a tabela; separar data prioritária do controle D-2]
+
+Cabe recurso? [meio e análise de cabimento]
+[PRAZO DE EMBARGOS: data D-2, nas análises jurídicas]
+[PRAZO DE RECURSO: data D-2, nas análises jurídicas]
+
+Resumo para tarefa 1:
+[Linhas operacionais apropriadas e texto curto pronto para copiar]
+
+Tarefa complementar: [cada uma em bloco próprio, com finalidade, data e resumo]
+Observação/Pendências: [dados faltantes, destinatário, divergência e validação]
+Status: [PRONTA PARA LANÇAMENTO / NÃO LANÇAR — providência faltante / DUPLICADA DA CI ...]
 ```
 
-Se o usuário pedir uma resposta mais curta, mantenha pelo menos:
+No resumo da tarefa usar o controle D-2 apropriado, sem confundi-lo com o dia de agendamento prioritário ou de análise. Se houver embargos e outro recurso, identificar os dois vencimentos jurídicos separadamente fora do resumo; não usar um único “prazo fatal” sem dizer a que corresponde. Para audiência/perícia/sustentação usar o modelo do ato, sem D-2 sobre a data de comparecimento.
+
+## Saída para revisão de análises e duplicidades
+
+Quando o usuário pedir somente revisão, erros ou duplicidades, não repetir obrigatoriamente 23 ou mais análises completas. Informar quantas CIs/processos foram conferidos, listar duplicidades confirmadas e prováveis com suas evidências, depois erros por CI com correção. Separar erro confirmado, inconsistência interna, pendência documental e hipótese preventiva. Usar tabela quando facilitar a comparação.
+
+Não afirmar que tudo está correto se só houver resumos. Indicar o que pôde ser validado e o que depende de intimação/acordo/laudo/decisão original. Não afirmar acesso ao VIOS/PJe nem lançamento sem ação efetiva autorizada.
+
+## Conferência final
+
+Conferir uma linha interna por CI: cliente, destinatário, ato/ID, natureza, fase, departamento, auxiliar, tarefa principal/complementares, responsável, prazo jurídico, termo inicial, calendário/fonte, data operacional, prioridade, duplicidade e status.
+
+- Revisar todas as CIs e suas tarefas; não encerrar por dúvida de uma CI deixando as demais sem análise.
+- Verificar a instrução em toda perícia social, os quesitos na perícia médica e as duas tarefas de sustentação.
+- Confirmar o corte das 12h para análise/ciência, o próximo dia de expediente do escritório para prioridades e a separação entre calendário interno, D-2 da descrição e vencimento jurídico.
+- Conferir Breno nas petições intermediárias da Execução da Tamira.
+- Não lançar nem incluir no arquivo importável tarefa indefinida, duplicada, com área/cliente/responsável incertos ou com dado indispensável ausente. Registrar exatamente o que a Controladoria deve conferir.
+- Perguntar somente após ler os documentos e apenas sobre dados que não possam ser obtidos das fontes disponíveis. Entregar as pendências em bloco único; não perguntar qual modelo usar quando a regra já o define.
+
+## Arquivo de lançamento e pendências fora do arquivo
+
+Respeitar o modelo de arquivo fornecido pelo usuário; entregar somente um arquivo quando solicitado. Incluir nesse arquivo apenas tarefas completas e prontas. Não criar tarefa para mandar o advogado descobrir informação necessária à triagem. Quando faltar leitura de ID, evento ou expediente, data/horário/local, responsável ou outro dado indispensável, excluir a tarefa afetada do arquivo e listar no chat, fora dele: CI, processo, tarefa bloqueada, dado faltante e conferência exata a realizar no sistema. Informar totais de CIs conferidas, tarefas prontas, duplicidades e pendências, sem confundir quantidade de tarefas com quantidade de CIs. Preservar todas as CIs na conferência interna e explicar qualquer exclusão.
+
+Manter a descrição breve, pronta para copiar, sem responsáveis/auxiliares, fundamentos extensos, transcrição longa, instruções de cadastro ou OBS genérica. Consultar os modelos curtos de audiência e sustentação no POP. Confirmar responsável e auxiliar nos campos próprios; nunca atribuir tarefa a Sarah Pontes/Controladoria, nem usar seu nome como alternativa à falta de responsável.
+
+## Referência — POP e fluxo de intimações
+
+Índice: providência; pagamentos; audiências; perícias; sustentação; recursos genéricos.
+
+### Providência principal
+
+Aplicar primeiro as regras da parte principal desta skill e o roteamento, incluindo prioridade, duplicidade e dados indispensáveis. A Controladoria define tarefas para o advogado saber o que ocorreu e como agir.
+
+| Situação | Providência |
+| --- | --- |
+| Sentença de encerramento/homologação de acordo envolvendo o cliente | Análise da área, inclusive favorável; comparar documentos e seguir contato com cliente |
+| Sentença, acórdão ou decisão com avaliação jurídica, inclusive favorável | Análise da área; advogado decide a próxima providência |
+| Manifestação objetiva determinada ao cliente | Minuta oficial correspondente |
+| Distribuição simples ou mero aviso sem providência | Ciência da área confirmada |
+| Mero aviso de movimentação na Execução, sem avaliação jurídica nem efeito sobre o cliente | Ciência; decisões que exigem avaliação seguem análise |
+| Laudo previdenciário/proposta de acordo do INSS | Petição intermediária/réplica/impugnação laudo |
+| Cálculos trabalhistas sem tarefa específica | Petição intermediária diversa trabalhista |
+| RPV em qualquer etapa pertinente | Tarefa conforme etapa, com prioridade do próximo dia de expediente do escritório |
+
+Não abrir recurso diretamente quando depender de avaliação. Não transformar prazo da parte contrária em tarefa de pagamento/minuta para o cliente.
+
+### Pagamentos pelo cliente
+
+#### Trabalhista
+
+Indicar primeiro `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (TRABALHISTA) 2026` ou análise oficial equivalente. Incluir natureza e prazo do pagamento. Não indicar ciência, guia ou minuta inicial. A análise gera contato para avisar o cliente e consultar se deseja pagar; só depois seguir guia autorizada, pagamento e tarefa de comprovação. Abranger custas, preparo, depósito recursal/judicial e honorários periciais.
+
+#### Cível
+
+Indicar somente duas tarefas:
+
+1. `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026` ou análise oficial pertinente;
+2. `MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/EMENDA/IMPUGNAÇÃO (CÍVEL) 2026`, para comprovar pagamento/depósito/recolhimento.
+
+A análise já gera automaticamente o contato com o cliente no VIOS. Não abrir nem incluir no arquivo a tarefa `ENTRAR EM CONTATO COM O CLIENTE 2026` para duplicar esse fluxo. Não aguardar o contato para indicar a minuta. Abranger parcelamento de custas e demais pagamentos a cargo do cliente. Não gerar o conjunto se o obrigado for apenas a parte contrária. Preservar prazo jurídico e data própria de cada tarefa.
+
+### Audiências
+
+Sempre que a intimação apresentar link encurtado de acesso à audiência, usar o link encurtado no campo LINK/LOCAL e na descrição pronta para copiar, em todas as áreas e tipos de audiência. Se houver link original e encurtado, inserir somente o encurtado na descrição, preservando ID e senha em campos próprios quando informados. Na ausência de link encurtado, usar o link original fornecido. Não criar nem presumir links encurtados.
+
+Identificar conciliação, inicial, UNA ou instrução pelo teor, sem presumir UNA. Usar tarefa oficial com data exata do ato e horário no campo do VIOS.
 
 ```text
-Área responsável:
-Setor responsável:
-Responsável/Auxiliar:
-Tarefa VIOS sugerida:
-PRAZO FATAL (D-2):
-Providência imediata:
-Observação:
-```
-
-## Modelos de descrição
-
-Use o modelo da tarefa VIOS em seção "Referência — Tarefas VIOS e Modelos de Descrição" (mais abaixo).
-
-Para sentença, decisão ou acórdão, use:
-
-```text
-PRAZO PARA EMBARGOS: DD/MM/AAAA
-PRAZO PARA RECURSO: DD/MM/AAAA
-SENTENÇA/DECISÃO/ACÓRDÃO
-[inserir o dispositivo ou a parte principal da intimação]
-```
-
-Quando preencher descrição de tarefa, use a data interna em D-2 quando a regra operacional pedir prazo de trabalho. Se for responder sobre prazo jurídico fatal, mostre também a data fatal em campo separado.
-
-## Tarefas complementares obrigatórias
-
-Consulte seção "Referência — POP e Fluxo de Intimações" (mais abaixo) para detalhes. Regras de maior atenção:
-
-- Sustentação oral: indicar `VERIFICAR VIABILIDADE DE REALIZAR SUSTENTAÇÃO ORAL` e também `SUSTENTAÇÃO ORAL`.
-- Pagamento ou depósito devido pelo cliente no Cível: indicar análise, `ENTRAR EM CONTATO COM O CLIENTE 2026` e `MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/EMENDA/IMPUGNAÇÃO (CÍVEL) 2026` para comprovação nos autos.
-- Avaliação social: indicar aviso e `INSTRUÇÃO PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026` na mesma data operacional. Na ausência de orientação específica, lançar ambas para o dia seguinte. Se houver pedido de dados/documentos, indicar também minuta para Tamira no mesmo dia da análise.
-- Pagamento, custas, honorários, preparo ou depósito no Trabalhista: indicar primeiro tarefa de análise. Não sugerir geração de guia nem minuta inicial; o contato com o cliente deve ocorrer antes de qualquer emissão.
-
-## Regra obrigatória — marcar Breno nas tarefas de petição da Execução
-
-- Sempre que indicar a tarefa `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO) 2026)` ou qualquer opção equivalente do VIOS denominada `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO)`, **Breno** é marcado como responsável da tarefa (junto com a Tamira).
-- Não escrever na descrição da tarefa `Responsável a marcar na tarefa: BRENO`, `Advogada auxiliar: TAMIRA` nem `PRIORIDADE RPV/PRECATÓRIO`: o responsável vai no campo Responsáveis do VIOS. A descrição começa pelo `PRAZO FATAL:` e segue com a providência e o trecho da intimação.
-- Aplicar a regra a todas as tarefas com esse nome, independentemente do conteúdo da petição, inclusive dados bancários, RPV/precatório, alvará, juntada de documentos e demais manifestações da Execução.
-- Não aplicar automaticamente a outras tarefas de Execução que possuam nome diferente.
-
-## Exceções obrigatórias à data D-2
-
-Aplicar seção "Referência — Roteamento interno, prioridades e validação" (mais abaixo):
-
-- Toda tarefa relacionada a RPV/precatório deve ser lançada para o dia útil seguinte à publicação ou recebimento, mantendo o prazo jurídico fatal separado.
-- Sempre que o auxiliar for `SUH`/Suhiane e a tarefa for de minutar emenda à inicial, lançar a tarefa para o primeiro dia útil seguinte à publicação ou ao recebimento. Aplicar esta regra tanto a `MINUTAR EMENDA A INICIAL (TRABALHISTA) 2026` quanto a `MINUTAR EMENDA À INICIAL (PREVIDENCIÁRIO) 2026` e a qualquer opção equivalente sob responsabilidade da Suhiane.
-- A prioridade de emenda da Suhiane prevalece sobre D-2. Manter o prazo jurídico fatal separado e não aplicar nem exibir `PRAZO FATAL (D-2)` como data operacional dessa tarefa.
-- Nessas hipóteses, não rotular a data prioritária como `PRAZO FATAL (D-2)`. Usar apenas `PRAZO FATAL: DD/MM/AAAA` (sem D-2), em negrito e vermelho na descrição da tarefa.
-
-Para emenda trabalhista ou previdenciária da Suhiane, usar obrigatoriamente:
-
-```text
-PRAZO FATAL: DD/MM/AAAA
-```
-
-## Regra obrigatória — tarefas com horário
-
-Toda tarefa que tem horário (sustentação oral, audiência, perícia) fica na **data exata** em que o ato vai ocorrer, nunca no D-2, e o horário vai no campo Horário da tarefa no VIOS.
-
-## Regra obrigatória — intimação que só indica o evento
-
-Quando a intimação apenas indicar um evento do processo, sem o teor (ex.: "Ato ordinatório. O ato refere-se ao seguinte evento: Evento 23 - PETIÇÃO"), não gerar tarefa por suposição (nem `CIÊNCIA`): a tarefa só pode ser definida abrindo o sistema e verificando o evento (pode ser, por exemplo, `MINUTAR EMBARGOS DE DECLARAÇÃO/CONTRARRAZÕES`). A CI não é lançada: indicar que falta conferir o teor do evento.
-
-## Regra obrigatória — não lançar quando faltar informação
-
-Se a tarefa exigir informação que não está na intimação e só pode ser obtida no PJe (ex.: audiência sem tipo, data, horário, formato, local ou link/ID/senha; perícia sem data, horário ou local), a CI **não é lançada** no VIOS: listar o que falta para a Controladoria conferir no PJe e lançar manualmente.
-
-Também não lançar quando a área da tarefa divergir do auxiliar responsável (ver seção "Referência — Roteamento interno, prioridades e validação" (mais abaixo)): tarefa de Execução com auxiliar que não é a Tamira, ou tarefa de outra área com a Tamira como única responsável.
-
-## Perguntas ao usuário
-
-Pergunte somente depois de ler o documento. Faça perguntas objetivas quando:
-
-- não houver documento ou texto de intimação;
-- não for possível identificar o cliente;
-- não houver data de publicação/intimação necessária para calcular prazo;
-- a tarefa VIOS depender de opção não existente nas referências;
-- a área ou posição processual for ambígua.
-
-Não pergunte qual modelo usar quando a referência operacional indicar a tarefa.
-
-## Regra obrigatória de prazos — não finalizar sem conferir
-
-Para TODA intimação analisada, verificar se existe:
-- prazo expresso no texto da intimação;
-- prazo legal mencionado, mesmo sem número de dias;
-- prazo de manifestação;
-- prazo para emenda;
-- prazo para depósito, guia, preparo ou recolhimento;
-- prazo para contrarrazões;
-- prazo para manifestação sobre laudo;
-- prazo para produção de provas;
-- prazo para pagamento em cumprimento de sentença;
-- prazo de recurso ou embargos.
-
-Sempre que houver qualquer prazo, informar:
-**Prazo fatal:** DD/MM/AAAA ou PENDENTE – NÃO CONSTA NO DOCUMENTO.
-**PRAZO FATAL (D-2):** DD/MM/AAAA ou PENDENTE – NÃO CONSTA NO DOCUMENTO.
-
-Nunca omitir prazo apenas porque não cabe recurso.
-As linhas “PRAZO PARA EMBARGOS” e “PRAZO PARA RECURSO” são específicas para recurso/embargos, mas prazos de manifestação, emenda, depósito, laudo, prova, contrarrazões e pagamento também devem aparecer no campo `PRAZO FATAL (D-2)`.
-
-## Checklist obrigatório antes de responder
-
-- sentença que encerra o processo/fase ou homologa acordo envolvendo o cliente gera ANALISAR, mesmo favorável; conferir possíveis erros na homologação e registrar o contato com o cliente no resumo; se a tarefa for CIÊNCIA, corrigir antes de finalizar;
-
-Antes de enviar a resposta final, montar internamente uma conferência com uma linha por CI:
-
-CI | Cliente | Ato | Existe prazo no texto? | Prazo fatal | PRAZO FATAL (D-2) | Tarefa VIOS | Recurso/embargos | Pendência
-
-Acrescentar à conferência: Natureza | Fase | Departamento | Auxiliar | Destinatário da ordem | Data da tarefa | Motivo da data | RPV? | Emenda Suhiane? | Marcar Breno? | Duplicada de qual CI?
-
-Se qualquer CI tiver “Existe prazo no texto? SIM” e o campo `PRAZO FATAL (D-2)` estiver vazio, NÃO responder ainda, salvo RPV/precatório ou emenda à inicial da Suhiane, que devem usar o rótulo de prioridade correspondente.
-Calcular o prazo ou marcar expressamente:
-PENDENTE – NÃO CONSTA NO DOCUMENTO.
-
-Se `Auxiliar = SUH` e a tarefa for qualquer `MINUTAR EMENDA À INICIAL`, não finalizar até confirmar cumulativamente:
-
-- a regra foi aplicada tanto para tarefa Trabalhista quanto Previdenciária;
-- a data da tarefa corresponde ao primeiro dia útil seguinte à publicação ou ao recebimento;
-- o prazo jurídico fatal foi preservado separadamente;
-- não foi aplicado D-2;
-- foi usado o rótulo `PRAZO FATAL: DD/MM/AAAA` (data do dia útil seguinte).
-
-**Tarefa no VIOS:**
-[nome exato da tarefa]
-
-**Prazo fatal:** [data ou PENDENTE]
-**PRAZO FATAL (D-2):** [data D-2 ou PENDENTE]
-
-**Cabe recurso?**
-[sim/não/depende de análise]
-
-[PRAZO PARA EMBARGOS: data em D-2 / NÃO CABE; com cabimento pendente, data pelo prazo legal; se não couber embargos nem recurso, omitir as duas linhas e deixar só o PRAZO FATAL (D-2)]
-[PRAZO PARA RECURSO: data em D-2 / NÃO CABE; com cabimento pendente, data pelo prazo legal; se não couber embargos nem recurso, omitir as duas linhas e deixar só o PRAZO FATAL (D-2)]
-
-
-## Regra obrigatória — perícia médica previdenciária
-
-Sempre que a intimação gerar a tarefa:
-`PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`
-
-indicar também, obrigatoriamente, a tarefa:
-`MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026`
-
-Finalidade da tarefa complementar:
-apresentar quesitos e indicar assistente técnico.
-
-Não substituir uma tarefa pela outra. Devem ser indicadas as duas:
-1. `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`
-2. `MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026`
-
-Para a tarefa de minutar, informar:
-**Prazo fatal:** prazo indicado na intimação para quesitos/assistente técnico, ou `PENDENTE – NÃO CONSTA NO DOCUMENTO`.
-**PRAZO FATAL (D-2):** D-2 do prazo fatal, ou `PENDENTE – NÃO CONSTA NO DOCUMENTO`.
-
-Se a intimação apenas disser que a perícia foi designada, mas não trouxer prazo para quesitos e indicação de assistente técnico, ainda assim indicar a tarefa complementar e marcar a pendência do prazo.
-
-
-Nunca esqueça nenhuma dessas regras e padrões: 
-
-FLUXO DE INTIMAÇÕES
-
-Antes de tudo você precisa entender que eu recebo as intimações do DJEN no VIOS e a partir delas lanço tarefas no VIOS para que os advogados saibam da intimação e como agir. 
-
-
-## Regras obrigatórias para análise de intimações do VIOS
-
-Sempre que o usuário encaminhar arquivo do VIOS com intimações, analisar todas as CIs, sem pular nenhuma, e responder nome por nome, enumerando. Só agrupar intimações quando forem exatamente a mesma providência e não houver observação individual relevante.
-
-O cliente normalmente aparecerá na quarta ou quinta coluna da planilha de intimações. Conferir pelo teor da intimação sempre que possível.
-
-Para cada intimação, informar obrigatoriamente:
-- do que se trata;
-- qual tarefa abrir no VIOS;
-- se há tarefa complementar;
-- se cabe recurso ou embargos;
-- prazo fatal, quando houver;
-- `PRAZO FATAL (D-2)` quando houver;
-- resumo pequeno e simples do teor da intimação.
-
-## Modelo obrigatório de resposta
-
-Usar este padrão para cada CI:
-
-[n]. CI [número] — Processo [número]
-
-Cliente:
-[nome do cliente]
-
-Do que se trata:
-[explicação objetiva da intimação]
-
-Tarefa no VIOS:
-[nome exato da tarefa principal]
-
-Tarefa complementar:
-[nome da tarefa complementar, se houver, ou "Não há"]
-
-Prazo fatal:
-[data ou PENDENTE – NÃO CONSTA NO DOCUMENTO]
-
-PRAZO FATAL (D-2):
-[data em D-2 ou PENDENTE – NÃO CONSTA NO DOCUMENTO]
-
-Cabe recurso?
-[Não / Cabe análise do advogado / Sim, indicar qual recurso]
-
-PRAZO PARA EMBARGOS: [data em D-2 / NÃO CABE; com cabimento pendente, data pelo prazo legal; se não couber embargos nem recurso, omitir as duas linhas e deixar só o PRAZO FATAL (D-2)]
-PRAZO PARA RECURSO: [data em D-2 / NÃO CABE; com cabimento pendente, data pelo prazo legal; se não couber embargos nem recurso, omitir as duas linhas e deixar só o PRAZO FATAL (D-2)]
-
-Resumo para tarefa:
-PRAZO FATAL (D-2): [DD/MM/AAAA ou PENDENTE – NÃO CONSTA NO DOCUMENTO, somente quando houver prazo]
-[resumo curto e simples para o advogado entender o teor da intimação]
-
-Observação:
-[observações obrigatórias, pendências, audiência, perícia, divergência de cliente, tarefa complementar etc.]
-
-## Regra obrigatória de prazos
-
-Nunca omitir prazo quando houver qualquer prazo no texto da intimação.
-
-Verificar se existe:
-- prazo para manifestação;
-- prazo para emenda;
-- prazo para depósito;
-- prazo para guia, preparo ou recolhimento;
-- prazo para contrarrazões;
-- prazo para manifestação sobre laudo;
-- prazo para quesitos e indicação de assistente técnico;
-- prazo para produção de provas;
-- prazo para pagamento em cumprimento de sentença;
-- prazo para recurso;
-- prazo para embargos.
-
-Sempre informar:
-- Prazo fatal;
-- `PRAZO FATAL (D-2)`.
-
-Se a intimação não informar o número de dias, usar o prazo previsto em lei (tabela em seção "Referência — Regras de Prazos e Recursos" (mais abaixo), seção "Prazo previsto em lei") e escrever na descrição da tarefa: `Prazo previsto em lei: N dias úteis ([meio]).`
-
-Só se o caso não estiver na tabela e não houver dados suficientes para calcular, colocar:
-PENDENTE – NÃO CONSTA NO DOCUMENTO.
-
-No Previdenciário:
-- embargos: 5 dias;
-- recurso em Juizado: 10 dias;
-- recurso na Justiça Comum: 15 dias.
-
-Quando couber embargos, usar:
-PRAZO PARA EMBARGOS: DD/MM/AAAA
-
-Quando couber recurso, usar:
-PRAZO PARA RECURSO: DD/MM/AAAA
-
-Se couberem os dois, usar:
-PRAZO PARA EMBARGOS: DD/MM/AAAA
-PRAZO PARA RECURSO: DD/MM/AAAA
-
-As datas de embargos e recurso devem ser sempre em D-2.
-
-Quando a tarefa for `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` e couber (ou puder caber) embargos ou recurso, exibir as duas linhas, sempre com data em D-2 — pelo prazo legal quando a intimação não informar, inclusive com cabimento pendente. Na linha do meio que não couber, `NÃO CABE`. Se não couber nenhum dos dois, omitir as duas linhas e deixar somente o `PRAZO FATAL (D-2)` do ato, se houver. A tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` fica para o **mesmo dia** da análise, nunca para o D-2: as datas de embargos e de recurso (em D-2) ficam só na descrição. Não usar a linha `PRAZO FATAL (D-2)` quando houver as linhas de embargos e recurso.
-
-## Sustentação oral
-
-Sempre que a tarefa for:
-VERIFICAR VIABILIDADE DE REALIZAR SUSTENTAÇÃO ORAL
-
-indicar também a tarefa:
-SUSTENTAÇÃO ORAL
-
-A tarefa de verificar viabilidade deve ficar para o mesmo dia.
-A tarefa de sustentação oral deve ficar para o dia da sustentação (na sessão virtual, o primeiro dia da sessão), nunca no D-2 nem no prazo de envio da sustentação gravada.
-
-A tarefa SUSTENTAÇÃO ORAL deve vir neste padrão:
-
-SUSTENTAÇÃO ORAL
-DATA:
-HORA:
-LINK:
-
-Exemplo de sessão virtual (início às 09:00 de 06/11/2026 e término às 09:00 de 13/11/2026):
-
-SUSTENTAÇÃO ORAL
-DATA: De 06/11/2026 a 13/11/2026.
-HORA: até 09:00
-LINK: https://pje-plenario-virtual.tjce.jus.br/
-
-Se faltar data, hora ou link, preencher com:
-PENDENTE – NÃO CONSTA NO DOCUMENTO.
-
-## Laudos e proposta de acordo do INSS
-
-Sempre que a intimação for para manifestação sobre laudo previdenciário ou manifestação sobre proposta de acordo do INSS, a tarefa correta é:
-
-MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026
-
-Informar `Prazo fatal:` e `PRAZO FATAL (D-2):`.
-
-## Perícia médica previdenciária
-
-Sempre que a intimação gerar a tarefa:
-
-PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026
-
-indicar também, obrigatoriamente, a tarefa:
-
-MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026
-
-Finalidade da tarefa complementar:
-apresentar quesitos e indicar assistente técnico.
-
-Não substituir uma tarefa pela outra. Indicar as duas:
-1. PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026
-2. MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026
-
-Para a tarefa complementar, informar:
-Prazo fatal: prazo para quesitos/assistente técnico ou PENDENTE – NÃO CONSTA NO DOCUMENTO.
-PRAZO FATAL (D-2): D-2 ou PENDENTE – NÃO CONSTA NO DOCUMENTO.
-
-Se a intimação apenas informar que a perícia foi designada, mas não trouxer prazo para quesitos e indicação de assistente técnico, ainda assim indicar a tarefa complementar e marcar a pendência do prazo.
-
-## Audiência
-
-Sempre que houver audiência, a descrição da tarefa segue exatamente este padrão, uma informação por linha, sem parágrafos ou observações a mais:
-
-AUDIÊNCIA [TIPO]
+AUDIÊNCIA DE [TIPO]
 DATA:
 HORA:
 FORMATO:
 LINK/LOCAL:
 ID da reunião:
 SENHA:
+```
 
-- `LINK/LOCAL`: só o link (audiência virtual) ou o endereço (presencial). ID da reunião e senha vão nas linhas próprias, não junto do link.
-- `ID da reunião` e `SENHA` só na audiência virtual/telepresencial; na presencial, omitir as duas linhas.
-- Não acrescentar na descrição explicações sobre a audiência (depoimentos, testemunhas, consequência da ausência etc.) nem `OBS:`. O que a Controladoria precisar saber vai nas observações da análise, fora da tarefa.
+Usar título exato como `AUDIÊNCIA UNA`, sem explicação entre parênteses. Separar link, ID e senha em linhas próprias. Não acrescentar OBS genérica, alertas de ausência, instruções de testemunhas ou transcrição extensa. Omitir campo comprovadamente não aplicável (como ID/senha em audiência presencial). Faltando dado exigido para o lançamento, não inventar; indicar a conferência necessária. Em audiência cível com cliente réu, conferir contestação no VIOS/PJe e, se ausente, indicar também a tarefa oficial de inicial/contestação/embargos à execução, especificando que é contestação.
 
-Exemplo:
+### Perícias
 
+```text
+TIPO:
+DATA:
+HORA:
+LOCAL/LINK:
+```
+
+#### Médica previdenciária
+
+Indicar duas tarefas em blocos próprios:
+
+1. `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`, na data e horário exatos;
+2. `MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026`, para quesitos e assistente técnico.
+
+Para a segunda, usar prazo específico confirmado ou marcar pendência. Se o ato apenas designar a perícia, ainda indicar a complementar com prazo pendente; não presumir data. Não confundir com manifestação sobre laudo já produzido.
+
+#### Social previdenciária
+
+Indicar sempre:
+
+1. `AVISAR PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026`, para Leticya;
+2. `INSTRUÇÃO PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026`, com responsável a confirmar.
+
+Mesma data operacional: primeiro dia de expediente do escritório após a análise, salvo determinação expressa. Aplicar inclusive a aviso informativo ou visita sem data/horário. Se a visita estiver expressamente sem agendamento, não inventar horário; aviso/instrução têm data operacional própria. Se depender de abrir ID/evento/expediente para saber os dados, bloquear a tarefa afetada e listar fora do arquivo. Responsável da instrução deve estar identificado antes do lançamento.
+
+Se solicitar dados, documentos, endereço ou telefone, acrescentar minuta previdenciária para Suhiane, com data operacional e prazo próprios; identificar prazo jurídico próprio. Apresentar cada tarefa com finalidade e resumo individuais.
+
+Aviso padrão: apresentar em negrito e sublinhado no formato suportado pelo destino:
+
+```text
+Aviso: Foi agendada perícia social relacionada ao processo. O(a) assistente social pode ir até a casa do cliente a qualquer momento para a realização da visita.
+
+"[trecho principal da intimação, incluindo eventual pedido de dados e prazo]"
+```
+
+Não converter uma visita com data marcada em visita indefinida: adaptar o aviso ao que o documento diz.
+
+Resumo da instrução:
+
+```text
+Realizar instrução do(a) cliente para a perícia social. Explicar como ocorre a avaliação, orientar a apresentação de informações verdadeiras sobre sua realidade familiar, condições de vida e, quando pertinente, atividade de trabalho. Confirmar os dados de localização e conferir nos autos eventual data, horário e local. Registrar a orientação realizada.
+```
+
+### Sustentação oral
+
+Indicar viabilidade da área conforme o corte das 12h para análise e sustentação oficial para a data/hora exatas do ato. Na sessão virtual, agendar no primeiro dia. Guardar término da sessão e prazo de inscrição/envio nos campos externos, sem incluí-los na descrição curta nem substituir o início da sessão pelo limite de envio.
+
+```text
+SUSTENTAÇÃO ORAL
+DATA: [data inicial da sessão]
+HORA: [horário inicial]
+LINK:
+```
+
+Faltando dado indispensável, registrar a tarefa afetada como não pronta e a conferência da Controladoria. Não afirmar que a sustentação foi realizada por apenas agendá-la.
+
+### Recurso/agravo trabalhista genérico
+
+Conferir no PJe quem recorreu e o objeto da intimação antes de escolher a tarefa:
+
+- Recurso da parte contrária com resposta determinada/cabível: `MINUTAR RECURSO/CONTRARRAZÕES AO RECURSO (TRABALHISTA) 2026`.
+- Recurso apenas do cliente, sem outra providência: `CIÊNCIA (TRABALHISTA) 2026`.
+- Recursos de ambos: identificar peça contrária a responder; havendo resposta exigida, minuta correspondente; não havendo providência, ciência.
+- Se não identificável: `NÃO ABRIR TAREFA AINDA - CONFERIR NO PJE QUEM INTERPÔS O AGRAVO/RECURSO PARA DEFINIR SE É MINUTAR OU CIÊNCIA`.
+
+Não criar tarefa ao advogado apenas para buscar o dado necessário à triagem. Não presumir abertura de contrarrazões da simples notícia de interposição.
+
+### Exemplos de descrições aprovadas
+
+```text
 AUDIÊNCIA UNA
 DATA: 22/01/2027
 HORA: 08:20
@@ -581,756 +299,14 @@ FORMATO: TELEPRESENCIAL (ZOOM)
 LINK/LOCAL: https://trt7-jus-br.zoom.us/j/85164513045
 ID da reunião: 851 6451 3045
 SENHA: 355957
-
-Quando a audiência for inicial, não indicar automaticamente como UNA, pois pode ser audiência de instrução ou conciliação. Identificar corretamente o tipo pelo teor da intimação. Se não constar, marcar como pendente.
-
-Quando houver audiência cível em que o cliente seja parte ré/reclamada, indicar essa observação, pois é necessário verificar no VIOS ou no PJe se já existe contestação. Se não houver contestação, indicar também a tarefa de MINUTAR CONTESTAÇÃO junto com a tarefa de audiência.
-
-## Perícia em geral
-
-Sempre que houver perícia, mandar no padrão:
-
-TIPO:
-DATA:
-HORA:
-LOCAL:
-OBS: É necessário ter atenção ao tipo de perícia.
-
-Se faltar data, hora ou local, preencher com:
-PENDENTE – NÃO CONSTA NO DOCUMENTO.
-
-## Avaliação social previdenciária
-
-Aplicar a regra obrigatória de instrução de toda perícia social previdenciária acima e o fluxo de seção "Referência — POP e Fluxo de Intimações" (mais abaixo). Indicar sempre aviso e instrução na mesma data operacional, inclusive em publicação apenas informativa. Se houver pedido de dados/documentos, acrescentar minuta para Tamira no mesmo dia da análise.
-
-Usar o aviso em negrito e sublinhado:
-
-Aviso: Foi agendada perícia social relacionada ao processo. O(a) assistente social pode ir até a casa do cliente a qualquer momento para a realização da visita.
-
-"[pequeno resumo do trecho principal da intimação, preferencialmente do trecho 'De ordem do MM...' até a menção ao prazo de 15 dias]"
-
-## Sentença, decisão, despacho e acórdão
-
-Sempre que houver decisão, despacho, sentença ou acórdão desfavorável ao cliente, a tarefa deve ser de ANÁLISE.
-
-Mesmo quando a decisão parecer favorável, principalmente no Previdenciário e na Execução, preferir tarefa de ANÁLISE quando houver possibilidade de erro do juiz, necessidade de conferência ou providência posterior.
-
-Abrir CIÊNCIA somente quando realmente não precisar de nenhuma movimentação, prazo, manifestação, recurso, conferência ou providência prática, respeitando a regra obrigatória de análise de sentença de encerramento e homologação de acordo.
-
-Não abrir recurso ou embargos diretamente quando depender da análise do advogado. Nesses casos, abrir tarefa de análise e informar que cabe análise do advogado sobre recurso/embargos.
-
-## Distribuição simples
-
-Sempre que o teor for apenas distribuição simples, a tarefa é CIÊNCIA, usando a tarefa de ciência da área correspondente.
-
-## Cálculos trabalhistas
-
-O setor trabalhista não tem tarefa específica de manifestação sobre cálculos.
-
-Quando houver manifestação sobre cálculos trabalhistas com prazo determinado, abrir:
-
-MINUTAR PETIÇÃO INTERMEDIÁRIA DIVERSA (TRABALHISTA) 2026
-
-Informar `Prazo fatal:` e `PRAZO FATAL (D-2):`.
-
-## RPV e precatório
-
-Quando uma decisão determinar expedição de RPV, abrir tarefa de ANÁLISE.
-
-Quando os requisitórios já tiverem sido expedidos, abrir:
-
-ANALISAR MINUTA PRECATÓRIO RPV
-
-ou a tarefa equivalente disponível no VIOS.
-
-## Tarefas de minutar
-
-Tarefas de MINUTAR geralmente podem ser abertas pela Controladoria quando a intimação já diz exatamente o que deve ser feito e informa o prazo.
-
-MINUTAR CONTESTAÇÃO normalmente pode ser aberta diretamente quando a intimação exigir defesa/contestação.
-
-## Pagamento ou depósito judicial cível
-
-Quando a intimação for CÍVEL e envolver depósito judicial, custas, honorários ou qualquer pagamento a ser feito pelo cliente, indicar as três tarefas desde logo:
-
-ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026
-
-e também:
-
-ENTRAR EM CONTATO COM O CLIENTE 2026
-
-e também:
-
-MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/EMENDA/IMPUGNAÇÃO (CÍVEL) 2026
-
-Na descrição da minuta, informar que a finalidade é comprovar o pagamento, depósito ou recolhimento nos autos.
-
-Essa regra vale para decisão interlocutória, cumprimento de sentença e qualquer ato que determine depósito ou pagamento pelo cliente.
-
-## Parcelamento de custas no Cível
-
-Quando a intimação informar parcelamento de custas ou outro valor devido pelo cliente, aplicar o mesmo fluxo cível: análise, contato com o cliente e minuta para comprovação. Não substituir a análise por `CIÊNCIA` nem indicar isoladamente tarefa de geração de guia.
-
-Informar `Prazo fatal:` e `PRAZO FATAL (D-2):` se constarem na intimação.
-
-## Checklist obrigatório antes de responder
-
-- sentença que encerra o processo/fase ou homologa acordo envolvendo o cliente gera ANALISAR, mesmo favorável; conferir possíveis erros na homologação e registrar o contato com o cliente no resumo; se a tarefa for CIÊNCIA, corrigir antes de finalizar;
-
-Antes de finalizar a resposta, conferir:
-
-- todas as CIs da planilha foram analisadas;
-- toda tarefa está na mesma área do departamento/auxiliar informado na planilha; se não estiver, há justificativa expressa na observação;
-- toda tarefa `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO)` tem Breno (e Tamira) como responsáveis, sem esse lembrete na descrição;
-- cada CI tem cliente, processo, tarefa e resumo;
-- se havia prazo no texto, o prazo fatal foi informado;
-- se havia prazo no texto, o campo `PRAZO FATAL (D-2)` foi informado;
-- se a tarefa for emenda à inicial da Suhiane, trabalhista ou previdenciária, foi usada a data do primeiro dia útil seguinte e o rótulo `PRAZO FATAL: DD/MM/AAAA` (data do dia útil seguinte), sem aplicação de D-2;
-- se não foi possível calcular prazo, foi marcada pendência;
-- toda audiência está no padrão com tipo, data, horário, formato e link/local;
-- toda perícia está no padrão com tipo, data, hora e local;
-- toda perícia médica previdenciária tem também tarefa complementar para quesitos e assistente técnico;
-- toda perícia social previdenciária tem aviso e `INSTRUÇÃO PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026`, com a mesma data operacional; havendo pedido de dados/documentos, também tem minuta para Tamira;
-- toda sustentação oral tem duas tarefas;
-- toda manifestação sobre laudo previdenciário usa a tarefa correta;
-- toda sentença, decisão, despacho decisório ou acórdão foi analisado antes de indicar ciência;
-- embargos e recurso só foram indicados quando couberem ou quando dependerem de análise do advogado;
-- o cliente foi conferido pela quarta ou quinta coluna da planilha.
-
-## Regra para intimações trabalhistas genéricas de recurso/agravo
-
-Quando a intimação trabalhista mencionar de forma genérica que “as partes” foram intimadas para ciência da interposição de agravo de instrumento, recurso de revista, contraminuta e/ou contrarrazões, não indicar automaticamente tarefa de minuta.
-
-Antes de abrir qualquer tarefa no VIOS, a Controladoria deve conferir no PJe quem interpôs o agravo/recurso.
-
-Critério:
-
-- Se o agravo/recurso foi interposto pela parte contrária ao nosso cliente, indicar:
-`MINUTAR RECURSO/CONTRARRAZÕES AO RECURSO (TRABALHISTA) 2026`.
-
-- Se o agravo/recurso foi interposto pelo nosso cliente, indicar:
-`CIÊNCIA (TRABALHISTA) 2026`.
-
-- Se houver recurso/agravo de ambas as partes, verificar se existe peça da parte contrária a ser respondida. Havendo, indicar minuta; não havendo, indicar ciência.
-
-- Se a publicação não permitir identificar quem recorreu, responder:
-`NÃO ABRIR TAREFA AINDA - CONFERIR NO PJE QUEM INTERPÔS O AGRAVO/RECURSO PARA DEFINIR SE É MINUTAR OU CIÊNCIA`.
-
-Não abrir tarefa para o advogado apenas conferir essa informação, pois a escolha entre minuta e ciência deve ser feita previamente pela Controladoria antes do lançamento no VIOS.
-
-## Referência — POP e Fluxo de Intimações
-
-Use esta seção para decidir a providência operacional quando a intimação vier do DJEN/VIOS.
-
-### Finalidade
-
-A Controladoria recebe intimações no VIOS e lança tarefas para que os advogados tenham ciência da intimação e saibam como agir.
-
-### Fluxo visual resumido
-
-- Sentença de encerramento, com ou sem resolução do mérito, e homologação de acordo envolvendo o cliente: sempre `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` da área, mesmo favorável ou integralmente cumprida. Aplicar a regra obrigatória da parte principal desta skill: conferir possíveis erros comparando acordo e sentença e dar sequência ao contato com o cliente. Não usar CIÊNCIA.
-
-- Despacho do setor: normalmente gera `CIÊNCIA`, salvo quando houver providência específica.
-- Sentença, decisão ou acórdão: avaliar se demanda análise. Se houver risco, desfavorabilidade, erro judicial possível ou necessidade de providência, abrir tarefa de análise.
-- Depois da análise, o advogado define se não recorre, se opõe embargos ou se interpõe outro recurso.
-
-### Regras operacionais
-
-Antes de aplicar as regras abaixo, ler seção "Referência — Roteamento interno, prioridades e validação" (mais abaixo). As prioridades de RPV/precatório, emenda da Suhiane, marcação do Breno, divergências de cadastro e duplicidades prevalecem sobre regras gerais incompatíveis.
-
-Para a prioridade de emenda da Suhiane, considerar obrigatoriamente tanto `MINUTAR EMENDA A INICIAL (TRABALHISTA) 2026` quanto `MINUTAR EMENDA À INICIAL (PREVIDENCIÁRIO) 2026`: lançar no primeiro dia útil seguinte, preservar o prazo fatal e não aplicar D-2.
-
-#### Prevalência do cadastro interno
-
-- Conferir o departamento e o auxiliar da planilha antes de interpretar a área pela classe judicial.
-- O departamento expressamente informado e compatível com a providência prevalece sobre classe, assunto e palavras isoladas. O auxiliar valida o cadastro, mas pode estar desatualizado.
-- Processos de responsabilidade cível de `JOAQ`/Joaquim devem receber tarefas de `CÍVEL`. Se houver transferência inequívoca para Execução, usar tarefa de Execução e alertar para confirmar a substituição do auxiliar por Tamira.
-- Processos com auxiliar `SUH`/Suhiane devem ser classificados como `TRABALHISTA — RECLAMANTE` ou `PREVIDENCIÁRIO`, conforme o teor. Justiça do Trabalho, número CNJ `.5.`, Vara do Trabalho, reclamante ou exequente trabalhista indicam tarefa Trabalhista, inclusive na fase executiva. Processo contra o INSS ou sobre benefício previdenciário/assistencial indica tarefa Previdenciário.
-- Para `SUH`/Suhiane, não usar tarefa de Execução ou Cível por palavra isolada. Se a classificação final não for Trabalhista — Reclamante ou Previdenciário, revisar; manter Execução somente quando a transferência estiver confirmada e registrar a divergência do auxiliar.
-- Não usar tarefa de Execução apenas por causa da natureza executiva do ato. Usá-la somente quando o cadastro interno estiver no departamento de Execução ou houver orientação expressa do usuário.
-- Se houver conflito, manter a área do cadastro interno e registrar a divergência. Se o setor não puder ser confirmado, marcar `PENDENTE – CONFIRMAR ÁREA CADASTRADA NO VIOS.`
-- Conferir antes da resposta: `Auxiliar/Departamento → Área da tarefa`.
-
-- Sempre que a tarefa for `VERIFICAR VIABILIDADE DE REALIZAR SUSTENTAÇÃO ORAL`, indicar também a tarefa `SUSTENTAÇÃO ORAL`.
-- A tarefa `VERIFICAR VIABILIDADE DE REALIZAR SUSTENTAÇÃO ORAL` fica para o mesmo dia.
-- A tarefa `SUSTENTAÇÃO ORAL` fica para o dia da sustentação (na sessão virtual, o primeiro dia da sessão), com o horário no campo Horário do VIOS. Tarefas com horário (sustentação, audiência, perícia) nunca vão para o D-2.
-- Modelo da tarefa de sustentação oral:
+```
 
 ```text
 SUSTENTAÇÃO ORAL
-
-DATA:
-HORA:
-LINK:
+DATA: 06/11/2026
+HORA: 09:00
+LINK: https://pje-plenario-virtual.tjce.jus.br/
 ```
-
-- Manifestação sobre laudos ou proposta de acordo do INSS: usar `MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026`.
-- Audiência inicial não deve ser automaticamente indicada como UNA; pode ser instrução ou conciliação.
-- Decisão, despacho, sentença ou acórdão desfavorável ao cliente normalmente gera tarefa de análise.
-- Mesmo decisão favorável pode exigir análise quando houver possibilidade de erro judicial, principalmente em Previdenciário e Execução.
-- Em protocolo do departamento de Execução, usar `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (EXECUÇÃO) 2026` quando o ato mencionar o cliente, produzir efeito sobre ele ou exigir conferência jurídica. Não substituir por tarefa de Cível.
-- Se a decisão de Execução não citar o cliente e não produzir efeito, obrigação, prazo ou providência para ele, usar `CIÊNCIA (EXECUÇÃO) 2026`. O simples título `DECISÃO` não gera análise automaticamente.
-- Abrir `CIÊNCIA` apenas quando realmente não houver necessidade de movimentação.
-- Trabalhista não possui tarefa específica de manifestação sobre cálculos. Se houver prazo para manifestação de cálculos, usar `MINUTAR PETIÇÃO INTERMEDIÁRIA DIVERSA (TRABALHISTA) 2026`.
-- Distribuição simples gera `CIÊNCIA`.
-
-### Audiências
-
-Quando houver audiência, informar no padrão:
-
-```text
-AUDIÊNCIA [TIPO]
-DATA:
-HORA:
-FORMATO:
-LINK/LOCAL:
-ID da reunião:
-SENHA:
-```
-
-Uma informação por linha, sem parágrafos ou `OBS:` a mais na descrição. `ID da reunião` e `SENHA` só na audiência virtual (na presencial, `LINK/LOCAL` é o endereço). Ver o padrão completo na seção "Audiência" da skill.
-
-Identifique corretamente o tipo de audiência para que o advogado saiba como se preparar.
-
-Se for audiência cível e o cliente estiver como parte ré/reclamada:
-
-- indicar que se trata de audiência para parte reclamada/ré;
-- orientar verificação no VIOS/PJe se já existe contestação;
-- se não houver contestação, indicar também tarefa de `MINUTAR CONTESTAÇÃO`.
-
-### Perícias
-
-Quando houver perícia, informar no padrão:
-
-```text
-TIPO:
-DATA:
-HORA:
-LOCAL:
-```
-
-É necessário identificar o tipo de perícia, como médica, técnica ou avaliação social.
-
-### Avaliação social previdenciária
-
-Em toda perícia social previdenciária, indicar:
-
-1. `AVISAR PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026`, para Leticya;
-2. `INSTRUÇÃO PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026`, para a **mesma data operacional do aviso/perícia social no VIOS**.
-
-Aplicar também quando a tarefa principal se chamar `PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026` ou equivalente. Não confundir a data operacional da instrução com a data da visita. Na ausência de orientação específica do usuário, lançar aviso e instrução para o dia seguinte. Confirmar o responsável pela instrução no fluxo/cadastro do VIOS, sem presumir o mesmo do aviso.
-
-Se houver pedido de documentação, endereço, telefone ou dados similares, indicar também minuta para Tamira no mesmo dia da análise, preservando o prazo jurídico. A minuta não dispensa aviso nem instrução.
-
-Se a intimação apenas informar que haverá visita, indicar aviso e instrução, sem minuta. A falta de data/horário da visita não dispensa a instrução.
-
-Apresentar cada tarefa separadamente e conferir que cada processo com perícia social tenha sua tarefa de instrução. Usar o modelo de instrução de seção "Referência — Tarefas VIOS e Modelos de Descrição" (mais abaixo).
-
-Modelo da tarefa:
-
-```text
-Aviso: Foi agendada perícia social relacionada ao processo. O(a) assistente social pode ir até a casa do cliente a qualquer momento para a realização da visita.
-
-"[inserir pequeno resumo do trecho principal da intimação, preferencialmente do trecho De ordem do MM... até a menção ao prazo de 15 dias]"
-```
-
-### RPV, precatório e requisição
-
-- Decisão que determina expedição de RPV: abrir tarefa de análise.
-- Quando os requisitórios já foram expedidos: usar `ANALISAR MINUTA PRECATORIO/RPV (EXECUCÃO) 2026`.
-- Em qualquer etapa relacionada a RPV/precatório, lançar a tarefa para o dia útil seguinte à publicação ou recebimento, preservando o prazo jurídico fatal em campo separado, conforme seção "Referência — Roteamento interno, prioridades e validação" (mais abaixo).
-
-### Minutas diretas
-
-Tarefas de minutar podem ser abertas pela Controladoria quando a intimação já diz exatamente o que deve ser feito e indica prazo.
-
-`MINUTAR CONTESTAÇÃO` costuma ser aberto diretamente quando a intimação indicar necessidade de defesa e houver elementos suficientes.
-
-### Responsável pelas petições da Execução
-
-- Sempre que a tarefa for `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO)` ou a opção equivalente disponível no VIOS, marcar Breno como responsável da tarefa (sem escrever o lembrete na descrição).
-- Aplicar essa regra em todas as petições com esse nome, inclusive apresentação de dados bancários, providências relacionadas a RPV/precatório, alvarás, documentos e outras manifestações da Execução.
-
-### Pagamento pelo cliente — Trabalhista
-
-Quando a intimação trabalhista determinar pagamento, depósito judicial, honorários periciais, custas, preparo, depósito recursal ou outro valor pelo cliente:
-
-- indicar primeiro `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (TRABALHISTA) 2026` ou a opção equivalente de análise aplicável ao ato;
-- registrar no resumo a natureza do pagamento e o prazo;
-- não sugerir tarefa de gerar guia nesse momento;
-- não indicar `CIÊNCIA` no lugar da análise;
-- não indicar minuta como tarefa complementar inicial.
-
-A análise deve ocorrer antes porque ela gera o fluxo de contato com o cliente. Primeiro, avisar o cliente e perguntar se deseja pagar; somente depois da manifestação favorável do cliente o setor trabalhista providencia a guia, quando autorizada. Após o pagamento, abrir a tarefa necessária para comprová-lo nos autos.
-
-### Pagamento pelo cliente — Cível
-
-Quando a intimação cível determinar pagamento, depósito judicial, custas, honorários ou outro valor pelo cliente, indicar desde logo:
-
-- tarefa de análise cível aplicável ao ato;
-- `ENTRAR EM CONTATO COM O CLIENTE 2026`;
-- `MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/EMENDA/IMPUGNAÇÃO (CÍVEL) 2026`, para comprovar o pagamento, depósito ou recolhimento nos autos.
-
-Indicar as três tarefas imediatamente. Não aguardar o resultado da análise ou do contato para sugerir a minuta. Não substituir esse fluxo por `CIÊNCIA` ou por tarefa isolada de geração de guia. Aplicar também a parcelamento de custas, decisão interlocutória, cumprimento de sentença e outros atos que imponham pagamento ao cliente.
-
-### Resultado esperado da análise
-
-Quando o usuário encaminhar arquivo do VIOS com intimações:
-
-- dizer do que se trata cada intimação;
-- indicar qual tarefa abrir no VIOS;
-- informar se cabe recurso;
-- se couber, informar qual recurso e prazo;
-- se couber embargos, informar prazo de embargos;
-- incluir resumo curto e simples com o teor da intimação.
-
-Para embargos ou recurso, use:
-
-```text
-PRAZO PARA EMBARGOS: DD/MM/AAAA
-PRAZO PARA RECURSO: DD/MM/AAAA
-```
-
-Se couber apenas um deles, informe somente o aplicável.
-
-Exceção obrigatória: na tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO`, se couber (ou puder caber) embargos ou recurso, exibir as duas linhas com data em D-2 (prazo legal quando a intimação não informar, inclusive com cabimento pendente); o meio que não couber fica `NÃO CABE`. Se não couber nenhum, deixar somente o `PRAZO FATAL (D-2)` do ato, se houver. A tarefa de análise fica para o mesmo dia da análise.
-
-## Referência — Roteamento interno, prioridades e validação
-
-### Ordem obrigatória de decisão
-
-Analisar separadamente natureza jurídica, fase processual, departamento interno, auxiliar cadastrado e providência concreta. Definir a tarefa nesta ordem:
-
-1. correção ou orientação expressa do usuário;
-2. providência concreta determinada na intimação;
-3. fase processual atual;
-4. departamento interno responsável pela providência;
-5. advogado auxiliar informado na planilha;
-6. natureza jurídica, órgão e número CNJ;
-7. classe e assunto processual.
-
-Não classificar somente pelo número CNJ, classe, fase ou auxiliar. Um processo trabalhista ou previdenciário pode estar no Departamento de Execução. A presença de `execução`, `penhora`, `alvará` ou `cumprimento de sentença` não basta para classificar o departamento.
-
-### Mapeamento operacional
-
-| Auxiliar | Área normalmente relacionada | Conferência obrigatória |
-| --- | --- | --- |
-| Joaquim/JOAQ | Cível | Se a tarefa for Execução, não lançar: confirmar se houve transferência para Tamira. |
-| Joana/JOAN | Cível | Se a tarefa for Execução, não lançar: confirmar se houve transferência para Tamira. |
-| Lili/LILI | Cível | Se a tarefa for Execução, não lançar: confirmar se houve transferência para Tamira. |
-| Suhiane/SUH | Trabalhista Reclamante ou Previdenciário | Diferenciar pelo teor, órgão, partes e número CNJ. |
-| Tamira/TAMI | Execução | Conferir pelo departamento e também pelo responsável: se a Tamira é a responsável, a tarefa é de Execução. Se a tarefa ficar em outra área, não lançar e confirmar o departamento. |
-| Carlos/CARL | Trabalhista Reclamada | Conferir cliente e teor. |
-| Johnys/JOHN | Trabalhista Reclamada | Conferir cliente e teor. |
-| Breno | Petições da Execução da Tamira | Marcar nas tarefas `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO)`. |
-
-O mapeamento é alerta de consistência, não substitui a leitura integral.
-
-### Divergências de cadastro
-
-Se a tarefa for de Cível, Trabalhista ou Previdenciário, mas o auxiliar for Tamira, usar a tarefa da área correta e informar:
-
-```text
-OBSERVAÇÃO DE CADASTRO:
-A tarefa identificada é da área [ÁREA], mas o processo aparece com a Tamira. Confirmar se o auxiliar está correto ou se o processo já foi transferido para o Departamento de Execução.
-```
-
-Se a providência for inequivocamente da Execução e o auxiliar for outro, usar a tarefa de Execução e informar:
-
-```text
-OBSERVAÇÃO DE CADASTRO:
-O processo exige providência do Departamento de Execução, mas o auxiliar informado é [NOME]. Confirmar a transferência do processo para a Tamira.
-```
-
-Se houver dúvida real entre Cível e Execução, não escolher silenciosamente. Informar:
-
-```text
-PENDENTE – CONFIRMAR SE O PROCESSO PERMANECE NO CÍVEL OU SE JÁ FOI TRANSFERIDO PARA A EXECUÇÃO.
-Se permanecer no Cível: [tarefa cível].
-Se já estiver na Execução: [tarefa de execução].
-```
-
-### Prioridade de RPV e precatório
-
-Tratar como prioritária toda intimação relacionada a determinação ou minuta de RPV/precatório, cálculos, documentos, procuração, contrato ou destaque de honorários, dados bancários, alvará vinculado, cancelamento, conversão, retificação, manifestação ou pendência capaz de impedir expedição, conferência ou pagamento.
-
-- Indicar a tarefa para o dia útil seguinte à publicação ou ao recebimento, mesmo que o prazo jurídico seja maior.
-- Se o dia seguinte não for útil, usar o primeiro dia útil subsequente.
-- Esta prioridade prevalece sobre D-2.
-- Preservar separadamente o prazo jurídico fatal.
-- Usar:
-
-```text
-PRAZO FATAL: DD/MM/AAAA
-```
-
-No resumo:
-
-```text
-PRAZO FATAL: DD/MM/AAAA
-[providência]
-[trecho da intimação]
-```
-
-Não escrever `PRIORIDADE RPV/PRECATÓRIO` na descrição.
-
-Não chamar a data prioritária de `PRAZO FATAL (D-2)`.
-
-#### Etapas do requisitório
-
-| Situação | Tarefa |
-| --- | --- |
-| Decisão determinando futura expedição | Analisar sentença/acórdão/decisão da área. |
-| Cálculos, documentos ou dados bancários necessários | Minutar petição da área. |
-| Minuta já expedida | `ANALISAR MINUTA PRECATORIO/RPV (EXECUCÃO) 2026`. |
-| Alvará expedido sem providência | Ciência da área. |
-| Erro ou pendência no requisitório | Analisar minuta ou decisão, conforme o ato. |
-
-### Prioridade de emenda da Suhiane
-
-Quando o auxiliar for Suhiane/SUH e a tarefa for qualquer tarefa de minutar emenda à inicial, aplicar esta prioridade sem distinção de área. A regra abrange obrigatoriamente:
-
-- `MINUTAR EMENDA A INICIAL (TRABALHISTA) 2026`;
-- `MINUTAR EMENDA À INICIAL (PREVIDENCIÁRIO) 2026`;
-- qualquer opção equivalente de emenda à inicial sob responsabilidade da Suhiane.
-
-- indicar a tarefa para o dia útil seguinte à publicação ou recebimento;
-- preservar o prazo jurídico fatal separadamente;
-- fazer a prioridade prevalecer sobre D-2;
-- não aplicar nem exibir `PRAZO FATAL (D-2)` como data operacional;
-- usar:
-
-```text
-PRAZO FATAL: DD/MM/AAAA
-```
-
-No resumo:
-
-```text
-PRAZO FATAL: DD/MM/AAAA
-MINUTAR EMENDA À INICIAL
-[documentos ou informações exigidos]
-```
-
-Não aplicar automaticamente a outras tarefas da Suhiane. A regra é obrigatória para emenda à inicial tanto Trabalhista quanto Previdenciária.
-
-### Petição de Execução da Tamira e Breno
-
-Quando a tarefa for `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO) 2026)` ou equivalente e pertencer à Tamira, Tamira e Breno são os responsáveis da tarefa no VIOS. Não escrever `Advogada auxiliar: TAMIRA` nem `Responsável a marcar na tarefa: BRENO` na descrição da tarefa.
-
-Aplicar a dados bancários, documentos, alvará, RPV/precatório, cálculos, prosseguimento, bloqueio, penhora e demais petições intermediárias da Execução. Não substituir Tamira por Breno.
-
-### Analisar ou minutar
-
-- Antes das regras gerais, aplicar a regra da parte principal desta skill para sentença de encerramento ou homologação de acordo envolvendo o cliente: sempre ANALISAR da área responsável, mesmo favorável; conferir erros na homologação e registrar a necessidade de contato com o cliente. Não usar CIÊNCIA nem decidir apenas pela existência de providência objetiva.
-
-- Se a intimação determinar objetivamente o que fazer e trouxer prazo, indicar diretamente a tarefa de minutar disponível para a área.
-- Se exigir avaliação de resultado, erro, recurso ou estratégia, indicar analisar.
-- O título decisão, despacho ou sentença não define sozinho a tarefa.
-- Se a ordem for dirigida à parte contrária, não abrir minuta para o cliente.
-- Aplicar as tarefas complementares de pagamento, depósito ou contato quando previstas.
-
-### Duplicidades
-
-- Manter cada CI em sua posição e numeração originais, mesmo quando duplicada.
-- Nunca fundir cabeçalhos como `26 e 45. CIs...`.
-- Identificar a CI mais completa e não abrir tarefas repetidas. A CI mais completa é a original; a outra é ignorada (não gera tarefa).
-- Duplicata é a mesma publicação em mais de uma CI do mesmo processo: o texto é praticamente igual e muda só o destinatário, o link ou o código da comunicação (o VIOS costuma trazer uma cópia para cada parte). Quando só muda o destinatário, a original é a CI endereçada ao cliente do escritório; a cópia endereçada à outra parte é ignorada.
-- Mesmo processo com ato diferente (ex.: perícia designada e depois redesignada) não é duplicata: analisar cada CI e, se a mais nova mudar data ou local, atualizar a tarefa existente em vez de abrir outra.
-- O robô confere duplicatas em dois momentos: ao capturar as intimações do VIOS (marca a cópia) e ao enviar o arquivo para o robô (lê no VIOS o texto de cada CI antes de gravar e não grava a cópia). Mesmo assim, na análise feita no chat, conferir as duplicatas e não colocar a cópia no arquivo para o robô: listar como `DUPLICADA DA CI [NÚMERO]`.
-- Na menos completa, informar:
-
-```text
-DUPLICADA DA CI [NÚMERO].
-Não abrir nova tarefa. Utilizar a tarefa indicada na CI mais completa.
-```
-
-- Se a segunda CI acrescentar prazo, data ou local, atualizar a tarefa existente.
-- Não confundir duplicidade com tarefas complementares exigidas pelo mesmo ato.
-
-### Modelo com data operacional
-
-```text
-[n]. CI [número] — Processo [número]
-Cliente:
-Natureza jurídica:
-Departamento interno provável:
-Advogado auxiliar informado:
-Do que se trata:
-Tarefa no VIOS:
-Advogada auxiliar:
-Responsável a marcar na tarefa:
-Tarefa complementar:
-Prazo jurídico fatal:
-Data operacional normal — D-2:
-DATA DA TAREFA NO VIOS:
-Motivo da data da tarefa:
-Cabe recurso?
-Resumo para tarefa:
-Observação de cadastro:
-Duplicidade:
-```
-
-### Bloqueios antes da resposta
-
-Não finalizar enquanto houver inconsistência não explicada. Conferir em cada CI:
-
-- destinatário da ordem;
-- natureza, fase e departamento;
-- compatibilidade do auxiliar com a tarefa;
-- divergência de cadastro registrada;
-- escolha entre analisar e minutar;
-- prazo fatal e data operacional separados;
-- prioridade de RPV para o dia útil seguinte;
-- toda emenda à inicial da Suhiane, Trabalhista ou Previdenciária, para o primeiro dia útil seguinte, sem D-2 e com o rótulo de prioridade;
-- marcação do Breno na petição de Execução da Tamira;
-- duplicidade sem repetição de tarefa;
-- existência do nome da tarefa na lista oficial do VIOS.
-
-## Referência — Tarefas VIOS e Modelos de Descrição
-
-Use esta lista para escolher a tarefa VIOS e montar a descrição. Preserve o nome da tarefa quando possível.
-
-Em qualquer modelo abaixo, substituir o rótulo genérico `PRAZO FATAL:` pelo rótulo operacional `PRAZO FATAL (D-2):` e preencher com a data D-2. O prazo jurídico fatal real deve aparecer apenas no campo externo `Prazo fatal:`, nunca dentro do resumo da tarefa.
-
-### Trabalhista
-
-| Tarefa VIOS | Modelo de descrição |
-| --- | --- |
-| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (TRABALHISTA) 2026 | PRAZO PARA EMBARGOS: DD/MM/AAAA<br>PRAZO PARA RECURSO: DD/MM/AAAA<br>SENTENÇA/DECISÃO/ACÓRDÃO<br>[inserir se é sentença, decisão ou acórdão e abaixo colocar o dispositivo] |
-| CIÊNCIA (TRABALHISTA) 2026 | CIÊNCIA<br>[inserir a parte principal da intimação] |
-| MINUTAR RECURSO/CONTRARRAZÕES AO RECURSO (TRABALHISTA) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES |
-| MINUTAR EMBARGOS DE DECLARAÇÃO/CONTRARRAZÕES (TRABALHISTA) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES |
-| MINUTAR EMBARGOS/RECURSO/CONTRARRAZÕES (EXECUÇÃO) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES |
-| MINUTAR RÉPLICA À CONTESTAÇÃO (TRABALHISTA) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR RÉPLICA |
-| MINUTAR PETIÇÃO INTERMEDIÁRIA DIVERSA (TRABALHISTA) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR PETIÇÃO |
-| MINUTAR QUESITOS/INDICAR PERITOS (TRABALHISTA) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR QUESITOS |
-| MINUTAR PETIÇÃO SOBRE O LAUDO PERICIAL (TRABALHISTA) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR MANIFESTAÇÃO AO LAUDO PERICIAL |
-| MINUTAR MEMORIAIS/RAZÃO FINAIS/ALEGAÇÕES FINAIS (TRABALHISTA) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR ALEGAÇÕES FINAIS |
-| MINUTAR EMENDA A INICIAL (TRABALHISTA) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR EMENDA |
-| AUDIÊNCIA DE CONCILIAÇÃO (TRABALHISTA) 2026 | AUDIÊNCIA DE CONCILIAÇÃO<br>DATA:<br>HORA:<br>FORMATO:<br>LINK/LOCAL:<br>ID da reunião: (só virtual)<br>SENHA: (só virtual) |
-| AUDIÊNCIA UNA/INSTRUÇÃO (TRABALHISTA) 2026 | AUDIÊNCIA UNA ou AUDIÊNCIA DE INSTRUÇÃO (conforme o teor)<br>DATA:<br>HORA:<br>FORMATO:<br>LINK/LOCAL:<br>ID da reunião: (só virtual)<br>SENHA: (só virtual) |
-| PERÍCIA TÉCNICA/MÉDICA (TRABALHISTA) 2026 | PERÍCIA TÉCNICA/MÉDICA (TRABALHISTA)<br>DATA:<br>HORA:<br>LOCAL: |
-| VERIFICAR VIABILIDADE DE REALIZAR SUSTENTAÇÃO ORAL (TRABALHISTA) 2026 | SUSTENTAÇÃO ORAL<br>DATA:<br>HORA:<br>LINK: |
-
-### Previdenciário
-
-| Tarefa VIOS | Modelo de descrição |
-| --- | --- |
-| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (PREVIDENCIÁRIO) 2026 | PRAZO PARA EMBARGOS: DD/MM/AAAA<br>PRAZO PARA RECURSO: DD/MM/AAAA<br>SENTENÇA/DECISÃO/ACÓRDÃO<br>[inserir se é sentença, decisão ou acórdão e abaixo colocar o dispositivo] |
-| CIÊNCIA (PREVIDENCIÁRIO) 2026 | CIÊNCIA<br>[inserir a parte principal da intimação] |
-| MINUTAR EMBARGOS/RECURSO/CONTRARRAZÕES (PREVIDENCIÁRIO) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES |
-| MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR MANIFESTAÇÃO AO LAUDO PERICIAL |
-| MINUTAR EMENDA À INICIAL (PREVIDENCIÁRIO) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR EMENDA |
-| AUDIÊNCIA PREVIDENCIÁRIA (PREVIDENCIÁRIO) 2026 | AUDIÊNCIA DE INSTRUÇÃO<br>DATA:<br>HORA:<br>FORMATO:<br>LINK/LOCAL:<br>ID da reunião: (só virtual)<br>SENHA: (só virtual) |
-| PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026 | PERÍCIA MÉDICA<br>DATA:<br>HORA:<br>LOCAL: |
-| VERIFICAR VIABILIDADE DE REALIZAR SUSTENTAÇÃO ORAL (PREVIDENCIÁRIO) 2026 | SUSTENTAÇÃO ORAL<br>DATA:<br>HORA:<br>LINK: |
-| AVISAR PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026 | Abrir para o dia seguinte, salvo data expressa do usuário. Usar o aviso padrão do POP e indicar obrigatoriamente a tarefa de instrução para a mesma data operacional. |
-| INSTRUÇÃO PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026 | DATA DA TAREFA: mesma data operacional da tarefa de perícia social/aviso no VIOS.<br>Realizar instrução do(a) cliente para a perícia social. Explicar como ocorre a avaliação e orientar a apresentação de informações verdadeiras sobre a realidade familiar, condições de vida e, quando pertinente, atividade de trabalho. Confirmar dados de localização, conferir eventual data, horário e local nos autos e registrar a orientação realizada. |
-| SUSTENTAÇÃO ORAL PPREVIDENCIÁRIO) 2026 | SUSTENTAÇÃO ORAL<br>DATA:<br>HORA:<br>LINK: |
-
-### Execução
-
-| Tarefa VIOS | Modelo de descrição |
-| --- | --- |
-| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (EXECUÇÃO) 2026 | PRAZO PARA EMBARGOS: DD/MM/AAAA<br>PRAZO PARA RECURSO: DD/MM/AAAA<br>SENTENÇA/DECISÃO/ACÓRDÃO<br>[inserir se é sentença, decisão ou acórdão e abaixo colocar o dispositivo] |
-| MINUTAR EXECUÇÃO DE SENTENÇA (EXECUÇÃO) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR CUMPRIMENTO DE SENTENÇA |
-| MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO) 2026) | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR [indicar petição, ex.: dados bancários] |
-| MINUTAR EMBARGOS À EXECUÇÃO (EXECUÇÃO) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR EMBARGOS |
-| MINUTAR EMBARGOS/RECURSO/CONTRARRAZÕES (EXECUÇÃO) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES |
-| MINUTAR HOMOLOGAÇÃO/IMPUGNAÇÃO AOS CÁLCULOS (EXECUÇÃO) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR MANIFESTAÇÃO AOS CÁLCULOS |
-| MINUTAR RESPOSTA À IMPUGNAÇÃO (EXECUÇÃO) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR RESPOSTA |
-| MINUTAR CHAMAMENTO DO FEITO À ORDEM (EXECUÇÃO) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR CHAMAMENTO FEITO À ORDEM |
-| CIÊNCIA (EXECUÇÃO) 2026 | CIÊNCIA<br>[inserir a parte principal da intimação] |
-| MINUTAR PETIÇÃO EXECUÇÃO 2026 (MINUTAR PETIÇÃO (EXECUÇÃO) 2026) | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR PETIÇÃO [inserir a parte principal da intimação] |
-| AUDIÊNCIA DE CONCILIAÇÃO (EXECUÇÃO) 2026 | AUDIÊNCIA DE CONCILIAÇÃO<br>DATA:<br>HORA:<br>FORMATO:<br>LINK/LOCAL:<br>ID da reunião: (só virtual)<br>SENHA: (só virtual) |
-| ANALISAR MINUTA PRECATORIO/RPV (EXECUCÃO) 2026 | PRAZO FATAL: DD/MM/AAAA<br>[inserir informação importante da intimação] |
-| MINUTAR PETIÇÃO (EXECUÇÃO) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR PETIÇÃO [informar qual petição e destacar a parte principal da intimação] |
-
-### Cível
-
-| Tarefa VIOS | Modelo de descrição |
-| --- | --- |
-| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026 | PRAZO PARA EMBARGOS: DD/MM/AAAA<br>PRAZO PARA RECURSO: DD/MM/AAAA<br>SENTENÇA/DECISÃO/ACÓRDÃO<br>[inserir se é sentença, decisão ou acórdão e abaixo colocar o dispositivo] |
-| CIÊNCIA (CÍVEL) 2026 | CIÊNCIA<br>[inserir a parte principal da intimação] |
-| MINUTAR RECURSO/CONTRARRAZÕES (CÍVEL) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES<br>Observação: recursos são na tarefa de analisar. |
-| MINUTAR EMBARGOS DE DECLARAÇÃO/CONTRARRAZÕES (CÍVEL) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES<br>Observação: recursos são na tarefa de analisar. |
-| MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/EMENDA/IMPUGNAÇÃO (CÍVEL) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR PETIÇÃO [informar qual petição e destacar a parte principal da intimação] |
-| MINUTAR MEMORIAIS/RAZÃO FINAIS/ALEGAÇÕES FINAIS (CÍVEL) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR ALEGAÇÕES FINAIS |
-| AUDIÊNCIA DE CONCILIAÇÃO (CÍVEL) 2026 | AUDIÊNCIA DE CONCILIAÇÃO<br>DATA:<br>HORA:<br>FORMATO:<br>LINK/LOCAL:<br>ID da reunião: (só virtual)<br>SENHA: (só virtual) |
-| AUDIÊNCIA UNA/INSTRUÇÃO (CÍVEL) 2026 | AUDIÊNCIA UNA ou AUDIÊNCIA DE INSTRUÇÃO (conforme o teor)<br>DATA:<br>HORA:<br>FORMATO:<br>LINK/LOCAL:<br>ID da reunião: (só virtual)<br>SENHA: (só virtual) |
-| PERÍCIA TÉCNICA (CÍVEL) 2026 | PERÍCIA TÉCNICA<br>DATA:<br>HORA:<br>LOCAL: |
-| VERIFICAR VIABILIDADE DE REALIZAR SUSTENTAÇÃO ORAL (CÍVEL) 2026 | SUSTENTAÇÃO ORAL<br>DATA:<br>HORA:<br>LINK: |
-| MINUTAR INICIAL/CONTESTAÇÃO/EMBARGOS À EXECUÇÃO (CÍVEL) 2026 | PRAZO FATAL: DD/MM/AAAA<br>MINUTAR CONTESTAÇÃO |
-| SUSTENTAÇÃO ORAL(CÍVEL) 2026 | SUSTENTAÇÃO ORAL<br>DATA:<br>HORA:<br>LINK: |
-
-### Gerais e complementares
-
-| Tarefa VIOS | Modelo de descrição |
-| --- | --- |
-| SUSTENTAÇÃO ORAL | SUSTENTAÇÃO ORAL<br>DATA:<br>HORA:<br>LINK: |
-| SUSTENTACÃO ORAL (RECLAMANTE) 2026 | SUSTENTAÇÃO ORAL<br>DATA:<br>HORA:<br>LINK: |
-| ENTRAR EM CONTATO COM O CLIENTE 2026 | No Cível, abrir quando houver pagamento, depósito, custas, honorários ou outro valor a cargo do cliente, junto da análise e da minuta para comprovação nos autos. No Trabalhista, não indicar manualmente como tarefa complementar inicial: abrir primeiro a análise, que gera o fluxo de contato. |
-
-### Fluxo de pagamento por área
-
-- Trabalhista: indicar primeiro `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (TRABALHISTA) 2026` ou análise equivalente. Não indicar geração de guia nem minuta no primeiro momento.
-- Cível: indicar análise, `ENTRAR EM CONTATO COM O CLIENTE 2026` e `MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/EMENDA/IMPUGNAÇÃO (CÍVEL) 2026` desde logo. Usar na minuta: `PRAZO FATAL (D-2): DD/MM/AAAA` e `MINUTAR PETIÇÃO PARA COMPROVAR [PAGAMENTO/DEPÓSITO/RECOLHIMENTO] NOS AUTOS`.
-
-### Pendências de saneamento
-
-Alguns nomes na planilha original possuem grafia possivelmente inconsistente, como `PPREVIDENCIÁRIO`, `EXECUCÃO`, `SUSTENTACÃO` e `PRECATORIO`. Preserve o nome se for exatamente a opção disponível no VIOS. Se houver dúvida, informe `PENDENTE – CONFIRMAR OPÇÕES DISPONÍVEIS NO VIOS.`
-
-## Referência — Regras de Prazos e Recursos
-
-Use esta seção para orientar cálculo de prazo e indicação de cabimento. Se o documento ou manual da Controladoria trouxer regra mais específica, use a regra específica.
-
-### Regra operacional
-
-- Sempre que houver prazo fatal calculável, indicar a data operacional em D-2 com o rótulo exato `PRAZO FATAL (D-2):`.
-- Se houver audiência ou perícia antes do D-2, usar no campo `PRAZO FATAL (D-2)` uma data anterior ao ato.
-- Em descrições de tarefas VIOS, usar a data de trabalho interna quando a operação exigir D-2.
-- Ao responder ao usuário, diferenciar `Prazo fatal:` e `PRAZO FATAL (D-2):`.
-- No resumo destinado à tarefa VIOS, inserir somente `PRAZO FATAL (D-2): DD/MM/AAAA`; não repetir ali o prazo jurídico fatal real.
-
-### Embargos e recursos
-
-Regras extraídas do POP:
-
-- Embargos: 5 dias.
-- Recurso em Juizado: 10 dias.
-- Recurso na Justiça Comum: 15 dias.
-
-#### Regra obrigatória para tarefas de análise
-
-Sempre que a tarefa indicada for `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO`, exibir as duas linhas, nesta ordem:
-
-```text
-PRAZO PARA EMBARGOS: [resultado]
-PRAZO PARA RECURSO: [resultado]
-```
-
-Preencher `[resultado]` com:
-
-- a data operacional em D-2, quando cabível e calculável;
-- `NÃO CABE`, quando o meio não for cabível;
-- com cabimento pendente (o teor não permite concluir), a data em D-2 pelo prazo legal — o advogado decide se recorre e precisa da data;
-- se não couber embargos nem recurso, omitir as duas linhas e deixar somente o `PRAZO FATAL (D-2)` do ato, se houver.
-
-A tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` fica para o **mesmo dia** da análise, nunca para o D-2: as datas de embargos e de recurso (em D-2) ficam só na descrição. Não usar a linha `PRAZO FATAL (D-2)` quando houver as linhas de embargos e recurso.
-
-Não omitir nenhuma das duas linhas em tarefas de análise. Para tarefas diferentes de análise, exibir somente as linhas efetivamente aplicáveis.
-
-Quando couber embargos:
-
-```text
-PRAZO PARA EMBARGOS: DD/MM/AAAA
-```
-
-Quando couber outro recurso:
-
-```text
-PRAZO PARA RECURSO: DD/MM/AAAA
-```
-
-Quando couberem ambos:
-
-```text
-PRAZO PARA EMBARGOS: DD/MM/AAAA
-PRAZO PARA RECURSO: DD/MM/AAAA
-```
-
-### Prazo previsto em lei (quando o ato não informar o prazo)
-
-Quando a intimação não trouxer o número de dias, usar o prazo previsto em lei abaixo e escrever na descrição da tarefa que o prazo é o legal, por exemplo: `Prazo previsto em lei: 15 dias úteis (Apelação).`
-
-Só usar `PENDENTE – NÃO CONSTA NO DOCUMENTO` quando o caso não estiver nesta tabela nem nas regras do Previdenciário.
-
-#### Processo Civil
-
-| Meio | Prazo |
-| --- | --- |
-| Prazo geral dos recursos: Apelação, Agravo de Instrumento, Agravo Interno, Recurso Especial e Recurso Extraordinário | 15 dias úteis |
-| Embargos de Declaração (qualquer que seja a decisão) | 5 dias úteis |
-| Manifestação sobre laudo pericial (art. 477, § 1º, CPC), inclusive no Juizado e no Previdenciário | 15 dias úteis |
-
-#### Processo do Trabalho
-
-| Meio | Prazo |
-| --- | --- |
-| Recursos em geral: Recurso Ordinário, Recurso de Revista, Agravo de Instrumento, Agravo de Petição, Embargos ao TST (Recurso de Embargos à SDI-1) | 8 dias úteis |
-| Embargos de Declaração (contra sentença ou acórdão, para sanar omissão, contradição, obscuridade ou manifesto equívoco) | 5 dias úteis |
-| Embargos à Execução (para o executado se manifestar ou contestar a penhora, após a notificação) | 5 dias úteis |
-| Recurso Extraordinário (ao STF, regra do CPC) | 15 dias úteis |
-
-#### Contagem do prazo legal
-
-- Contar em dias úteis.
-- Excluir o dia do começo e incluir o dia do vencimento.
-- No Previdenciário continuam valendo as regras próprias: embargos em 5 dias, recurso em Juizado em 10 dias e recurso na Justiça Comum em 15 dias.
-- Quando o cabimento estiver pendente (`PENDENTE – CONFIRMAR CABIMENTO`), informar mesmo assim o prazo legal do meio, para não perder o prazo.
-
-### Cuidados
-
-- Não afirmar cabimento de recurso quando o teor da decisão/sentença/acórdão não permitir concluir.
-- Quando depender de avaliação jurídica, indicar: `Cabe análise do advogado sobre recurso/embargos.`
-- Não sugerir abertura direta de recurso quando a regra da Controladoria exigir tarefa de análise primeiro.
-- Quando a intimação já for expressamente para contrarrazões, pode sugerir tarefa de contrarrazões.
-- Se faltar data de publicação/intimação, não calcule prazo; marque pendência.
-
-### Contagem
-
-- Cível, Trabalhista e JEC: usar dias úteis, salvo regra específica em sentido contrário.
-- Criminal: usar dias corridos, salvo regra específica em sentido contrário.
-- Considerar feriados nacionais e feriados locais previstos nos manuais internos disponíveis.
-
-Se não houver calendário de feriados disponível na sessão, informe a pendência em vez de inventar a data.
-
-## Regras do programa (bot) — datas, bloqueios e conferências
-
-No bot, as regras desta seção são aplicadas pelo programa depois da resposta da IA (a IA não calcula as datas). Elas estão aqui para que a análise feita no chat chegue ao mesmo resultado do bot e possa ser comparada com ele.
-
-### Sugestões do VIOS
-
-As sugestões automáticas de tarefa do VIOS são apenas indício, nunca decisão.
-
-### Contagem de prazo
-
-- Disponibilização × publicação: no diário eletrônico, considera-se publicada a intimação no 1º dia útil seguinte ao da disponibilização (Lei 11.419/2006, art. 4º, § 3º). Os arquivos e relatórios do bot levam no nome a data de **disponibilização** (ex.: `analise_2026-10-27` = disponibilizadas em 27/10/2026, publicadas em 28/10/2026); por isso a publicação das CIs é um dia útil depois da data do arquivo, e isso não é erro. O prazo conta da publicação.
-- O prazo começa no 1º dia útil após a publicação (CPC, art. 224).
-- Dia útil: segunda a sexta, sem feriado. Feriados considerados: nacionais; os da Justiça Federal (Lei 5.010/66, art. 62), só em processo federal; estaduais e municipais da tabela de feriados; e os cadastrados pela Controladoria (`doc/feriados.txt`).
-- Recesso forense de 20/12 a 20/01 (CPC, art. 220): os prazos não correm, nem os contados em dias corridos.
-- Prazo que vence em dia não útil (ou no recesso) vai para o próximo dia útil.
-- Pontos facultativos e feriados não confirmados não mudam a data: viram alerta para conferir. A data fica adiantada, para não perder prazo.
-- **D-2** = 2 dias úteis antes do prazo fatal.
-- Quando a intimação não informa os dias, usar o prazo previsto em lei (seção "Prazo previsto em lei" da referência de prazos e recursos). Se couber, ou puder caber, embargos ou recurso, o prazo deles sempre tem dias (nunca 0): o advogado decide se recorre e precisa da data.
-
-### Data de cada tarefa
-
-| Caso | Data da tarefa no VIOS | Linha de prazo na descrição |
-| --- | --- | --- |
-| Tarefa com prazo (regra geral) | D-2 do prazo principal | `PRAZO FATAL (D-2): DD/MM/AAAA` |
-| RPV/precatório | próximo dia útil após a publicação | `PRAZO FATAL: DD/MM/AAAA` |
-| Emenda à inicial com auxiliar SUH | próximo dia útil após a publicação | `PRAZO FATAL: DD/MM/AAAA` |
-| `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` | mesmo dia da análise (nunca D-2) | ver abaixo |
-| Verificar viabilidade de sustentação | mesmo dia da análise | — |
-| Aviso e instrução de perícia social | próximo dia útil após a análise (a instrução sempre na mesma data do aviso) | — |
-| Audiência, perícia técnica, perícia médica, sustentação oral | data exata do ato (nunca D-2); na sessão virtual, o 1º dia da sessão | horário no campo Horário do VIOS |
-| Ciência e tarefas sem prazo | sem data | — |
-
-Na tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO`:
-- se couber, ou puder caber, embargos ou recurso: as duas linhas `PRAZO PARA EMBARGOS:` e `PRAZO PARA RECURSO:`, com data em D-2 (`NÃO CABE` na que não couber), e sem a linha `PRAZO FATAL (D-2)`;
-- se não couber nenhum dos dois: só o `PRAZO FATAL (D-2)` do ato, se houver.
-
-### Descrição da tarefa no VIOS
-
-Ordem das linhas:
-1. as linhas de prazo (tabela acima);
-2. o texto da descrição, seguindo o modelo da tarefa.
-
-Não vão na descrição: `Responsável a marcar na tarefa: BRENO`, `Advogada auxiliar: TAMIRA`, `PRIORIDADE RPV/PRECATÓRIO` (e `PRIORIDADE EMENDA`). Os responsáveis vão no campo Responsáveis do VIOS: na tarefa `MINUTAR PETIÇÃO EXECUÇÃO`, o bot marca Breno junto com a Tamira. Se a IA escrever essas linhas, o bot as apaga.
-
-Exemplo (RPV, Execução):
 
 ```text
 PRAZO FATAL: 29/10/2026
@@ -1338,35 +314,344 @@ MINUTAR PETIÇÃO PARA INFORMAR OS DEMAIS DADOS NECESSÁRIOS PARA A CONFECÇÃO 
 Despacho: considerando a certidão de ID 192859275, intime-se a parte exequente para, no prazo de 5 dias, informar os demais dados necessários para a confecção dos requisitórios.
 ```
 
-### Quando NÃO lançar a CI no VIOS
+Os dados desses exemplos são ilustrativos; nunca copiá-los para outro processo.
 
-A CI não é lançada (fica para a Controladoria conferir e lançar à mão) quando:
-- falta na intimação informação que a tarefa exige e que só o PJe tem (audiência sem tipo, data, horário, formato, local ou link/ID/senha; perícia sem data, horário ou local; data do ato que não consta);
-- a intimação só indica um evento do processo, sem o teor (ex.: "O ato refere-se ao seguinte evento: Evento 23 - PETIÇÃO"): a tarefa depende de abrir o evento no sistema; não usar `CIÊNCIA` por falta de informação;
-- a tarefa com horário (audiência, perícia, sustentação oral) está sem o horário;
-- na tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO`, cabe embargos ou recurso, mas não há prazo para calcular a data;
-- o ato é sentença ou acórdão e não há a tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` (ex.: a IA indicou só `MINUTAR RECURSO/CONTRARRAZÕES`): o advogado é quem decide se cabe recurso;
-- a área da tarefa diverge do auxiliar (quando há um único auxiliar):
-  - auxiliar TAMI (Tamira, Execução) com tarefa de outra área (Cível, Trabalhista, Previdenciário) e nenhuma de Execução: confirmar o departamento;
-  - auxiliar JOAQ, JOAN, LILI, SUH, CARL ou JOHN com tarefa de Execução: confirmar se o processo já foi transferido para a Execução (Tamira);
-  - auxiliar SUH com tarefa Cível: a tarefa deveria ser Trabalhista — Reclamante ou Previdenciário.
+## Referência — Roteamento interno, prioridades e duplicidades
 
-  Com mais de um auxiliar (ex.: "TAMI / SUH"), vale a análise, sem esse bloqueio automático.
+### Ordem de decisão
 
-### Alertas (a CI é lançada, mas com aviso para conferir)
+Conferir orientação expressa do usuário, providência concreta, fase atual, departamento responsável, auxiliar, natureza/órgão/CNJ e classe/assunto. Nenhum campo isolado substitui a leitura.
 
-- Tarefa não definida (`PENDENTE – CONFIRMAR OPÇÕES DISPONÍVEIS NO VIOS` ou `NÃO ABRIR TAREFA AINDA - CONFERIR NO PJE QUEM INTERPÔS O AGRAVO/RECURSO PARA DEFINIR SE É MINUTAR OU CIÊNCIA`) ou nenhuma tarefa indicada.
-- Perícia social sem a tarefa `INSTRUÇÃO PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026`.
-- `VERIFICAR VIABILIDADE DE REALIZAR SUSTENTAÇÃO ORAL` sem a tarefa `SUSTENTAÇÃO ORAL`.
-- `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO)` sem a tarefa de quesitos/assistente técnico (`… IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO)`).
-- Ato (audiência, perícia, sessão) marcado para antes do D-2 do prazo: antecipar a data da tarefa.
-- Há prazo no texto, mas sem o número de dias para calcular a data.
-- Feriado não confirmado ou ponto facultativo dentro do prazo; cidade sem feriados locais cadastrados.
+Conferir em conjunto departamento, responsável atual, auxiliar e providência; corrigir cadastro incompatível com o mapeamento institucional abaixo. Não confundir a coluna “Área” de um relatório automático com prova do departamento cadastrado. Tamira efetivamente responsável pela demanda de Execução exige tarefa de Execução. Não confundir esse vínculo com nome lançado por engano em tarefa previdenciária. Não presumir que todo processo contra o INSS permanece no Previdenciário se a transferência interna estiver comprovada.
+
+### Mapeamento operacional
+
+| Auxiliar | Área normalmente relacionada | Conferência |
+| --- | --- | --- |
+| Joaquim/JOAQ | Cível | Validar eventual transferência para Execução/Tamira |
+| Joana/JOAN | Cível | Validar eventual transferência para Execução/Tamira |
+| Lili/LILI | Cível | Validar eventual transferência para Execução/Tamira |
+| Suhiane/SUH | Trabalhista Reclamante ou Previdenciário | Diferenciar por partes, teor, órgão e CNJ |
+| Tamira/TAMI | Execução | Se efetivamente responsável, usar tarefa de Execução; se o caso/tarefa for previdenciário, corrigir para Suhiane |
+| Johnys/JOHN | Trabalhista Reclamada | Substituir Carlos/CARL em tarefa trabalhista; Carlos não integra mais o Trabalhista |
+| Breno | Petições intermediárias da Execução da Tamira | Marcar como responsável operacional, preservando Tamira como auxiliar |
+
+SUH em processo da Justiça do Trabalho: usar Trabalhista Reclamante, inclusive na fase executiva, salvo transferência interna confirmada. SUH em benefício/INSS: Previdenciário, ressalvada a mesma confirmação. Palavra “execução” ou classe judicial não basta para mudar o setor.
+
+### Divergências e informações ausentes
+
+- Identificar separadamente natureza, fase, departamento confirmado/provável e auxiliar.
+- Se só houver auxiliar, sem prova de departamento compatível, registrar o setor provável como hipótese. Não apresentar essa hipótese como cadastro validado.
+- Tarefa previdenciária cadastrada para Tamira: corrigir para Suhiane. Tarefa trabalhista cadastrada para Carlos: corrigir para Johnys. Não bloquear essas correções já autorizadas pelo usuário.
+- Auxiliar de outra área com providência executiva: confirmar se houve transferência; não trocar setor apenas pelo conteúdo executivo.
+- Divergência não resolvida impede lançamento da tarefa afetada; entregar a providência identificada e as alternativas oficiais. Se o usuário/documento confirmar a transferência e o responsável, registrar a evidência e não repetir pedido de confirmação.
+- Sem setor seguro: `PENDENTE – CONFIRMAR ÁREA CADASTRADA NO VIOS.`
+- Cliente não identificado nas partes: registrar `PENDENTE – CONFIRMAR VÍNCULO DO CLIENTE COM O PROCESSO E POSIÇÃO PROCESSUAL.` Não presumir identidade empresarial por semelhança de nome.
+- Não usar tarefa de outra área como alternativa automática para contornar bloqueio do programa.
+
+Modelo:
+
+```text
+OBSERVAÇÃO DE CADASTRO:
+Natureza/fase: [dados do teor].
+Departamento: [confirmado por fonte / pendente].
+Auxiliar informado: [nome].
+Providência: [o que deve ser feito].
+NÃO LANÇAR — confirmar [divergência específica].
+Se permanecer em [área]: [tarefa oficial].
+Se houver transferência confirmada: [tarefa oficial da outra área].
+```
+
+### RPV/precatório
+
+Tratar como prioritários determinação de expedição, minuta, cálculos vinculados, documentos, dados bancários, procuração/contrato, destaque de honorários, retificação, cancelamento, conversão e outras pendências que afetem expedição/conferência/pagamento.
+
+Data: primeiro dia de expediente do escritório seguinte à publicação/recebimento válido. Preservar prazo jurídico e nunca adiá-lo por causa da rotina interna. Essa prioridade prevalece sobre D-2 e sobre a data genérica de análise, salvo providência mais urgente justificada.
+
+Seguir os cabeçalhos da parte principal desta skill: prazo único em D-2, depois `PRIORIDADE RPV`, depois resumo. Para análise jurídica, usar as duas datas recursais sem terceira linha. Na minuta de dados de requisitório, usar o exemplo específico sem nomes ou marcador final na descrição. O agendamento permanece no próximo dia de expediente do escritório; a data do cabeçalho não se torna vencimento jurídico.
+
+| Etapa | Tarefa |
+| --- | --- |
+| Decisão determinando futura expedição | Análise da área responsável |
+| Dados/documentos/cálculos a apresentar | Minuta oficial apropriada da área |
+| Requisitório/minuta já expedido para conferência | `ANALISAR MINUTA PRECATORIO/RPV (EXECUCÃO) 2026`, se setor confirmado |
+| Alvará expedido sem providência | Ciência da área; conferir eventual vínculo com RPV |
+| Erro/pendência no requisitório | Analisar minuta ou decisão conforme o ato; minutar quando a providência já for objetiva |
+
+### Emenda da Suhiane
+
+Aplicar a toda emenda à inicial com auxiliar SUH, trabalhista ou previdenciária, inclusive opção equivalente oficial. Primeiro dia de expediente do escritório seguinte à publicação/recebimento válido, sem D-2 operacional.
+
+Usar `PRAZO FATAL D -2:` na descrição da minuta e guardar a prioridade em campo próprio. A data de lançamento prioritária não substitui o controle D-2 do prazo judicial.
+
+### Tamira e Breno
+
+Em petições intermediárias da Execução da Tamira, inclusive `MINUTAR PETIÇÃO (EXECUÇÃO) 2026`, preencher os campos de responsável e auxiliar, fora da descrição:
+
+```text
+Advogada auxiliar: TAMIRA
+Responsável a marcar na tarefa: BRENO
+```
+
+Aplicar a dados bancários, documentos, RPV, alvará, prosseguimento, penhora e manifestações intermediárias equivalentes. Não presumir essa atribuição para análise, recursos, homologação/impugnação aos cálculos ou outras tarefas especializadas. Preservar Tamira como auxiliar.
+
+### Duplicidades — conferir manualmente também
+
+1. Agrupar candidatos por processo, sem eliminar nada.
+2. Comparar ID da decisão, teor/dispositivo, objeto, datas e destinatários. Mesma decisão publicada para partes diferentes pode produzir duas CIs sem exigir duas tarefas. Pequenas diferenças de redação ou resumos feitos por modelos diferentes não tornam o ato distinto.
+3. Mesmo ID e mesmo conteúdo: duplicidade confirmada, ressalvada republicação corretiva ou nova comunicação que modifique o prazo. Se só houver resumos coincidentes sem ID original, classificar como provável e pedir conferência do documento antes de ignorar a CI.
+4. Preservar preferencialmente a comunicação própria do cliente, mais completa e válida para seu prazo. Não adotar prazo da publicação dirigida à parte contrária como prazo do cliente.
+5. Manter cada CI no bloco e posição originais. Na cópia, escrever `DUPLICADA DA CI [NÚMERO]. Não abrir nova tarefa. Utilizar a tarefa indicada na CI mais completa.` Se provável, escrever `PROVÁVEL DUPLICIDADE — CONFERIR ID/TEOR ANTES DE DESCARTAR`.
+6. Se outra CI acrescentar dado útil, incorporar à tarefa existente. Se modificar data/local/prazo por novo ato, analisar cada CI e atualizar a tarefa apropriada; não ignorar a mudança como duplicata.
+7. Não confundir tarefas complementares obrigatórias com duplicidade. Não deduplicar laudos, perícias ou despachos padronizados de processos/clientes diferentes.
+8. Conferir de forma independente avisos automáticos “ato diferente” e “duplicada”. Não afirmar que o bot detectou corretamente sem confronto dos textos.
+
+### Ausência de responsável
+
+Não atribuir nenhuma tarefa a Sarah Pontes/Controladoria. Se não houver responsável identificável pelas regras institucionais, registrar `RESPONSÁVEL NÃO IDENTIFICADO`, bloquear a tarefa e listar a pendência fora do arquivo. Não presumir responsável de outra área.
+
+## Referência — Tarefas VIOS e Modelos de Descrição
+
+Use esta lista para escolher a tarefa VIOS e montar a descrição. Preserve o nome da tarefa quando possível.
+
+Aplicar obrigatoriamente as datas, cabeçalhos exclusivos e modelos curtos da parte principal desta skill e POP. Análise/ciência observam o corte das 12h. Prioridades são agendadas no próximo dia de expediente do escritório; a descrição preserva controle D-2. Responsáveis e auxiliares ficam fora da descrição.
+
+Índice: Trabalhista; Previdenciário; Execução; Cível; Gerais e complementares; Fluxo de pagamento; Pendências de saneamento.
+
+#### Trabalhista
+
+| Tarefa VIOS | Modelo de descrição |
+| --- | --- |
+| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (TRABALHISTA) 2026 | PRAZO DE EMBARGOS: DD/MM/AAAA<br>PRAZO DE RECURSO: DD/MM/AAAA<br>SENTENÇA/DECISÃO/ACÓRDÃO<br>[inserir se é sentença, decisão ou acórdão e abaixo colocar o dispositivo] |
+| CIÊNCIA (TRABALHISTA) 2026 | CIÊNCIA<br>[inserir a parte principal da intimação] |
+| MINUTAR RECURSO/CONTRARRAZÕES AO RECURSO (TRABALHISTA) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES |
+| MINUTAR EMBARGOS DE DECLARAÇÃO/CONTRARRAZÕES (TRABALHISTA) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES |
+| MINUTAR EMBARGOS/RECURSO/CONTRARRAZÕES (EXECUÇÃO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES |
+| MINUTAR RÉPLICA À CONTESTAÇÃO (TRABALHISTA) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR RÉPLICA |
+| MINUTAR PETIÇÃO INTERMEDIÁRIA DIVERSA (TRABALHISTA) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR PETIÇÃO |
+| MINUTAR QUESITOS/INDICAR PERITOS (TRABALHISTA) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR QUESITOS |
+| MINUTAR PETIÇÃO SOBRE O LAUDO PERICIAL (TRABALHISTA) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR MANIFESTAÇÃO AO LAUDO PERICIAL |
+| MINUTAR MEMORIAIS/RAZÃO FINAIS/ALEGAÇÕES FINAIS (TRABALHISTA) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR ALEGAÇÕES FINAIS |
+| MINUTAR EMENDA A INICIAL (TRABALHISTA) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR EMENDA |
+| AUDIÊNCIA DE CONCILIAÇÃO (TRABALHISTA) 2026 | AUDIÊNCIA DE CONCILIAÇÃO<br>DATA:<br>HORA:<br>LINK/LOCAL: |
+| AUDIÊNCIA UNA/INSTRUÇÃO (TRABALHISTA) 2026 | AUDIÊNCIA UNA/INSTRUÇÃO [indicar se é una ou instrução]<br>DATA:<br>HORA:<br>LINK/LOCAL: |
+| PERÍCIA TÉCNICA/MÉDICA (TRABALHISTA) 2026 | PERÍCIA TÉCNICA/MÉDICA (TRABALHISTA)<br>DATA:<br>HORA:<br>LOCAL: |
+| VERIFICAR VIABILIDADE DE REALIZAR SUSTENTAÇÃO ORAL (TRABALHISTA) 2026 | SUSTENTAÇÃO ORAL<br>DATA:<br>HORA:<br>LINK: |
+
+#### Previdenciário
+
+| Tarefa VIOS | Modelo de descrição |
+| --- | --- |
+| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (PREVIDENCIÁRIO) 2026 | PRAZO DE EMBARGOS: DD/MM/AAAA<br>PRAZO DE RECURSO: DD/MM/AAAA<br>SENTENÇA/DECISÃO/ACÓRDÃO<br>[inserir se é sentença, decisão ou acórdão e abaixo colocar o dispositivo] |
+| CIÊNCIA (PREVIDENCIÁRIO) 2026 | CIÊNCIA<br>[inserir a parte principal da intimação] |
+| MINUTAR EMBARGOS/RECURSO/CONTRARRAZÕES (PREVIDENCIÁRIO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES |
+| MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR MANIFESTAÇÃO AO LAUDO PERICIAL |
+| MINUTAR EMENDA À INICIAL (PREVIDENCIÁRIO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR EMENDA |
+| AUDIÊNCIA PREVIDENCIÁRIA (PREVIDENCIÁRIO) 2026 | AUDIÊNCIA DE INSTRUÇÃO<br>DATA:<br>HORA:<br>LINK/LOCAL: |
+| PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026 | PERÍCIA MÉDICA<br>DATA:<br>HORA:<br>LOCAL: |
+| VERIFICAR VIABILIDADE DE REALIZAR SUSTENTAÇÃO ORAL (PREVIDENCIÁRIO) 2026 | SUSTENTAÇÃO ORAL<br>DATA:<br>HORA:<br>LINK: |
+| AVISAR PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026 | Abrir para o primeiro dia de expediente do escritório seguinte à análise, salvo data expressa do usuário. Usar o aviso padrão do POP e indicar obrigatoriamente a tarefa de instrução para a mesma data operacional. |
+| INSTRUÇÃO PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026 | DATA DA TAREFA: mesma data operacional da tarefa de perícia social/aviso no VIOS.<br>Realizar instrução do(a) cliente para a perícia social. Explicar como ocorre a avaliação e orientar a apresentação de informações verdadeiras sobre a realidade familiar, condições de vida e, quando pertinente, atividade de trabalho. Confirmar dados de localização, conferir eventual data, horário e local nos autos e registrar a orientação realizada. |
+| SUSTENTAÇÃO ORAL PPREVIDENCIÁRIO) 2026 | SUSTENTAÇÃO ORAL<br>DATA:<br>HORA:<br>LINK: |
+
+#### Execução
+
+| Tarefa VIOS | Modelo de descrição |
+| --- | --- |
+| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (EXECUÇÃO) 2026 | PRAZO DE EMBARGOS: DD/MM/AAAA<br>PRAZO DE RECURSO: DD/MM/AAAA<br>SENTENÇA/DECISÃO/ACÓRDÃO<br>[inserir se é sentença, decisão ou acórdão e abaixo colocar o dispositivo] |
+| MINUTAR EXECUÇÃO DE SENTENÇA (EXECUÇÃO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR CUMPRIMENTO DE SENTENÇA |
+| MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO) 2026) | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR [indicar petição, ex.: dados bancários] |
+| MINUTAR EMBARGOS À EXECUÇÃO (EXECUÇÃO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR EMBARGOS |
+| MINUTAR EMBARGOS/RECURSO/CONTRARRAZÕES (EXECUÇÃO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES |
+| MINUTAR HOMOLOGAÇÃO/IMPUGNAÇÃO AOS CÁLCULOS (EXECUÇÃO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR MANIFESTAÇÃO AOS CÁLCULOS |
+| MINUTAR RESPOSTA À IMPUGNAÇÃO (EXECUÇÃO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR RESPOSTA |
+| MINUTAR CHAMAMENTO DO FEITO À ORDEM (EXECUÇÃO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR CHAMAMENTO FEITO À ORDEM |
+| CIÊNCIA (EXECUÇÃO) 2026 | CIÊNCIA<br>[inserir a parte principal da intimação] |
+| MINUTAR PETIÇÃO EXECUÇÃO 2026 (MINUTAR PETIÇÃO (EXECUÇÃO) 2026) | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR PETIÇÃO [inserir a parte principal da intimação] |
+| AUDIÊNCIA DE CONCILIAÇÃO (EXECUÇÃO) 2026 | AUDIÊNCIA DE CONCILIAÇÃO<br>DATA:<br>HORA:<br>LINK/LOCAL: |
+| ANALISAR MINUTA PRECATORIO/RPV (EXECUCÃO) 2026 | PRAZO FATAL: DD/MM/AAAA<br>PRIORIDADE RPV<br>[inserir informação importante da intimação] |
+| MINUTAR PETIÇÃO (EXECUÇÃO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR PETIÇÃO [informar qual petição e destacar a parte principal da intimação] |
+
+#### Cível
+
+| Tarefa VIOS | Modelo de descrição |
+| --- | --- |
+| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026 | PRAZO DE EMBARGOS: DD/MM/AAAA<br>PRAZO DE RECURSO: DD/MM/AAAA<br>SENTENÇA/DECISÃO/ACÓRDÃO<br>[inserir se é sentença, decisão ou acórdão e abaixo colocar o dispositivo] |
+| CIÊNCIA (CÍVEL) 2026 | CIÊNCIA<br>[inserir a parte principal da intimação] |
+| MINUTAR RECURSO/CONTRARRAZÕES (CÍVEL) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES<br>Observação: recursos são na tarefa de analisar. |
+| MINUTAR EMBARGOS DE DECLARAÇÃO/CONTRARRAZÕES (CÍVEL) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES<br>Observação: recursos são na tarefa de analisar. |
+| MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/EMENDA/IMPUGNAÇÃO (CÍVEL) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR PETIÇÃO [informar qual petição e destacar a parte principal da intimação] |
+| MINUTAR MEMORIAIS/RAZÃO FINAIS/ALEGAÇÕES FINAIS (CÍVEL) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR ALEGAÇÕES FINAIS |
+| AUDIÊNCIA DE CONCILIAÇÃO (CÍVEL) 2026 | AUDIÊNCIA DE CONCILIAÇÃO<br>DATA:<br>HORA:<br>LINK/LOCAL: |
+| AUDIÊNCIA UNA/INSTRUÇÃO (CÍVEL) 2026 | AUDIÊNCIA UNA/INSTRUÇÃO [indicar se é una ou instrução]<br>DATA:<br>HORA:<br>LINK/LOCAL: |
+| PERÍCIA TÉCNICA (CÍVEL) 2026 | PERÍCIA TÉCNICA<br>DATA:<br>HORA:<br>LOCAL: |
+| VERIFICAR VIABILIDADE DE REALIZAR SUSTENTAÇÃO ORAL (CÍVEL) 2026 | SUSTENTAÇÃO ORAL<br>DATA:<br>HORA:<br>LINK: |
+| MINUTAR INICIAL/CONTESTAÇÃO/EMBARGOS À EXECUÇÃO (CÍVEL) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR CONTESTAÇÃO |
+| SUSTENTAÇÃO ORAL(CÍVEL) 2026 | SUSTENTAÇÃO ORAL<br>DATA:<br>HORA:<br>LINK: |
+
+#### Gerais e complementares
+
+| Tarefa VIOS | Modelo de descrição |
+| --- | --- |
+| SUSTENTAÇÃO ORAL | SUSTENTAÇÃO ORAL<br>DATA:<br>HORA:<br>LINK: |
+| SUSTENTACÃO ORAL (RECLAMANTE) 2026 | SUSTENTAÇÃO ORAL<br>DATA:<br>HORA:<br>LINK: |
+| ENTRAR EM CONTATO COM O CLIENTE 2026 | Não indicar nem lançar como tarefa adicional à análise: o fluxo de análise já gera o contato com o cliente automaticamente. No pagamento cível, indicar somente análise e minuta de comprovação. |
+
+#### Fluxo de pagamento por área
+
+- Trabalhista: indicar primeiro `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (TRABALHISTA) 2026` ou análise equivalente. Não indicar geração de guia nem minuta no primeiro momento.
+- Cível: indicar somente análise e `MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/EMENDA/IMPUGNAÇÃO (CÍVEL) 2026` desde logo. A análise já gera o contato; não duplicá-lo com tarefa separada. Usar na minuta: `PRAZO FATAL D -2: DD/MM/AAAA` e `MINUTAR PETIÇÃO PARA COMPROVAR [PAGAMENTO/DEPÓSITO/RECOLHIMENTO] NOS AUTOS`.
+
+#### Pendências de saneamento
+
+Alguns nomes na planilha original possuem grafia possivelmente inconsistente, como `PPREVIDENCIÁRIO`, `EXECUCÃO`, `SUSTENTACÃO` e `PRECATORIO`. Preserve o nome se for exatamente a opção disponível no VIOS. Se houver dúvida, informe `PENDENTE – CONFIRMAR OPÇÕES DISPONÍVEIS NO VIOS.`
+
+## Referência — Prazos, cabimento e calendário
+
+Índice: validação; prazos de referência; calendário; casos especiais; apresentação.
+
+### Validar antes de calcular
+
+Identificar cliente destinatário, meio/providência, rito, órgão que praticou o ato, prazo expresso ou legal, termo inicial e calendário aplicável. Separar prazo da parte contrária. Não afirmar ausência geral de recurso só porque o ato favorece o cliente: avaliar interesse e vícios próprios.
+
+Distinguir disponibilização, publicação e ciência eletrônica. Não tratar data de captura/geração do relatório como publicação. No DJEN, confirmar a publicação efetiva e contar do primeiro dia útil subsequente, conforme as regras aplicáveis. Intimação pessoal/portal pode ter regra distinta: verificar a modalidade antes de substituir o termo inicial.
+
+Aplicar prazo expresso confirmado para a providência; se divergir da regra legal, registrar a divergência e a necessidade de conferência, sem alongar silenciosamente o controle. Se faltar prazo no texto, usar o legal apenas quando confirmada sua aplicação ao rito e inexistir prazo específico pertinente nos autos. Preservar controle preventivo identificado se a validação ainda estiver pendente.
+
+### Prazos legais de referência
+
+Conferir a legislação vigente e as exceções do caso. A tabela não prova cabimento nem afasta regra especial.
+
+| Rito/meio | Prazo de referência |
+| --- | --- |
+| CPC: apelação, agravo de instrumento/interno, REsp e RE | 15 dias úteis, quando cabíveis |
+| Embargos de declaração cíveis/previdenciários/JEC | 5 dias úteis, quando cabíveis |
+| Sentença de JEC/JEF: recurso inominado | 10 dias úteis, ressalvadas exceções de cabimento |
+| Manifestação sobre laudo, art. 477, §1º, CPC | 15 dias úteis, se aplicável e sem prazo específico confirmado |
+| Trabalhista: RO, RR, agravo de instrumento/petição e embargos ao TST | 8 dias úteis, observados pressupostos e regras especiais |
+| Embargos de declaração trabalhistas | 5 dias úteis, quando cabíveis |
+| Embargos à execução trabalhista | 5 dias úteis após o marco próprio da CLT, inclusive garantia/penhora quando exigida; não presumir início pela mera publicação |
+| RE ao STF em matéria trabalhista | 15 dias úteis, quando cabível |
+
+Nos campos externos de controle, identificar `Prazo previsto em lei: N dias úteis ([meio/providência e fundamento]).`, mantendo breve a descrição. Se faltar base para aplicar a tabela ou dado para contar, registrar pendência, não prazo fatal validado.
+
+### Calendário e contagem
+
+- Aplicar o calendário simplificado da parte principal desta skill a todas as contagens de prazos em dias úteis: contar segunda a sexta e excluir somente sábados e domingos, inclusive em embargos, recursos e manifestações. Incluir feriados, pontos facultativos, recesso e suspensões. Não exigir consulta de feriados nem bloquear pela ausência de calendário oficial.
+- Excluir o dia da publicação/ciência informada e iniciar no próximo dia de segunda a sexta. Preservar o marco documental e a duração expressa ou legal pertinente. Não inventar ciência do cliente a partir de intimação exclusiva da parte contrária.
+- D-2: retroceder dois dias de segunda a sexta do vencimento de referência, incluindo feriados. Análises/ciências e prioridades usam esse mesmo calendário para agendamento, com o corte das 12h previsto na parte principal desta skill.
+- Identificar uma vez, fora dos resumos: `Contagem solicitada: segunda a sexta, incluindo feriados; vencimentos sem validação do calendário judicial oficial.` Não chamar o resultado de vencimento jurídico oficial confirmado.
+- Preservar datas-limite expressamente fixadas pelo juízo e data/hora exatas dos eventos. Prazos em horas ou dias corridos mantêm a unidade e regime próprios, inclusive no Criminal; o calendário simplificado não converte dias corridos em dias úteis.
+- Se o usuário pedir especificamente validação jurídica oficial, distinguir essa conferência da contagem simplificada e consultar as regras e fontes oficiais do órgão competente.
+
+### Casos especiais
+
+#### Homologação de conciliação no JEC
+
+Verificar o art. 41 da Lei 9.099/95, que exclui essa sentença do recurso ordinário do Juizado. Não aplicar automaticamente dez dias só por se tratar de sentença de JEC. Conferir a natureza da homologação e instrumento; se o documento for insuficiente, registrar cabimento pendente. Não excluir a análise obrigatória da sentença nem a avaliação de embargos/correção por vício específico.
+
+#### Julgamento de embargos
+
+Conferir tempestividade e efeitos dos embargos para avaliar interrupção e novo termo recursal. Novos embargos podem exigir exame de vício próprio da decisão integrativa ou persistência de omissão não sanada. Não usar a frase absoluta “somente por vício novo”; não estimular repetição do mérito ou embargos protelatórios.
+
+#### Honorários recursais
+
+Antes de sugerir omissão ou majoração do art. 85, §11, CPC, conferir honorários previamente fixados em desfavor da parte recorrente e demais requisitos da jurisprudência vigente. Ausência de honorários na origem não gera automaticamente omissão no recurso.
+
+#### Laudo no Previdenciário/JEF
+
+A tarefa é de manifestação sobre laudo, não de comparecimento a perícia ou de análise de sentença. Usar quinze dias do art. 477, §1º, CPC apenas sob premissa de aplicação subsidiária adequada e inexistência de prazo específico no expediente/decisão. Identificar essa premissa quando só houver trecho resumido.
+
+### Apresentar os resultados
+
+Aplicar integralmente os cabeçalhos e datas da parte principal desta skill. Em análise jurídica de sentença/acórdão/decisão, calcular e mostrar ambas as datas em D-2, inclusive como controle preventivo quando houver restrição de cabimento; reservar a decisão ao advogado. Não substituir datas por `NÃO CABE`. Indicar a ressalva jurídica nos campos externos, sem afirmar admissibilidade. Na homologação de conciliação em JEC, conservar a ressalva do art. 41 fora da descrição e não chamar o controle preventivo de recurso validado.
+
+Usar embargos + recurso OU prazo fatal, nunca os três na mesma descrição. Minutas: `PRAZO FATAL D -2:` (exceção de apresentação da minuta prioritária de requisitórios conforme a parte principal desta skill). Análises operacionais com prazo objetivo e sem controle recursal: somente prazo fatal. Preservar prazo de obrigação distinta em campo externo/tarefa própria.
+
+Analisar/ciência: mesmo dia de expediente do escritório até 12h; após 12h, próximo dia de expediente do escritório. Prioridades: próximo dia de expediente do escritório. Não excluir feriados do agendamento interno nem da contagem simplificada. Aplicar segunda a sexta, inclusive feriados, à contagem e ao D-2, conforme a regra simplificada da parte principal desta skill. Audiência/perícia/sustentação: data e hora exatas do ato; inscrição/envio são prazos preparatórios separados. Se faltarem elementos de cálculo ou dados necessários de ID/evento/expediente, bloquear a tarefa e listar a pendência fora do arquivo. Não afirmar que editar a Skill alterou o programa do bot.
+
+## Referência — Validação para lançamento e comparação com o bot
+
+Estas são instruções de triagem e revisão. Não afirmar que o bot já executa estas regras nem que seus arquivos foram alterados sem acesso e modificação reais do programa.
+
+### Antes de finalizar
+
+Conferir uma linha por CI com cliente, destinatário, ato/ID, natureza, fase, departamento/fonte, auxiliar, tarefa principal/complementares, responsável, prazo expresso/legal, termo inicial, calendário, vencimento jurídico, data operacional, prioridade, duplicidade e status.
+
+Corrigir inconsistência interna detectável. Se a solução exigir documento/dado ausente, registrar pendência e prosseguir nas demais CIs. Não esconder incerteza apenas para produzir uma tarefa lançável.
+
+### Não lançar a CI/tarefa afetada
+
+- Teor ausente, comunicação que só aponta evento (“Evento 23 — PETIÇÃO”), ou impossibilidade de escolher tarefa sem abrir o evento. Não usar ciência como substituto.
+- Cliente/vínculo/posição processual ainda não identificados com segurança.
+- Departamento/responsável incerto ou divergência não resolvida. Aplicar antes as correções autorizadas: Carlos trabalhista → Johnys; Tamira previdenciário → Suhiane; responsável Tamira em Execução → tarefa de Execução. Nunca atribuir a Sarah/Controladoria.
+- Audiência sem tipo/data/hora/formato/local ou dados de acesso exigidos (link, ID, senha); perícia com comparecimento sem data/hora/local; sustentação sem dados indispensáveis. Listar precisamente o que falta para conferência no PJe. Não presumir que ausência de senha significa acesso livre.
+- Tarefa com horário sem horário confirmado. Exceção: aviso/instrução social possuem data operacional própria e podem existir sem data/hora da visita.
+- Prazo necessário ao lançamento sem termo inicial ou duração identificados; a falta de calendário oficial não bloqueia a contagem simplificada. Preservar controle preventivo identificado, sem chamá-lo de vencimento validado.
+- Tarefa não definida, nome não confirmado na lista oficial ou recurso/agravo de recorrente desconhecido. Isso é bloqueio, não simples alerta com lançamento.
+- Duplicidade confirmada: não gerar outra tarefa. Duplicidade provável: conferir ID/teor antes de descartar a CI; não eliminar comunicação válida do cliente por hipótese.
+- Falta de tarefa complementar obrigatória: corrigir a análise antes de finalizar. Se algum dado da complementar depender de conferência, indicá-la explicitamente como pendente; não considerá-la dispensada.
+
+Esses bloqueios restringem o lançamento da tarefa afetada, não impedem entregar a revisão e as demais análises. Não acessar/escrever no VIOS ou outro serviço sem autorização e ferramentas apropriadas. Solicitação apenas de análise não comprova lançamento.
+
+### Alertas com contexto
+
+- Feriados e suspensões: contar como dias úteis na contagem simplificada; não pesquisar nem exigir calendário oficial para esse cálculo. Indicar uma vez, fora dos resumos, o critério solicitado e a ausência de validação do calendário judicial oficial.
+- Ato mais próximo do que a data operacional preparatória: antecipar o trabalho e justificar.
+- Divergência de grafia de cliente comprovadamente identificado: registrar a prova; não presumir equivalência de outras empresas.
+- Se a informação necessária depender de leitura de ID/evento/expediente ainda não disponível, não lançar a tarefa afetada; a Controladoria confere primeiro. Não criar tarefa para suprir essa falta.
+
+### Checagem das datas
+
+- Análise e ciência: mesmo dia de expediente do escritório até 12h; após 12h ou fora de expediente, próximo dia de expediente do escritório, ressalvadas prioridades e urgência concreta. Feriados não são excluídos do agendamento nem da contagem simplificada.
+- RPV e prioridades SUH: primeiro dia de expediente do escritório seguinte. Cabeçalho da descrição controla D-2; não é a data de lançamento prioritário.
+- Regra geral: D-2 retrocedendo dois dias de segunda a sexta, inclusive feriados; excluir apenas sábados e domingos.
+- Eventos com horário: dia e hora exatos nos campos do VIOS e na descrição; sessão virtual no início. Término e prazo de envio/inscrição ficam fora da descrição curta.
+- Ciência: não inventar vencimento.
+- Nenhum agendamento interno pode alongar prazo jurídico ou ocultar atraso.
+- Recalcular de forma independente quando o bot apresentar data. Conta correta não confirma termo inicial, cabimento nem calendário.
+
+### Fechamento da resposta
+
+Informar por CI se está pronta, duplicada ou pendente, sem misturar conclusões. Na revisão, separar erro confirmado, inconsistência, provável duplicidade e pendência documental. Não repetir avisos obsoletos quando a fonte oficial já foi localizada.
+
+Excluir do arquivo importável todas as tarefas bloqueadas. Entregar no chat uma lista separada por CI/processo com o dado faltante e a consulta necessária. Conferir descrições curtas, responsáveis fora do resumo e cabeçalhos exclusivos: duas datas recursais OU prazo fatal. Não omitir CIs da conferência interna.
+
+No pagamento cível, conferir somente análise e minuta. Excluir tarefa separada de contato com o cliente, pois esse contato já é gerado automaticamente pelo fluxo da análise.
+
+## Regras do programa (robô) — o que ele faz com o arquivo
+
+O robô não refaz a análise: ele lança no VIOS exatamente as tarefas do arquivo para o robô (seção "Arquivo para o robô (.txt)", mais abaixo). As regras de tarefa, data e descrição são as da parte principal desta skill e das referências (contagem simplificada: segunda a sexta, incluindo feriados). Esta seção só descreve o que o robô confere, para o arquivo passar na primeira tentativa.
+
+### Datas das intimações capturadas pelo robô
+
+- O robô pesquisa no VIOS pela data de **disponibilização**. Os arquivos que ele gera levam essa data no nome (ex.: `intimacoes_2026-10-27` = disponibilizadas em 27/10/2026). A publicação é o dia seguinte de segunda a sexta (Lei 11.419/2006, art. 4º, § 3º) — ex.: disponibilizada em 27/10, publicada em 28/10 —, e isso não é erro. O prazo conta da publicação.
+- As sugestões automáticas de tarefa do VIOS são apenas indício, nunca decisão.
+
+### O que o robô bloqueia (a CI não é lançada e aparece como problema na página de envio)
+
+- Tarefa fora da lista oficial do VIOS (nome diferente da seção "Referência — Tarefas VIOS e Modelos de Descrição").
+- `DATA` vazia ou fora do formato DD/MM/AAAA (só `CIÊNCIA` pode ficar sem data).
+- Audiência, perícia ou sustentação oral sem `HORA`, ou horário fora do formato HH:MM.
+- Responsável que não existe no VIOS (nome diferente do cadastro).
+- Descrição vazia ou linha solta antes de `DESCRIÇÃO:`.
+- CI já lançada pelo robô antes, ou que já tem tarefa ativa no VIOS.
+- CI que é cópia de outra (mesmo processo e mesmo teor): se a original está no arquivo ou já foi lançada, a cópia não é gravada; se não, vira erro para a Controladoria conferir.
+
+Avisos (a CI é lançada, mas a página mostra para conferir): data já passada, data em sábado ou domingo, e linhas `Responsável a marcar na tarefa` / `Advogada auxiliar` na descrição (responsáveis vão no campo `RESPONSÁVEIS`).
+
+### Como o robô preenche a tarefa no VIOS
+
+- Tarefa, data, horário (campo Horário do VIOS) e descrição na Observação.
+- Descrição toda em negrito; as linhas que começam com `PRAZO FATAL` (`PRAZO FATAL:` e `PRAZO FATAL D -2:`) em negrito e vermelho. O teor da intimação que o VIOS acrescenta fica normal.
+- `RESPONSÁVEIS: automático`: o VIOS marca sozinho (em geral o auxiliar da intimação). Com nomes: o robô marca exatamente essas pessoas. Na petição da Execução da Tamira: `TAMIRA LOIOLA, BRENO SILVA MOTA`.
+- `CIÊNCIA` com `DATA:` vazia vai para o dia do envio.
+- Duas tarefas da mesma CI são gravadas juntas e conferidas na tela de conferência do VIOS.
 
 ### Duplicidade
 
-- A mesma publicação em mais de uma CI: a mais completa é a original e a outra é ignorada (não abrir nova tarefa; vale a tarefa da CI original).
-- O mesmo processo com atos diferentes: só alerta, cada CI tem a sua tarefa.
+- A mesma publicação em mais de uma CI: a mais completa é a original (primeiro a endereçada ao cliente, depois a de texto maior, depois a de número menor); a outra não gera tarefa.
+- O mesmo processo com atos diferentes não é duplicidade: cada CI tem a sua tarefa.
 
 ## Arquivo para o robô (.txt)
 
@@ -1381,7 +666,7 @@ DATA: 29/10/2026
 HORA:
 RESPONSÁVEIS: TAMIRA LOIOLA, BRENO SILVA MOTA
 DESCRIÇÃO:
-PRAZO FATAL: 29/10/2026
+PRAZO FATAL: 02/11/2026
 MINUTAR PETIÇÃO PARA INFORMAR OS DEMAIS DADOS NECESSÁRIOS PARA A CONFECÇÃO DOS REQUISITÓRIOS (RPV/PRECATÓRIO)
 Despacho: considerando a certidão de ID 192859275, intime-se a parte exequente para, no prazo de 5 dias, informar os demais dados necessários para a confecção dos requisitórios.
 ---
@@ -1398,15 +683,28 @@ FORMATO: TELEPRESENCIAL (ZOOM)
 LINK/LOCAL: https://trt7-jus-br.zoom.us/j/85164513045
 ID da reunião: 851 6451 3045
 SENHA: 355957
+---
+CI: 42491
+TAREFA: ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026
+DATA: 29/10/2026
+HORA:
+RESPONSÁVEIS: automático
+DESCRIÇÃO:
+PRAZO DE EMBARGOS: 02/11/2026
+PRAZO DE RECURSO: 16/11/2026
+SENTENÇA
+[dispositivo]
 ```
+
+No exemplo, as três intimações foram publicadas em 28/10/2026. Na 42484 (dados para requisitórios, prazo de 5 dias), a `DATA` é a prioridade (próximo dia de segunda a sexta) e o `PRAZO FATAL` é o D-2 do vencimento de referência (04/11/2026). Na 42491, embargos (5 dias) vencem em 04/11 e recurso (15 dias) em 18/11; as linhas mostram o D-2 de cada um.
 
 Regras do arquivo:
 
 - `CI`: só o número da CI do VIOS.
 - `TAREFA`: o nome exato da lista oficial (seção "Referência — Tarefas VIOS e Modelos de Descrição").
-- `DATA`: a data da tarefa no VIOS (DD/MM/AAAA), já calculada pelas regras de data (D-2, prioridade RPV/emenda da Suhiane, mesmo dia, data do ato). Só `CIÊNCIA` pode ficar com `DATA:` vazia (vai para o dia do envio).
+- `DATA`: a data da tarefa no VIOS (DD/MM/AAAA), já calculada pelas regras de data da skill (D-2; prioridade RPV/Suhiane no próximo dia de segunda a sexta; análise e ciência no mesmo dia até 12h ou no próximo dia depois das 12h; data exata do ato), sempre com a contagem simplificada (só sábado e domingo ficam de fora). Só `CIÊNCIA` pode ficar com `DATA:` vazia (vai para o dia do envio).
 - `HORA`: HH:MM em audiência, perícia e sustentação oral (na sessão virtual, o horário de início); vazia nas demais tarefas.
 - `RESPONSÁVEIS`: `automático` (o VIOS marca o auxiliar da intimação) ou os nomes completos, separados por vírgula, como aparecem no VIOS. Na petição da Execução da Tamira: `TAMIRA LOIOLA, BRENO SILVA MOTA`.
-- `DESCRIÇÃO`: sempre a última linha de campo; tudo abaixo dela vai para a Observação da tarefa, exatamente como escrito. Incluir as linhas de prazo (`PRAZO FATAL:`, `PRAZO FATAL (D-2):`, `PRAZO PARA EMBARGOS:` / `PRAZO PARA RECURSO:` na análise) seguidas do texto do modelo da tarefa. Não incluir `Responsável a marcar na tarefa`, `Advogada auxiliar` nem `PRIORIDADE ...`.
+- `DESCRIÇÃO`: sempre a última linha de campo; tudo abaixo dela vai para a Observação da tarefa, exatamente como escrito. Incluir os cabeçalhos de prazo da skill seguidos do texto do modelo da tarefa: `PRAZO DE EMBARGOS:` e `PRAZO DE RECURSO:` na análise jurídica de sentença/acórdão/decisão; `PRAZO FATAL D -2:` nas minutas; `PRAZO FATAL:` + `PRIORIDADE RPV` nas prioridades de RPV/precatório (exceto a minuta de dados de requisitórios, como no exemplo). Nunca os três cabeçalhos juntos. Não incluir `Responsável a marcar na tarefa` nem `Advogada auxiliar` (responsáveis vão em `RESPONSÁVEIS`).
 - Duas tarefas da mesma CI (ex.: verificar viabilidade de sustentação + sustentação oral): dois blocos seguidos com o mesmo `CI`.
 - **Não colocar no arquivo**: CI duplicada (vale a original), CI que não deve ser lançada (falta informação, evento sem teor, área divergente do auxiliar, tarefa pendente de definição). Listar essas CIs fora do bloco, com o motivo, para a Controladoria tratar à mão.

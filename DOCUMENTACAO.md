@@ -404,10 +404,10 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 ### Passo 18 — Skill em arquivo único (chat de validação)
 - A Controladoria confere as análises do bot num chat com a skill. Para o chat
   seguir as mesmas regras, `gerar_skill_unica.py` junta num arquivo só:
-  `SKILL.md`, as 4 referências (como seções) e
-  `doc/skill-unica/regras-do-programa.md` (o que o bot faz no código: contagem
-  de prazo, D-2, data de cada tarefa, o que não vai na descrição, quando não
-  lançar, alertas e duplicidade).
+  `SKILL.md`, as 5 referências (como seções),
+  `doc/skill-unica/regras-do-programa.md` (o que o robô confere e bloqueia no
+  envio do `.txt`, como preenche o VIOS e duplicidade) e
+  `doc/skill-unica/arquivo-para-o-robo.md` (formato do `.txt`).
 - Saída: `doc/skill-unica/analise-intimacoes-controladoria/SKILL.md` e o
   `.zip` para subir no chat. A parte "modo automático" (JSON) fica de fora.
 - Toda vez que a skill ou uma regra do código mudar: atualizar
@@ -438,7 +438,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
     formato, mesma CI em dois lugares do arquivo;
     CI que a análise do bot marcou como cópia de outra (`duplicada_de`);
   - **avisa**: data já passada, data no fim de semana, descrição com
-    "Responsável a marcar", "Advogada auxiliar" ou "PRIORIDADE ...";
+    "Responsável a marcar" ou "Advogada auxiliar" ("PRIORIDADE RPV" voltou a
+    ser permitida com a skill de 30/10);
   - **já lançada**: CI que está em `saida/lancamentos.json`.
 - **Edição na página:** depois de subir, cada tarefa aparece num formulário
   (CI, tarefa com a lista oficial para escolher, data, hora, responsáveis,
@@ -461,6 +462,60 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `doc/skill-unica/pedido-arquivo-robo.txt` para o chat gerar o arquivo no
   padrão (mesmas regras da seção "Arquivo para o robô" da skill única).
 
+### Passo 20 — Skill nova da Controladoria (30/10/2026)
+- A Controladoria mandou a skill revisada (`doc/skill-original/6_2026-10-30_contagem-simplificada/`),
+  que passou a ser a skill do projeto (`doc/analise-intimacoes-controladoria/`).
+  Principais mudanças de regra:
+
+| Assunto | Antes | Agora |
+| --- | --- | --- |
+| Contagem de prazo | Dias úteis sem feriados (tabela + `doc/feriados.txt` + pesquisa na internet) | **Contagem simplificada:** só sábado e domingo ficam de fora; feriados, recesso e suspensões contam como dia útil |
+| Análise e ciência | Mesmo dia | Mesmo dia até 12h; depois das 12h, próximo dia de segunda a sexta |
+| Análise de sentença/acórdão/decisão | `PRAZO PARA EMBARGOS/RECURSO`, com `NÃO CABE` no que não cabe | `PRAZO DE EMBARGOS:` e `PRAZO DE RECURSO:` sempre com data D-2 (nunca `NÃO CABE`) |
+| Minutas | `PRAZO FATAL (D-2):` | `PRAZO FATAL D -2:` |
+| RPV/precatório | `PRAZO FATAL:` = data da prioridade, sem `PRIORIDADE` | Data da tarefa = prioridade (próximo dia de segunda a sexta); `PRAZO FATAL:` = D-2 do vencimento + linha `PRIORIDADE RPV` |
+| Pagamento pelo cliente no Cível | — | Só análise + minuta (sem tarefa de contato com o cliente) |
+
+- Nova referência `references/validacao-lancamento.md` (quando não lançar e
+  checagem final), incluída no prompt do bot (`bot/skill.py`) e na skill única.
+- Ajustes no robô: a página de envio não avisa mais sobre `PRIORIDADE RPV`
+  na descrição; as linhas `PRAZO FATAL D -2:` também saem em vermelho no VIOS.
+  `regras-do-programa.md`, `arquivo-para-o-robo.md` e `pedido-arquivo-robo.txt`
+  foram reescritos para as regras novas (exemplos conferidos pelo leitor do
+  robô) e a skill única foi regerada.
+- **Pendente:** a análise pela API (`./rodar_analise.sh`, `bot/prazos.py` e
+  `bot/analise.py`) ainda calcula as datas e monta a descrição pelas regras
+  antigas (feriados, `NÃO CABE`, rótulos antigos). O fluxo em uso (análise no
+  chat + página de envio) já segue a skill nova.
+
+### Passo 21 — Rodar no Mac e no Linux
+- O projeto roda nos dois sistemas com os mesmos arquivos e comandos.
+- Scripts `rodar*.sh` sem `readlink -f` (funcionam no macOS e no Linux);
+  `pkg_resources==0.0.0` (resto do Ubuntu, quebrava o `pip` no Mac) saiu do
+  `requirements.txt`.
+- `./instalar.sh` prepara um computador novo: procura o Python 3.12 (aceita
+  3.8 a 3.12; no 3.13 o `MarkupSafe` fixado não tem pacote pronto), cria a
+  `.venv` (recria se ela veio copiada de outro computador), instala as
+  dependências, cria `saida/` e `logs/` e avisa se faltar `.env` ou o Google
+  Chrome. Conferido que todos os pacotes têm versão pronta para Mac com
+  Python 3.12 (Apple Silicon e Intel).
+- Passo a passo no Mac:
+  1. instalar o Google Chrome e o Python 3.12 (`brew install python@3.12` ou
+     o instalador do python.org);
+  2. copiar a pasta do projeto **sem a `.venv`**, levando também os arquivos
+     que não vão para o git: `.env`, `saida/` (principalmente
+     `lancamentos.json` e `responsaveis.json`, que evitam lançar em dobro),
+     `doc/feriados.txt` e `doc/feriados-brasil-2026-2027.md`;
+  3. no Terminal, dentro da pasta: `./instalar.sh`;
+  4. testar: `./rodar_envio.sh` (ou `./rodar.sh` para a captura).
+- No Linux nada muda: `./instalar.sh` também serve para reinstalar a `.venv`.
+- Diferenças do Mac:
+  - com `ENVIO_REDE=true`, o macOS pergunta se o Python pode aceitar
+    conexões: clicar em **Permitir** (equivale ao `ufw allow` do Linux);
+  - a porta 5000 (página de revisão) é usada pelo AirPlay do macOS: usar
+    `./rodar_revisao.sh --porta 5002` ou desligar o "Receptor AirPlay";
+  - para a página não parar quando o Mac dormir: `caffeinate -i ./rodar_envio.sh`.
+
 ---
 
 ## 3. Estrutura do projeto
@@ -478,6 +533,7 @@ selenium/
 ├── gerar_skill_unica.py # skill + referências + regras do programa num arquivo só (chat de validação)
 ├── enviar.py            # página de envio: sobe o .txt ajustado e lança no VIOS (sem IA)
 ├── rodar_envio.sh       # atalho para enviar.py
+├── instalar.sh          # prepara um computador novo (Mac ou Linux): .venv + dependências
 ├── bot/
 │   ├── config.py        # lê e valida o .env; converte seletores
 │   ├── navegador.py     # cria o Chrome e funções esperar/clicar/preencher
@@ -552,12 +608,11 @@ Gerar a skill em arquivo único para o chat de validação:
 .venv/bin/python gerar_skill_unica.py
 ```
 
-Primeira instalação:
+Primeira instalação (Mac ou Linux — ver Passo 21):
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-cp .env.example .env       # e preencher
+./instalar.sh              # cria a .venv e instala as dependências
+cp .env.example .env       # se não trouxe o .env de outro computador, e preencher
 ```
 
 O chromedriver é baixado automaticamente pelo Selenium Manager.

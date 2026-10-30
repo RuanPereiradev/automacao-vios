@@ -23,10 +23,14 @@ def _apontar(texto, titulos):
     """Troca "references/x.md" por "seção "Referência — Título" (mais abaixo)"."""
     for nome, titulo in titulos.items():
         secao = f"seção \"Referência — {titulo}\" (mais abaixo)"
+        # link markdown da skill de 30/10: [x.md](references/x.md)
+        texto = re.sub(rf"\[[^\]]*\]\(references/{re.escape(nome)}\)", lambda _: secao, texto)
         for antigo in (f"`references/{nome}`", f"references/{nome}", f"`{nome}`", nome):
             texto = texto.replace(antigo, secao)
     texto = texto.replace("a regra obrigatória do SKILL.md", "a regra obrigatória da parte principal desta skill")
-    return texto.replace("a regra do SKILL.md", "a regra da parte principal desta skill")
+    texto = texto.replace("a regra do SKILL.md", "a regra da parte principal desta skill")
+    trocas = {"do": "da", "no": "na", "o": "a", "conforme": "conforme a"}
+    return re.sub(r"\b(do|no|o|conforme) SKILL\.md", lambda m: f"{trocas[m.group(1)]} parte principal desta skill", texto)
 
 
 def _rebaixar(texto):
