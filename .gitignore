@@ -7,3 +7,5 @@ logs/
 doc/*.png
 doc/*.jpg
 doc/*.jpeg
+# clone do repositório da vila (RuanPereiradev/autobots), versionado à parte
+autobots/

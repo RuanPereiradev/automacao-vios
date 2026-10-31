@@ -12,6 +12,93 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Vila instalada em `/vila`
+- `autobots/` (clone do repositório da vila, que tem o git próprio) entrou no `.gitignore`.
+- `bot/vila/vila.html`: cópia da vila publicada em https://ruanpereiradev.github.io/autobots/
+  (HTML único, com React e fontes embutidos; não depende de internet). Servida pelo Ultron
+  em `/vila`, na mesma origem e com a mesma senha, lendo `/eventos` a cada 2 s.
+- Corrigido na cópia: o ajuste "fonte" da vila tem padrão `simulado` e ganhava da regra
+  "em `/vila`, usar o servidor", então ela nunca lia os eventos. Agora, em `/vila`, usa
+  sempre o servidor; fora dele (GitHub Pages), continua como antes. A correção precisa ir
+  também para o código-fonte da vila, senão some quando a cópia for atualizada.
+- A versão no GitHub Pages serve só para a simulação: ela não alcança o Ultron (página
+  HTTPS na internet × Ultron HTTP na rede interna).
+- Testado com o VIOS simulado: a vila acompanhou arquivo subido → conferido → envio (teste) →
+  tarefas no quadro/erro → finalizado.
+
+### Adicionado — Eventos para a vila (`/eventos` e `/vila`)
+- `bot/eventos.py`: `emitir()` acrescenta cada evento em `saida/eventos.jsonl` (uma linha JSON,
+  `n` sequencial, `ts`, `bot`, `envio`, `tipo`), com `threading.Lock` + `fcntl.flock`; erro ao
+  gravar evento só vai para o log. `ler()` devolve `{"ultimo", "eventos"}` com `n > desde`
+  (no 1º acesso, os últimos 500).
+- A página de envio emite os 6 tipos do contrato (`doc/vila/contrato-eventos.md`):
+  `arquivo_subido`, `conferido` (também depois de editar), `envio_iniciado` (`gravar`/`teste`),
+  `fase` (`entrando_vios` → `conferindo_duplicatas` → `criando_tarefas`), `ci` por tarefa
+  (`no_quadro`, `gravada` com `tarefa_num` = `"<CI>-<posição>"`, `erro` com motivo, `ja_tinha`,
+  `duplicata`) e `envio_fim` (`concluido`/`testado`/`parou`). Só CI, tarefa e contagens.
+- Rotas novas com a mesma senha: `GET /eventos?desde=N` e `/vila` (serve `bot/vila/vila.html`;
+  sem o arquivo, mostra um aviso).
+- O log do lançamento passa a guardar o motivo do erro (texto da exceção) nos detalhes da CI.
+- Testado com o VIOS simulado (gravar e teste) e com 3 processos × 4 threads gravando ao mesmo
+  tempo (1.200 eventos, `n` sem repetir).
+
+### Adicionado — Arquivo de teste (`MODO: TESTE`)
+- `.txt` que começa com a linha `MODO: TESTE` só pode ser testado: a página mostra só
+  "Testar sem gravar" e o servidor recusa gravar mesmo se pedirem (`so_teste` no envio).
+  Para ver o Ultron preenchendo o VIOS com intimações reais sem risco.
+
+### Corrigido
+- A lista oficial da skill tem `SUSTENTAÇÃO ORAL PPREVIDENCIÁRIO) 2026` (erro de digitação);
+  o nome certo do VIOS, `SUSTENTAÇÃO ORAL (PREVIDENCIÁRIO) 2026`, era recusado na página de
+  envio. Novo apelido em `APELIDOS` (`bot/lancamento.py`) e a página aceita os nomes certos
+  dos apelidos.
+
+### Alterado — Mascote novo do Ultron ("Crista")
+- Mascote trocado pelo desenho "Crista": robô cromado com o corpo do mascote do Claude e
+  expressão de máquina hostil, em grade 16 × 12 com paleta fixa (brilho, base e sombra do
+  metal; olhos vermelhos com núcleo claro). A grade e a paleta ficam editáveis no topo de
+  `bot/templates/_ultron.html`.
+- Animação como na especificação (tick de 100 ms): pulso do brilho dos olhos
+  (0,6 + 0,4 × sin(t/4), raio 0,8 e 1,4 pixel), piscar (t % 46 < 2) e flutuar 1/3 de pixel
+  a cada 6 ticks. Trabalhando, o tempo corre 2× e braços e pernas mexem; no fim, pula
+  (deu certo) ou treme com os olhos falhando (houve erro).
+- Cada cor é desenhada como um traçado só e os tamanhos são múltiplos de 48 px, para não
+  aparecer linha entre os pixels. Ícone da aba com o mascote.
+- `doc/mascote/`: `mascote.html` (HTML + CSS + JS puro, com a grade e a paleta para editar
+  e a animação), `mascote.svg` (estático, com brilho nos olhos) e `mascote.png` (512 × 512).
+
+### Corrigido — Histórico de envios não some mais
+- A lista "Envios desta sessão" ficava só na memória e sumia ao reiniciar a página
+  (o registro das tarefas gravadas, `saida/lancamentos.json`, nunca foi perdido).
+  Agora cada envio é gravado em `saida/envios/<data_hora>_<id>.json` (escrita
+  atômica) ao subir, ao salvar edições, ao começar, a cada CI concluída e no fim; a
+  página carrega tudo ao iniciar. Envio interrompido por reinício aparece como
+  "Parou", com as CIs sem resultado marcadas para conferir no VIOS.
+- Nova página **Histórico** (`/historico`, botão no topo): todos os envios (quando,
+  arquivo, CIs/tarefas, gravadas/erros/duplicadas, situação) e todas as tarefas
+  gravadas no VIOS (`lancamentos.json`), com busca por CI, tarefa ou responsável. A
+  tela inicial mostra os últimos 8 envios.
+- Os 3 envios feitos pela página antes desta mudança (29/10 13:42 teste com 18 CIs,
+  29/10 15:30 com 26 gravadas, 30/10 14:51 com 25 gravadas) foram reconstruídos do
+  `logs/bot.log`; ficam só para consulta (sem descrição das tarefas, não reenviam).
+
+### Alterado — Página de envio com a cara do Ultron (30/10/2026)
+- O bot agora se chama **Ultron**. A página de envio (`bot/templates/envio.html`) ganhou
+  tema escuro e o mascote do Ultron (`bot/templates/_ultron.html`): pixel-art no formato
+  do mascote do Claude Code, em metal, com olhos e boca vermelhos.
+- Caixa de envio: arrastar o `.txt` ou clicar para escolher; a leitura começa sozinha
+  (sem o botão "Ler arquivo"). O resto do fluxo não mudou: conferir → Enviar ao VIOS.
+- Envio acompanhado ao vivo, sem recarregar a página: fase (entrando no VIOS,
+  conferindo duplicatas, criando as tarefas), barra de progresso por tarefa e cada CI
+  com as suas tarefas (na fila → criando → no quadro → gravada / erro). Novo endpoint
+  `/envio/<id>/status` (JSON) em `bot/envio_web.py`; a tarefa conta como criada quando
+  o log do lançamento registra "CI X tarefa N".
+- Mascote animado: flutua parado, "digita" e varre com os olhos enquanto trabalha,
+  pula e acena no fim e treme quando há erro. Resumo final com CIs gravadas, com erro
+  e duplicadas.
+- Testado com o VIOS simulado (5 CIs: gravada, erro, com problema, várias tarefas) e
+  na largura de celular.
+
 ### Alterado — Skill nova da Controladoria (30/10/2026)
 - `doc/analise-intimacoes-controladoria/` trocada pela skill revisada (cópia em
   `doc/skill-original/6_2026-10-30_contagem-simplificada/`, com o `.zip` recebido;

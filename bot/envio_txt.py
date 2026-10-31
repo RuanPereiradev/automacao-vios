@@ -74,6 +74,8 @@ def ler(texto, oficiais, pessoas=(), lancadas=(), links=None, base_url="", hoje=
     hoje = hoje or date.today()
     por_nome = {_normalizar(n): n for n in oficiais}
     por_nome.update({_normalizar(apelido): apelido for apelido in APELIDOS})
+    # o nome certo do VIOS também vale (a lista da skill tem nomes com erro de digitação)
+    por_nome.update({_normalizar(certo): certo for certo in APELIDOS.values()})
     por_pessoa = {_normalizar(p): p for p in pessoas}
     links = links or {}
     duplicadas = duplicadas or {}

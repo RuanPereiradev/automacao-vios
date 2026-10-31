@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ultron — mascote</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { background: #141312; display: grid; place-items: center; }
+  #mascote { display: grid; image-rendering: pixelated; }
+  #mascote div { width: 18px; height: 18px; }
+</style>
+</head>
+<body>
+<div id="mascote"></div>
+<script>
+// Mascote do Ultron ("Crista"): robô cromado com o corpo do mascote do Claude (Clawd) e expressão
+// de máquina hostil. Grade 16 × 12, 1 caractere = 1 pixel (a mesma de bot/templates/_ultron.html).
+const GRADE = [
+  ".......LD.......",
+  "...D...LD...D...",
+  "..LLLLLLLLLLLL..",
+  "..LMMMMMMMMMMD..",
+  "..MRMMMMMMMMRD..",
+  "..MRORMMMMRORD..",
+  "LLMMMMMMMMMMMMDD",
+  "DDMMMMMMMMMMMMDD",
+  "..MMMDKKKKDMMD..",
+  "..DDDDDDDDDDDD..",
+  "...M.M....M.M...",
+  "...D.D....D.D...",
+];
+const PALETA = {
+  ".": "transparent",
+  L: "#d4d8de", // brilho do metal
+  M: "#9aa0a8", // metal base
+  D: "#5a5f67", // sombra do metal
+  K: "#1d1e21", // quase preto, fenda da boca
+  R: "#c81e14", // olho, vermelho
+  O: "#ff5a3c", // núcleo do olho, vermelho claro
+};
+const PIXEL = 18;
+const GLOW = { R: PIXEL * 0.8, O: PIXEL * 1.4 }; // raio do brilho
+
+const mascote = document.getElementById("mascote");
+mascote.style.gridTemplateColumns = `repeat(${GRADE[0].length}, ${PIXEL}px)`;
+const olhos = [];
+for (const linha of GRADE) {
+  for (const c of linha) {
+    const px = document.createElement("div");
+    px.style.background = PALETA[c];
+    if (c === "R" || c === "O") olhos.push({ px, c });
+    mascote.appendChild(px);
+  }
+}
+
+// tick a cada 100 ms (contador t)
+let t = 0;
+setInterval(() => {
+  const intensidade = 0.6 + 0.4 * Math.sin(t / 4); // pulso do brilho
+  const piscando = t % 46 < 2;                       // piscar
+  for (const { px, c } of olhos) {
+    px.style.background = piscando ? PALETA.K : PALETA[c];
+    px.style.boxShadow = piscando ? "none" : `0 0 ${(GLOW[c] * intensidade).toFixed(1)}px #ff5a3c`;
+    px.style.position = "relative";
+    px.style.zIndex = piscando ? 0 : 1;
+  }
+  mascote.style.transform = Math.floor(t / 6) % 2 ? `translateY(-${PIXEL / 3}px)` : "none"; // flutuar
+  t++;
+}, 100);
+</script>
+</body>
+</html>

@@ -418,6 +418,13 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - Para reduzir o gasto com a API (29/10/2026): a análise é feita no chat com a
   skill única, que entrega o **arquivo para o robô** (`.txt`); a pessoa
   confere/ajusta, sobe na página e o robô só lança no VIOS — sem chamar a IA.
+- O bot se chama **Ultron**: a página tem tema escuro e o mascote do Ultron
+  ("Crista", `bot/templates/_ultron.html`): robô cromado em pixel-art 16 × 12 com o
+  corpo do mascote do Claude, olhos vermelhos que brilham, piscam e flutuam. Arquivos
+  avulsos em `doc/mascote/` (`mascote.html` animado, `mascote.svg`, `mascote.png`
+  512 × 512). Para mudar o desenho, editar a grade nos dois lugares.
+  Basta arrastar o `.txt` para a caixa (ou clicar e escolher): a leitura começa
+  sozinha, sem botão.
 - `./rodar_envio.sh` abre a página em http://127.0.0.1:5001. Com
   `ENVIO_REDE=true` (ou `--rede`) fica aberta para a rede em
   `http://<IP desta máquina>:5001`, e aí **exige senha** (`ENVIO_SENHA`; o
@@ -452,8 +459,28 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - Botões: **Testar sem gravar** (preenche o formulário do VIOS e tira print,
   como o modo teste) e **Enviar ao VIOS** (grava). O robô entra no VIOS uma
   vez e lança CI por CI com a mesma rotina do `lancar.py` (Adicionar → Gravar
-  → confere na Conferência; pula CI que já tem tarefa no VIOS). A página
-  atualiza sozinha e mostra o resultado de cada CI. Um envio por vez.
+  → confere na Conferência; pula CI que já tem tarefa no VIOS). Um envio por vez.
+- **Histórico (não some):** cada envio fica gravado em
+  `saida/envios/<data_hora>_<id>.json`, atualizado a cada CI concluída; a página
+  carrega tudo ao iniciar. O botão **Histórico** (`/historico`) mostra todos os
+  envios e todas as tarefas gravadas no VIOS (`saida/lancamentos.json`), com busca.
+  Os envios de 29 e 30/10 anteriores a isso foram reconstruídos do log (só leitura).
+- **Vila (painel que só assiste):** cada passo do envio vira um evento em
+  `saida/eventos.jsonl` (`bot/eventos.py`); `GET /eventos?desde=N` devolve os novos e
+  `/vila` serve a vila (`bot/vila/vila.html`), na mesma origem e com a mesma senha. A
+  vila não grava nem aprova nada. Formato em `doc/vila/contrato-eventos.md`.
+  Abrir em `http://<IP desta máquina>:5001/vila`. A cópia publicada no GitHub Pages
+  (https://ruanpereiradev.github.io/autobots/) só funciona em simulação: de lá ela
+  não alcança o Ultron, que está na rede interna.
+- **Acompanhamento ao vivo:** durante o envio a página consulta
+  `/envio/<id>/status` a cada 1,5 s e mostra a fase (entrando no VIOS,
+  conferindo duplicatas, criando as tarefas), a barra de progresso por tarefa e
+  cada CI com as suas tarefas: na fila → criando → no quadro → gravada (ou
+  erro). O mascote anima enquanto trabalha, comemora no fim e treme se houver
+  erro; no fim aparece o resumo (gravadas, com erro, duplicadas).
+- **Arquivo de teste:** se a 1ª linha do `.txt` for `MODO: TESTE`, a página só deixa
+  "Testar sem gravar" (o servidor também recusa gravar). Serve para ver o robô
+  preenchendo o VIOS com intimações reais sem gravar nada.
 - Link de lançamento: o capturado em `saida/intimacoes_*.json`; se a CI não
   estiver em nenhuma captura, o robô monta pelo número (`imp_pub_id`).
 - `RESPONSÁVEIS: automático` deixa o VIOS marcar (auxiliar); com nomes, o robô
@@ -504,7 +531,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
      o instalador do python.org);
   2. copiar a pasta do projeto **sem a `.venv`**, levando também os arquivos
      que não vão para o git: `.env`, `saida/` (principalmente
-     `lancamentos.json` e `responsaveis.json`, que evitam lançar em dobro),
+     `lancamentos.json` e `responsaveis.json`, que evitam lançar em dobro, e
+     `envios/`, o histórico da página de envio),
      `doc/feriados.txt` e `doc/feriados-brasil-2026-2027.md`;
   3. no Terminal, dentro da pasta: `./instalar.sh`;
   4. testar: `./rodar_envio.sh` (ou `./rodar.sh` para a captura).
@@ -549,7 +577,9 @@ selenium/
 │   ├── web.py           # página de revisão (Flask)
 │   ├── envio_txt.py     # lê e confere o .txt da página de envio
 │   ├── envio_web.py     # página de envio do .txt (Flask)
-│   ├── templates/       # HTML da página de revisão
+│   ├── eventos.py       # eventos para a vila (saida/eventos.jsonl, /eventos)
+│   ├── vila/            # vila.html (servido em /vila)
+│   ├── templates/       # HTML das páginas de revisão e de envio (_ultron.html = mascote)
 │   ├── prazos.py        # dias úteis, feriados, prazo fatal, D-2
 │   └── ia/              # provedores de IA: openai_ia.py, anthropic_ia.py
 ├── .env                 # configuração real (NÃO versionar — tem senha)

@@ -26,6 +26,7 @@ REGISTRO = "lancamentos.json"  # CIs já lançadas (evita lançar duas vezes)
 # nomes da skill com erro de digitação -> nome da tarefa no VIOS (conforme a própria skill)
 APELIDOS = {
     "MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO) 2026)": "MINUTAR PETIÇÃO (EXECUÇÃO) 2026",
+    "SUSTENTAÇÃO ORAL PPREVIDENCIÁRIO) 2026": "SUSTENTAÇÃO ORAL (PREVIDENCIÁRIO) 2026",
 }
 
 

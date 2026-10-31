@@ -3,15 +3,16 @@ confere o que vai ser gravado e o robô lança no VIOS. Não usa a IA (sem gasto
 import hmac
 import json
 import logging
+import re
 import threading
 import uuid
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from flask import Flask, Response, abort, redirect, render_template, request, url_for
+from flask import Flask, Response, abort, jsonify, redirect, render_template, request, url_for
 
-from bot import config, duplicidade, envio_txt, skill
+from bot import config, duplicidade, envio_txt, eventos, skill
 from bot.lancamento import REGISTRO, lancar, ler_intimacao
 from bot.login import fazer_login
 from bot.navegador import criar_driver
@@ -19,19 +20,151 @@ from bot.navegador import criar_driver
 log = logging.getLogger(__name__)
 # dá para editar e enviar de novo (o que já foi gravado fica como "Já lançada")
 EDITAVEIS = ("conferir", "testado", "falhou", "concluido")
+# linha do log do lançamento quando uma tarefa entra no quadro do VIOS ("CI 42484 tarefa 1: ...")
+TAREFA_ADICIONADA = re.compile(r"^CI \S+ tarefa \d+:")
+FINAIS = ("gravada", "testada", "pulada", "duplicada", "erro")
+# 1ª linha "MODO: TESTE": o arquivo só pode ser testado (o botão de gravar some e o servidor recusa)
+MODO_TESTE = re.compile(r"\A\s*MODO\s*:\s*TESTE\s*(\r?\n|\Z)", re.I)
+ARQUIVO_VILA = Path(__file__).parent / "vila" / "vila.html"  # HTML único da vila (servido em /vila)
+PASTA_ENVIOS = "envios"  # dentro da pasta de saída: um .json por envio (histórico que não some)
+DATAS = ("criado", "inicio", "fim", "editado")
+
+
+def salvar_envio(pasta, envio_id, envio):
+    """Grava o envio em <saída>/envios/<id>.json (escrita atômica: nunca fica pela metade)."""
+    pasta = Path(pasta) / PASTA_ENVIOS
+    pasta.mkdir(parents=True, exist_ok=True)
+    dados = {k: (v.isoformat() if k in DATAS and v else v) for k, v in envio.items()}
+    tmp = pasta / f".{envio_id}.tmp"
+    tmp.write_text(json.dumps(dados, ensure_ascii=False, indent=1), encoding="utf-8")
+    tmp.replace(pasta / f"{envio_id}.json")
+
+
+def carregar_envios(pasta):
+    """Envios gravados em disco. Um envio que estava em andamento quando a página parou fica
+    como "falhou" (o que foi gravado no VIOS está no lancamentos.json)."""
+    envios = {}
+    for arquivo in sorted((Path(pasta) / PASTA_ENVIOS).glob("*.json")):
+        try:
+            envio = json.loads(arquivo.read_text(encoding="utf-8"))
+        except ValueError:
+            log.warning("Histórico de envio ilegível: %s", arquivo)
+            continue
+        for k in DATAS:
+            if envio.get(k):
+                envio[k] = datetime.fromisoformat(envio[k])
+        if envio.get("estado") == "enviando":
+            envio["estado"] = "falhou"
+            envio["falha"] = "a página foi reiniciada no meio do envio; confira no VIOS as CIs sem resultado"
+            for c in envio["cis"]:
+                if c.get("resultado") in ("lançando", "conferindo"):
+                    c["resultado"] = "erro"
+            salvar_envio(pasta, arquivo.stem, envio)
+            evento_fim(pasta, arquivo.stem, envio)
+        envios[arquivo.stem] = envio
+    return envios
+
+
+def _status_conferencia(c):
+    return "problema" if c["problemas"] else ("lancada" if c["ja_lancada"] else "pronta")
+
+
+def evento_conferido(pasta, envio_id, envio):
+    """Evento "conferido" (contrato da vila): contagens por CI e uma linha por CI (só CI e tarefa)."""
+    situacoes = [_status_conferencia(c) for c in envio["cis"]]
+    cis = []
+    for c, s in zip(envio["cis"], situacoes):
+        item = {"ci": c["ci"], "tarefa": " + ".join(t["nome"] for t in c["tarefas"]), "status": s}
+        if s == "problema":
+            item["motivo"] = c["problemas"][0]
+        cis.append(item)
+    eventos.emitir(pasta, envio_id, "conferido", prontas=situacoes.count("pronta"),
+                   com_problema=situacoes.count("problema"), ja_lancadas=situacoes.count("lancada"), cis=cis)
+
+
+def evento_fim(pasta, envio_id, envio):
+    """Evento "envio_fim": resultado e contagens por CI."""
+    fila = set(envio.get("fila", []))
+    r = [c.get("resultado") for c in envio["cis"] if c["ci"] in fila]
+    dados = {"resultado": {"concluido": "concluido", "testado": "testado"}.get(envio["estado"], "parou"),
+             "contagens": {"gravadas": r.count("gravada"), "testadas": r.count("testada"), "erros": r.count("erro"),
+                           "ja_tinha": r.count("pulada"), "duplicatas": r.count("duplicada")}}
+    if dados["resultado"] == "parou":
+        dados["motivo"] = envio.get("falha", "")
+    eventos.emitir(pasta, envio_id, "envio_fim", **dados)
+
+
+def _editavel(envio):
+    """Envio reconstruído do log é só registro (não tem a descrição das tarefas): não reenvia."""
+    return envio["estado"] in EDITAVEIS and not envio.get("reconstruido")
+
+
+def resumo_envio(envio):
+    """Contagem por resultado, para o histórico."""
+    r = [c.get("resultado") for c in envio["cis"]]
+    return {"gravadas": r.count("gravada"), "testadas": r.count("testada"), "erros": r.count("erro"),
+            "puladas": r.count("pulada") + r.count("duplicada"), "cis": len(r),
+            "tarefas": sum(len(c["tarefas"]) for c in envio["cis"])}
+
+
+def _situacao_tarefas(c):
+    """Situação de cada tarefa da CI durante o envio, pelo log do lançamento."""
+    adicionadas = sum(1 for l in c.get("mensagens") or [] if TAREFA_ADICIONADA.match(l))
+    resultado = c.get("resultado")
+    situacoes = []
+    for i, _ in enumerate(c["tarefas"]):
+        if resultado in ("gravada", "testada"):
+            s = resultado
+        elif resultado in ("pulada", "duplicada"):
+            s = "pulada"
+        elif resultado == "erro":
+            s = "adicionada" if i < adicionadas else "erro"
+        elif resultado == "lançando":
+            s = "adicionada" if i < adicionadas else ("criando" if i == adicionadas else "aguardando")
+        else:
+            s = "aguardando"
+        situacoes.append(s)
+    return situacoes
+
+
+def status_envio(envio):
+    """Andamento do envio para a página acompanhar ao vivo (sem recarregar)."""
+    fila = set(envio.get("fila", []))
+    cis = [c for c in envio["cis"] if c["ci"] in fila]
+    return {
+        "estado": envio["estado"], "fase": envio.get("fase", ""), "confirmar": envio["confirmar"],
+        "total": len(cis), "concluidas": sum(1 for c in cis if c.get("resultado") in FINAIS),
+        "tarefas_total": sum(len(c["tarefas"]) for c in cis),
+        "tarefas_feitas": sum(s in ("gravada", "testada", "adicionada", "pulada")
+                              for c in cis for s in _situacao_tarefas(c)),
+        "falha": envio.get("falha", ""),
+        "cis": [{"ci": c["ci"], "resultado": c.get("resultado", ""),
+                 "ultima": (c.get("mensagens") or [""])[-1][:160],
+                 "tarefas": [{"nome": t["nome"], "data": t["data_tarefa"], "hora": t["hora"], "situacao": s}
+                             for t, s in zip(c["tarefas"], _situacao_tarefas(c))]}
+                for c in cis],
+    }
 
 
 class _Coletor(logging.Handler):
     """Guarda as mensagens do lançamento de uma CI, para mostrar na página."""
 
-    def __init__(self):
+    def __init__(self, ao_adicionar=None):
         super().__init__(logging.INFO)
         self.linhas = []
+        self.ao_adicionar = ao_adicionar  # chamado com o nº da tarefa que entrou no quadro do VIOS
 
     def emit(self, record):
         msg = record.getMessage()
-        if not msg.startswith(("Observação:", "Quadro Tarefas")):
-            self.linhas.append(msg.splitlines()[0])
+        if msg.startswith(("Observação:", "Quadro Tarefas")):
+            return
+        linha = msg.splitlines()[0]
+        if record.exc_info and record.exc_info[1]:
+            linha += f": {str(record.exc_info[1]).splitlines()[0]}"  # o motivo do erro
+        self.linhas.append(linha)
+        m = re.match(r"^CI \S+ tarefa (\d+):", msg)
+        if m and self.ao_adicionar:
+            self.ao_adicionar(int(m.group(1)))
 
 
 def _capturas(pasta_saida):
@@ -147,7 +280,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     base_url = f"{partes.scheme}://{partes.netloc}/"
     pasta_saida = Path(cfg.pasta_saida)
     arquivo_pessoas = pasta_saida / "responsaveis.json"
-    envios = {}  # id -> {arquivo, cis, estado, confirmar, ...}
+    envios = carregar_envios(pasta_saida)  # id -> {arquivo, cis, estado, confirmar, ...}
     trava = threading.Lock()  # um envio por vez (um navegador só)
 
     def lancadas():
@@ -164,26 +297,49 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
 
     @app.route("/")
     def inicio():
-        recentes = sorted(envios.items(), key=lambda e: e[1]["criado"], reverse=True)[:10]
-        return render_template("envio.html", tela="inicio", recentes=recentes, ocupado=trava.locked())
+        recentes = sorted(envios.items(), key=lambda e: e[1]["criado"], reverse=True)[:8]
+        return render_template("envio.html", tela="inicio", recentes=recentes, resumo=resumo_envio,
+                               total_envios=len(envios), total_lancadas=len(lancadas()), ocupado=trava.locked())
+
+    @app.route("/historico")
+    def historico():
+        """Todos os envios (saida/envios/) e todas as CIs gravadas no VIOS (lancamentos.json)."""
+        todos = sorted(envios.items(), key=lambda e: e[1]["criado"], reverse=True)
+        registro = lancadas()
+        def quando(item):
+            try:
+                return datetime.strptime(item[1]["quando"], "%d/%m/%Y %H:%M")
+            except (KeyError, ValueError):
+                return datetime.min
+        gravadas = sorted(registro.items(), key=quando, reverse=True)
+        return render_template("envio.html", tela="historico", envios_todos=todos, resumo=resumo_envio,
+                               gravadas=gravadas, total_tarefas=sum(len(r.get("tarefas", [])) for r in registro.values()),
+                               ocupado=trava.locked())
 
     @app.route("/ler", methods=["POST"])
     def ler():
         arquivo = request.files.get("arquivo")
         if not arquivo or not arquivo.filename:
-            return render_template("envio.html", tela="inicio", erro="Escolha o arquivo .txt.", recentes=[], ocupado=trava.locked())
+            return redirect(url_for("inicio"))
         bruto = arquivo.read()
         try:
             texto = bruto.decode("utf-8-sig")
         except UnicodeDecodeError:
             texto = bruto.decode("cp1252")  # salvo pelo Bloco de Notas antigo
+        so_teste = bool(MODO_TESTE.match(texto))
+        texto = MODO_TESTE.sub("", texto, count=1)
         cis = conferir(texto)
         if not cis:
-            return render_template("envio.html", tela="inicio", recentes=[], ocupado=trava.locked(),
+            return render_template("envio.html", tela="inicio", recentes=[], resumo=resumo_envio, ocupado=trava.locked(),
+                                   total_envios=len(envios), total_lancadas=len(lancadas()),
                                    erro="Nenhum bloco encontrado. Confira o formato (CI:, TAREFA:, DATA:, ..., DESCRIÇÃO:).")
-        envio_id = uuid.uuid4().hex[:8]
+        envio_id = f"{datetime.now():%Y-%m-%d_%H%M%S}_{uuid.uuid4().hex[:4]}"  # nome do arquivo no histórico
         envios[envio_id] = {"arquivo": arquivo.filename, "cis": cis, "estado": "conferir",
-                            "criado": datetime.now(), "confirmar": False}
+                            "criado": datetime.now(), "confirmar": False, "texto_original": texto,
+                            "so_teste": so_teste}
+        salvar_envio(pasta_saida, envio_id, envios[envio_id])
+        eventos.emitir(pasta_saida, envio_id, "arquivo_subido", arquivo=arquivo.filename)
+        evento_conferido(pasta_saida, envio_id, envios[envio_id])
         return redirect(url_for("ver", envio_id=envio_id))
 
     @app.route("/envio/<envio_id>")
@@ -195,50 +351,98 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         return render_template("envio.html", tela="envio", envio_id=envio_id, envio=envio, aptas=aptas,
                                nao_capturadas=nao_capturadas,
                                ocupado=trava.locked() and envio["estado"] != "enviando",
-                               editavel=envio["estado"] in EDITAVEIS, oficiais=oficiais, pessoas=pessoas(),
+                               editavel=_editavel(envio), oficiais=oficiais, pessoas=pessoas(),
                                texto=envio_txt.gerar(envio["cis"]))
 
     @app.route("/envio/<envio_id>/salvar", methods=["POST"])
     def salvar(envio_id):
         """Edição na página: refaz o .txt com os campos (ou com o texto colado) e confere de novo."""
         envio = envios.get(envio_id) or abort(404)
-        if envio["estado"] not in EDITAVEIS:
+        if not _editavel(envio):
             return redirect(url_for("ver", envio_id=envio_id))
         texto = request.form["texto"] if request.form.get("modo") == "texto" else envio_txt.gerar(_cis_do_form(request.form))
         envio["cis"] = conferir(texto)
         envio["estado"] = "conferir"  # mudou: o teste anterior não vale mais
         envio["editado"] = datetime.now()
+        salvar_envio(pasta_saida, envio_id, envio)
+        evento_conferido(pasta_saida, envio_id, envio)  # editou: a vila recebe a conferência nova
         return redirect(url_for("ver", envio_id=envio_id))
 
     @app.route("/envio/<envio_id>/enviar", methods=["POST"])
     def enviar(envio_id):
         envio = envios.get(envio_id) or abort(404)
-        if envio["estado"] not in EDITAVEIS:
+        if not _editavel(envio):
             return redirect(url_for("ver", envio_id=envio_id))
         if not trava.acquire(blocking=False):
             return redirect(url_for("ver", envio_id=envio_id))
-        envio["confirmar"] = bool(request.form.get("confirmar"))
+        envio["confirmar"] = bool(request.form.get("confirmar")) and not envio.get("so_teste")
         envio["estado"] = "enviando"
+        envio["fase"] = "login"
         envio["inicio"] = datetime.now()
+        envio.pop("falha", None)
         for c in envio["cis"]:
             c.pop("resultado", None)
             c.pop("mensagens", None)
-        threading.Thread(target=_rodar, args=(envio,), daemon=True).start()
+        envio["fila"] = [c["ci"] for c in envio["cis"] if not c["problemas"] and not c["ja_lancada"]]
+        salvar_envio(pasta_saida, envio_id, envio)
+        eventos.emitir(pasta_saida, envio_id, "envio_iniciado", modo="gravar" if envio["confirmar"] else "teste")
+        threading.Thread(target=_rodar, args=(envio_id, envio), daemon=True).start()
         return redirect(url_for("ver", envio_id=envio_id))
 
-    def _rodar(envio):
+    @app.route("/envio/<envio_id>/status")
+    def status(envio_id):
+        return jsonify(status_envio(envios.get(envio_id) or abort(404)))
+
+    @app.route("/eventos")
+    def lista_eventos():
+        """Eventos para a vila: GET /eventos?desde=N devolve os de n > N (contrato em doc/vila/)."""
+        return jsonify(eventos.ler(pasta_saida, request.args.get("desde", 0, type=int)))
+
+    @app.route("/vila")
+    def vila():
+        """A vila (HTML único e estático, só assiste aos eventos)."""
+        if not ARQUIVO_VILA.exists():
+            return Response("<!doctype html><meta charset=utf-8><body style='background:#0a0c11;color:#e6e9ef;"
+                            "font:16px system-ui;padding:40px'><h1>A vila ainda não foi instalada</h1><p>Coloque o "
+                            f"arquivo em <code>{ARQUIVO_VILA}</code>. Os eventos já estão em "
+                            "<a style='color:#ff5a3c' href='/eventos'>/eventos</a>.</p>", 404,
+                            {"Content-Type": "text/html; charset=utf-8"})
+        return Response(ARQUIVO_VILA.read_bytes(), 200, {"Content-Type": "text/html; charset=utf-8",
+                                                         "Cache-Control": "no-cache"})
+
+    def _rodar(envio_id, envio):
         """Entra no VIOS uma vez e lança CI por CI (as que não têm problema)."""
         driver = None
         try:
             aptas = [c for c in envio["cis"] if not c["problemas"] and not c["ja_lancada"]]
             log.info("Envio do arquivo %s: %d CI(s) — %s", envio["arquivo"], len(aptas),
                      "GRAVANDO no VIOS" if envio["confirmar"] else "MODO TESTE (não grava)")
+            emitir = lambda tipo, **d: eventos.emitir(pasta_saida, envio_id, tipo, **d)
+            emitir("fase", fase="entrando_vios")
             driver = criar_driver(cfg.headless, False)
             fazer_login(driver, cfg)
-            aptas = conferir_duplicatas_no_vios(driver, aptas, _capturas(pasta_saida), lancadas(), cfg.timeout)
+            envio["fase"] = "duplicatas"
+            emitir("fase", fase="conferindo_duplicatas")
+            seguir = conferir_duplicatas_no_vios(driver, aptas, _capturas(pasta_saida), lancadas(), cfg.timeout)
+            for c in aptas:
+                if c not in seguir:  # cópia (não lançada) ou erro ao conferir
+                    for t in c["tarefas"]:
+                        emitir("ci", ci=c["ci"], tarefa=t["nome"],
+                               etapa="duplicata" if c.get("resultado") == "duplicada" else "erro",
+                               **({"motivo": c["mensagens"][0]} if c.get("mensagens") else {}))
+            aptas = seguir
+            envio["fase"] = "lancando"
+            emitir("fase", fase="criando_tarefas")
             for c in aptas:
                 c["resultado"] = "lançando"
-                coletor = _Coletor()
+                no_quadro = set()
+
+                def ao_adicionar(i, c=c, no_quadro=no_quadro):
+                    if 1 <= i <= len(c["tarefas"]):
+                        no_quadro.add(i)
+                        emitir("ci", ci=c["ci"], tarefa=c["tarefas"][i - 1]["nome"], etapa="no_quadro")
+                coletor = _Coletor(ao_adicionar)
+                c["mensagens"] = coletor.linhas  # a página acompanha as linhas enquanto lança
                 logging.getLogger("bot.lancamento").addHandler(coletor)
                 try:
                     feitas, erros = lancar(driver, [c], [c["ci"]], pasta_saida, Path("logs"), cfg.timeout,
@@ -258,13 +462,29 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
                 else:
                     c["resultado"] = "gravada"
                     c["ja_lancada"] = True
+                salvar_envio(pasta_saida, envio_id, envio)  # cada CI fica registrada assim que termina
+                # vila: resultado de cada tarefa (no teste, a tarefa para em "no_quadro")
+                for i, t in enumerate(c["tarefas"], 1):
+                    if c["resultado"] == "gravada":
+                        emitir("ci", ci=c["ci"], tarefa=t["nome"], etapa="gravada", tarefa_num=f"{c['ci']}-{i}")
+                    elif c["resultado"] == "pulada":
+                        emitir("ci", ci=c["ci"], tarefa=t["nome"], etapa="ja_tinha")
+                    elif c["resultado"] == "erro":
+                        emitir("ci", ci=c["ci"], tarefa=t["nome"], etapa="erro",
+                               motivo=(coletor.linhas or ["erro ao lançar"])[-1][:200])
             envio["estado"] = "concluido" if envio["confirmar"] else "testado"
         except Exception as e:
             log.exception("Falha no envio do arquivo %s", envio["arquivo"])
             envio["estado"] = "falhou"
             envio["falha"] = str(e)
         finally:
+            envio["fase"] = ""
             envio["fim"] = datetime.now()
+            try:
+                salvar_envio(pasta_saida, envio_id, envio)
+            except Exception:
+                log.exception("Não consegui gravar o histórico do envio %s", envio_id)
+            evento_fim(pasta_saida, envio_id, envio)
             if driver:
                 driver.quit()
             trava.release()
