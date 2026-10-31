@@ -41,7 +41,7 @@ def main(*args):
     resultados = json.loads(arquivo.read_text(encoding="utf-8"))
     log.info("Lançando CI(s) %s de %s — %s", ", ".join(cis), arquivo, "GRAVANDO no VIOS" if confirmar else "MODO TESTE (não grava)")
 
-    driver = criar_driver(cfg.headless, cfg.manter_aberto)
+    driver = criar_driver(cfg.headless, cfg.manter_aberto, cfg.navegador_rapido)
     try:
         fazer_login(driver, cfg)
         lancadas, erros = lancar(driver, resultados, cis, cfg.pasta_saida, PASTA_LOGS, cfg.timeout, confirmar)

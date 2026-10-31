@@ -12,6 +12,35 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Página do envio com a cena do Ultron (estilo da vila)
+- `bot/templates/_cena.html`: cena em pixel-art como a vila (piso metálico, canos de cobre,
+  Doca 01, Receptor TXT, Conferência e Torre VIOS), **só com o Ultron**, no topo da página do
+  envio. Etapas 01 Arquivo subido → 02 Conferido → 03 Envio aprovado → 04 Criando no VIOS,
+  etiquetas de status e caixa de fala do Ultron.
+- O Ultron anda conforme o andamento real (`/envio/<id>/status`): ao subir o arquivo, sai da
+  doca, pega o papel no Receptor e leva à Conferência (a tela acende) e diz quantas CIs estão
+  prontas; no envio, vai à Torre VIOS (sinal e luz piscando, placa com tarefas feitas/total) e
+  fala o que está fazendo (entrando no VIOS, conferindo duplicatas, "CI X: preenchendo a
+  tarefa 2 de 2, ..."); no fim, volta à doca e comemora, ou treme se houve erro / se parou.
+- A página inicial também tem a cena: o Ultron espera na Doca 01 e explica o que fazer (ou avisa
+  que está ocupado com outro envio). Ao soltar ou escolher o .txt (na caixa ou em cima da
+  cena), ele vai buscar o arquivo no Receptor, e a página do envio continua dali, levando o
+  papel à Conferência. O mascote da caixa de envio ficou menor (o Ultron principal é o da cena).
+- O mascote e a barra do painel antigo saíram (a cena mostra o Ultron); a lista das tarefas
+  ao vivo e o resumo final continuam abaixo. No celular, a fala fica embaixo da cena.
+
+### Alterado — Navegador um pouco mais rápido (`NAVEGADOR_RAPIDO`)
+- `NAVEGADOR_RAPIDO=true` (padrão; `.env.example`): o Chrome usa `page_load_strategy="eager"`
+  (o `driver.get` não espera recursos que o robô não usa; as esperas do robô continuam).
+  As esperas do login, da navegação e do lançamento olham a tela a cada 0,1 s (antes 0,5 s).
+- Medido no VIOS com o `ultron_teste_vios.txt` (sem gravar), alternando os modos no mesmo
+  momento: ~3% mais rápido. O tempo é quase todo do servidor do VIOS (~1,5 s por Adicionar,
+  ~1,2 s para abrir o lançamento, ~0,7 s a Conferência nos horários bons; o dobro ou mais nos
+  lentos). Bloquear as imagens foi descartado: ganha pouco e o VIOS deixa de desenhar os
+  botões "Texto intimação" e "Concluir tarefa?", que são a prova no print.
+- Testado também que o VIOS aceita duas sessões simultâneas do mesmo usuário (base para
+  lançar em paralelo, ainda não feito).
+
 ### Adicionado — Vila instalada em `/vila`
 - `autobots/` (clone do repositório da vila, que tem o git próprio) entrou no `.gitignore`.
 - `bot/vila/vila.html`: cópia da vila publicada em https://ruanpereiradev.github.io/autobots/

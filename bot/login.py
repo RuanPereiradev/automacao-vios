@@ -5,7 +5,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from bot.navegador import clicar, esperar, preencher
+from bot.navegador import POLL, clicar, esperar, preencher
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def fazer_login(driver, cfg):
         if cfg.login_sucesso:
             esperar(driver, cfg.login_sucesso, cfg.timeout)
         else:
-            WebDriverWait(driver, cfg.timeout).until(EC.url_changes(url_login))
+            WebDriverWait(driver, cfg.timeout, poll_frequency=POLL).until(EC.url_changes(url_login))
     except TimeoutException:
         raise LoginErro(
             f"Login não confirmado em {cfg.timeout}s "

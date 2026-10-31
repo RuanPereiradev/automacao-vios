@@ -351,7 +351,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         return render_template("envio.html", tela="envio", envio_id=envio_id, envio=envio, aptas=aptas,
                                nao_capturadas=nao_capturadas,
                                ocupado=trava.locked() and envio["estado"] != "enviando",
-                               editavel=_editavel(envio), oficiais=oficiais, pessoas=pessoas(),
+                               editavel=_editavel(envio), oficiais=oficiais, pessoas=pessoas(), agora=datetime.now(),
                                texto=envio_txt.gerar(envio["cis"]))
 
     @app.route("/envio/<envio_id>/salvar", methods=["POST"])
@@ -419,7 +419,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
                      "GRAVANDO no VIOS" if envio["confirmar"] else "MODO TESTE (não grava)")
             emitir = lambda tipo, **d: eventos.emitir(pasta_saida, envio_id, tipo, **d)
             emitir("fase", fase="entrando_vios")
-            driver = criar_driver(cfg.headless, False)
+            driver = criar_driver(cfg.headless, False, cfg.navegador_rapido)
             fazer_login(driver, cfg)
             envio["fase"] = "duplicatas"
             emitir("fase", fase="conferindo_duplicatas")

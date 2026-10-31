@@ -1,4 +1,5 @@
 {% from "_ultron.html" import ultron, ultron_script, ultron_icone %}
+{% from "_cena.html" import cena %}
 {% set ESTADOS = {"conferir": ["s-ja", "Conferido, não enviado"], "enviando": ["s-andamento", "Enviando…"],
                   "testado": ["s-andamento", "Testado (não gravou)"], "concluido": ["s-ok", "Concluído"], "falhou": ["s-erro", "Parou"]} %}
 {% macro tabela_envios(lista) %}
@@ -27,7 +28,7 @@
 <title>Ultron — envio ao VIOS</title>
 {{ ultron_icone() }}
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
 <style>
   :root { --fundo: #0a0c11; --cartao: #12161e; --cartao2: #181d27; --borda: #262d3a; --texto: #e6e9ef;
           --suave: #8b93a3; --red: #ff2a2a; --red-escuro: #b3121b; --verde: #3fb950; --ambar: #e3a72f;
@@ -148,6 +149,55 @@
   .com-problema { border-left: 4px solid #ff7b72; }
   .barra-salvar { position: sticky; bottom: 0; padding: 14px 0; text-align: right;
                   background: linear-gradient(transparent, var(--fundo) 40%); }
+  /* cena do envio (bot/templates/_cena.html), no estilo da vila */
+  .cena-cartao { padding: 0; overflow: hidden; background: #1b1d21; border-color: #3a3326; }
+  .cena-etapas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; list-style: none; margin: 0; padding: 14px 18px 12px;
+                 font: 700 13px "Cormorant Garamond", Georgia, serif; color: #8f8a7e; letter-spacing: .04em; }
+  .cena-etapas li { border-top: 3px solid #3a3f46; padding-top: 6px; }
+  .cena-etapas li span { display: block; font-size: 15px; color: #b9b2a3; }
+  .cena-etapas li.feita { border-top-color: #c98a2e; color: #c98a2e; }
+  .cena-etapas li.atual { border-top-color: #ff5a3c; color: #ff5a3c; }
+  .cena-etapas li.feita span, .cena-etapas li.atual span { color: #efe6d2; }
+  .cena { position: relative; container-type: inline-size; }
+  .cena-palco { position: relative; aspect-ratio: 960 / 340; overflow: hidden; }
+  .cena-fundo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .cena-rotulo { font: 700 11px "Cormorant Garamond", Georgia, serif; letter-spacing: 1.6px; fill: #efe6d2; }
+  .cena-contador { font: 700 13px ui-monospace, monospace; fill: #ff5a3c; }
+  .cena .cena-placa-contador { opacity: 0; transition: opacity .4s; }
+  .cena.na-torre .cena-placa-contador { opacity: 1; }
+  .cena .cena-linhas { opacity: 0; transition: opacity .6s; }
+  .cena.conferido .cena-linhas { opacity: 1; }
+  .cena .cena-sinal { opacity: 0; }
+  .cena.na-torre .cena-sinal { animation: sinal 1.2s steps(2) infinite; }
+  .cena.na-torre .cena-luz { animation: luz .8s steps(2) infinite; }
+  @keyframes sinal { 50% { opacity: 1; } }
+  @keyframes luz { 50% { fill: #ff5a3c; } }
+  .cena-topo { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 18px 12px; }
+  .cena-chip { font: 700 13px "Cormorant Garamond", Georgia, serif; letter-spacing: .08em; color: #efe6d2; background: #1b1d21;
+               border: 1.5px solid #c98a2e; padding: 3px 10px; display: inline-flex; align-items: center; gap: 7px; }
+  .cena-chip:empty { display: none; }
+  .cena-chip i { width: 7px; height: 7px; background: #ff5a3c; display: inline-block; }
+  .cena-chip.ativo i { animation: luz-chip .8s steps(2) infinite; }
+  @keyframes luz-chip { 50% { opacity: .2; } }
+  .cena-teste { border-color: #ff5a3c; color: #ffb3a6; }
+  .cena-ultron { position: absolute; top: 47.4%; width: 6.25%; transition-property: left; transition-timing-function: linear; }
+  .cena-ultron .ultron { width: 100% !important; }
+  .cena-ultron.virado .ultron svg { transform: scaleX(-1); }
+  .cena-papel { position: absolute; left: 30%; top: -42%; width: 40%; aspect-ratio: 3 / 4; background: #f4efe3; border: 2px solid #1b1d21;
+                display: none; flex-direction: column; justify-content: center; gap: 12%; padding: 0 14%; }
+  .cena-papel i { height: 2px; background: #6a7079; display: block; }
+  .cena-ultron.carregando .cena-papel { display: flex; }
+  .ultron.andando .perna { animation: braco .22s steps(1) infinite; }
+  .ultron.andando .braco.esq { animation: braco .22s steps(1) infinite .11s; }
+  .ultron.andando .braco.dir { animation: braco .22s steps(1) infinite; }
+  .cena-fala { position: absolute; left: 1.6%; right: 1.6%; bottom: 3.5%; background: #efe6d2; color: #1c1d20; border: 3px solid #1c1d20;
+               box-shadow: inset 0 0 0 2px #efe6d2, inset 0 0 0 3px #1c1d20; padding: 14px 40px 12px 16px;
+               font: 700 clamp(14px, 2cqw, 19px)/1.35 "Cormorant Garamond", Georgia, serif; }
+  .cena-quem { position: absolute; top: -13px; left: 14px; background: #1c1d20; color: #efe6d2; font-size: 12px; letter-spacing: .12em; padding: 2px 9px; }
+  .cena-seta { position: absolute; right: 14px; bottom: 10px; color: #ff2a2a; font-size: 13px; animation: luz-chip 1s steps(2) infinite; }
+  @media (max-width: 640px) { .cena-fala { position: relative; left: auto; right: auto; bottom: auto; margin: 14px 10px 10px; }
+    .cena-etapas { grid-template-columns: repeat(2, 1fr); } .cena-chip { font-size: 11px; } }
+
   /* histórico */
   .topo-hist { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
   .topo-hist h2 { margin: 0; }
@@ -173,17 +223,17 @@
 </header>
 <main>
 {% if tela == "inicio" %}
+  {{ cena(ocupado=ocupado) }}
   <div class="cartao">
     <form action="{{ url_for('ler') }}" method="post" enctype="multipart/form-data" id="form-arquivo">
       <label class="soltar" id="soltar">
-        {{ ultron("parado", 144, "ultron-caixa") }}
+        {{ ultron("parado", 48, "ultron-caixa") }}
         <span class="titulo" id="soltar-titulo">Solte o .txt aqui</span>
         <span class="suave" id="soltar-sub">ou clique para escolher o arquivo — o Ultron confere tudo antes de gravar</span>
         <input type="file" name="arquivo" accept=".txt,text/plain" required id="arquivo">
       </label>
     </form>
     {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
-    {% if ocupado %}<p class="aviso">O Ultron está lançando outro arquivo agora; dá para ler este, mas o envio espera o outro terminar.</p>{% endif %}
   </div>
   <div class="cartao">
     <details>
@@ -228,11 +278,23 @@ SENTENÇA
     // escolheu ou soltou o arquivo: já envia para conferir (nada é gravado nesta etapa)
     const form = document.getElementById('form-arquivo'), caixa = document.getElementById('soltar'),
           campo = document.getElementById('arquivo');
-    function ler(nome) {
+    async function ler(nome) {
       document.getElementById('soltar-titulo').textContent = 'Lendo ' + nome + '…';
       document.getElementById('soltar-sub').textContent = 'conferindo tarefas, datas, responsáveis e duplicatas';
       document.getElementById('ultron-caixa').classList.replace('parado', 'trabalhando');
+      if (window.cenaReceber) await Promise.race([window.cenaReceber(nome), new Promise(r => setTimeout(r, 2500))]);
       form.submit();
+    }
+    // também dá para soltar o arquivo em cima da cena
+    const palco = document.querySelector('.cena-cartao');
+    if (palco) {
+      ['dragenter', 'dragover'].forEach(ev => palco.addEventListener(ev, e => { e.preventDefault(); caixa.classList.add('arrastando'); }));
+      palco.addEventListener('dragleave', () => caixa.classList.remove('arrastando'));
+      palco.addEventListener('drop', e => {
+        e.preventDefault(); caixa.classList.remove('arrastando');
+        if (!e.dataTransfer.files.length) return;
+        campo.files = e.dataTransfer.files; ler(campo.files[0].name);
+      });
     }
     campo.addEventListener('change', () => campo.files.length && ler(campo.files[0].name));
     ['dragenter', 'dragover'].forEach(ev => caixa.addEventListener(ev, e => { e.preventDefault(); caixa.classList.add('arrastando'); }));
@@ -276,16 +338,13 @@ SENTENÇA
   {% set com_problema = envio.cis | selectattr("problemas") | list %}
   {% set ja = envio.cis | selectattr("ja_lancada") | list %}
 
+  {{ cena(envio, aptas, com_problema, ja, agora) }}
+
   {% if envio.estado == "enviando" %}
   <div class="cartao">
-    <div class="painel">
-      {{ ultron("trabalhando", 144, "ultron-envio") }}
-      <div class="info">
-        <div class="fase" id="fase">{{ "GRAVANDO NO VIOS" if envio.confirmar else "TESTANDO (NÃO GRAVA)" }}…</div>
-        <div class="barra ativa"><i id="barra"></i></div>
-        <div class="suave" id="contagem">Preparando…</div>
-      </div>
-    </div>
+    <div class="fase" id="fase">{{ "GRAVANDO NO VIOS" if envio.confirmar else "TESTANDO (NÃO GRAVA)" }}…</div>
+    <div class="barra ativa"><i id="barra"></i></div>
+    <div class="suave" id="contagem">Preparando…</div>
     <ul class="lista" id="lista"></ul>
   </div>
   <script>
@@ -313,6 +372,7 @@ SENTENÇA
             <span>${esc(t.nome)} <span class="suave">· ${esc(t.data || 'dia do envio')}${t.hora ? ' às ' + esc(t.hora) : ''}</span></span></li>`).join('')}</ul>
           ${atual && c.ultima ? `<div class="ultima">${esc(c.ultima)}</div>` : ''}</li>`;
       }).join('');
+      if (window.cenaStatus) window.cenaStatus(s);
       if (s.estado === 'enviando') setTimeout(atualizar, 1500);
       else { document.getElementById('barra').style.width = '100%'; setTimeout(() => location.reload(), 1200); }
     }
@@ -327,7 +387,6 @@ SENTENÇA
   {% set puladas = envio.cis | selectattr("resultado", "in", ["pulada", "duplicada"]) | list %}
   <div class="cartao">
     <div class="painel">
-      {{ ultron("erro" if envio.estado == "falhou" or erros else "feliz", 144, "ultron-fim") }}
       <div class="info">
         {% if envio.estado == "falhou" %}
           <h1 class="erro">O envio parou</h1>

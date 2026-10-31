@@ -465,6 +465,13 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   carrega tudo ao iniciar. O botão **Histórico** (`/historico`) mostra todos os
   envios e todas as tarefas gravadas no VIOS (`saida/lancamentos.json`), com busca.
   Os envios de 29 e 30/10 anteriores a isso foram reconstruídos do log (só leitura).
+- **Velocidade (medida em 31/10/2026, teste sem gravar):** quem manda no tempo é o
+  servidor do VIOS. Cada Adicionar leva ~1,5 s, abrir a tela de lançamento ~1,2 s e a
+  Conferência ~0,7 s nos horários bons, e o dobro ou mais nos horários lentos (o mesmo
+  teste levou 10 s e 24 s com minutos de diferença). O que é do robô (preencher, prints,
+  esperas) soma ~1 s por tarefa. Ajustes no navegador ganharam só ~3%; o ganho grande
+  seria lançar com 2 ou 3 navegadores em paralelo (o VIOS aceita sessões simultâneas do
+  mesmo usuário; falta testar se o quadro provisório é separado por sessão).
 - **Vila (painel que só assiste):** cada passo do envio vira um evento em
   `saida/eventos.jsonl` (`bot/eventos.py`); `GET /eventos?desde=N` devolve os novos e
   `/vila` serve a vila (`bot/vila/vila.html`), na mesma origem e com a mesma senha. A
@@ -472,6 +479,11 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   Abrir em `http://<IP desta máquina>:5001/vila`. A cópia publicada no GitHub Pages
   (https://ruanpereiradev.github.io/autobots/) só funciona em simulação: de lá ela
   não alcança o Ultron, que está na rede interna.
+- **Cena do Ultron (estilo da vila):** no topo da página do envio, o Ultron anda entre
+  Doca, Receptor TXT, Conferência e Torre VIOS conforme o andamento real e explica na
+  caixa de fala o que está fazendo (`bot/templates/_cena.html`). Mostra só o Ultron.
+  Na página inicial ele espera na doca; ao soltar o .txt (na caixa ou em cima da cena),
+  vai ao Receptor e a página do envio continua a animação.
 - **Acompanhamento ao vivo:** durante o envio a página consulta
   `/envio/<id>/status` a cada 1,5 s e mostra a fase (entrando no VIOS,
   conferindo duplicatas, criando as tarefas), a barra de progresso por tarefa e
@@ -687,6 +699,7 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `HEADLESS` | não | Chrome sem janela | `false` |
 | `TIMEOUT` | não | Espera máxima (s) | `20` |
 | `MANTER_ABERTO` | não | Não fecha o Chrome no fim | `true` |
+| `NAVEGADOR_RAPIDO` | não | O Chrome não espera recursos do VIOS que o robô não usa (ganho pequeno, ~3%) | `true` (padrão) |
 | `ENVIO_REDE` | não | Página de envio aberta para a rede (padrão: só nesta máquina) | `true` |
 | `ENVIO_SENHA` | com `ENVIO_REDE=true` | Senha pedida pela página de envio | (definir no `.env`) |
 

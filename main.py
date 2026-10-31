@@ -36,7 +36,7 @@ def main(caminho_env=".env"):
         log.error(e)
         return 1
 
-    driver = criar_driver(cfg.headless, cfg.manter_aberto)
+    driver = criar_driver(cfg.headless, cfg.manter_aberto, cfg.navegador_rapido)
     try:
         fazer_login(driver, cfg)
         ir_ate_tabela(driver, cfg)

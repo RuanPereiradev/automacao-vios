@@ -50,7 +50,7 @@ def atualizar_responsaveis(con, log):
         log.error("Nenhuma CI com link de lançamento no banco: importe uma análise antes.")
         return False
     cfg = config.carregar(".env")
-    driver = criar_driver(cfg.headless, False)
+    driver = criar_driver(cfg.headless, False, cfg.navegador_rapido)
     try:
         fazer_login(driver, cfg)
         pessoas = ler_responsaveis(driver, link, cfg.timeout)

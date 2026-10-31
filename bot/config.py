@@ -56,6 +56,7 @@ class Config:
     headless: bool
     timeout: int
     manter_aberto: bool
+    navegador_rapido: bool = True
 
 
 def carregar(caminho_env=".env"):
@@ -99,4 +100,5 @@ def carregar(caminho_env=".env"):
         headless=_bool(os.getenv("HEADLESS", "false")),
         timeout=int(os.getenv("TIMEOUT", "20")),
         manter_aberto=_bool(os.getenv("MANTER_ABERTO", "false")),
+        navegador_rapido=_bool(os.getenv("NAVEGADOR_RAPIDO", "true")),
     )

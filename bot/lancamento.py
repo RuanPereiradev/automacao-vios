@@ -16,6 +16,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from bot.navegador import POLL
+
 from bot import skill
 
 log = logging.getLogger(__name__)
@@ -90,16 +92,16 @@ def _html(descricao):
 
 
 def _esperar_ajax(driver, timeout):
-    WebDriverWait(driver, timeout).until(
+    WebDriverWait(driver, timeout, poll_frequency=POLL).until(
         lambda d: d.execute_script("return document.readyState === 'complete' && (!window.jQuery || jQuery.active === 0)")
     )
 
 
 def _abrir(driver, link, timeout):
     driver.get(link)
-    WebDriverWait(driver, timeout).until(EC.presence_of_element_located(SELECT_TAREFA))
+    WebDriverWait(driver, timeout, poll_frequency=POLL).until(EC.presence_of_element_located(SELECT_TAREFA))
     # o editor da Observação (TinyMCE) é criado depois que a página carrega
-    WebDriverWait(driver, timeout).until(
+    WebDriverWait(driver, timeout, poll_frequency=POLL).until(
         lambda d: d.execute_script("return !!(window.tinymce && tinymce.get('fo[obs]') && tinymce.get('fo[obs]').initialized)")
     )
     _esperar_ajax(driver, timeout)
@@ -206,7 +208,7 @@ def tarefas_lancadas(driver, link_lancar, timeout):
     """Tarefas já lançadas para a intimação, lidas da tela de Conferência
     (confere-intimacao-lancada.php). Cada uma: {tarefa, data, responsaveis, apagada}."""
     driver.get(link_lancar.replace("int-lanca.php", "confere-intimacao-lancada.php"))
-    WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.CSS_SELECTOR, "table")))
+    WebDriverWait(driver, timeout, poll_frequency=POLL).until(EC.presence_of_element_located((By.CSS_SELECTOR, "table")))
     _esperar_ajax(driver, timeout)
     return driver.execute_script(
         """
@@ -224,8 +226,8 @@ def _enviar(driver, nome_botao, timeout):
     """Clica no botão do formulário (Adicionar ou Gravar) e espera a página recarregar."""
     botao = driver.find_element(By.CSS_SELECTOR, f"button[name='{nome_botao}']")
     driver.execute_script("arguments[0].click();", botao)
-    WebDriverWait(driver, timeout).until(EC.staleness_of(botao))
-    WebDriverWait(driver, timeout).until(EC.presence_of_element_located(SELECT_TAREFA))
+    WebDriverWait(driver, timeout, poll_frequency=POLL).until(EC.staleness_of(botao))
+    WebDriverWait(driver, timeout, poll_frequency=POLL).until(EC.presence_of_element_located(SELECT_TAREFA))
     _esperar_ajax(driver, timeout)
 
 
