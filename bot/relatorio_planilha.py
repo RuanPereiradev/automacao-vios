@@ -97,6 +97,12 @@ Regras:
 - documentos_quem_entrega: quem deve entregar os documentos faltando (ex.: "Cliente"). Vazio se a
   lista estiver vazia. Nunca o nome de um funcionário do escritório.
 - Se a informação não estiver nas tarefas, deixe o campo vazio. Não use conhecimento externo.
+- Em TODOS os campos, escreva só fatos do processo: o que as partes pediram, o que o juiz,
+  tribunal ou órgão decidiu, prazos e audiências. NUNCA reproduza opiniões, avaliações ou
+  estratégias internas do escritório, mesmo que estejam nas tarefas. Exemplos do que não pode
+  aparecer: "a condenação está acima da média", "não vale a pena recorrer", "dispensada por
+  economia", "tese defensiva", "chances de êxito", "reorganizar a empresa para reduzir a
+  exposição a fiscalizações", recomendações feitas ao cliente.
 """
 
 SCHEMA = {

@@ -350,6 +350,9 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   momento". A aba Resumo ganha a contagem "Por resultado da decisão".
 - "Documentos faltando": a IA nunca indica funcionário do escritório como
   quem entrega.
+- Instrução da IA: só fatos do processo; opiniões, avaliações e estratégias
+  internas registradas nas tarefas não vão para a planilha (o CI 28667 repetia
+  "a condenação já está acima da média").
 
 ### Alterado — Relatório de processos vira planilha mensal (.xlsx) com a lupa de cada processo
 - O .txt por grupo foi descartado. Agora `relatorio_processos.py` gera **uma

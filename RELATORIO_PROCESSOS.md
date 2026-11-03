@@ -144,6 +144,11 @@ Campo vazio no VIOS fica vazio na planilha. Erro na IA aparece como
 - **O texto das tarefas nunca é copiado para a planilha**: só o que a IA
   escreve. A IA é instruída a não citar CPF, links, nomes da equipe nem
   rotinas internas do escritório.
+- **Só fatos do processo** (desde 03/11/2026): pedidos das partes, decisões,
+  prazos e audiências. Opiniões, avaliações e estratégias internas que a
+  equipe registra nas tarefas não vão para a planilha. Motivo: no CI 28667 a
+  justificativa repetiu um comentário interno ("a condenação já está acima da
+  média", da tarefa sobre dispensar a sustentação oral por economia).
 - **Custo**: ~US$ 0,013 por processo (teste de 03/11/2026). Teto por execução
   em `LLM_LIMITE_US` (no `.env.usuario2`: 5); passou do teto, os processos que
   faltam saem com erro na IA.
