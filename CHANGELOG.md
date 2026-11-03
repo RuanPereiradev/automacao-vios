@@ -12,6 +12,15 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Mac como servidor da página de envio (`servidor_mac.sh`)
+- `./servidor_mac.sh instalar` cria um serviço do `launchd` (`~/Library/LaunchAgents/
+  br.automacao-vios.envio.plist`) que roda o `./rodar_envio.sh` sozinho quando o usuário entra
+  no Mac, religa se cair (`KeepAlive`) e usa `caffeinate -i` para o Mac não dormir enquanto roda.
+- `parar` desliga e tira do login; `status` mostra se está rodando; `log` acompanha
+  `logs/servidor.log`.
+- Avisa se o `.env` não tem `ENVIO_REDE=true`/`ENVIO_SENHA` ou se falta
+  `saida/lancamentos.json`.
+
 ### Corrigido — `instalar.sh` recria a `.venv` copiada do Linux
 - A checagem antiga só rodava o python da `.venv`; no Mac o `/usr/bin/python3` existe, então
   uma `.venv` trazida do Linux passava e ficava com o Python errado e sem os pacotes. Agora o

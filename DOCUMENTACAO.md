@@ -557,6 +557,30 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
     `./rodar_revisao.sh --porta 5002` ou desligar o "Receptor AirPlay";
   - para a página não parar quando o Mac dormir: `caffeinate -i ./rodar_envio.sh`.
 
+### Passo 22 — Mac como servidor da página de envio
+- `./servidor_mac.sh instalar` deixa a página de envio sempre ligada no Mac, pelo
+  `launchd` (o gerenciador de serviços do macOS): liga sozinha quando o usuário
+  entra no Mac, religa se cair e impede o Mac de dormir enquanto roda
+  (`caffeinate -i`). Os outros computadores abrem `http://<IP do Mac>:5001`.
+- Antes: `./instalar.sh` feito, `.env` com `ENVIO_REDE=true` e `ENVIO_SENHA`, e
+  a `saida/` copiada do computador antigo.
+- Comandos: `./servidor_mac.sh instalar` | `parar` | `status` | `log`
+  (log em `logs/servidor.log`).
+- Para funcionar sem ninguém por perto:
+  - o Mac precisa estar **com o usuário logado** (o serviço roda na sessão
+    dele, porque o robô abre o Chrome). Para voltar sozinho depois de faltar
+    luz: Ajustes do Sistema → Usuários e Grupos → **Iniciar sessão
+    automaticamente**, e Ajustes → Energia → **Iniciar automaticamente após
+    falta de energia**;
+  - MacBook com a tampa fechada dorme mesmo com o `caffeinate`: deixar a
+    tampa aberta (ou com monitor externo e carregador);
+  - IP fixo: reservar o IP do Mac no roteador (ou IP manual nos Ajustes de
+    Rede), senão o endereço da página pode mudar;
+  - na primeira vez o macOS pergunta se o Python pode aceitar conexões:
+    **Permitir**.
+- Usar só um servidor: com o Mac ligado, não rodar o `./rodar_envio.sh` no
+  Linux (cada um teria o seu `lancamentos.json`).
+
 ---
 
 ## 3. Estrutura do projeto
@@ -575,6 +599,7 @@ selenium/
 ├── enviar.py            # página de envio: sobe o .txt ajustado e lança no VIOS (sem IA)
 ├── rodar_envio.sh       # atalho para enviar.py
 ├── instalar.sh          # prepara um computador novo (Mac ou Linux): .venv + dependências
+├── servidor_mac.sh      # Mac: página de envio como serviço (launchd) — instalar/parar/status/log
 ├── bot/
 │   ├── config.py        # lê e valida o .env; converte seletores
 │   ├── navegador.py     # cria o Chrome e funções esperar/clicar/preencher
