@@ -12,6 +12,211 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Mapeamento das telas de Processos do VIOS
+- `doc/vios-mapa-processos.md`: mapa feito em 03/11/2026 no VIOS real, só
+  lendo. Traz os filtros da lista (`pesq[limit]`, `pesq[filtros_multi][]`), as
+  colunas de cada linha (`data-id`), a ficha do processo (`processos-vis.php`),
+  as tabelas de Tarefas, Comentários e Arquivos, e de onde sai cada um dos 13
+  campos do relatório. Sem dados de clientes. Inclui a regra conferida ao vivo:
+  as opções do filtro de situação combinam com E (ativos + encerrados = 0).
+
+### Adicionado — Ficha do processo (só leitura)
+- `bot/processo_ficha.py` (`ler_ficha`): abre a ficha de cada processo
+  (`?pag=sys/processos/processos-vis.php&processos_id=<CI>`) e devolve os campos
+  da ficha, Cidade/UF, fase, data da distribuição, valor da ação, justiça,
+  sistema do tribunal, tarefas (situação, tipo, descrição completa, comentários,
+  datas), comentários e arquivos.
+- `bot/js/ficha.js`: o script que lê a página. É o mesmo que o robô roda pelo
+  Selenium e dá para colar no console do Chrome (F12) para conferir. Lê só as
+  células diretas de cada tabela: uma tabela colada na descrição de uma tarefa
+  (texto de e-mail ou Word) não desloca as colunas.
+- A espera só aceita a ficha quando algum campo tem valor. Ficha só com
+  rótulos, ou com todos os valores vazios, volta como `ok: false`. A espera das
+  tarefas pede uma linha de tarefa ou "Nenhum registro" (no máximo 3 s;
+  "Carregando..." não conta).
+- `relatorio_processos.py` abre a ficha de cada processo depois de ler a lista
+  do grupo. Log: `<GRUPO>: ficha 12 de 101 (CI x)`. Erro numa ficha fica no
+  `.json` (`ok: false` + motivo) e o robô segue. Sessão caída: novo login e a
+  mesma ficha de novo; depois de 3 novos logins nas fichas do mesmo grupo, o
+  grupo ganha a nova tentativa que já existia.
+- `--sem-ficha` (ou `PROCESSOS_FICHA=false`): só a lista, bem mais rápido.
+
+### Adicionado — Relatório de processos: JSON, SEM GRUPO CLIENTE e encerrados
+- `<GRUPO>.json` ao lado do `<GRUPO>.txt` (que continua sendo gerado): um
+  registro por processo, com os dados da lista e da ficha. É a base do PDF.
+- Lista: colunas novas lidas — tipo de processo (`pr_processos_nome`), polo do
+  cliente (`cliente_escritorio`), data da ação, valor da ação, vara, tipo de
+  vara e observação interna (`obs_proc`). "00/00/0000" e "0,00" do VIOS viram
+  vazio.
+- `--sem-grupo` (ou `PROCESSOS_SEM_GRUPO=true`), só com `--grupo todos`: grupo
+  extra "SEM GRUPO CLIENTE" com os processos de Grupo = TODOS que não
+  apareceram em nenhum grupo da rodada. Não é gerado (e conta como falha) se
+  algum grupo falhou ou se a lista de TODOS veio vazia.
+- `--encerrados` (ou `PROCESSOS_ENCERRADOS=true`): inclui os processos
+  encerrados com uma **segunda pesquisa** por grupo (e na de TODOS do SEM GRUPO
+  CLIENTE), com "Ativos" desmarcado e "Encerrados" marcado. As duas listas são
+  juntadas sem repetir CI. Se "Encerrados" ou "Ativos" não existe na tela,
+  para com erro.
+- `<GRUPO>.json`: chave `situacao` (`ativo` ou `encerrado`). O `.txt` mostra a
+  situação de cada processo e, quando há encerrados, um resumo por situação.
+- `.env.usuario2.example`: `PROCESSOS_FICHA`, `PROCESSOS_SEM_GRUPO`,
+  `PROCESSOS_ENCERRADOS` e `RELATORIO_IA`.
+
+### Adicionado — Relatório do cliente em PDF (13 campos)
+- `bot/campos_relatorio.py` (`montar_linhas`): monta os 13 campos de cada
+  processo a partir do `<GRUPO>.json`: ID da extração, Número do processo,
+  Parte ativa, Parte passiva, Tipo de processo, Órgão, Data da distribuição,
+  Valor da ação, Cidade/UF, Última movimentação, Resumo do caso, PENDÊNCIA e
+  Financeira.
+- Última movimentação: a tarefa concluída mais recente, sem contar as
+  canceladas (data de "Concluída em"). Tarefa aberta, vencida ou não, vai só
+  para a PENDÊNCIA.
+- `bot/pdf_relatorio.py` (`gerar_pdf`): PDF A4 com capa (data/hora, total de
+  processos, resumo por Tipo de processo e por Cidade/UF), um bloco por
+  processo com os 13 campos, observações no fim e rodapé com aviso ao cliente e
+  "Página X de Y". Usa só a Helvetica padrão: emoji e símbolos que ela não
+  desenha são trocados ou removidos. Nome de arquivo aceito pelo Windows e
+  gravação sem deixar PDF pela metade.
+- Processo encerrado: "(encerrado)" depois do número (na faixa e no campo) e,
+  na capa, "Total de processos: N (X em andamento, Y encerrados)".
+- `doc/exemplo-relatorio.pdf`: exemplo com 4 processos fictícios (1 encerrado),
+  para o escritório aprovar o visual.
+- IA opcional: `relatorio_cliente.py --ia` (ou `RELATORIO_IA=true`) faz a IA
+  escrever resumo, pendência e financeira, uma chamada a cada 25 processos, só
+  com os dados já limpos e respeitando `LLM_LIMITE_US`. Sem IA (padrão), o
+  resumo é montado do cadastro, a pendência sai das tarefas abertas e a
+  financeira sai "não identificada".
+- `requirements.txt`: `reportlab==4.2.5`, `pillow==10.4.0` e `chardet==5.2.0`
+  (versões que ainda aceitam Python 3.8).
+- Testes novos (dados fictícios, sem VIOS e sem IA): `tests/test_lista_processos.py`,
+  `tests/test_processo_ficha.py` (também roda o `ficha.js` no jsdom, se houver
+  Node e jsdom na máquina), `tests/test_campos_relatorio.py`,
+  `tests/test_pdf_relatorio.py` e `tests/test_ponta_a_ponta.py` (lista → fichas
+  → `.json` → PDF com navegador falso) e `tests/test_rodar_relatorio.py`.
+  Todos os testes: 201 OK em 03/11/2026.
+
+### Adicionado — Captura e PDF numa execução
+- `rodar_relatorio.py`: roda a captura (`relatorio_processos.py`) e depois o
+  PDF (`relatorio_cliente.py`) da pasta do dia mais recente. `--ia` e
+  `--refazer` vão só para o PDF; o resto, só para a captura. O PDF roda mesmo
+  se a captura falhar em algum grupo. Sai com 1 se algum passo falhar.
+- `rodar_usuario2.sh` e `rodar_usuario2.bat` chamam o `rodar_relatorio.py`
+  (antes só faziam a captura). O `.bat` continua respeitando `SEM_PAUSA` e
+  agora tem quebra de linha do Windows (CRLF).
+
+### Removido — Valor provisionado
+- O campo saiu do PDF (decisão do usuário em 03/11/2026): é uma estimativa do
+  advogado no cadastro e está zerada no VIOS (relatório "Provisão" com 0,00 em
+  todas as linhas). Saíram também a constante `VALOR_PROVISIONADO`, o argumento
+  `valor_provisionado` de `montar_linhas` e o aviso nas observações.
+
+### Corrigido — Relatório de processos (rodada final de 03/11/2026)
+- `--encerrados` marcava "Encerrados" junto com "Ativos", o que no VIOS dá 0
+  processos (as opções combinam com E): agora é uma segunda pesquisa.
+- A pesquisa normal garante "Ativos" marcado e "Encerrados" desmarcado, mesmo
+  se a tela lembrar outra pesquisa.
+- Pesquisa para com erro se o campo "Mostrar" (`pesq[limit]`) não existe no
+  formulário (antes seguia e a lista podia vir cortada em 30).
+- SEM GRUPO CLIENTE não é gerado (e conta como falha) se alguma linha da lista
+  de algum grupo não pôde ser lida: o processo dela iria parar, errado, no SEM
+  GRUPO CLIENTE.
+- O PDF passa a ser gravado com permissão 0644 (o temporário do `mkstemp`
+  deixava 0600, e outra conta ou o Drive não conseguiam ler).
+
+### Alterado — Relatório de processos
+- "Mostrar" passou de 500 para 9999999 (a opção "sem limite" da tela; o VIOS
+  não tem teto de 500). Se o grupo ou essa opção não existem no filtro, a
+  pesquisa para com erro (antes podia vir outro grupo ou a lista cortada em 30).
+- A lista é lida com uma chamada só de JavaScript (rápida em listas grandes).
+  Se ela falhar, o robô lê linha por linha, como antes.
+- O aviso do rodapé "Total (N)" agora diz "leitura incompleta da página": o
+  rodapé conta as linhas mostradas, não o total do filtro.
+- Posição do cliente: vale primeiro o polo cadastrado no VIOS ("Parte Ativa" =
+  autor, "Parte Passiva" = réu). A comparação de nomes fica só para quando o
+  polo vem vazio ou diferente (ex.: "Terceiro").
+- O `.txt` ganhou tipo de processo, data da distribuição, valor da ação, vara,
+  Cidade / UF e fase (estas duas vêm da ficha; sem ficha, "não informado").
+- `relatorio_cliente.py` agora lê os `<GRUPO>.json` da pasta do dia (ou o
+  caminho informado; aceita também o `.txt`, usando o `.json` ao lado) e grava
+  `<GRUPO>.pdf` na mesma pasta. Padrão: sem IA.
+- `RELATORIO_CLIENTE_PROMPT` passa a trocar o prompt da IA dos campos (resumo,
+  pendência e financeira).
+
+### Removido
+- Relatório `<GRUPO> - relatorio cliente.md` escrito pela IA a partir do `.txt`
+  (feito antes nesta mesma etapa, nunca usado com um cliente): substituído pelo
+  PDF. Saíram com ele o bloco "CONFERIR" e o aviso de grupo com mais de 50
+  processos.
+
+### Segurança — Relatório do cliente
+- Antes de ir para o PDF (e para a IA), o texto perde links (também sem
+  "http": zoom, lifesize, chat, bit.ly, forms.gle), "LINK DO CHAT", ID e senha
+  de reunião (também "Senha 123456" sem dois-pontos), e-mails, telefones (com
+  ou sem máscara), "Responsáveis:", "Concluiu a tarefa:", nomes da equipe
+  (viram "[equipe]") e textos automáticos do VIOS. Número de processo, datas,
+  valores, período de anos ("2019-2021") e nome de empresa com ".com" ficam.
+- A observação interna (`obs_proc`) vai só para o `.json`: nunca entra no
+  `.txt`, no PDF nem na IA. O CI também não vai para o PDF.
+- IA desligada por padrão: sem `--ia`, nada sai da máquina. Erro da IA (chave
+  recusada, sem créditos, teto de gasto, mensagem da API) fica só no log; o PDF
+  recebe só um aviso neutro. Chave recusada ou sem créditos desliga a IA para
+  os grupos seguintes.
+- O robô continua só lendo o VIOS: abre a lista e a ficha (Visualizar), nunca
+  Editar, Apagar, Processar nem "amostragem".
+
+### Adicionado — Relatório de processos: rodar sozinho e em qualquer sistema
+- `rodar_usuario2.sh`: atalho do relatório para Linux e Mac
+  (`./rodar_usuario2.sh --grupo "PAO MIX"`). Roda de qualquer pasta, usa a
+  `.venv` do projeto e não depende de `readlink -f`, que não existe no macOS.
+- Novo login automático: antes de cada grupo, e quando a pesquisa ou a leitura
+  de um grupo falha, o robô confere se o VIOS voltou para a tela de login (URL
+  com `entrar.php` ou os campos de login na tela). Se voltou, faz login de novo
+  e tenta o grupo só mais uma vez. Se falhar de novo, o grupo conta como falha e
+  os outros continuam. Serve para rodadas longas (`--grupo todos`, 82 grupos).
+  Testado só com navegador falso, não no VIOS.
+- Testes em `tests/test_relatorio_processos.py` (18 testes, navegador falso,
+  sem acessar o VIOS).
+
+### Adicionado — Posição do cliente
+- Posição "aparece como autor e como réu (conferir no VIOS)", para quando o
+  cliente está nos dois polos.
+- Testes em `tests/test_posicao_cliente.py` (20 testes).
+- Todos os testes: `.venv/bin/python -m unittest discover -s tests -v`.
+
+### Alterado — Relatório de processos
+- `RELATORIO_PASTA` aceita aspas simples, `~`, variáveis (`$HOME`, `%USERPROFILE%`) e
+  caminho com espaços (ex.: a pasta do Google Drive para computador). Se a
+  pasta não existir (por exemplo, com o Drive fechado), o robô mostra um erro
+  claro e sai com código 1 antes de abrir o Chrome, sem criar uma pasta no lugar
+  errado. Vazia, continua em `<SAIDA_PASTA>/relatorios`.
+- `rodar_usuario2.bat` devolve o código de saída do robô (0 = tudo certo,
+  1 = falha), para o Agendador de Tarefas saber se deu certo. Com a variável
+  `SEM_PAUSA=1` ele não para no `pause` (para usar no Agendador).
+- `RELATORIO_PROCESSOS.md`: avisos sobre aspas duplas no caminho do Windows e
+  os limites conhecidos da posição do cliente.
+
+### Corrigido — Relatório de processos
+- "Posição do cliente" (autor/réu): agora reconhece o cliente mesmo com
+  diferença de pontuação, espaços, acentos, sufixos (LTDA, ME, EPP, EIRELI,
+  MEI, S/A, S.A., CIA, MATRIZ, FILIAL, "Em Recuperação Judicial"), CPF/CNPJ e
+  texto entre parênteses. Antes, "3A FRIOS LTDA" contra "Reclamado: 3A Frios
+  Ltda." saía "não identificada"; agora sai réu. O nome ainda precisa ser igual
+  depois da limpeza: não casa por pedaço do nome ("JOSE SILVA" não casa com
+  "JOSE SILVA SANTOS") nem por abreviação ("A AFONSO LINHARES" continua "não
+  identificada" contra "ANTONIO AFONSO LINHARES").
+- Uma lista vazia porque a sessão caiu não vira mais um `.txt` com 0 processos:
+  o robô faz novo login e tenta de novo.
+- Se o navegador travar, o print de erro que não sai não derruba mais a rodada:
+  o log diz "sem screenshot" e o robô segue para o próximo grupo.
+- `--grupo` sem nome dá um erro claro em vez de travar.
+- `requirements.txt`: saiu a linha `pkg_resources==0.0.0` (resto do
+  `pip freeze` no Ubuntu), que fazia o `pip install` falhar no Windows e no Mac.
+
+### Segurança
+- Com `--ia`, o relatório do cliente envia os dados dos processos (já sem
+  links, senhas, contatos, nomes da equipe e `obs_proc`) para a API do provedor
+  de IA escolhido. Confirmar com o escritório antes de ligar a IA.
+
 ### Adicionado — Segundo usuário do VIOS (função nova, em definição)
 - Branch `nova-funcao` para desenvolver a função nova sem afetar o robô de
   intimações no `main`.
