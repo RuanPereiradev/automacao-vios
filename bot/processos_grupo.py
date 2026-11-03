@@ -1,13 +1,12 @@
-"""Lista de processos por Grupo Cliente (processos-lista.php) -> um .txt por grupo.
+"""Lista de processos por Grupo Cliente (processos-lista.php).
 
 Só LÊ o VIOS: preenche o filtro "Grupo Cliente" e clica em Pesquisar. Nunca
 usa os botões Apagar/Editar nem o "Processar" (ações em lote) da tela.
-O .txt é a base para outra IA escrever um relatório para o cliente leigo.
+Cada linha dá o CI, que abre a tela do processo (bot/processos_detalhe.py).
 """
 import logging
 import re
 import unicodedata
-from datetime import datetime
 
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
@@ -151,77 +150,6 @@ def ler_processos(driver, timeout):
     return itens, erros
 
 
-def posicao_cliente(item):
-    """Se o cliente é quem entrou com a ação (autor) ou quem está sendo processado (réu)."""
-    cliente = _normal(item.get("cliente", ""))
-    if not cliente:
-        return "não identificada"
-
-    def nomes(partes):
-        return {_normal(p.split(":", 1)[-1]) for p in partes}
-
-    if cliente in nomes(item["parte_ativa"]):
-        return "autor (o cliente entrou com a ação)"
-    if cliente in nomes(item["parte_passiva"]):
-        return "réu (o cliente está sendo processado)"
-    return "não identificada (o cliente não aparece nas partes da lista)"
-
-
-def _contagem(itens, campo):
-    contagem = {}
-    for it in itens:
-        chave = it.get(campo) or "não informado"
-        contagem[chave] = contagem.get(chave, 0) + 1
-    return sorted(contagem.items(), key=lambda kv: (-kv[1], kv[0]))
-
-
-def montar_txt(grupo, itens, agora=None):
-    agora = agora or datetime.now()
-    for it in itens:
-        it["posicao"] = posicao_cliente(it)
-
-    def ou_nada(valor):
-        return valor or "não informado"
-
-    linhas = [
-        f"RELATÓRIO DE PROCESSOS — GRUPO {grupo}",
-        f"Dados do sistema VIOS em {agora:%d/%m/%Y às %H:%M} (processos ativos)",
-        f"Total de processos: {len(itens)}",
-        "",
-        "=" * 70,
-        "RESUMO",
-        "=" * 70,
-    ]
-    for titulo, campo in (("Por empresa/pessoa do grupo", "cliente"), ("Por área", "area"), ("Posição do cliente", "posicao")):
-        linhas.append(f"{titulo}:")
-        linhas += [f"  - {chave}: {qtd}" for chave, qtd in _contagem(itens, campo)]
-        linhas.append("")
-
-    ordenados = sorted(itens, key=lambda it: (it.get("cliente", ""), it.get("area", ""), it.get("ci", "")))
-    cliente_atual = None
-    for n, it in enumerate(ordenados, 1):
-        if it.get("cliente") != cliente_atual:
-            cliente_atual = it.get("cliente")
-            linhas += ["=" * 70, f"CLIENTE: {ou_nada(cliente_atual)}", "=" * 70, ""]
-        linhas += [
-            f"PROCESSO {n} de {len(itens)}",
-            f"  Número do processo: {ou_nada(it.get('numero'))}",
-            f"  Área: {ou_nada(it.get('area'))}",
-            f"  Tipo de ação: {ou_nada(it.get('acao'))}",
-            f"  Assunto (objeto): {ou_nada(it.get('objeto'))}",
-            f"  Onde tramita: {ou_nada(it.get('orgao'))}" + (f" ({it['uf']})" if it.get("uf") else ""),
-            f"  Quem entrou com a ação (parte ativa): {ou_nada('; '.join(it['parte_ativa']))}",
-            f"  Contra quem (parte passiva): {ou_nada('; '.join(it['parte_passiva']))}",
-            f"  Posição do cliente: {it['posicao']}",
-            f"  Advogado responsável: {ou_nada(it.get('advogado'))}",
-            f"  Vínculo: {ou_nada(it.get('vinculo'))}",
-            f"  Contrato: {ou_nada(it.get('contrato'))}",
-            f"  Código interno no VIOS (CI): {ou_nada(it.get('ci'))}",
-            "",
-        ]
-    return "\n".join(linhas)
-
-
-def nome_arquivo(grupo):
+def nome_arquivo(grupo, extensao=".xlsx"):
     # caracteres que o Windows não aceita em nome de arquivo
-    return re.sub(r'[\\/:*?"<>|]', "-", grupo).strip() + ".txt"
+    return re.sub(r'[\\/:*?"<>|]', "-", grupo).strip() + extensao

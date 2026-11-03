@@ -1,12 +1,14 @@
-# Relatório de Processos por Grupo Cliente — VIOS
+# Relatório Mensal de Processos por Grupo Cliente — VIOS
 
 Robô que entra no VIOS com o **segundo usuário** (mesmo escritório,
-`roneely.vios.com.br`, outro login e outras permissões), lista os processos de
-cada **Grupo Cliente** e gera um `.txt` por grupo. Esse `.txt` vai para outra IA,
-que escreve um relatório fácil de ler para o cliente leigo.
+`roneely.vios.com.br`, outro login e outras permissões), lê os processos de
+cada **Grupo Cliente** e gera **uma planilha .xlsx por grupo**, no formato da
+planilha "Processos Casa do celular" do Google Drive. Roda **uma vez por mês**
+(dia a definir).
 
-> **Status: em ajuste.** A primeira versão (28/10/2026) funciona, mas ainda vai
-> mudar. Este arquivo é atualizado a cada alteração.
+> **Status: em teste (03/11/2026).** Primeira versão da planilha com as duas
+> Casas do Celular. A versão anterior (um .txt por grupo, 28/10/2026) foi
+> descartada. Este arquivo é atualizado a cada alteração.
 > Histórico de mudanças: [CHANGELOG.md](CHANGELOG.md). Robô de intimações:
 > [DOCUMENTACAO.md](DOCUMENTACAO.md).
 
@@ -17,209 +19,267 @@ que escreve um relatório fácil de ler para o cliente leigo.
 | Etapa | O que faz | Status |
 | --- | --- | --- |
 | 1. Login | Entra no VIOS com o usuário do `.env.usuario2` | ✅ Pronto |
-| 2. Navegação | Abre Relatórios e depois a lista de Processos | ✅ Pronto |
-| 3. Pesquisa | Escolhe o Grupo Cliente, "Mostrar" = 500, Pesquisar | ✅ Pronto (3A FRIOS) |
-| 4. Leitura | Lê a tabela de processos do grupo | ✅ Pronto (17 de 17) |
-| 5. TXT | Um `.txt` por grupo, organizado para outra IA | 🚧 Em ajuste |
-| 6. Google Drive | Salvar os `.txt` direto numa pasta do Drive | ⏳ Pendente |
+| 2. Lista | Processos → filtro Grupo Cliente → Mostrar 500 → Pesquisar | ✅ Pronto |
+| 3. Lupa | Abre a tela de cada processo: Dados do Processo + tarefas | ✅ Pronto |
+| 4. IA | Resumo do caso, motivação, financeira e documentos faltando | ✅ Em teste |
+| 5. Planilha | Uma .xlsx por grupo (abas Processos, Resumo, Cadastro incompleto, Metadados) | ✅ Em teste |
+| 6. Valor provisionado | Descobrir onde fica no VIOS | ⏳ Pendente (coluna vazia) |
+| 7. Justificativa da condenação | Definir a fonte (tarefa de análise da decisão) | ⏳ Pendente (coluna vazia) |
+| 8. Google Drive | Salvar direto numa pasta do Drive | ⏳ Pendente |
+| 9. Agendamento mensal | Rodar sozinho no dia definido | ⏳ Pendente |
+
+### Grupos
+
+| Relatório | Grupo Cliente no VIOS (código) |
+| --- | --- |
+| Casa do Celular (HAV/RAV Holding) | CASA DO CELULAR (127) |
+| Casa do Celular MG/SP (HAV/RAV Holding) | CASA DO CELULAR MG/SP (130) |
+| Plasfran Itapipoca | PLASFRAN ITAPIPOCA (43) — depois |
+| Plasfran Camocim | PLASFRAN CAMOCIM (42) — depois |
+| Plasfran Maranhão | PLASFRAN MARANHÃO (109) — depois |
+| LD Urbanismo | LD URBANISMO (92) — depois |
+
+As duas Casas do Celular são da mesma holding e cada uma tem seu relatório. No
+VIOS o cliente aparece como **RAV HOLDING LTDA**.
 
 ---
 
 ## 2. Passo a passo do que o robô faz
 
 1. **Login** com o usuário e a senha do `.env.usuario2`.
-2. Abre a tela de **Relatórios**
-   (`?pag=sys/relatorios/relatorios.php`, em `NAVEGACAO_URL_FINAL`).
-3. Abre a lista de **Processos**
+2. Abre **Relatórios** (`NAVEGACAO_URL_FINAL`) e depois a lista de **Processos**
    (`?pag=sys/processos/processos-lista.php&menu_lateral=true`).
-4. Lê as opções do filtro **Grupo Cliente** (`pesq[clientes_grupos_id]`): são
-   82 grupos (ex.: `97 = 3A FRIOS`). O padrão da tela é "TODOS", mas o robô
-   **nunca usa o TODOS**: cada grupo é pesquisado separadamente.
-5. Escolhe o grupo, muda **Mostrar** de 30 para **500** (com 30, um grupo
-   grande viria cortado) e aciona **Pesquisar**. Os outros filtros ficam no
-   padrão da tela: **Ativos** e **Não migrados**, ou seja, processos encerrados
-   não entram.
-6. Lê a tabela pelo `data-id` de cada célula (`processos-lista_linha_N_<coluna>`),
-   o mesmo método do robô de intimações. Confere o total com o rodapé
-   "Total (N)" da tabela; se não bater, avisa no log.
-7. Monta e salva o `.txt` do grupo e repete para o próximo grupo.
-
-**Por que preenche por JavaScript:** depois do login o VIOS abre um popup de
-Recado por cima da tela. O robô não mexe nele: escolhe o filtro e envia o
-formulário pelo mesmo botão Pesquisar (`#Pesq`), sem clicar na tela.
+3. Para cada grupo: escolhe o grupo no filtro **Grupo Cliente**
+   (`pesq[clientes_grupos_id]`), muda **Mostrar** de 30 para **500** e aciona
+   **Pesquisar**. Os outros filtros ficam no padrão: **Ativos** e **Não
+   migrados** (encerrados não entram). O "TODOS" nunca é usado.
+4. Lê a lista (CI, número, partes, órgão) e confere com o rodapé "Total (N)".
+5. Para cada processo, abre a **lupa**: o mesmo endereço do botão
+   (`index.php?pag=sys/processos/processos-vis.php&processos_id=<CI>`), sem
+   abrir abas novas. Lê:
+   - **Dados do Processo - CI N**: os pares `Rótulo: valor` (CNJ, cliente, polo
+     do cliente, fase, cidade/UF, distribuição, valor da ação...);
+   - **Tarefas**: tipo, situação (Em dia, Concluída, Cancelada...), descrição,
+     comentários, datas (para conclusão, limite, concluída em) e envolvidos
+     (responsáveis, quem concluiu).
+6. **"Mostrar mais"**: o botão só esconde o texto com a classe `limite-texto`;
+   o robô tira essa classe de todas as tarefas por JavaScript (sem clicar) e lê
+   o texto inteiro.
+7. Manda à **IA** o cadastro e o texto das tarefas (sem as canceladas, já
+   limpo — ver seção 4) e recebe as colunas de texto.
+8. Monta a linha da planilha e, no fim do grupo, salva a `.xlsx` e um `.json`
+   com tudo o que foi lido (para conferência).
 
 ### Só leitura
 
-A tela de Processos tem botões perigosos: **Apagar** e **Editar** em cada linha
-e o **Processar**, que executa ações em lote (apagar processos, trocar advogado,
-etc.). O robô **não usa nenhum deles**: só escolhe filtros, pesquisa e lê.
+A lista tem **Apagar**, **Editar** e **Processar** (ações em lote) e a lupa tem
+botões de edição. O robô **não usa nenhum**: só escolhe filtros, pesquisa,
+abre a tela do processo e lê.
 
 ---
 
-## 3. O arquivo gerado
+## 3. A planilha gerada
 
-Caminho: `saida_usuario2/relatorios/AAAA-MM-DD/<GRUPO>.txt`
-(ex.: `saida_usuario2/relatorios/2026-10-28/3A FRIOS.txt`). Cada execução cria
-a pasta do dia; rodar de novo no mesmo dia sobrescreve o arquivo do grupo.
+Caminho: `saida_usuario2/relatorios/AAAA-MM/<GRUPO>.xlsx`
+(ex.: `saida_usuario2/relatorios/2026-11/CASA DO CELULAR.xlsx`). Rodar de novo
+no mesmo mês sobrescreve.
 
-Conteúdo:
+### Aba Processos (uma linha por processo)
 
-1. **Cabeçalho**: grupo, data e hora da leitura, total de processos.
-2. **Resumo**: quantos processos por empresa/pessoa do grupo, por área e pela
-   posição do cliente (autor ou réu).
-3. **Por empresa** do grupo, um bloco por processo:
+| Coluna | De onde vem | Como |
+| --- | --- | --- |
+| CI | lista | — |
+| Número do processo | lupa: `N.° CNJ` | — |
+| Cliente | lupa: `Cliente` | — |
+| Polo do cliente | lupa: `Polo do cliente` | — |
+| Parte ativa / Parte passiva | lista | várias partes separadas por `;` |
+| Tipo de processo | lupa: `Processo` | em maiúsculas |
+| Fase | lupa: `Fase` | — |
+| Órgão | lupa: `Comarcas / Tribunais / Órgãos adm.` | — |
+| Data da distribuição | lupa: `Data da ação / Distribuição` | data |
+| Valor da ação | lupa: `Valor da ação` | número (R$) |
+| Valor provisionado | — | **vazia por enquanto** |
+| Cidade/UF | lupa: `Cidade / UF` | — |
+| Última movimentação | tarefas | regra fixa: tarefa concluída mais recente (`data - tipo`) |
+| Resumo do caso | tarefas | **IA**: 2 a 4 frases simples para o cliente |
+| Motivação do processo | tarefas | **IA**: categoria da lista fixa + detalhe curto |
+| Financeira | tarefas | **IA**: financeiras/bancos/securitizadoras citados |
+| Justificativa da condenação | — | **vazia por enquanto** |
+| Pendência — documentos faltando | tarefas | **IA**: pedidos que ainda não chegaram + quem entrega |
+| Pendência — responsável | tarefas | regra fixa: tarefas em aberto com prazo e responsáveis; prazo vencido = `ATRASADA` |
 
-| Campo no .txt | Coluna do VIOS (`data-id`) |
+**Motivação — lista fixa** (para filtrar e contar): Financiamento / bloqueio do
+aparelho; Defeito do produto / garantia; Cobrança indevida / negativação;
+Oferta ou contrato descumprido; Atendimento / dano moral; Trabalhista; Outros.
+A lista fica em `MOTIVACOES` (`bot/relatorio_planilha.py`).
+
+**Documentos faltando é dedução da IA**: ela compara o que a equipe pediu
+(ex.: no ANALISAR PROCESSO) com o que chegou (tarefas ANALISAR DOCUMENTOS,
+arquivos enviados). Conferir antes de mandar ao cliente.
+
+### Outras abas
+
+| Aba | Conteúdo |
 | --- | --- |
-| Número do processo | `nro_proc_html` (sem as etiquetas) |
-| Área | `pr_areas_nome` |
-| Tipo de ação | `processos_acoes_nome` |
-| Assunto (objeto) | `objeto` |
-| Onde tramita | `orgaos_nome` + `orgaos_uf` |
-| Quem entrou com a ação (parte ativa) | `ativahtml` |
-| Contra quem (parte passiva) | `passivahtml` |
-| Posição do cliente | calculada: o nome do cliente aparece na parte ativa (autor) ou passiva (réu) |
-| Advogado responsável | `advogado_nome` |
-| Vínculo | ícone `sinal_vinculo_processo`: processo principal ou apenso |
-| Contrato | `contratos_vis` |
-| Código interno no VIOS (CI) | `processos_id` |
+| Resumo | Data, total de processos, soma dos valores (fórmulas), contagem por tipo, motivação, cliente e polo |
+| Cadastro incompleto | Processos com número, tipo, distribuição, valor da ação, cidade ou órgão vazios no VIOS — para a equipe completar |
+| Metadados | Grupo, data, origem dos dados, modelo de IA, erros e gasto |
 
-**Ficam de fora** (uso interno do escritório): siglas dos auxiliares
-(`advogados_auxiliares_abr`, ex.: CARL, JOHN), etiquetas como "Cliente OURO" e a
-coluna "Processo" (`pr_processos_nome`), que só repete a área.
-
-Campo vazio no VIOS aparece como "não informado".
+Campo vazio no VIOS fica vazio na planilha. Erro na IA aparece como
+`ERRO NA IA: conferir` e é contado na aba Metadados.
 
 ---
 
-## 4. Como rodar
+## 4. IA
+
+- Provedor e chave no `.env.usuario2` (`LLM_PROVEDOR=anthropic`,
+  `ANTHROPIC_API_KEY`). Modelo padrão: `claude-sonnet-5-5` (`LLM_MODELO`).
+- Uma chamada por processo, com resposta em JSON validado (schema em
+  `bot/relatorio_planilha.py`). Processo sem tarefas não vai para a IA.
+- **O que é tirado antes de mandar**: tarefas canceladas, texto repetido
+  depois de "[observação da conclusão]", texto padrão do tipo de tarefa,
+  links (viram `[link]`), CPF (vira `[CPF]`) e linhas com senha/ID de acesso.
+  Cada tarefa vai com até 6.000 caracteres, e o processo com até 40.000.
+- **O texto das tarefas nunca é copiado para a planilha**: só o que a IA
+  escreve. A IA é instruída a não citar CPF, links, nomes da equipe nem
+  rotinas internas do escritório.
+- **Custo**: ~US$ 0,013 por processo (teste de 03/11/2026). Teto por execução
+  em `LLM_LIMITE_US` (no `.env.usuario2`: 5); passou do teto, os processos que
+  faltam saem com erro na IA.
+
+---
+
+## 5. Como rodar
 
 No Windows, na pasta do projeto:
 
 ```powershell
-.\rodar_usuario2.bat                        # grupos de PROCESSOS_GRUPOS no .env.usuario2
-.\rodar_usuario2.bat --grupo "pao mix"      # outro grupo
-.\rodar_usuario2.bat --grupo "3A FRIOS|PÃO MIX"   # vários, separados por |
-.\rodar_usuario2.bat --grupo todos          # os 82 grupos
+.\rodar_usuario2.bat                                  # grupos de PROCESSOS_GRUPOS
+.\rodar_usuario2.bat --limite 3                       # teste: só 3 processos por grupo
+.\rodar_usuario2.bat --grupo "casa do celular mg/sp"  # um grupo (acento e maiúsculas não importam)
+.\rodar_usuario2.bat --grupo todos                    # todos os grupos do filtro
 ```
-
-Ou dois cliques em `rodar_usuario2.bat`.
-
-- O nome do grupo não depende de acento nem de maiúsculas
-  (`"pao mix"` acha `PÃO MIX`).
-- Deu certo quando o log mostra `<GRUPO>: N processos, 0 com erro -> <arquivo>`.
-- O aviso `Error terminating service process` no fim é do Selenium no Windows
-  e pode ser ignorado.
 
 Sem o `.bat`:
 
 ```powershell
-.\.venv\Scripts\python.exe relatorio_processos.py .env.usuario2 --grupo "3A FRIOS"
+.\.venv\Scripts\python.exe relatorio_processos.py .env.usuario2 --grupo "CASA DO CELULAR" --limite 3
 ```
+
+Leva cerca de 10 s por processo (abrir a lupa + IA). O log mostra o andamento:
+`CASA DO CELULAR: 12/101 CI 29825 — 16 tarefas — gasto US$ 0.15`.
 
 ---
 
-## 5. Primeira instalação (Windows)
+## 6. Primeira instalação (Windows)
 
 ```powershell
 cd C:\Rfeitosa-projetos\automacao-vios
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-copy .env.usuario2.example .env.usuario2    # e preencher usuário e senha
+copy .env.usuario2.example .env.usuario2    # e preencher usuário, senha e ANTHROPIC_API_KEY
 ```
-
-- O `requirements.txt` tem a linha `pkg_resources==0.0.0` (resto do
-  `pip freeze` no Ubuntu), que faz a instalação falhar no Windows. Até ela ser
-  removida, apague essa linha antes de instalar.
-- O `rodar.sh` e os outros `.sh` procuram `.venv/bin/python` (Linux/Mac) e
-  não funcionam no Windows; use o `rodar_usuario2.bat`.
 
 ---
 
-## 6. Configuração (`.env.usuario2`)
+## 7. Configuração (`.env.usuario2`)
 
 Modelo versionado: `.env.usuario2.example`. O `.env.usuario2` real tem a senha
-e **não vai para o GitHub**.
+e a chave da IA e **não vai para o GitHub**.
 
 | Variável | Uso | Valor atual |
 | --- | --- | --- |
 | `SISTEMA_URL` | Página de login | `https://roneely.vios.com.br/entrar.php?` |
 | `SISTEMA_USUARIO` / `SISTEMA_SENHA` | Login do segundo usuário | (no `.env.usuario2`) |
-| `LOGIN_CAMPO_USUARIO` / `LOGIN_CAMPO_SENHA` | Campos de login | iguais aos do robô de intimações |
 | `NAVEGACAO_URL_FINAL` | Tela aberta depois do login | `.../?pag=sys/relatorios/relatorios.php` |
-| `PROCESSOS_GRUPOS` | Grupos do filtro Grupo Cliente, separados por `\|`, ou `todos` | `3A FRIOS` |
-| `RELATORIO_PASTA` | Pasta dos `.txt` (vazio = `<SAIDA_PASTA>/relatorios`) | vazio |
+| `PROCESSOS_GRUPOS` | Grupos, separados por `\|`, ou `todos` | `CASA DO CELULAR\|CASA DO CELULAR MG/SP` |
+| `RELATORIO_PASTA` | Pasta das planilhas (vazio = `<SAIDA_PASTA>/relatorios`) | vazio |
+| `LLM_PROVEDOR` | `anthropic` ou `openai` | `anthropic` |
+| `ANTHROPIC_API_KEY` | Chave da IA | (no `.env.usuario2`) |
+| `LLM_MODELO` | Modelo (vazio = `claude-sonnet-5-5`) | vazio |
+| `LLM_LIMITE_US` | Teto de gasto por execução (US$) | `5` |
 | `SAIDA_PASTA` | Pasta de saída deste usuário | `saida_usuario2` |
 | `HEADLESS` | Chrome sem janela | `false` |
 | `TIMEOUT` | Espera máxima (s) | `20` |
-| `MANTER_ABERTO` | Chrome continua aberto no fim | `true` |
+| `MANTER_ABERTO` | Chrome continua aberto no fim | `false` |
+| `NAVEGADOR_RAPIDO` | Carregamento "eager" das páginas (do `main`) | padrão `true` |
 
 ---
 
-## 7. Arquivos do projeto
+## 8. Arquivos do projeto
 
 ```
 automacao-vios/
-├── relatorio_processos.py    # entrada: login → grupos → um .txt por grupo
-├── rodar_usuario2.bat        # atalho no Windows (aceita --grupo)
-├── bot/processos_grupo.py    # pesquisa por grupo, leitura da tabela e montagem do .txt
-├── .env.usuario2.example     # modelo do .env do segundo usuário
-├── .env.usuario2             # configuração real (NÃO versionar — tem senha)
-└── saida_usuario2/relatorios/  # .txt gerados (NÃO versionar — dados de clientes)
+├── relatorio_processos.py      # entrada: login → grupos → lupa de cada processo → IA → .xlsx
+├── rodar_usuario2.bat          # atalho no Windows (aceita --grupo e --limite)
+├── bot/processos_grupo.py      # filtro Grupo Cliente, pesquisa e leitura da lista
+├── bot/processos_detalhe.py    # lupa: Dados do Processo + tarefas
+├── bot/relatorio_planilha.py   # regras fixas, instruções da IA e gravação da .xlsx
+├── .env.usuario2.example       # modelo do .env do segundo usuário
+├── .env.usuario2               # configuração real (NÃO versionar — senha e chave)
+└── saida_usuario2/relatorios/  # planilhas e .json (NÃO versionar — dados de clientes)
 ```
 
 Reaproveita do robô de intimações: `bot/config.py`, `bot/login.py`,
-`bot/navegador.py`, `bot/navegacao.py` e o log em `logs/bot.log` (prints de erro
-em `logs/erro_*.png`).
+`bot/navegador.py`, `bot/navegacao.py`, `bot/ia/` (provedores de IA),
+`bot/custo.py` (teto de gasto) e o log em `logs/bot.log` (prints de erro em
+`logs/erro_*.png`).
 
 ---
 
-## 8. Segurança
+## 9. Segurança
 
-- **Só leitura** no VIOS (ver seção 2).
-- **Um `.env` por usuário**: o `.bat` sempre usa o `.env.usuario2`, e o log
-  confirma o usuário em "Login OK como ...". Cada execução abre um Chrome com
-  perfil limpo, então as sessões dos dois usuários não se misturam.
+- **Só leitura** no VIOS (seção 2).
+- **Um `.env` por usuário**; o log confirma o usuário em "Login OK como ...".
 - **Fora do GitHub** (`.gitignore`): `.env.*` (menos os `.example`),
-  `saida_*/`, `imgs/` (prints de tela) e `logs/`. Os `.txt` têm dados de
+  `saida_*/`, `imgs/` e `logs/`. As planilhas e o `.json` têm dados de
   clientes e partes.
-- A senha do segundo usuário foi passada por chat na configuração: trocar e
-  atualizar `SISTEMA_SENHA` no `.env.usuario2`.
+- **Dados sensíveis das tarefas** (CPF, links e senhas de audiência, links de
+  conversas) são tirados antes de ir para a IA e nunca vão para a planilha.
+- A senha do segundo usuário e a chave da IA foram passadas por chat na
+  configuração: trocar e atualizar o `.env.usuario2`.
 
 ---
 
-## 9. Pontos de atenção
+## 10. Pontos de atenção
 
-- **Só processos ativos e não migrados** (filtro padrão da tela). Encerrados
-  não entram.
-- **Limite de 500 por grupo**: a tela não mostra mais que isso; acima, seria
-  preciso usar a exportação CSV.
-- **Cadastro inconsistente no VIOS aparece no relatório.** No 3A FRIOS
-  (28/10/2026):
-  - CI 29191: cliente A AFONSO LINHARES (MATRIZ), mas a parte é ANTONIO AFONSO
-    LINHARES (posição "não identificada"); "Onde tramita" = "000petição".
-  - CI 27513 (INPI): sem partes cadastradas.
+- **Cadastro incompleto no VIOS aparece na planilha.** No teste de 03/11/2026
+  (3 processos da Casa do Celular), nenhum tinha **data de distribuição** nem
+  **valor da ação**; um não tinha **número**, outro não tinha **tipo**; e o
+  "Órgão" era o PROCON mesmo em processo judicial (CI 29825, 2º Juizado de
+  Cariacica pelas tarefas). A aba "Cadastro incompleto" lista o que falta.
+- **Mais processos que a planilha antiga**: a lista da CASA DO CELULAR trouxe
+  **101** processos ativos; a planilha do Drive tinha 70 (montada de um PDF).
+- **Só processos ativos e não migrados**; até 500 por grupo.
+- **Justificativa da condenação**: a informação existe nas tarefas — no teste,
+  o resumo do CI 29824 já citou a sentença de 24/09/2026 (devolver R$ 1.360,00,
+  sem danos morais). Falta decidir a regra para a coluna.
 
 ---
 
-## 10. Testes
+## 11. Testes
 
 | Data | Grupo | Resultado |
 | --- | --- | --- |
-| 28/10/2026 | 3A FRIOS | 17 processos, 0 erros — igual à tabela copiada do VIOS |
+| 28/10/2026 | 3A FRIOS | Versão .txt (descartada): 17 processos, 0 erros |
+| 03/11/2026 | CASA DO CELULAR (3 processos) | 3 linhas, 0 erros na IA, US$ 0,04 |
+| 03/11/2026 | CASA DO CELULAR + CASA DO CELULAR MG/SP | 101 + 26 processos, 0 erros, 16 min, US$ 2,13. 61 dos 70 processos da planilha antiga presentes (os 9 restantes não estão mais ativos) e 37 novos. Aprovado na primeira conferência do usuário. |
 
 ---
 
-## 11. Próximos passos
+## 12. Próximos passos
 
-1. Ajustar o que estava errado na primeira versão (a definir).
-2. Salvar no Google Drive: instalar o Google Drive para computador e apontar
-   `RELATORIO_PASTA` para a pasta sincronizada.
-3. Rodar todos os grupos (`--grupo todos`) depois de validar o formato.
+1. Validar a planilha das duas Casas do Celular com a equipe.
+2. Valor provisionado: descobrir onde fica no VIOS.
+3. Justificativa da condenação: definir a regra (ex.: IA lê a tarefa de
+   análise da sentença/acórdão).
+4. Incluir Plasfran (3 grupos) e LD Urbanismo.
+5. Salvar no Google Drive (`RELATORIO_PASTA` apontando para a pasta
+   sincronizada) e agendar a execução mensal.
 
 ---
 
-## 12. Regra de manutenção
+## 13. Regra de manutenção
 
 Toda mudança neste robô é registrada no [CHANGELOG.md](CHANGELOG.md) **e** neste
 arquivo (passo a passo, tabelas, testes e próximos passos).

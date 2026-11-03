@@ -341,6 +341,32 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   (sem o teor) não é lançada: a tarefa depende de abrir o evento no sistema
   (caso da CI 42478, lançada como CIÊNCIA quando era embargos/contrarrazões).
 
+### Alterado — Relatório de processos vira planilha mensal (.xlsx) com a lupa de cada processo
+- O .txt por grupo foi descartado. Agora `relatorio_processos.py` gera **uma
+  planilha por grupo** em `saida_usuario2/relatorios/AAAA-MM/<GRUPO>.xlsx`, no
+  formato da planilha "Processos Casa do celular" do Drive (abas Processos,
+  Resumo, Cadastro incompleto e Metadados), + um `.json` com o que foi lido.
+- Novo `bot/processos_detalhe.py`: abre a lupa de cada processo
+  (`processos-vis.php`) e lê os Dados do Processo e as tarefas. O "Mostrar
+  mais" é resolvido tirando a classe `limite-texto` (sem clicar).
+- Novo `bot/relatorio_planilha.py`: última movimentação e pendências com
+  responsável por regra fixa (tarefa em aberto vencida = ATRASADA); resumo do
+  caso, motivação (lista fixa), financeira e documentos faltando pela IA
+  (Claude, `claude-sonnet-5-5`). CPF, links e senhas das tarefas são tirados
+  antes da IA e o texto das tarefas não vai para a planilha.
+- Colunas novas: Cliente, Polo do cliente, Fase, Motivação do processo,
+  Justificativa da condenação, Pendência — documentos faltando e Pendência —
+  responsável. "ID da extração" vira CI. Valor provisionado e justificativa
+  da condenação ficam vazios por enquanto.
+- `.env.usuario2`: `PROCESSOS_GRUPOS=CASA DO CELULAR|CASA DO CELULAR MG/SP`,
+  `LLM_PROVEDOR=anthropic`, `LLM_MODELO`, `LLM_LIMITE_US=5`, `MANTER_ABERTO=false`.
+  Opção `--limite N` para testar com poucos processos.
+- `bot/processos_grupo.py` perde a montagem do .txt (fica a pesquisa e a lista).
+- `requirements.txt`: `openpyxl==3.1.5` e `et_xmlfile==2.0.0`.
+- Teste 03/11/2026: 3 processos da CASA DO CELULAR, 0 erros, US$ 0,04. Rodada
+  completa: CASA DO CELULAR (101) + CASA DO CELULAR MG/SP (26), 0 erros,
+  16 min, US$ 2,13.
+
 ### Adicionado — Segundo usuário do VIOS (função nova, em definição)
 - Branch `nova-funcao` para desenvolver a função nova sem afetar o robô de
   intimações no `main`.
