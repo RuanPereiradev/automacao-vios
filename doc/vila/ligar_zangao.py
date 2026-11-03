@@ -4,7 +4,10 @@
   (só nos 3 últimos dias, com confirmação) e "Painel", que chamam /zangao/status e
   /zangao/rodar do Ultron; o rodapé diz o que ele está fazendo;
 - etapa 3 (Ultron e Zangão): aba escondida ou fila grande de eventos não fazem o robô reprisar
-  tudo devagar; a vila pula direto para o estado atual.
+  tudo devagar; a vila pula direto para o estado atual;
+- etapa 4: abrir direto numa vila pelo endereço (/vila?vila=2 = Vila 02 · Zangão), para embutir
+  a vila nas páginas do Ultron; e, ao abrir, animar os eventos dos últimos 30 s (a página do
+  Ultron recarrega logo depois de subir o .txt, e o robô tem que aparecer recebendo o arquivo).
 uso: python3 doc/vila/ligar_zangao.py bot/vila/vila.html  (edita no lugar; o modo simulado continua igual;
      pode rodar de novo: aplica só a etapa que falta)"""
 import json
@@ -17,13 +20,14 @@ t = json.loads(linhas[IDX])
 ETAPA1 = "zhandle(ev)" not in t  # eventos do Zangão na Vila 02
 ETAPA2 = "zrodar(modo)" not in t  # botões para rodar o Zangão pela vila
 ETAPA3 = "alcancar()" not in t  # pular para o estado atual (aba escondida / fila grande)
-if not (ETAPA1 or ETAPA2 or ETAPA3):
+ETAPA4 = "get('vila')" not in t  # /vila?vila=N abre na vila N
+if not (ETAPA1 or ETAPA2 or ETAPA3 or ETAPA4):
     sys.exit("a vila já está com tudo do Zangão")
 
 
 def troca(velho, novo, etapa=1):
     global t
-    if not {1: ETAPA1, 2: ETAPA2, 3: ETAPA3}[etapa]:
+    if not {1: ETAPA1, 2: ETAPA2, 3: ETAPA3, 4: ETAPA4}[etapa]:
         return
     assert t.count(velho) == 1, ("trecho não encontrado (ou repetido)", velho[:80])
     t = t.replace(velho, novo)
@@ -386,6 +390,20 @@ troca("    window.addEventListener('keydown', this.onKey);\n",
       "    document.addEventListener('visibilitychange', this.onVis);\n", 3)
 troca("window.removeEventListener('keydown', this.onKey); }",
       "window.removeEventListener('keydown', this.onKey); document.removeEventListener('visibilitychange', this.onVis); }", 3)
+
+# ---------------- etapa 4: /vila?vila=N abre direto na vila N ----------------
+troca("conn: 'simulado', village: 0,",
+      "conn: 'simulado', village: Math.max(0, Math.min(Component.NV - 1, (parseInt(new URLSearchParams(location.search).get('vila'), 10) || 1) - 1)),", 4)
+troca("        if (first) { this.loadHistory(ul); this.zLoadHistory(zg); first = false; }",
+      "        if (first) {\n"
+      "          // ao abrir: o que aconteceu nos últimos 30 s é animado; o resto só monta o estado\n"
+      "          const recente = e => e.ts && Date.now() - new Date(e.ts).getTime() < 30000;\n"
+      "          const corte = l => { const i = l.findIndex(recente); return i < 0 ? l.length : i; };\n"
+      "          const iu = corte(ul), iz = corte(zg);\n"
+      "          this.loadHistory(ul.slice(0, iu)); this.zLoadHistory(zg.slice(0, iz));\n"
+      "          this.evq.push.apply(this.evq, ul.slice(iu)); this.zevq.push.apply(this.zevq, zg.slice(iz));\n"
+      "          first = false;\n"
+      "        }", 4)
 
 linhas[IDX] = json.dumps(t, ensure_ascii=False).replace("</", "<\\u002F")
 open(caminho, "w", encoding="utf-8").write("\n".join(linhas))

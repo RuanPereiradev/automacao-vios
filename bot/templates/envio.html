@@ -1,5 +1,5 @@
 {% from "_ultron.html" import ultron, ultron_script, ultron_icone %}
-{% from "_cena.html" import cena %}
+{% from "_vila.html" import vila_cartao %}
 {% set ESTADOS = {"conferir": ["s-ja", "Conferido, não enviado"], "enviando": ["s-andamento", "Enviando…"],
                   "testado": ["s-andamento", "Testado (não gravou)"], "concluido": ["s-ok", "Concluído"], "falhou": ["s-erro", "Parou"]} %}
 {% macro tabela_envios(lista) %}
@@ -42,7 +42,7 @@
 </header>
 <main>
 {% if tela == "inicio" %}
-  {{ cena(ocupado=ocupado) }}
+  {{ vila_cartao(1) }}
   <div class="cartao">
     <form action="{{ url_for('ler') }}" method="post" enctype="multipart/form-data" id="form-arquivo">
       <label class="soltar" id="soltar">
@@ -157,7 +157,7 @@ SENTENÇA
   {% set com_problema = envio.cis | selectattr("problemas") | list %}
   {% set ja = envio.cis | selectattr("ja_lancada") | list %}
 
-  {{ cena(envio, aptas, com_problema, ja, agora) }}
+  {{ vila_cartao(1) }}
 
   {% if envio.estado == "enviando" %}
   <div class="cartao">

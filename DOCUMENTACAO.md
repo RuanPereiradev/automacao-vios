@@ -600,6 +600,15 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `saida/vila_pendentes.jsonl` dele).
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py bot/vila/vila.html`.
 
+### Passo 25 — Vila dos bots no topo da página do Ultron
+- Na página do Ultron (`http://<IP do Mac>:5001/`), o topo é a vila dos bots
+  (Vila 01 · Ultron, com os eventos reais); abaixo ficam a caixa do .txt, a
+  conferência, os botões e o histórico, como antes. Pela vila (setas ou
+  "02 · Zangão") dá para ir à Vila 02 e rodar o Zangão.
+- `/vila?vila=2` abre a vila direto na Vila 02. Ao abrir, a vila anima o que
+  aconteceu nos últimos 30 s (por isso, ao subir o .txt, aparece o Ultron indo
+  buscar o arquivo e conferindo).
+
 ### Passo 24 — Rodar o Zangão pela vila ou pela página dele (Mac)
 - O Zangão fica instalado no Mac, numa pasta própria (`~/zangao`, branch
   `bot-edita-vios`, com `.venv` e `.env` dele), e o `.env` do Ultron aponta para
@@ -675,7 +684,8 @@ selenium/
 │   ├── zangao.py        # roda o Zangão em segundo plano pela vila (/zangao/status, /zangao/rodar)
 │   ├── vila/            # vila.html (servido em /vila)
 │   ├── templates/       # HTML das páginas de revisão, de envio e do Zangão (zangao.html);
-│   │                    # _estilo.html = estilo comum; _ultron.html / _zangao.html = mascotes
+│   │                    # _estilo.html = estilo comum; _ultron.html / _zangao.html = mascotes;
+│   │                    # _vila.html = vila embutida no topo da página do Ultron
 │   ├── prazos.py        # dias úteis, feriados, prazo fatal, D-2
 │   └── ia/              # provedores de IA: openai_ia.py, anthropic_ia.py
 ├── .env                 # configuração real (NÃO versionar — tem senha)

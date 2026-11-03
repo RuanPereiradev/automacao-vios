@@ -12,6 +12,15 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Vila dos bots no topo da página do Ultron
+- As telas do Ultron (inicial e do envio) mostram no topo a vila dos bots (a mesma `/vila`, com
+  os eventos reais, aberta na Vila 01) no lugar da cena pequena; abaixo continua tudo igual
+  (caixa do .txt, conferência, enviar/testar, edição das CIs, histórico). `bot/templates/_vila.html`
+  (`vila_cartao(n)`).
+- Vila: `/vila?vila=N` abre direto na vila N; ao abrir, os eventos dos últimos 30 s são animados
+  (a página recarrega logo depois de subir o .txt, e o Ultron aparece indo buscar o arquivo e
+  conferindo). Etapa 4 do `doc/vila/ligar_zangao.py`.
+
 ### Alterado — Zangão roda pela própria vila (Vila 02)
 - A Vila 02 (vila do Mac, `/vila`) voltou a ter os botões para rodar o Zangão: "Testar sem
   gravar" (qualquer dia, não grava) e "Rodar e gravar no VIOS" (só nos 3 últimos dias do mês; o
