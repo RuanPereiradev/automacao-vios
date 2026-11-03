@@ -12,6 +12,30 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — A vila recebe e mostra o Zangão (Bumblebee)
+- `POST /eventos` no Ultron (`bot/envio_web.py` + `eventos.receber`): recebe os eventos do
+  Zangão (branch `bot-edita-vios`, `bot/vila.py`) com a mesma senha da página e grava no
+  `saida/eventos.jsonl`. Só aceita `bot: "zangao"`; valida tamanho (64 KB), `envio` e `tipo`;
+  o `n` é sempre do Ultron; guarda o `ts` do Zangão; retira chaves de dados de cliente e
+  textos no formato CNJ (garantia, o Zangão já não manda). Testado com o `bot/vila.py` real:
+  eventos gravados, senha errada recusada (401), 4 threads × 20 eventos sem `n` repetido.
+- Vila 02 (`bot/vila/vila.html`, modo servidor): anima a execução real do Zangão (entrar no
+  VIOS, ler o calendário, classificar, cada tarefa e o resumo), com painel "Comprovantes
+  previdenciários" (tarefa pelo `pxe_id`, processo pelo id interno, situação e motivo em
+  português) e linha no Registro. Ao abrir, mostra a última execução. Testado no Chrome com
+  eventos de verdade; a Vila 01 (Ultron) e o modo simulado não mudaram.
+- `doc/vila/ligar_zangao.py`: reaplica essa mudança se a vila for baixada de novo do site.
+- `doc/vila/contrato-eventos.md`: seção do Zangão (rota, validação e o que a vila mostra).
+
+### Adicionado — Prompt do contrato de eventos do Zangão (Bumblebee) para a vila
+- `doc/vila/prompt-zangao.md`: o que o bot de comprovantes previdenciários (Bumblebee/Zangão)
+  precisa emitir para a Vila 02 mostrá-lo trabalhando. Eventos com `bot: "zangao"`
+  (`execucao_iniciada`, `fase`, `calendario`, `tarefa`, `execucao_fim`), enviados por
+  `POST /eventos` ao servidor do Ultron, com dados mínimos (sem CNJ, órgão, valor nem nome de
+  cliente) e sem nunca travar o bot.
+- Pendente do lado do Ultron: rota `POST /eventos` e a vila passar a ler os eventos do Zangão
+  (hoje ela só lê `bot: "ultron"`).
+
 ### Adicionado — Mac como servidor da página de envio (`servidor_mac.sh`)
 - `./servidor_mac.sh instalar` cria um serviço do `launchd` (`~/Library/LaunchAgents/
   br.automacao-vios.envio.plist`) que roda o `./rodar_envio.sh` sozinho quando o usuário entra

@@ -398,6 +398,18 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         """Eventos para a vila: GET /eventos?desde=N devolve os de n > N (contrato em doc/vila/)."""
         return jsonify(eventos.ler(pasta_saida, request.args.get("desde", 0, type=int)))
 
+    @app.route("/eventos", methods=["POST"])
+    def recebe_evento():
+        """Evento de outro bot (hoje só o Zangão) para a vila; mesma senha da página."""
+        try:
+            n = eventos.receber(pasta_saida, request.get_data(cache=False))
+        except eventos.EventoInvalido as e:
+            log.warning("Evento recusado de %s: %s", request.remote_addr, e)
+            return jsonify(erro=str(e)), 400
+        except OSError:
+            return jsonify(erro="não consegui gravar o evento"), 500
+        return jsonify(n=n)
+
     @app.route("/vila")
     def vila():
         """A vila (HTML único e estático, só assiste aos eventos)."""

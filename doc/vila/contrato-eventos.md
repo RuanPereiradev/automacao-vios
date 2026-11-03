@@ -116,3 +116,34 @@ Diferenças e detalhes que a vila precisa saber:
   (conta eventos `ci`, que saem um por tarefa).
 - Para atualizar: baixar de novo o HTML publicado para `bot/vila/vila.html` (e reaplicar a
   correção, se ela ainda não estiver no código-fonte). Não precisa reiniciar a página.
+
+## Zangão (Bumblebee) na Vila 02 (03/11/2026)
+
+O Zangão (bot de comprovantes previdenciários, branch `bot-edita-vios`) manda os eventos dele
+por **`POST /eventos`** ao Ultron, que guarda no mesmo `saida/eventos.jsonl`. O que ele manda
+está em `doc/vila/prompt-zangao.md` e no `bot/vila.py` daquela branch.
+
+| Ponto | Como é |
+| --- | --- |
+| Rota | `POST /eventos`, corpo JSON (um evento), mesma senha da página (usuário qualquer; o Zangão usa `zangao`) |
+| Bots aceitos | só `zangao` (`BOTS_EXTERNOS` em `bot/eventos.py`); o `ultron` só escreve de dentro |
+| Validação | corpo até 64 KB, objeto JSON, `envio` e `tipo` só com letras, números e `_.:-` (até 64); senão `400` |
+| `n` | sempre dado pelo Ultron (o `n` que vier é descartado) |
+| `ts` | o do Zangão (hora em que aconteceu), se vier no formato `AAAA-MM-DDTHH:MM:SS` |
+| Dados mínimos | o Ultron também retira as chaves `cnj`, `orgao`, `valor`, `tarefa`, `texto`, `cliente`… e troca qualquer texto no formato CNJ por `[removido]` |
+| Resposta | `{"n": 132}` |
+
+Na vila (`bot/vila/vila.html`, só no modo servidor, em `/vila`):
+- a Vila 02 anima os eventos `bot: "zangao"`: `execucao_iniciada` → `fase` (Torre VIOS) →
+  `calendario` (Filtro previdenciário; abre o painel com uma linha por tarefa) → `tarefa`
+  (Torre VIOS; `comprovante_lido` na Captura de dados) → `execucao_fim` (volta à doca);
+- o painel "Comprovantes previdenciários" mostra cada tarefa pelo `pxe_id`, o processo pelo id
+  interno, a situação e o motivo em português (os códigos curtos viram texto; código novo
+  aparece como veio). O "Registro" ganha uma linha por execução do Zangão;
+- ao abrir, monta a última execução sem animar; no meio de uma execução, fica no posto;
+- com fila grande de eventos, ele anda e trabalha mais rápido para alcançar o bot;
+- o botão da Vila 02 só abre e fecha o painel (quem dispara o Zangão é o agendador). O modo
+  simulado (site publicado) continua com o exemplo antigo.
+- A mudança foi feita na cópia por `doc/vila/ligar_zangao.py`. Se a vila for baixada de novo
+  do site, rodar `python3 doc/vila/ligar_zangao.py bot/vila/vila.html` (e levar a mudança para
+  o código-fonte da vila).

@@ -6,6 +6,7 @@ A vila só lê (GET /eventos?desde=N). Dados mínimos: CI, nome da tarefa e cont
 """
 import json
 import logging
+import re
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -56,6 +57,60 @@ def emitir(pasta, envio, tipo, bot="ultron", **dados):
     except Exception:
         log.exception("Não consegui gravar o evento %s do envio %s", tipo, envio)
         return None
+
+
+# bots de fora que podem mandar eventos por POST /eventos (o "ultron" só escreve daqui de dentro)
+BOTS_EXTERNOS = {"zangao"}
+TAMANHO_MAX = 64 * 1024  # bytes do corpo de um evento recebido
+# nunca guardar em evento de bot de fora (dados de cliente / do processo / do comprovante)
+PROIBIDAS = {"texto", "titulo", "tarefa", "link", "link_tarefa", "link_processo", "cliente", "nome",
+             "cnj", "orgao", "valor", "valores", "processo_cnj", "comprovante", "arquivo", "pdf", "conteudo"}
+CNJ_TEXTO = re.compile(r"\d{7}-?\d{2}\.?\d{4}\.?\d\.?\d{2}\.?\d{4}")
+TS = re.compile(r"\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\Z")
+CAMPO = re.compile(r"\A[A-Za-z0-9_.:-]{1,64}\Z")  # bot, envio e tipo
+
+
+class EventoInvalido(ValueError):
+    pass
+
+
+def _limpar(valor):
+    """Tira chaves proibidas e qualquer texto no formato CNJ (o Zangão já não manda; é garantia)."""
+    if isinstance(valor, dict):
+        return {k: _limpar(v) for k, v in valor.items() if k not in PROIBIDAS}
+    if isinstance(valor, list):
+        return [_limpar(v) for v in valor]
+    if isinstance(valor, str):
+        return CNJ_TEXTO.sub("[removido]", valor)
+    return valor
+
+
+def receber(pasta, corpo):
+    """Evento de um bot de fora (POST /eventos). Valida, limpa e grava; devolve o n.
+    Levanta EventoInvalido se o corpo não serve."""
+    if len(corpo) > TAMANHO_MAX:
+        raise EventoInvalido("evento grande demais")
+    try:
+        evento = json.loads(corpo.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        raise EventoInvalido("corpo não é JSON")
+    if not isinstance(evento, dict):
+        raise EventoInvalido("o evento tem que ser um objeto JSON")
+    bot, envio, tipo = evento.pop("bot", None), evento.pop("envio", None), evento.pop("tipo", None)
+    if bot not in BOTS_EXTERNOS:
+        raise EventoInvalido(f"bot não aceito: {bot!r}")
+    for nome, valor in (("envio", envio), ("tipo", tipo)):
+        if not isinstance(valor, str) or not CAMPO.match(valor):
+            raise EventoInvalido(f"{nome} inválido")
+    evento.pop("n", None)  # o n é sempre daqui
+    ts = evento.pop("ts", None)
+    dados = _limpar(evento)
+    if isinstance(ts, str) and TS.match(ts):
+        dados["ts"] = ts  # horário em que aconteceu no bot (não o da chegada)
+    n = emitir(pasta, envio, tipo, bot=bot, **dados)
+    if n is None:
+        raise OSError("não consegui gravar o evento")
+    return n
 
 
 def ler(pasta, desde=0, limite=LIMITE_INICIAL):

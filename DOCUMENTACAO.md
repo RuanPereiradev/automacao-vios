@@ -585,6 +585,21 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - Usar só um servidor: com o Mac ligado, não rodar o `./rodar_envio.sh` no
   Linux (cada um teria o seu `lancamentos.json`).
 
+### Passo 23 — A vila mostra o Zangão (bot de comprovantes previdenciários)
+- O Zangão (Bumblebee, branch `bot-edita-vios`) manda cada etapa por
+  `POST /eventos` ao Ultron, que guarda no `saida/eventos.jsonl`. A Vila 02, em
+  `http://<IP do Mac>:5001/vila`, anima a execução e mostra o painel
+  "Comprovantes previdenciários" (tarefa pelo `pxe_id`, situação e motivo).
+- No `.env` **do Zangão**: `VILA_URL=http://<IP do Mac>:5001/eventos` e
+  `VILA_SENHA` = a mesma senha do `ENVIO_SENHA` do Ultron. Vazio = vila desligada.
+- O Ultron só aceita eventos do bot `zangao`, com a senha da página, e nunca
+  guarda CNJ, órgão julgador, valor nem nome de cliente (contrato em
+  `doc/vila/contrato-eventos.md`).
+- A vila só assiste: se o Ultron estiver fora do ar, o Zangão segue
+  trabalhando (desiste depois de 3 falhas e guarda os eventos em
+  `saida/vila_pendentes.jsonl` dele).
+- Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py bot/vila/vila.html`.
+
 ---
 
 ## 3. Estrutura do projeto
@@ -619,7 +634,7 @@ selenium/
 │   ├── web.py           # página de revisão (Flask)
 │   ├── envio_txt.py     # lê e confere o .txt da página de envio
 │   ├── envio_web.py     # página de envio do .txt (Flask)
-│   ├── eventos.py       # eventos para a vila (saida/eventos.jsonl, /eventos)
+│   ├── eventos.py       # eventos para a vila (saida/eventos.jsonl, GET /eventos; POST /eventos do Zangão)
 │   ├── vila/            # vila.html (servido em /vila)
 │   ├── templates/       # HTML das páginas de revisão e de envio (_ultron.html = mascote)
 │   ├── prazos.py        # dias úteis, feriados, prazo fatal, D-2
