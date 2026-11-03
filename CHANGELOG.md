@@ -341,6 +341,16 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   (sem o teor) não é lançada: a tarefa depende de abrir o evento no sistema
   (caso da CI 42478, lançada como CIÊNCIA quando era embargos/contrarrazões).
 
+### Alterado — Planilha mensal: colunas revisadas pelo usuário
+- Removidas da aba Processos: **Fase**, **Valor provisionado**, **Última
+  movimentação** e **Pendência — responsável** (sigilo: tinha nomes da equipe).
+- **Justificativa da condenação** passa a ser preenchida pela IA: se houve
+  condenação, o motivo da decisão e o que o cliente tem que fazer; senão,
+  "Sem condenação (pedidos improcedentes)", "Acordo" ou "Sem decisão até o
+  momento". A aba Resumo ganha a contagem "Por resultado da decisão".
+- "Documentos faltando": a IA nunca indica funcionário do escritório como
+  quem entrega.
+
 ### Alterado — Relatório de processos vira planilha mensal (.xlsx) com a lupa de cada processo
 - O .txt por grupo foi descartado. Agora `relatorio_processos.py` gera **uma
   planilha por grupo** em `saida_usuario2/relatorios/AAAA-MM/<GRUPO>.xlsx`, no

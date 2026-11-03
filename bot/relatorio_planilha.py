@@ -2,12 +2,11 @@
 
 Cada processo vira uma linha da aba Processos:
 - dados do cadastro (lupa -> Dados do Processo) e da lista, sem IA;
-- última movimentação e pendências com responsável, por regra fixa a partir das tarefas;
-- resumo do caso, motivação, financeira e documentos faltando, pela IA lendo as tarefas.
-Valor provisionado e justificativa da condenação ficam vazios por enquanto.
+- resumo do caso, motivação, financeira, justificativa da condenação e documentos
+  faltando, pela IA lendo as tarefas.
 
-O texto das tarefas tem CPF, links e senhas de audiência: ele só vai para a IA
-(depois de limpo) e nunca é copiado para a planilha.
+O texto das tarefas tem CPF, links, senhas de audiência e nomes da equipe: ele só
+vai para a IA (depois de limpo) e nunca é copiado para a planilha.
 """
 import logging
 import re
@@ -31,6 +30,14 @@ MOTIVACOES = [
     "Outros",
 ]
 
+# situação da decisão; só "Condenação" leva a justificativa escrita
+CONDENACOES = [
+    "Condenação",
+    "Sem condenação (pedidos improcedentes)",
+    "Acordo",
+    "Sem decisão até o momento",
+]
+
 COLUNAS = [
     ("CI", 9),
     ("Número do processo", 27),
@@ -39,19 +46,15 @@ COLUNAS = [
     ("Parte ativa", 30),
     ("Parte passiva", 30),
     ("Tipo de processo", 14),
-    ("Fase", 22),
     ("Órgão", 32),
     ("Data da distribuição", 14),
     ("Valor da ação", 14),
-    ("Valor provisionado", 14),
     ("Cidade/UF", 20),
-    ("Última movimentação", 40),
     ("Resumo do caso", 70),
     ("Motivação do processo", 40),
     ("Financeira", 30),
-    ("Justificativa da condenação", 40),
+    ("Justificativa da condenação", 55),
     ("Pendência — documentos faltando", 45),
-    ("Pendência — responsável", 50),
 ]
 NOMES = [nome for nome, _ in COLUNAS]
 
@@ -79,11 +82,20 @@ Regras:
 - motivacao_detalhe: no máximo 12 palavras, objetivo (ex.: "parcelas quinzenais, juros e bloqueio remoto").
 - financeira: financeiras, bancos ou securitizadoras envolvidos no caso (ex.: PayJoy, Odres Cred,
   BMP), separados por "; ". Vazio se não houver.
+- condenacao_situacao: o resultado da decisão mais recente (sentença, acórdão ou decisão
+  administrativa) PARA O CLIENTE, desta lista: {", ".join(CONDENACOES)}.
+  "Condenação" = o cliente foi condenado a pagar, devolver, trocar ou fazer algo, mesmo que em parte.
+- condenacao_justificativa: só quando condenacao_situacao = "Condenação": 1 ou 2 frases simples
+  com o motivo que o juiz/órgão deu para condenar e o que o cliente tem que fazer (valor, se
+  houver). Ex.: "O juiz entendeu que a loja vendeu o aparelho com defeito e não resolveu no
+  prazo da garantia; condenou a devolver R$ 1.800,00 e pagar R$ 2.000,00 de danos morais."
+  Se o motivo não estiver nas tarefas, diga só o que foi decidido. Vazio nas outras situações.
 - documentos_faltando: documentos que a equipe PEDIU (ao cliente ou a terceiros) e que, pelas
   tarefas, AINDA NÃO chegaram. Compare o que foi solicitado com o que foi recebido/analisado
   (tarefas "ANALISAR DOCUMENTOS", arquivos enviados). Lista vazia se nada falta ou se não houve pedido.
   Não invente: só o que aparece nas tarefas.
-- documentos_quem_entrega: quem deve entregar os documentos faltando (ex.: "Cliente"). Vazio se a lista estiver vazia.
+- documentos_quem_entrega: quem deve entregar os documentos faltando (ex.: "Cliente"). Vazio se a
+  lista estiver vazia. Nunca o nome de um funcionário do escritório.
 - Se a informação não estiver nas tarefas, deixe o campo vazio. Não use conhecimento externo.
 """
 
@@ -94,12 +106,22 @@ SCHEMA = {
         "motivacao_categoria": {"type": "string", "enum": MOTIVACOES},
         "motivacao_detalhe": {"type": "string"},
         "financeira": {"type": "string"},
+        "condenacao_situacao": {"type": "string", "enum": CONDENACOES},
+        "condenacao_justificativa": {"type": "string"},
         "documentos_faltando": {"type": "array", "items": {"type": "string"}},
         "documentos_quem_entrega": {"type": "string"},
     },
     "required": ["resumo_caso", "motivacao_categoria", "motivacao_detalhe", "financeira",
+                 "condenacao_situacao", "condenacao_justificativa",
                  "documentos_faltando", "documentos_quem_entrega"],
     "additionalProperties": False,
+}
+
+# processo sem tarefas no VIOS: não vai para a IA
+SEM_TAREFAS = {
+    "resumo_caso": "", "motivacao_categoria": "Outros", "motivacao_detalhe": "sem tarefas no VIOS",
+    "financeira": "", "condenacao_situacao": "Sem decisão até o momento", "condenacao_justificativa": "",
+    "documentos_faltando": [], "documentos_quem_entrega": "",
 }
 
 MAX_TAREFA = 6000      # caracteres por texto de tarefa enviados à IA
@@ -143,31 +165,6 @@ def tarefas_validas(proc):
     return [t for t in proc["tarefas"] if not t["cancelada"]]
 
 
-def ultima_movimentacao(proc):
-    feitas = [t for t in tarefas_validas(proc) if t["concluida"] and _br(t["concluida_em"])]
-    if not feitas:
-        return ""
-    t = max(feitas, key=lambda t: (_br(t["concluida_em"]), t["id"]))
-    return f"{t['concluida_em']} - {t['tipo']}"
-
-
-def pendencias_abertas(proc, hoje=None):
-    """Tarefas em aberto, da mais próxima para a mais distante: 'NOME (até dd/mm/aaaa) – RESP1, RESP2'.
-    Prazo vencido ganha 'ATRASADA'."""
-    hoje = hoje or datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    abertas = [t for t in tarefas_validas(proc) if not t["concluida"]]
-    abertas.sort(key=lambda t: (_br(t["para_conclusao"]) or datetime.max, t["id"]))
-    linhas = []
-    for t in abertas:
-        prazo = f" (até {t['para_conclusao']})" if t["para_conclusao"] else ""
-        vencida = _br(t["para_conclusao"])
-        if vencida and vencida < hoje:
-            prazo += " ATRASADA"
-        quem = ", ".join(t["responsaveis"]) or "sem responsável"
-        linhas.append(f"{t['tipo']}{prazo} – {quem}")
-    return "\n".join(linhas)
-
-
 def texto_para_ia(item, proc):
     d = proc["dados"]
     campos = ["Cliente", "Polo do cliente", "Parte ativa", "Parte passiva", "Área", "Ação", "Fase",
@@ -184,6 +181,12 @@ def texto_para_ia(item, proc):
                 bloco.append(f"{rotulo}: {texto}")
         linhas += bloco
     return "\n".join(linhas)[:MAX_PROCESSO]
+
+
+def _justificativa(ia):
+    if ia["condenacao_situacao"] == "Condenação":
+        return ia["condenacao_justificativa"] or "Condenação (motivo não registrado no VIOS)"
+    return ia["condenacao_situacao"]
 
 
 def montar_linha(item, proc, ia):
@@ -205,19 +208,17 @@ def montar_linha(item, proc, ia):
         "Parte ativa": "; ".join(item.get("parte_ativa", [])) or d.get("Parte ativa", ""),
         "Parte passiva": "; ".join(item.get("parte_passiva", [])) or d.get("Parte passiva", ""),
         "Tipo de processo": (d.get("Processo") or "").upper(),
-        "Fase": d.get("Fase", ""),
         "Órgão": d.get("Comarcas / Tribunais / Órgãos adm.") or item.get("orgao", ""),
         "Data da distribuição": _br(d.get("Data da ação / Distribuição", "")),
         "Valor da ação": _valor(d.get("Valor da ação", "")),
-        "Valor provisionado": None,
         "Cidade/UF": d.get("Cidade / UF", ""),
-        "Última movimentação": ultima_movimentacao(proc),
         "Resumo do caso": "ERRO NA IA: conferir" if erro else ia["resumo_caso"],
         "Motivação do processo": motivacao,
         "Financeira": "" if erro else ia["financeira"],
-        "Justificativa da condenação": "",
+        "Justificativa da condenação": "ERRO NA IA: conferir" if erro else _justificativa(ia),
         "Pendência — documentos faltando": docs,
-        "Pendência — responsável": pendencias_abertas(proc),
+        # só para a aba Resumo (não vira coluna)
+        "_condenacao": "" if erro else ia["condenacao_situacao"],
     }
 
 
@@ -226,7 +227,7 @@ def cadastro_incompleto(linha):
 
 
 def salvar_xlsx(arquivo, grupo, linhas, info):
-    """info: {gerado_em, modelo, gasto, erros_ia, sem_tarefas}."""
+    """info: {gerado_em, modelo, gasto, erros_ia}."""
     wb = Workbook()
     titulo = Font(bold=True, size=14)
     negrito = Font(bold=True, color="FFFFFF")
@@ -235,19 +236,18 @@ def salvar_xlsx(arquivo, grupo, linhas, info):
 
     ws = wb.active
     ws.title = "Processos"
-    ws.append([nome for nome, _ in COLUNAS])
+    ws.append(NOMES)
     for i, (_, largura) in enumerate(COLUNAS, 1):
         cel = ws.cell(row=1, column=i)
         cel.font, cel.fill, cel.alignment = negrito, fundo, quebra
         ws.column_dimensions[get_column_letter(i)].width = largura
     for linha in linhas:
-        ws.append([linha[nome] for nome, _ in COLUNAS])
+        ws.append([linha[nome] for nome in NOMES])
     for row in ws.iter_rows(min_row=2):
         for cel in row:
             cel.alignment = quebra
         row[NOMES.index("Data da distribuição")].number_format = "DD/MM/YYYY"
-        for nome in ("Valor da ação", "Valor provisionado"):
-            row[NOMES.index(nome)].number_format = '"R$" #,##0.00'
+        row[NOMES.index("Valor da ação")].number_format = '"R$" #,##0.00'
     ws.freeze_panes = "C2"
     ws.auto_filter.ref = ws.dimensions
 
@@ -255,23 +255,22 @@ def salvar_xlsx(arquivo, grupo, linhas, info):
     rs = wb.create_sheet("Resumo")
     rs["A1"] = f"RELATÓRIO DE PROCESSOS — {grupo}"
     rs["A1"].font = titulo
-    n = len(linhas)
-    ultima = n + 1
+    ultima = max(len(linhas) + 1, 2)
+    col_valor = get_column_letter(NOMES.index("Valor da ação") + 1)
     blocos = [
         ("Atualização do relatório", info["gerado_em"].strftime("%d/%m/%Y")),
-        ("Processos no relatório", f"=COUNTA(Processos!A2:A{max(ultima, 2)})"),
-        ("Soma dos valores das ações", f"=SUM(Processos!K2:K{max(ultima, 2)})"),
-        ("Soma dos valores provisionados", f"=SUM(Processos!L2:L{max(ultima, 2)})"),
+        ("Processos no relatório", f"=COUNTA(Processos!A2:A{ultima})"),
+        ("Soma dos valores das ações", f"=SUM(Processos!{col_valor}2:{col_valor}{ultima})"),
     ]
     r = 3
     for rotulo, valor in blocos:
         rs.cell(row=r, column=1, value=rotulo)
         rs.cell(row=r, column=2, value=valor)
         r += 1
-    for numero in (5, 6):
-        rs.cell(row=numero, column=2).number_format = '"R$" #,##0.00'
+    rs.cell(row=5, column=2).number_format = '"R$" #,##0.00'
     for titulo_bloco, coluna in (("Por tipo de processo", "Tipo de processo"),
                                  ("Por motivação", "Motivação do processo"),
+                                 ("Por resultado da decisão", "_condenacao"),
                                  ("Por cliente", "Cliente"),
                                  ("Por polo do cliente", "Polo do cliente")):
         r += 1
@@ -304,9 +303,8 @@ def salvar_xlsx(arquivo, grupo, linhas, info):
         ("Grupo Cliente (VIOS)", grupo),
         ("Gerado em", info["gerado_em"].strftime("%d/%m/%Y %H:%M")),
         ("Origem", "VIOS: lista de processos (Ativos, Não migrados) + tela de cada processo (Dados do Processo e tarefas)"),
-        ("Colunas pela IA", f"Resumo do caso, Motivação, Financeira, Pendência — documentos faltando (modelo {info['modelo']})"),
-        ("Colunas por regra fixa", "Última movimentação (tarefa concluída mais recente); Pendência — responsável (tarefas em aberto)"),
-        ("Vazias por enquanto", "Valor provisionado, Justificativa da condenação"),
+        ("Colunas pela IA", "Resumo do caso, Motivação, Financeira, Justificativa da condenação, "
+                            f"Pendência — documentos faltando (modelo {info['modelo']})"),
         ("Processos com erro na IA", info["erros_ia"]),
         ("Gasto estimado com IA", info["gasto"]),
     ):

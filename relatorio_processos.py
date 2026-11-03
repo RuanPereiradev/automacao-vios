@@ -18,7 +18,7 @@ from bot.navegacao import ir_ate_tabela
 from bot.navegador import criar_driver
 from bot.processos_detalhe import ler_processo
 from bot.processos_grupo import _normal, grupos_disponiveis, ler_processos, nome_arquivo, pesquisar_grupo
-from bot.relatorio_planilha import SISTEMA, SCHEMA, montar_linha, salvar_xlsx, texto_para_ia
+from bot.relatorio_planilha import SEM_TAREFAS, SISTEMA, SCHEMA, montar_linha, salvar_xlsx, texto_para_ia
 from main import PASTA_LOGS, configurar_log
 
 MODELO_PADRAO = "claude-sonnet-5-5"
@@ -65,9 +65,7 @@ def gerar_grupo(driver, cfg, grupo, valor, pasta, agente, gasto, modelo, limite,
             driver.save_screenshot(str(screenshot))
             log.error("CI %s: não consegui ler a tela do processo (%s; screenshot em %s)", item["ci"], e, screenshot)
             proc = {"dados": {}, "tarefas": [], "erro": str(e)}
-        resposta = analisar(agente, gasto, modelo, item, proc, log) if proc["tarefas"] else {
-            "resumo_caso": "", "motivacao_categoria": "Outros", "motivacao_detalhe": "sem tarefas no VIOS",
-            "financeira": "", "documentos_faltando": [], "documentos_quem_entrega": ""}
+        resposta = analisar(agente, gasto, modelo, item, proc, log) if proc["tarefas"] else dict(SEM_TAREFAS)
         erros_ia += "erro" in resposta
         linhas.append(montar_linha(item, proc, resposta))
         brutos.append({"lista": item, "processo": proc, "ia": resposta})

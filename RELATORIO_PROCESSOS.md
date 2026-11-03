@@ -21,12 +21,14 @@ planilha "Processos Casa do celular" do Google Drive. Roda **uma vez por mês**
 | 1. Login | Entra no VIOS com o usuário do `.env.usuario2` | ✅ Pronto |
 | 2. Lista | Processos → filtro Grupo Cliente → Mostrar 500 → Pesquisar | ✅ Pronto |
 | 3. Lupa | Abre a tela de cada processo: Dados do Processo + tarefas | ✅ Pronto |
-| 4. IA | Resumo do caso, motivação, financeira e documentos faltando | ✅ Em teste |
+| 4. IA | Resumo do caso, motivação, financeira, justificativa da condenação e documentos faltando | ✅ Em teste |
 | 5. Planilha | Uma .xlsx por grupo (abas Processos, Resumo, Cadastro incompleto, Metadados) | ✅ Em teste |
-| 6. Valor provisionado | Descobrir onde fica no VIOS | ⏳ Pendente (coluna vazia) |
-| 7. Justificativa da condenação | Definir a fonte (tarefa de análise da decisão) | ⏳ Pendente (coluna vazia) |
-| 8. Google Drive | Salvar direto numa pasta do Drive | ⏳ Pendente |
-| 9. Agendamento mensal | Rodar sozinho no dia definido | ⏳ Pendente |
+| 6. Google Drive | Salvar direto numa pasta do Drive | ⏳ Pendente |
+| 7. Agendamento mensal | Rodar sozinho no dia definido | ⏳ Pendente |
+
+**Revisão do usuário (03/11/2026):** saíram as colunas Fase, Valor provisionado,
+Última movimentação e Pendência — responsável (esta por **sigilo**: tinha nomes
+da equipe). A Justificativa da condenação passou a ser preenchida.
 
 ### Grupos
 
@@ -94,19 +96,18 @@ no mesmo mês sobrescreve.
 | Polo do cliente | lupa: `Polo do cliente` | — |
 | Parte ativa / Parte passiva | lista | várias partes separadas por `;` |
 | Tipo de processo | lupa: `Processo` | em maiúsculas |
-| Fase | lupa: `Fase` | — |
 | Órgão | lupa: `Comarcas / Tribunais / Órgãos adm.` | — |
 | Data da distribuição | lupa: `Data da ação / Distribuição` | data |
 | Valor da ação | lupa: `Valor da ação` | número (R$) |
-| Valor provisionado | — | **vazia por enquanto** |
 | Cidade/UF | lupa: `Cidade / UF` | — |
-| Última movimentação | tarefas | regra fixa: tarefa concluída mais recente (`data - tipo`) |
 | Resumo do caso | tarefas | **IA**: 2 a 4 frases simples para o cliente |
 | Motivação do processo | tarefas | **IA**: categoria da lista fixa + detalhe curto |
 | Financeira | tarefas | **IA**: financeiras/bancos/securitizadoras citados |
-| Justificativa da condenação | — | **vazia por enquanto** |
-| Pendência — documentos faltando | tarefas | **IA**: pedidos que ainda não chegaram + quem entrega |
-| Pendência — responsável | tarefas | regra fixa: tarefas em aberto com prazo e responsáveis; prazo vencido = `ATRASADA` |
+| Justificativa da condenação | tarefas | **IA**: se houve condenação, o motivo da decisão e o que o cliente tem que fazer (1 ou 2 frases); senão, "Sem condenação (pedidos improcedentes)", "Acordo" ou "Sem decisão até o momento" |
+| Pendência — documentos faltando | tarefas | **IA**: pedidos que ainda não chegaram + quem entrega (nunca nome da equipe) |
+
+**Removidas a pedido (03/11/2026):** Fase, Valor provisionado, Última
+movimentação e Pendência — responsável (sigilo: nomes da equipe).
 
 **Motivação — lista fixa** (para filtrar e contar): Financiamento / bloqueio do
 aparelho; Defeito do produto / garantia; Cobrança indevida / negativação;
@@ -121,7 +122,7 @@ arquivos enviados). Conferir antes de mandar ao cliente.
 
 | Aba | Conteúdo |
 | --- | --- |
-| Resumo | Data, total de processos, soma dos valores (fórmulas), contagem por tipo, motivação, cliente e polo |
+| Resumo | Data, total de processos, soma dos valores da ação (fórmulas), contagem por tipo, motivação, resultado da decisão, cliente e polo |
 | Cadastro incompleto | Processos com número, tipo, distribuição, valor da ação, cidade ou órgão vazios no VIOS — para a equipe completar |
 | Metadados | Grupo, data, origem dos dados, modelo de IA, erros e gasto |
 
@@ -251,9 +252,11 @@ Reaproveita do robô de intimações: `bot/config.py`, `bot/login.py`,
 - **Mais processos que a planilha antiga**: a lista da CASA DO CELULAR trouxe
   **101** processos ativos; a planilha do Drive tinha 70 (montada de um PDF).
 - **Só processos ativos e não migrados**; até 500 por grupo.
-- **Justificativa da condenação**: a informação existe nas tarefas — no teste,
-  o resumo do CI 29824 já citou a sentença de 24/09/2026 (devolver R$ 1.360,00,
-  sem danos morais). Falta decidir a regra para a coluna.
+- **Justificativa da condenação e documentos faltando dependem do que a equipe
+  registrou nas tarefas.** Se a análise da sentença não foi escrita no VIOS, a
+  IA não tem de onde tirar o motivo. "Documentos faltando" é dedução e pode
+  variar entre execuções (ex.: CI 29825 listou 2 documentos numa rodada e
+  nenhum na seguinte) — conferir antes de mandar ao cliente.
 
 ---
 
@@ -269,12 +272,9 @@ Reaproveita do robô de intimações: `bot/config.py`, `bot/login.py`,
 
 ## 12. Próximos passos
 
-1. Validar a planilha das duas Casas do Celular com a equipe.
-2. Valor provisionado: descobrir onde fica no VIOS.
-3. Justificativa da condenação: definir a regra (ex.: IA lê a tarefa de
-   análise da sentença/acórdão).
-4. Incluir Plasfran (3 grupos) e LD Urbanismo.
-5. Salvar no Google Drive (`RELATORIO_PASTA` apontando para a pasta
+1. Validar a nova versão da planilha das duas Casas do Celular.
+2. Incluir Plasfran (3 grupos) e LD Urbanismo.
+3. Salvar no Google Drive (`RELATORIO_PASTA` apontando para a pasta
    sincronizada) e agendar a execução mensal.
 
 ---
