@@ -142,8 +142,11 @@ Na vila (`bot/vila/vila.html`, só no modo servidor, em `/vila`):
   aparece como veio). O "Registro" ganha uma linha por execução do Zangão;
 - ao abrir, monta a última execução sem animar; no meio de uma execução, fica no posto;
 - com fila grande de eventos, ele anda e trabalha mais rápido para alcançar o bot;
-- o botão da Vila 02 só abre e fecha o painel (quem dispara o Zangão é o agendador). O modo
-  simulado (site publicado) continua com o exemplo antigo.
+- os botões da Vila 02 abrem e fecham o painel e levam à página do Zangão (`/zangao`), que é
+  onde ele é posto para rodar; a vila só assiste. O modo simulado (site publicado) continua com
+  o exemplo antigo;
+- com a aba escondida ou muitos eventos acumulados, a vila pula direto para o estado atual em
+  vez de reprisar tudo (Ultron e Zangão).
 - A mudança foi feita na cópia por `doc/vila/ligar_zangao.py`. Se a vila for baixada de novo
   do site, rodar `python3 doc/vila/ligar_zangao.py bot/vila/vila.html` (e levar a mudança para
   o código-fonte da vila).

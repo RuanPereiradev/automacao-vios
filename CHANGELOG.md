@@ -12,6 +12,39 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Página do Zangão no servidor (como a do Ultron)
+- `/zangao` (`bot/templates/zangao.html`): a mesma tela da página do Ultron, nas cores do
+  Zangão. Cena no estilo da vila (Doca 01 · Zangão, Filtro previdenciário, Captura de dados e
+  Torre VIOS) com o Zangão da vila (`_zangao.html`, mesmo desenho e cores da Vila 02) andando
+  conforme o andamento real; etapas Entrar no VIOS → Ler o calendário → Processar tarefas →
+  Resumo; fala com o que ele está fazendo; placa de tarefas na torre.
+- Botões "Testar sem gravar" (qualquer dia; `main.py --fora-da-janela`, não grava) e "Rodar e
+  gravar no VIOS" (só nos 3 últimos dias do mês; o 1º clique vira "Confirmar: gravar no VIOS",
+  válido por 6 s; `main.py --confirmar`). Uma execução por vez; os botões travam enquanto roda.
+- Cartão da execução atual/última, ao vivo (a cada 1,5 s): barra, contagens e uma linha por
+  tarefa (situação, processo, campos, motivo em português; as ignoradas ficam recolhidas).
+  `/zangao/historico` lista as execuções e `/zangao/execucao/<id>` mostra uma.
+- `bot/zangao.py`: roda o Zangão (instalado em `ZANGAO_PASTA`, com `.venv` e `.env` dele) em
+  segundo plano, como processo separado (continua se a página reiniciar), com ambiente limpo
+  (nenhuma variável do Ultron, como senhas e chaves, chega ao Zangão); monta as execuções dos
+  eventos `bot: "zangao"`. Rotas `/zangao/andamento`, `/zangao/status` e `POST /zangao/rodar`
+  (só aceita pedido da própria página: JSON e mesma origem). Saída de cada execução em
+  `<ZANGAO_PASTA>/logs/execucoes_vila.log`.
+- Página do Ultron: botão "Zangão" no topo (quando `ZANGAO_PASTA` está definida). O estilo das
+  páginas foi para `bot/templates/_estilo.html` (o mesmo nas duas). A placa dos prédios da cena
+  aceita largura maior (`predio(..., placa=)`), sem mudar a do Ultron.
+- Vila 02: botão "Página do Zangão" (a vila continua só assistindo) e o rodapé diz se ele está
+  rodando. Etapa 2 do `doc/vila/ligar_zangao.py`.
+- Nova variável `ZANGAO_PASTA` no `.env`/`.env.example` (vazia = sem página/botão do Zangão).
+
+### Corrigido — Vila parada depois de um envio com a aba escondida
+- Com a aba da vila em segundo plano o Chrome pausa as animações e consulta `/eventos` só uma
+  vez por minuto (visto no envio de 03/11 às 14:06: 77 eventos acumulados). Ao voltar, o
+  Ultron reprisava o envio inteiro passo a passo e parecia parado. Agora, ao voltar para a aba
+  ou com mais de 20 eventos na fila (30 no Zangão), a vila aplica o que faltou sem animar e põe
+  o robô no lugar certo ("Último envio: … · 26 gravadas"). Cada evento é aplicado uma vez só.
+  Etapa 3 do `doc/vila/ligar_zangao.py`.
+
 ### Adicionado — A vila recebe e mostra o Zangão (Bumblebee)
 - `POST /eventos` no Ultron (`bot/envio_web.py` + `eventos.receber`): recebe os eventos do
   Zangão (branch `bot-edita-vios`, `bot/vila.py`) com a mesma senha da página e grava no

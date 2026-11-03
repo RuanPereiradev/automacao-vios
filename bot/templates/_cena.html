@@ -3,7 +3,7 @@
    Coordenadas no viewBox 960 × 340; o Ultron anda pela linha do cano de cobre (y = 206). #}
 {% from "_ultron.html" import ultron %}
 
-{% macro predio(x, rotulo, tela=False, antena=False) %}
+{% macro predio(x, rotulo, tela=False, antena=False, placa=132) %}
 <g>
   <rect x="{{ x + 6 }}" y="168" width="190" height="8" fill="#16181b" opacity=".7"/>
   <rect x="{{ x }}" y="62" width="190" height="106" fill="#aab1b9"/>
@@ -27,7 +27,7 @@
   <rect x="{{ x + 84 }}" y="110" width="34" height="58" fill="#7b828b"/><rect x="{{ x + 87 }}" y="114" width="28" height="54" fill="#5b6169"/>
   <rect x="{{ x + 84 }}" y="108" width="34" height="3" fill="#c98a2e"/>
   <rect x="{{ x + 99 }}" y="168" width="5" height="40" fill="#b6782e"/>
-  <rect x="{{ x + 35 }}" y="26" width="132" height="22" fill="#1b1d21" stroke="#c98a2e" stroke-width="1.5"/>
+  <rect x="{{ x + 101 - placa // 2 }}" y="26" width="{{ placa }}" height="22" fill="#1b1d21" stroke="#c98a2e" stroke-width="1.5"/>
   <text x="{{ x + 101 }}" y="41" text-anchor="middle" class="cena-rotulo">{{ rotulo }}</text>
 </g>
 {% endmacro %}
