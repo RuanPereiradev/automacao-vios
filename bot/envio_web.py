@@ -267,6 +267,20 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     app.config["TEMPLATES_AUTO_RELOAD"] = True
 
     @app.before_request
+    def barrar_outro_site():
+        """POST só da própria página (CSRF): o navegador guarda a senha e a mandaria junto num POST
+        disparado por outro site aberto nele. O navegador sempre manda Origin (ou Referer) num
+        POST; se vier de outro endereço, recusa. Sem Origin/Referer (ex.: o Zangão, por
+        urllib, em POST /eventos) passa para a senha decidir."""
+        if request.method != "POST":
+            return None
+        origem = request.headers.get("Origin") or request.headers.get("Referer")
+        if origem and urlsplit(origem).netloc != urlsplit(request.host_url).netloc:
+            log.warning("POST %s recusado: veio de outro site (%s)", request.path, urlsplit(origem).netloc)
+            return Response("Pedido recusado: veio de outro site.", 403)
+        return None
+
+    @app.before_request
     def exigir_senha():
         if not senha:
             return None

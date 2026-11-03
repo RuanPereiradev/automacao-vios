@@ -12,6 +12,30 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Segurança — Revisão de chaves e rotas (03/11/2026)
+- Conferido: nenhuma chave nem senha no repositório nem em todo o histórico do git (os 3 ramos):
+  as chaves da OpenAI e da Anthropic, o usuário e a senha do VIOS e a senha da página não aparecem
+  em nenhum commit; o `.env` nunca foi commitado. A página de revisão só atende no próprio
+  computador (`127.0.0.1`). No servidor do Mac, as 17 rotas da página de envio (GET e POST)
+  respondem 401 sem a senha.
+- Corrigido: POST vindo de outro site é recusado (403) em todas as rotas (`barrar_outro_site` em
+  `bot/envio_web.py`). Antes, um site aberto no mesmo navegador poderia disparar
+  `/envio/<id>/enviar`, `/salvar`, `/ler` ou `/eventos` usando a senha guardada pelo navegador
+  (CSRF). Pedido sem Origin/Referer (o Zangão, em `POST /eventos`) continua decidido só pela senha.
+- Retirado do `CHANGELOG.md` o número de um processo real usado como exemplo (continua no
+  histórico do git, no commit `b1bb149`).
+
+### Adicionado — Jarvis, bot do Sonar (pasta `jarvis/`)
+- Novo bot, separado do Ultron e do Zangão: tudo em `jarvis/` (`.venv`, `.env`, `logs/`,
+  `saida/` próprios; não importa nada do `bot/`). Entra em https://sonar.lemeforense.com.br/login
+  com CPF/CNPJ, e-mail e senha e confirma o login. As próximas etapas ainda vão ser definidas.
+- `jarvis/.env.example` explica como pôr as credenciais (`SONAR_CPF_CNPJ`, `SONAR_EMAIL`,
+  `SONAR_SENHA`; senha com espaço ou " #" entre aspas simples). Campos da tela conferidos na
+  página real e presos ao formulário `#loginform` (a página tem outro formulário, o de
+  recuperar senha, com campos de mesmo nome).
+- `jarvis/instalar.sh`, `jarvis/rodar.sh`, `jarvis/requirements.txt` e `jarvis/README.md`.
+  O log nunca mostra a senha nem o CPF/CNPJ inteiro.
+
 ### Alterado — Vila dos bots no topo da página do Ultron
 - As telas do Ultron (inicial e do envio) mostram no topo a vila dos bots (a mesma `/vila`, com
   os eventos reais, aberta na Vila 01) no lugar da cena pequena; abaixo continua tudo igual
@@ -630,8 +654,8 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 - Na descrição da tarefa (Observação do VIOS), a linha
   "DATA DA TAREFA NO VIOS — PRIORIDADE EMENDA/SUHIANE: DD/MM/AAAA" (e a de
   PRIORIDADE RPV) virou apenas "PRAZO FATAL: DD/MM/AAAA", em negrito e
-  vermelho. A data continua a mesma (dia útil seguinte à publicação). Base:
-  processo 0038150-04.2026.4.05.8103. Skill (`SKILL.md` e
+  vermelho. A data continua a mesma (dia útil seguinte à publicação). Base: um processo
+  real da Justiça Federal (número retirado do registro). Skill (`SKILL.md` e
   `references/roteamento-interno.md`) atualizada com o novo rótulo.
 
 ### Adicionado — Prazo previsto em lei na skill

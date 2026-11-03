@@ -600,6 +600,25 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `saida/vila_pendentes.jsonl` dele).
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py bot/vila/vila.html`.
 
+### Passo 27 — Segurança das rotas
+- Com `ENVIO_REDE=true`, toda rota (GET e POST) pede a senha (`ENVIO_SENHA`).
+- POST que vem de outro site é recusado (403): o navegador guarda a senha e a
+  mandaria junto num POST disparado por outra página aberta nele. Só a própria
+  página (mesmo endereço) e programas sem navegador (o Zangão mandando eventos)
+  passam, e ainda precisam da senha.
+- A senha vai pela rede local sem criptografia (http): usar só na rede do
+  escritório, nunca abrir a porta 5001 para a internet.
+
+### Passo 26 — Jarvis, bot do Sonar (pasta `jarvis/`)
+- Terceiro bot, que funciona de forma totalmente diferente do Ultron e do
+  Zangão: fica em `jarvis/`, com `.venv`, `.env`, `logs/` e `saida/` próprios, e
+  não usa nada do `bot/`. Detalhes em `jarvis/README.md`.
+- Entra em https://sonar.lemeforense.com.br/login (CPF/CNPJ, e-mail e senha) e
+  confirma o login. As próximas etapas ainda vão ser definidas.
+- Instalar: `cd jarvis && ./instalar.sh`; preencher `jarvis/.env`
+  (`SONAR_CPF_CNPJ`, `SONAR_EMAIL`, `SONAR_SENHA`; modelo comentado em
+  `jarvis/.env.example`); testar: `./rodar.sh` (diz "Login OK" ou o motivo).
+
 ### Passo 25 — Vila dos bots no topo da página do Ultron
 - Na página do Ultron (`http://<IP do Mac>:5001/`), o topo é a vila dos bots
   (Vila 01 · Ultron, com os eventos reais); abaixo ficam a caixa do .txt, a
@@ -664,6 +683,7 @@ selenium/
 ├── enviar.py            # página de envio: sobe o .txt ajustado e lança no VIOS (sem IA)
 ├── rodar_envio.sh       # atalho para enviar.py
 ├── instalar.sh          # prepara um computador novo (Mac ou Linux): .venv + dependências
+├── jarvis/              # Jarvis, bot do Sonar (separado: .venv, .env, logs/ e saida/ próprios)
 ├── servidor_mac.sh      # Mac: página de envio como serviço (launchd) — instalar/parar/status/log
 ├── bot/
 │   ├── config.py        # lê e valida o .env; converte seletores
