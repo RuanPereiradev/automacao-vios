@@ -12,6 +12,219 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Eventos para a vila dos bots (Vila 02 · Zangão) (03/11/2026)
+- `bot/vila.py`: o Bumblebee manda cada etapa do fluxo, por `POST` JSON, ao servidor do
+  Ultron (`VILA_URL`), que guarda os eventos e serve para a vila. A vila só assiste.
+  Só biblioteca padrão (`urllib.request`), sem dependência nova.
+- Nunca derruba nem atrasa o bot: timeout de 2 s (`VILA_TIMEOUT`); qualquer erro (rede,
+  401, 500, timeout) vira um aviso de uma linha no log, sem a senha; depois de 3 falhas
+  seguidas para de tentar até o fim da execução (avisa uma vez); evento não enviado vai para
+  `saida/vila_pendentes.jsonl`. `VILA_URL` vazia = vila desligada (o padrão).
+- Tipos, na ordem do fluxo: `execucao_iniciada` (`modo` `gravar`/`teste`/`leitura`,
+  `fora_da_janela`, `tarefa_unica`), `fase` (`entrando_vios` → `lendo_calendario` →
+  `processando`), `calendario` (contagens e uma linha por tarefa: `pxe_id`, classe, decisão e
+  motivo em código curto), `tarefa` (`abrindo`, `comprovante_lido`, `preenchendo` com a lista
+  dos campos, e um fim: `gravada`, `ja_estava`, `testada`, `lida`, `pulada`, `conferir`, `erro`,
+  com `motivo` em código curto) e `execucao_fim` (sempre, no `finally`; `concluido`, `testado`,
+  `lido`, `fora_do_dia` ou `parou` com motivo, e as contagens do resumo final).
+- Dados mínimos: nenhum evento leva texto da tarefa, nome de cliente, número CNJ, órgão
+  julgador, valor da causa, nome do arquivo do comprovante nem conteúdo do PDF; dos campos
+  preenchidos vai só o nome (`cnj`, `orgao`, `valor`). `bot/vila.py` ainda retira essas chaves
+  e qualquer texto no formato CNJ de todo evento, por garantia.
+- Novas variáveis no `.env`/`.env.example`: `VILA_URL`, `VILA_USUARIO`, `VILA_SENHA`,
+  `VILA_TIMEOUT`.
+- `tests/test_vila.py`: servidor HTTP falso local (200, 401, 500, demora maior que o timeout,
+  fora do ar), dados mínimos, códigos dos motivos e a sequência de uma execução simulada com
+  dublês (sempre terminando em `execucao_fim`). Não acessa o VIOS nem a rede.
+- Nenhuma proteção mudou: os eventos só observam o fluxo.
+
+### Corrigido — Caminho real do VIOS até o comprovante e a edição (29/10/2026)
+- Calendário com 0 tarefas: o bot lia o calendário antes de as tarefas
+  chegarem (elas vêm por POST depois da página carregar) e, no somente
+  leitura, o bloqueio de envios ligado antes do calendário barrava esse POST.
+  `bot/calendario.py` agora espera as tarefas aparecerem (até `TIMEOUT`) e
+  `main.py` liga o bloqueio só depois de ler o calendário.
+- Só a tarefa "EDITAR OS DADOS DA AÇÃO PROTOCOLADA" é processada
+  (`CALENDARIO_TIPO`, `classificacao.classificar(..., tipo)`); as outras
+  previdenciárias viram ignoradas. Só restringe.
+- Novo `bot/processo.py`, com o caminho observado no VIOS: na tarefa, clique
+  (JavaScript) no número do processo e o único "Visualizar" do modal; na tela
+  do processo, a única linha "PROTOCOLAR INICIAL (PREVIDENCIÁRIO)" da tabela
+  de tarefas e o "Visualizar arquivo" dela (galeria); de volta ao processo,
+  clique (JavaScript) no lápis do N.° CNJ, que abre a tela de edição. Em cada
+  passo tem que haver exatamente um item (`ProcessoErro` = tarefa pulada).
+- Comprovante (`bot/comprovante.py`): lido na galeria pelo `data-url` da
+  caixa do arquivo (o link é `#`); o nome aceita "Protcolo" e `_` no lugar de
+  espaço (`COMPROVANTE_TEXTO`).
+- CNJ da tela do processo: lido só do campo N.° CNJ (`PROCESSO_CNJ`). Antes
+  vinha de qualquer CNJ da página, e pegava o nome do próprio comprovante
+  listado na tabela de tarefas.
+- Valor da ação "0,00" conta como vazio (`edicao.vazio`): era tratado como
+  campo preenchido com outro valor e a tarefa era pulada.
+- Novas variáveis no `.env`/`.env.example`: `CALENDARIO_TIPO`,
+  `PROCESSO_NUMERO`, `PROCESSO_CNJ`, `PROTOCOLO_TAREFA`, `PROTOCOLO_LINHAS`,
+  `PROTOCOLO_ARQUIVOS`; novos padrões de `PROCESSO_LINK`, `COMPROVANTE_LINK`,
+  `COMPROVANTE_TEXTO` e `EDICAO_LINK`.
+
+### Corrigido — Rótulo do campo de valor (29/10/2026)
+- Na tela de edição do VIOS o rótulo é "Valor da ação" (`form[valor_acao]`),
+  não "Valor da ação atualizado": o bot não achava o campo pelo rótulo.
+- Tela de edição: o lápis do N.° CNJ já abre a tela; `bot/edicao.py` não a
+  recarrega mais antes de ler/preencher. O fluxo continua: PDF lido uma vez,
+  os três dados guardados e os três preenchidos de uma vez na tela de edição.
+
+### Segurança — Bloqueio de envios também na simulação (29/10/2026)
+- O bloqueio de envios (antes só no somente leitura) vale também na
+  simulação, e o bot confere em cada página, inclusive na tela de edição, que
+  ele está ativo. Só a gravação com `--confirmar` roda sem bloqueio.
+- Testes: 36, todos ok (novos: tipo de tarefa, galeria, nome do comprovante,
+  valor zerado, bloqueio na simulação).
+
+### Adicionado — Confirmar o aviso de cliente depois de Gravar (30/10/2026)
+- No teste real (processo 29847) o VIOS abriu, depois do Gravar, o aviso "O
+  Cliente do contrato não é categorizado como cliente! Deseja incluir ... na
+  categoria cliente?" e nada foi gravado. Por decisão da usuária, o bot agora
+  clica no único Confirmar visível (`.swal2-confirm`) desse aviso
+  (`edicao._responder_avisos`, texto em `EDICAO_CONFIRMAR`). Confirmar também
+  inclui a pessoa na categoria cliente do VIOS.
+- Qualquer outro aviso depois de Gravar não é respondido: a tarefa vai para
+  "conferir" com o texto do aviso.
+- Testes: 41, todos ok.
+
+### Adicionado — Rodar uma tarefa só (30/10/2026)
+- `--tarefa <link>` (`main.py`): processa só a tarefa do calendário com o
+  mesmo `pxe_id` do link; as outras não são abertas. Se não houver
+  exatamente uma tarefa previdenciária com esse link, nada é feito. Vale com
+  `--confirmar`, simulação e somente leitura; as demais proteções continuam.
+
+### Corrigido — Botão Gravar da tela de edição (30/10/2026)
+- `EDICAO_GRAVAR` passa a ser `css:#processo_gravar` (botão do formulário
+  `adminForm`, no container `.container-botoes-gravar-formulario`). O seletor
+  antigo (qualquer botão com `name="Gravar"`) também pegava o `#gravar_vara`
+  do modal de cadastro do órgão: com o modal aberto eram 2 botões e a tarefa
+  era pulada.
+
+### Corrigido — Órgão com "ª" nunca batia com a opção da lista (29/10/2026)
+- Na primeira gravação (`--confirmar`, 29/10 14:54) o bot cadastrou "18ª Vara
+  Federal CE" e "31ª Vara Federal CE" (uma vez cada), mas não achou a opção
+  na lista e pulou as 13 tarefas (nenhum processo alterado). Causa: o
+  JavaScript de `bot/edicao.py` normalizava com NFD (mantém o "ª") e o Python
+  (`normalizar`) com NFKD + ASCII ("ª" vira "A"). Agora os dois normalizam
+  igual.
+
+### Adicionado — Cadastro do órgão julgador que não está na lista (29/10/2026)
+- No VIOS o campo "Órgão julgador (Vara/câmara)" é uma lista (`form[vara]`) e
+  o órgão do PDF (ex.: "31ª Vara Federal CE") pode não estar nela. Antes a
+  tarefa era pulada. Agora `bot/edicao.py` (`_cadastrar_orgao`) abre o "+" do
+  campo (modal "Cadastrar Órgão Julgador"), escreve o nome igual ao do PDF em
+  `form[varas_nome]` e: na simulação não grava o cadastro (print
+  `logs/orgao_*.png`) e preenche só CNJ e valor; com `--confirmar` clica em
+  `#gravar_vara`, espera a opção aparecer na lista e a escolhe (se não
+  aparecer, a tarefa é pulada sem alterar o processo).
+- Novas variáveis `ORGAO_CADASTRAR`, `ORGAO_NOME` e `ORGAO_GRAVAR` (com padrão).
+- Testes: 38, todos ok (novos: simulação só escreve o nome; mais de um "+"
+  pula a tarefa).
+
+### Adicionado — Modo somente leitura e relatório (28/10/2026)
+- `--somente-leitura` (`main.py`, modo `ler`): faz login, lê calendário,
+  tarefa, processo, PDF do comprovante e os três campos da tela de edição, e
+  diz o que faria. Não preenche, não dispara eventos, não clica em Gravar e não
+  escreve no `saida/registro.json`. Respeita a janela dos 3 últimos dias (fora
+  dela, só com `--fora-da-janela`); com `--confirmar` o bot se recusa a rodar.
+- Bloqueio de envios no navegador (`bot/navegador.py`, `bloquear_envios`): no
+  modo somente leitura, depois do login, toda página aberta carrega antes dos
+  próprios scripts um bloqueio de envio de formulário e de requisição que não
+  seja GET/HEAD (fetch, XHR, sendBeacon). O bot confere em cada página que o
+  bloqueio está ativo; se não estiver, a execução para (`LeituraErro`).
+- `bot/edicao.py` (`ler`): lê os três campos sem preencher nada.
+- Relatório (`bot/relatorio.py`): toda execução, em qualquer modo, cria
+  `saida/relatorio_AAAA-MM-DD_HHMMSS.csv` (Excel, separador `;`) com uma linha
+  por tarefa: classificação, decisão, motivo/dúvida, ressalvas, id e CNJ do
+  processo, comprovante, dados do PDF, valores atuais no VIOS e campos que
+  seriam preenchidos. Nunca sobrescreve um relatório anterior.
+- Testes novos em `tests/test_somente_leitura.py` (14), com títulos de tarefa
+  fictícios e o mesmo comprovante fictício de `test_regras.py`; as telas do
+  VIOS são dublês (mock). 28 testes, todos ok, sem acessar o VIOS.
+
+### Segurança — Classificação das tarefas (28/10/2026)
+- `bot/classificacao.py`: "PREVIDENCI" no texto continua obrigatório, mas não
+  basta. Previdência privada/complementar (privada, complementar, fundo de
+  pensão, PGBL/VGBL, PREVI, PETROS, FUNCEF, POSTALIS) é ignorada; termo de
+  outra área junto (cível, trabalhista, acidente de trabalho, família,
+  criminal, tributária, consumidor, bancária, empresarial) e sinal
+  previdenciário sem o termo (INSS, BPC/LOAS, aposentadoria, auxílios, pensão
+  por morte, salário-maternidade) viram **ambígua**: não são processadas e
+  vão para o relatório. Vale em todos os modos (só restringe).
+- `bot/calendario.py`: `tarefas_previdenciarias` virou `tarefas`, que devolve
+  todas as tarefas com classe e motivo (para o relatório listar as ignoradas).
+- Processo sem CNJ no VIOS fica com ressalva no relatório (o comprovante não
+  pôde ser conferido pelo CNJ).
+
+### Segurança — Proteções revisadas (28/10/2026)
+- Simulação e janela (`main.py`, `modo`): `--fora-da-janela` com `--confirmar`
+  é recusado em qualquer dia (antes, dentro dos 3 últimos dias, essa
+  combinação gravava). Grava só com `--confirmar` dentro da janela.
+- Falha depois de clicar em Gravar (`bot/edicao.py`, `ConferenciaErro`):
+  releitura com erro ou valor diferente aparece como "CONFERIR NO VIOS (pode
+  ter gravado)", com print, e conta como erro (antes o log dizia "nada
+  gravado"). A tarefa não entra no registro.
+- Registro (`saida/registro.json`): passa a guardar link e texto da tarefa,
+  id e CNJ do processo; só registra gravação conferida ou campos já iguais ao
+  PDF; gravado por troca de arquivo (`_salvar_registro`).
+- Conflito de campo preenchido isolado em `conflitos()` para teste.
+- Testes novos: modo de execução, conflito e registro (14 testes, todos ok
+  com Python 3.15.2).
+
+### Corrigido — Itens apagados (28/10/2026)
+- `bot/vios.py` (`links`): links em linha com o ícone "Apagada" são ignorados
+  (o VIOS continua listando itens apagados, como já tratado no bot antigo em
+  `lancamento.py`). Evita usar um comprovante de protocolo apagado ou pular a
+  tarefa por contar o apagado como segundo comprovante.
+- Conferido o projeto original (`C:\Projetos\bot_controladoria_sara`): não há
+  seletores nem URLs de calendário, processo, comprovante ou edição; login e
+  navegador continuam idênticos ao original.
+
+### Alterado — Fluxo do VIOS definido (28/10/2026)
+- Calendário: `?pag=sys/agenda/calendario.php&menu_lateral=true` (padrão no código).
+- Tarefa → botão "Visualizar" (processo) → "Comprovante de protocolo" (PDF) →
+  "Editar" do processo. Os três dados são fixos: número CNJ, órgão julgador e
+  valor da causa do PDF, gravados em "N.° CNJ", "Órgão julgador (Vara/câmara)"
+  e "Valor da ação atualizado". Os campos são achados pelo rótulo na tela.
+- O processo é identificado pelo id do link "Visualizar" (lido a cada vez); a
+  tela de edição tem que ter o mesmo id. O CNJ do PDF tem que bater com o CNJ
+  já mostrado no processo, quando houver (antes: exigia CNJ na tarefa, o que
+  impedia processo ainda sem CNJ).
+- Só PDF com texto; um único botão Gravar.
+- `.env`: `DADO_n_*`, `EDICAO_EM` e `COMPROVANTE_EXIGE_PROCESSO` saíram;
+  seletores do VIOS viraram padrões no código; `CAMPO_CNJ/ORGAO/VALOR` opcionais.
+- Modo teste passa a se chamar simulação no log e na documentação.
+- `tests/test_regras.py`: janela dos 3 últimos dias, extração do PDF, id do
+  processo e comparação dos valores.
+
+### Alterado — Novo objetivo: comprovantes previdenciários (28/10/2026)
+- O bot passou a ser só o de comprovantes previdenciários: nos três últimos
+  dias do mês, pega as tarefas previdenciárias do calendário do VIOS, abre o
+  processo e o comprovante certo, extrai três dados, preenche os campos
+  indicados, grava e confere relendo a tela (`main.py`, `bot/calendario.py`,
+  `bot/comprovante.py`, `bot/edicao.py`, `bot/vios.py`).
+- Proteções: modo teste padrão (`--confirmar` grava); fora da janela só em
+  modo teste (`--fora-da-janela`); exatamente um processo e um comprovante por
+  tarefa; dado ausente ou ambíguo pula a tarefa; campo com outro valor nunca é
+  sobrescrito; processo conferido na página e no formulário; registro em
+  `saida/registro.json` impede editar de novo.
+- `.env` reescrito (calendário, comprovante, edição e os três dados). Usuário
+  do VIOS trocado.
+- Documentação: `O_QUE_O_BOT_FAZ.txt` substitui `DOCUMENTACAO.md`.
+- `requirements.txt`: só `selenium`, `python-dotenv` e `pypdf` (leitura do PDF).
+- Novo `rodar.bat` para Windows.
+
+### Removido
+- Intimações, análise com IA (`bot/ia/`, OpenAI/Anthropic), skill da
+  Controladoria (`doc/`), feriados (`feriados.txt`, tabela, pesquisa na web,
+  `prazos.py`), lançamento de tarefas, duplicidade, página de revisão (Flask),
+  `codigo_selenium.py` e os scripts `rodar_analise/lancamento/revisao.sh`.
+  O histórico abaixo é do bot antigo.
+
 ### Segurança
 - `.gitignore`: prints `doc/*.jpeg` também ficam fora do repositório (a foto do
   WhatsApp de 26/10/2026 tem dados de processo).

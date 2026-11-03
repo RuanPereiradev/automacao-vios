@@ -3,7 +3,3 @@ __pycache__/
 .env
 saida/
 logs/
-# prints de tela podem ter dados de clientes
-doc/*.png
-doc/*.jpg
-doc/*.jpeg

@@ -1,0 +1,275 @@
+BOT DE COMPROVANTES PREVIDENCIÁRIOS — VIOS
+==========================================
+
+Bot em Python + Selenium, sem inteligência artificial. Lê o comprovante de
+protocolo dos processos das tarefas previdenciárias e preenche no VIOS o número
+CNJ, o órgão julgador e o valor da ação.
+
+
+1. QUANDO RODA
+--------------
+Só nos TRÊS ÚLTIMOS DIAS CORRIDOS DO MÊS (ex.: 29, 30 e 31 de outubro; 28, 29 e
+30 de novembro; 26, 27 e 28 de fevereiro; 27, 28 e 29 em fevereiro bissexto).
+Em qualquer outro dia ele registra no log que não é dia de rodar e termina sem
+abrir o navegador.
+
+
+2. O QUE FAZ, PASSO A PASSO
+---------------------------
+0. Entra no VIOS (https://roneely.vios.com.br/) com o usuário do .env.
+1. Abre o calendário
+   https://roneely.vios.com.br/?pag=sys/agenda/calendario.php&menu_lateral=true
+   e classifica cada tarefa pelo texto (bot/classificacao.py), sem diferença
+   de acento ou maiúscula:
+     - PREVIDENCIÁRIA (processada): contém "PREVIDENCI" e nenhum termo de
+       exclusão;
+     - IGNORADA: previdência privada/complementar (privada, complementar,
+       fundo de pensão, PGBL/VGBL, PREVI, PETROS, FUNCEF, POSTALIS), que é
+       matéria cível, ou tarefa sem "PREVIDENCI" e sem sinal previdenciário;
+     - AMBÍGUA (não processada, conferir à mão): "PREVIDENCI" junto com termo
+       de outra área (cível, trabalhista, acidente de trabalho, família,
+       criminal, tributária, consumidor, bancária, empresarial), ou sinal
+       previdenciário sem "PREVIDENCI" (INSS, BPC/LOAS, aposentadoria,
+       auxílios, pensão por morte, salário-maternidade).
+   Das previdenciárias, só a tarefa "EDITAR OS DADOS DA AÇÃO PROTOCOLADA"
+   (CALENDARIO_TIPO) é aberta; as outras viram ignoradas. Todas aparecem no
+   relatório. O bot espera as tarefas aparecerem no calendário (elas chegam
+   depois da página carregar).
+2. Abre a tarefa.
+3. Clica no número do processo (abre um modal) e abre o processo pelo único
+   "Visualizar" do modal. O id do processo é lido desse link a cada vez (não
+   há id fixo no código). Lê o campo N.° CNJ da tela do processo (normalmente
+   ainda vazio).
+4. Na tabela de tarefas do processo, acha a única tarefa "PROTOCOLAR INICIAL
+   (PREVIDENCIÁRIO)" e abre o "Visualizar arquivo" dela (galeria de arquivos).
+   Na galeria, acha o único "Comprovante de protocolo" (aceita a grafia
+   "Protcolo" e "_" no lugar de espaço).
+5. Baixa o PDF do comprovante (endereço do arquivo na galeria, com a sessão do
+   navegador, sem abrir o visualizador) e extrai:
+     - número CNJ          (o único número no formato 0000000-00.0000.0.00.0000)
+     - órgão julgador      (texto depois de "Órgão julgador:")
+     - valor da causa      (número depois de "Valor da causa: R$")
+6. Volta à tela do processo e clica no lápis do N.° CNJ ("Direcionar para tela
+   de edição"), que abre a tela de edição do processo.
+7. Preenche:
+     N.° CNJ                        <- número CNJ do PDF
+     Órgão julgador (Vara/câmara)   <- órgão julgador do PDF (o campo é uma
+                                       lista; ver abaixo quando o órgão não
+                                       está nela)
+     Valor da ação                  <- valor da causa do PDF (ex.: 18.540,00)
+   Os campos são achados pelo rótulo na tela. "0,00" no valor conta como vazio.
+   Os três dados vêm de uma única leitura do PDF e são preenchidos de uma vez.
+   Órgão que não está na lista: o bot clica no "+" do campo (modal "Cadastrar
+   Órgão Julgador"), escreve o nome exatamente como no PDF e:
+     - na simulação, NÃO grava o cadastro (print em logs/orgao_*.png); fecha o
+       modal e preenche só o CNJ e o valor;
+     - com --confirmar, clica no Gravar do modal, espera a opção nova aparecer
+       na lista e a escolhe. Se ela não aparecer, a tarefa é pulada (processo
+       não alterado; conferir se o órgão foi cadastrado).
+8. Grava. Se o VIOS perguntar "O Cliente do contrato não é categorizado como
+   cliente! Deseja incluir ... na categoria cliente?", o bot clica em
+   Confirmar (a pessoa passa a ser cliente no VIOS); qualquer outro aviso não
+   é respondido e a tarefa vai para "conferir". Depois reabre a tela de edição
+   e confere que os três campos ficaram com os valores do PDF. Registra a tarefa em saida/registro.json.
+
+No fim, mostra o resumo: gravado, ja_estava, teste (simulação), leitura
+(somente leitura), ja_registrada, ignorada, ambigua, pulada, conferir (gravou
+mas a releitura não confirmou), erro.
+
+VILA DOS BOTS: com VILA_URL no .env, cada passo acima também vira um evento
+mandado ao servidor do Ultron, que mostra o Bumblebee trabalhando na vila
+(Vila 02 · Zangão). A vila só assiste. Ver a seção 2.2.
+
+RELATÓRIO: toda execução, em qualquer modo, cria um arquivo novo
+saida/relatorio_AAAA-MM-DD_HHMMSS.csv (abre no Excel; separador ";"), com uma
+linha por tarefa do calendário: classificação, decisão, motivo ou dúvida,
+ressalvas, id e CNJ do processo, comprovante, CNJ / órgão julgador / valor
+lidos do PDF, o que os três campos mostram hoje no VIOS e quais campos vazios
+seriam preenchidos. Relatório anterior nunca é sobrescrito. Se a execução
+falhar no meio, o relatório mostra até onde cada tarefa chegou.
+
+
+2.1 MODO SOMENTE LEITURA (--somente-leitura)
+--------------------------------------------
+Faz os passos 0 a 6, mas na tela de edição só LÊ os três campos: não
+preenche, não dispara eventos, não clica em Gravar e não escreve no
+saida/registro.json. Para cada tarefa diz o que faria (campos que seriam
+preenchidos, campos já iguais ao PDF, conflitos).
+- Depois de ler o calendário (que carrega as tarefas por POST), o bot liga um
+  bloqueio no navegador: toda página aberta daqui em diante carrega, antes dos próprios scripts, um bloqueio de envio de
+  formulário e de requisição que não seja GET/HEAD (fetch, XHR, sendBeacon),
+  inclusive salvar automático da própria página. Em cada página o bot confere
+  que o bloqueio está ativo; se não estiver, a execução para.
+- Limites (não dá para garantir pelo bot): o login em si envia o formulário
+  de login; abrir páginas (GET) pode deixar rastro no VIOS, como histórico de
+  acesso ou tarefa marcada como vista; um sistema que alterasse dados por GET
+  não seria barrado pelo bloqueio.
+- Respeita a janela dos 3 últimos dias; fora dela, só com --fora-da-janela.
+  Junto com --confirmar o bot se recusa a rodar.
+
+
+2.2 EVENTOS PARA A VILA (bot/vila.py)
+-------------------------------------
+Com VILA_URL preenchida, o bot manda um evento (POST JSON, autenticação Basic)
+em cada etapa: execução iniciada -> entrando no VIOS -> lendo o calendário ->
+calendário (contagens) -> processando -> cada tarefa (abrindo, comprovante
+lido, preenchendo e o fim: gravada / já estava / testada / lida / pulada /
+conferir / erro) -> execução terminada (sempre, inclusive quando para no meio).
+Fora dos 3 últimos dias vai um único evento (fora do dia).
+- Nunca atrapalha o bot: espera no máximo VILA_TIMEOUT (2 s); erro de rede,
+  senha errada (401), erro do servidor (500) ou demora viram um aviso de uma
+  linha no log, sem a senha. Depois de 3 falhas seguidas o bot para de tentar
+  até o fim da execução e avisa no log uma vez.
+- Evento não enviado fica em saida/vila_pendentes.jsonl.
+- Dados mínimos: só o pxe_id da tarefa, o id interno do processo no VIOS,
+  códigos curtos (classe, decisão, motivo), o NOME dos campos preenchidos e
+  contagens. Nunca vai texto da tarefa, nome de cliente, número CNJ, órgão
+  julgador, valor da causa, nome do comprovante nem conteúdo do PDF.
+- VILA_URL vazia: nada é enviado nem gravado.
+
+
+3. PROTEÇÕES CONTRA ALTERAÇÃO INDEVIDA
+--------------------------------------
+- SIMULAÇÃO é o padrão: sem --confirmar o bot faz tudo, preenche os campos,
+  tira print (logs/edicao_*.png) e NÃO grava. Sair da tela sem gravar descarta.
+  Na simulação vale o mesmo bloqueio de envios do somente leitura (ver 2.1),
+  conferido em cada página, inclusive na tela de edição.
+- Só grava com --confirmar E dentro dos 3 últimos dias corridos do mês.
+  --fora-da-janela só simula, em qualquer dia; junto com --confirmar o bot se
+  recusa a rodar (sai com erro antes de abrir o navegador).
+- Só tarefas previdenciárias; previdência privada/complementar é ignorada e
+  caso ambíguo nunca é processado (vai para o relatório).
+- Modo somente leitura: não preenche nem grava, com bloqueio de envios no
+  navegador conferido em cada página (ver 2.1).
+- Exatamente um número de processo na tarefa, um "Visualizar" no modal, uma
+  tarefa PROTOCOLAR INICIAL (PREVIDENCIÁRIO) com um "Visualizar arquivo", um
+  "Comprovante de protocolo" na galeria, um lápis do N.° CNJ, um campo para
+  cada rótulo e um botão Gravar.
+  Nenhum ou mais de um = tarefa pulada.
+- Comprovante do processo certo: se o campo N.° CNJ da tela do processo já tem
+  um CNJ, o CNJ do PDF tem que ser esse. Se o processo ainda não tem CNJ, vale o único
+  comprovante de protocolo do processo (fica registrado no log).
+- A tela de edição tem que ter o mesmo id de processo do link "Visualizar".
+- Cada dado tem que aparecer com um único valor no PDF; faltando ou com dois
+  valores diferentes (ex.: dois números CNJ) = tarefa pulada.
+- PDF escaneado (sem texto) ou link que não devolve PDF = tarefa pulada.
+- Item apagado (linha com o ícone "Apagada" do VIOS) é ignorado: nunca é usado
+  como comprovante nem conta como segundo comprovante.
+- Nunca sobrescreve: se um dos três campos já tem OUTRO valor, a tarefa inteira
+  é pulada. Campo vazio é preenchido; campo igual fica como está.
+- Só mexe nos três campos. Não conclui, não apaga e não cria tarefas. A única
+  coisa que cria é o órgão julgador do PDF que não está na lista (com o nome
+  igual ao do PDF), e só com --confirmar.
+- Depois de gravar, relê a tela. Se a releitura falhar ou mostrar outro valor,
+  o log mostra "CONFERIR NO VIOS (pode ter gravado)" com print
+  (logs/conferir_*.png); a tarefa NÃO é marcada como concluída e, na próxima
+  execução, a proteção de campo preenchido impede sobrescrever.
+- Registro persistente (saida/registro.json): uma entrada por tarefa (link e
+  texto da tarefa, id e CNJ do processo, comprovante, valores, data). Só entra
+  tarefa gravada e conferida, ou que a releitura mostrou já estar com os
+  valores do PDF. Simulação nunca registra. Tarefa registrada nunca é aberta
+  de novo. O arquivo é gravado por troca (nunca fica pela metade).
+- Não clica com o mouse: abre os links pelo endereço e preenche por JavaScript,
+  para não tocar no popup de Recado que o VIOS abre depois do login. Só dois
+  elementos sem endereço recebem clique por JavaScript, e só quando existe um
+  único: o número do processo (abre o modal) e o lápis do N.° CNJ (abre a tela
+  de edição). Quando o órgão não está na lista, também o "+" do campo (abre o
+  modal de cadastro) e, só com --confirmar, o Gravar desse modal.
+- A senha nunca aparece no log.
+
+Toda tarefa pulada aparece no log com o motivo e deve ser conferida à mão.
+
+
+4. COMO RODAR (WINDOWS)
+-----------------------
+Primeira instalação (Python 3.8 ou mais novo, marcar "Add to PATH"):
+    cd C:\Projetos\bot_controladoria_sara_teste\automacao-vios
+    python -m venv .venv
+    .venv\Scripts\pip install -r requirements.txt
+
+Testes das regras (não acessam o VIOS):
+    .venv\Scripts\python -m unittest discover tests -v
+
+Somente leitura (não preenche nem grava; gera o relatório):
+    rodar.bat --somente-leitura                     nos 3 últimos dias do mês
+    rodar.bat --somente-leitura --fora-da-janela    em qualquer outro dia
+
+Simulação (não grava nada):
+    rodar.bat                        nos 3 últimos dias do mês
+    rodar.bat --fora-da-janela       em qualquer outro dia
+
+Gravação real (só depois de conferir a simulação no log e nos prints):
+    rodar.bat --confirmar
+
+Uma tarefa só (link da tarefa no calendário, com pxe_id=...), em qualquer modo:
+    rodar.bat --confirmar --tarefa "https://roneely.vios.com.br/?pag=sys/processos/pxe.php&pxe_id=..."
+
+Linux: ./rodar.sh com os mesmos argumentos.
+
+Agendamento sugerido: Agendador de Tarefas do Windows uma vez por dia com
+--confirmar. O próprio bot ignora os dias fora da janela.
+
+
+5. CONFIGURAÇÃO (.env)
+----------------------
+Obrigatórias: SISTEMA_URL, SISTEMA_USUARIO, SISTEMA_SENHA,
+LOGIN_CAMPO_USUARIO, LOGIN_CAMPO_SENHA.
+As demais têm padrão no código (mostrado no .env.example) e só precisam ser
+preenchidas se a tela do VIOS for diferente:
+
+CALENDARIO_URL       tela do calendário
+CALENDARIO_TAREFA    cada tarefa do calendário (padrão css:.fc-event)
+CALENDARIO_FILTRO    texto da tarefa previdenciária (padrão PREVIDENCI)
+CALENDARIO_TIPO      tarefa processada (padrão EDITAR OS DADOS DA ACAO PROTOCOLADA)
+PROCESSO_NUMERO      número do processo na tarefa (abre o modal)
+PROCESSO_LINK        "Visualizar" do modal do processo
+PROCESSO_CNJ         valor do campo N.° CNJ na tela do processo
+PROTOCOLO_TAREFA     tarefa do processo com o comprovante (PROTOCOLAR INICIAL (PREVIDENCIARIO))
+PROTOCOLO_LINHAS     linhas da tabela de tarefas do processo
+PROTOCOLO_ARQUIVOS   "Visualizar arquivo" da linha
+COMPROVANTE_LINK     arquivos da galeria
+COMPROVANTE_TEXTO    nome do comprovante (aceita "Protcolo")
+EDICAO_LINK          lápis do N.° CNJ na tela do processo
+EDICAO_GRAVAR        botão Gravar da tela de edição
+CAMPO_CNJ / CAMPO_ORGAO / CAMPO_VALOR   seletor do campo, só se achar pelo
+                     rótulo não funcionar
+EDICAO_CONFIRMAR     texto do único aviso depois de Gravar que recebe Confirmar
+ORGAO_CADASTRAR / ORGAO_NOME / ORGAO_GRAVAR   "+" do órgão julgador, nome e
+                     Gravar do modal de cadastro
+SAIDA_PASTA / HEADLESS / TIMEOUT / MANTER_ABERTO   execução
+VILA_URL             endereço de eventos do servidor do Ultron (vazio = vila
+                     desligada)
+VILA_USUARIO / VILA_SENHA   autenticação Basic do servidor do Ultron
+VILA_TIMEOUT         segundos por envio à vila (padrão 2)
+
+Seletores no formato css:<seletor> ou xpath:<expressão>.
+
+
+6. ARQUIVOS
+-----------
+main.py               fluxo completo e regra dos 3 últimos dias
+bot/config.py         lê e valida o .env (com os padrões do VIOS)
+bot/navegador.py      cria o Chrome; bloqueio de envios (simulação e somente leitura)
+bot/login.py          login no VIOS
+bot/vios.py           funções comuns (abrir página, ler links, id do processo)
+bot/calendario.py     tarefas do calendário, já classificadas
+bot/processo.py       tarefa -> processo -> galeria do comprovante -> tela de edição
+bot/classificacao.py  previdenciária / ignorada / ambígua, com o motivo
+bot/comprovante.py    acha e lê o PDF e extrai CNJ, órgão julgador e valor
+bot/edicao.py         lê (somente leitura) ou preenche, grava e confere os campos
+bot/relatorio.py      relatório CSV de cada execução
+bot/vila.py           eventos para a vila dos bots (envio ao servidor do Ultron)
+tests/test_regras.py  testes das regras (janela, extração, conferências)
+tests/test_somente_leitura.py  somente leitura, classificação e relatório
+                      (títulos de tarefa e comprovante FICTÍCIOS; telas do
+                      VIOS substituídas por dublês; não acessa o VIOS)
+tests/test_vila.py    eventos da vila: servidor falso local, dados mínimos e
+                      sequência de uma simulação (não acessa o VIOS nem a rede)
+rodar.bat / rodar.sh  atalhos
+saida/registro.json   tarefas resolvidas (data, processo, comprovante, valores)
+saida/relatorio_*.csv relatório de cada execução
+saida/vila_pendentes.jsonl  eventos da vila que não foram enviados
+logs/bot.log          tudo o que o bot fez
+logs/edicao_*.png     print da tela de edição preenchida, antes de gravar
+logs/orgao_*.png      simulação: modal de cadastro do órgão com o nome escrito
+logs/erro_*.png       print da tela em caso de erro
