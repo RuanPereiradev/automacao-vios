@@ -1,0 +1,228 @@
+{# Cena do envio no estilo da vila: só o Ultron, andando entre Doca → Receptor TXT → Conferência →
+   Torre VIOS conforme o andamento real (window.cenaStatus recebe o /envio/<id>/status).
+   Coordenadas no viewBox 960 × 340; o Ultron anda pela linha do cano de cobre (y = 206). #}
+{% from "_ultron.html" import ultron %}
+
+{% macro predio(x, rotulo, tela=False, antena=False) %}
+<g>
+  <rect x="{{ x + 6 }}" y="168" width="190" height="8" fill="#16181b" opacity=".7"/>
+  <rect x="{{ x }}" y="62" width="190" height="106" fill="#aab1b9"/>
+  {% for i in range(1, 5) %}<rect x="{{ x + i * 38 }}" y="62" width="2" height="106" fill="#9aa1aa"/>{% endfor %}
+  <rect x="{{ x }}" y="56" width="190" height="8" fill="#c98a2e"/><rect x="{{ x }}" y="56" width="190" height="2" fill="#e5ab50"/>
+  <rect x="{{ x }}" y="164" width="190" height="4" fill="#80878f"/>
+  {% if antena %}<rect x="{{ x + 30 }}" y="40" width="4" height="16" fill="#8b929b"/><rect x="{{ x + 18 }}" y="36" width="28" height="5" fill="#d4d8de"/>{% endif %}
+  {% set janelas = [16] if tela else [16, 124, 156] %}
+  {% for jx in janelas %}
+  <rect x="{{ x + jx - 2 }}" y="80" width="30" height="26" fill="#6a7079"/>
+  <rect x="{{ x + jx }}" y="82" width="26" height="22" fill="#eeb04a"/><rect x="{{ x + jx }}" y="82" width="26" height="6" fill="#f8d27f"/>
+  {% endfor %}
+  {% if tela %}
+  <rect x="{{ x + 104 }}" y="76" width="74" height="40" fill="#6a7079"/><rect x="{{ x + 107 }}" y="79" width="68" height="34" fill="#141619"/>
+  <g class="cena-linhas">
+    <rect x="{{ x + 113 }}" y="85" width="40" height="3" fill="#e5ab50"/><rect x="{{ x + 113 }}" y="92" width="50" height="3" fill="#e5ab50"/>
+    <rect x="{{ x + 113 }}" y="99" width="34" height="3" fill="#e5ab50"/><rect x="{{ x + 113 }}" y="106" width="44" height="3" fill="#e5ab50"/>
+    <rect x="{{ x + 162 }}" y="84" width="6" height="6" fill="#ff5a3c"/>
+  </g>
+  {% endif %}
+  <rect x="{{ x + 84 }}" y="110" width="34" height="58" fill="#7b828b"/><rect x="{{ x + 87 }}" y="114" width="28" height="54" fill="#5b6169"/>
+  <rect x="{{ x + 84 }}" y="108" width="34" height="3" fill="#c98a2e"/>
+  <rect x="{{ x + 99 }}" y="168" width="5" height="40" fill="#b6782e"/>
+  <rect x="{{ x + 35 }}" y="26" width="132" height="22" fill="#1b1d21" stroke="#c98a2e" stroke-width="1.5"/>
+  <text x="{{ x + 101 }}" y="41" text-anchor="middle" class="cena-rotulo">{{ rotulo }}</text>
+</g>
+{% endmacro %}
+
+{% macro cena(envio=None, aptas=(), com_problema=(), ja=(), agora=None, ocupado=False) %}
+{% set r = envio.cis | map(attribute="resultado") | list if envio else [] %}
+<div class="cartao cena-cartao">
+  <ol class="cena-etapas" id="cena-etapas">
+    <li>01<span>Arquivo subido</span></li><li>02<span>Conferido</span></li>
+    <li>03<span>Envio aprovado</span></li><li>04<span>Criando no VIOS</span></li>
+  </ol>
+  <div class="cena-topo">
+    <span class="cena-chip" id="cena-chip"><i></i>ULTRON · OCIOSO</span>
+    <span class="cena-chip" id="cena-etapa"></span>
+    {% if envio and (envio.so_teste or (envio.estado == "enviando" and not envio.confirmar)) %}<span class="cena-chip cena-teste">MODO TESTE · NÃO GRAVA</span>{% endif %}
+  </div>
+  {% if not envio %}
+  <div class="cena" id="cena" data-estado="inicio" data-ocupado="{{ 1 if ocupado else 0 }}">
+  {% else %}
+  <div class="cena" id="cena"
+       data-estado="{{ envio.estado }}" data-arquivo="{{ envio.arquivo }}" data-so-teste="{{ 1 if envio.so_teste else 0 }}"
+       data-confirmar="{{ 1 if envio.confirmar else 0 }}" data-aptas="{{ aptas | length }}"
+       data-problema="{{ com_problema | length }}" data-ja="{{ ja | length }}"
+       data-gravadas="{{ r.count('gravada') }}" data-testadas="{{ r.count('testada') }}" data-erros="{{ r.count('erro') }}"
+       data-puladas="{{ r.count('pulada') + r.count('duplicada') }}" data-falha="{{ envio.falha or '' }}"
+       data-reconstruido="{{ 1 if envio.reconstruido else 0 }}"
+       data-novo="{{ 1 if envio.estado == 'conferir' and not envio.editado and (agora - envio.criado).total_seconds() < 25 else 0 }}"
+       data-recente="{{ 1 if envio.fim and (agora - envio.fim).total_seconds() < 25 else 0 }}">
+  {% endif %}
+    <div class="cena-palco">
+    <svg class="cena-fundo" viewBox="0 0 960 340" shape-rendering="crispEdges" aria-hidden="true">
+      <defs>
+        <pattern id="cena-piso" width="40" height="40" patternUnits="userSpaceOnUse">
+          <rect width="40" height="40" fill="#25292f"/><rect x="1" y="1" width="38" height="38" fill="#2d3239"/>
+          <rect x="1" y="1" width="38" height="2" fill="#343a42"/>
+          <rect x="4" y="4" width="2" height="2" fill="#434952"/><rect x="34" y="4" width="2" height="2" fill="#434952"/>
+          <rect x="4" y="34" width="2" height="2" fill="#434952"/><rect x="34" y="34" width="2" height="2" fill="#434952"/>
+        </pattern>
+      </defs>
+      <rect width="960" height="340" fill="url(#cena-piso)"/>
+      <rect width="960" height="20" fill="#1c1f23"/>
+      {% for i in range(12) %}<rect x="{{ 34 + i * 80 }}" y="8" width="6" height="5" fill="{{ '#e5ab50' if i % 3 == 0 else '#3a3f46' }}"/>{% endfor %}
+      {{ predio(40, "DOCA 01 · ULTRON", antena=True) }}
+      {{ predio(290, "RECEPTOR TXT") }}
+      {{ predio(540, "CONFERÊNCIA", tela=True) }}
+      {# cano de cobre por onde o Ultron anda #}
+      <rect x="60" y="206" width="830" height="5" fill="#b6782e"/><rect x="60" y="206" width="830" height="1" fill="#d99c4a"/>
+      {% for jx in (135, 385, 635, 860) %}<rect x="{{ jx }}" y="203" width="11" height="11" fill="#d39a45" stroke="#7d5119"/>{% endfor %}
+      {# Torre VIOS #}
+      <g class="cena-torre">
+        <rect x="800" y="26" width="120" height="22" fill="#1b1d21" stroke="#c98a2e" stroke-width="1.5"/>
+        <text x="860" y="41" text-anchor="middle" class="cena-rotulo">TORRE VIOS</text>
+        <rect x="858" y="58" width="5" height="16" fill="#d4d8de"/>
+        <rect class="cena-luz" x="856" y="52" width="9" height="7" fill="#7a2a22"/>
+        <rect x="836" y="74" width="48" height="7" fill="#d4d8de"/><rect x="836" y="80" width="48" height="2" fill="#80878f"/>
+        {% for y in range(82, 196, 16) %}
+          {% set m = (y - 82) // 8 %}
+          <rect x="{{ 846 - m }}" y="{{ y }}" width="5" height="16" fill="#aab1b9"/><rect x="{{ 870 + m }}" y="{{ y }}" width="5" height="16" fill="#aab1b9"/>
+          <rect x="{{ 846 - m }}" y="{{ y + 14 }}" width="{{ 29 + 2 * m }}" height="3" fill="#80878f"/>
+        {% endfor %}
+        <rect x="820" y="196" width="80" height="12" fill="#7b828b"/><rect x="824" y="199" width="72" height="6" fill="#1b1d21"/>
+        <g class="cena-placa-contador">
+          <rect x="752" y="112" width="62" height="34" fill="#1b1d21" stroke="#c98a2e" stroke-width="1.5"/>
+          <text x="783" y="125" text-anchor="middle" class="cena-rotulo" style="font-size: 9px">TAREFAS</text>
+          <text x="783" y="140" text-anchor="middle" class="cena-contador" id="cena-contador"></text>
+        </g>
+        <g class="cena-sinal" fill="none" stroke="#ff5a3c" stroke-width="2">
+          <path d="M876 50 q10 6 0 14"/><path d="M882 44 q18 12 0 26"/><path d="M844 50 q-10 6 0 14"/><path d="M838 44 q-18 12 0 26"/>
+        </g>
+      </g>
+    </svg>
+    <div class="cena-ultron" id="cena-ultron">
+      <div class="cena-papel" aria-hidden="true"><i></i><i></i><i></i></div>
+      {{ ultron("parado", 60, "cena-mascote") }}
+    </div>
+    </div>
+    <div class="cena-fala"><span class="cena-quem">ULTRON</span><span id="cena-texto">…</span><b class="cena-seta">▼</b></div>
+  </div>
+</div>
+<script>
+(() => {
+  const cena = document.getElementById('cena');
+  if (!cena) return;
+  const d = cena.dataset, n = k => Number(d[k] || 0);
+  const u = document.getElementById('cena-ultron'), m = document.getElementById('cena-mascote');
+  const X = { doca: 135, receptor: 385, conferencia: 635, torre: 860 };  // centro de cada estação no viewBox
+  const pct = x => ((x - 30) / 960 * 100) + '%';
+  const espera = ms => new Promise(r => setTimeout(r, ms));
+  let onde = null;
+
+  function por(lugar) {
+    u.style.transition = 'none'; u.style.left = pct(X[lugar]); onde = lugar;
+    void u.offsetWidth; u.style.transition = '';
+  }
+  async function ir(lugar) {
+    if (onde === lugar) return;
+    const dur = Math.max(.6, Math.abs(X[lugar] - X[onde]) / 230);
+    u.classList.toggle('virado', X[lugar] < X[onde]);
+    u.style.transitionDuration = dur + 's';
+    m.classList.add('andando'); u.style.left = pct(X[lugar]); onde = lugar;
+    await espera(dur * 1000);
+    m.classList.remove('andando'); u.classList.remove('virado');
+  }
+  const falar = t => { document.getElementById('cena-texto').textContent = t; };
+  const humor = h => { m.classList.remove('parado', 'trabalhando', 'feliz', 'erro'); m.classList.add(h); };
+  const chip = (t, ativo) => { const c = document.getElementById('cena-chip'); c.lastChild.textContent = 'ULTRON · ' + t; c.classList.toggle('ativo', !!ativo); };
+  function etapa(atual, feitas) {
+    [...document.querySelectorAll('#cena-etapas li')].forEach((li, i) => {
+      li.classList.toggle('feita', i < feitas); li.classList.toggle('atual', i === atual - 1 && i >= feitas);
+    });
+    document.getElementById('cena-etapa').textContent = feitas >= 4 ? 'FINALIZADO' : 'ETAPA ' + atual + '/4';
+  }
+  const plural = (q, s, p) => q + ' ' + (q === 1 ? s : p);
+  const botao = d.soTeste === '1' ? 'Testar sem gravar' : 'Enviar ao VIOS';
+
+  function resumoConferido() {
+    const extra = (n('problema') ? ', ' + plural(n('problema'), 'com problema', 'com problema') : '') +
+                  (n('ja') ? ', ' + plural(n('ja'), 'já lançada', 'já lançadas') : '');
+    return n('aptas')
+      ? `Conferi o arquivo: ${plural(n('aptas'), 'CI pronta', 'CIs prontas')} para enviar${extra}. Quando quiser, clique em "${botao}".`
+      : `Conferi o arquivo e nenhuma CI está pronta${extra}. Corrija abaixo e clique em "Salvar e conferir".`;
+  }
+  function resumoFim() {
+    const erros = n('erros') ? `, ${plural(n('erros'), 'com erro', 'com erro')} (corrija abaixo e envie de novo)` : '';
+    const pul = n('puladas') ? `, ${plural(n('puladas'), 'já estava no VIOS ou era cópia', 'já estavam no VIOS ou eram cópia')}` : '';
+    return d.estado === 'concluido'
+      ? `Pronto! ${plural(n('gravadas'), 'CI gravada', 'CIs gravadas')} no VIOS${erros}${pul}.`
+      : `Teste concluído, nada foi gravado: ${plural(n('testadas'), 'CI passou', 'CIs passaram')} pelo formulário do VIOS${erros}${pul}.`;
+  }
+
+  // andamento ao vivo (chamado pelo acompanhamento do envio a cada 1,5 s)
+  let naTorre = false, ultimo = null;
+  function mostrar(s) {
+    const teste = s.confirmar ? '' : '(teste, sem gravar) ';
+    document.getElementById('cena-contador').textContent = s.tarefas_total ? `${s.tarefas_feitas}/${s.tarefas_total}` : '';
+    if (s.fase === 'login') { etapa(3, 2); falar(teste + 'Entrando no VIOS…'); return; }
+    if (s.fase === 'duplicatas') { etapa(3, 2); falar(teste + 'Conferindo duplicatas no VIOS, CI por CI…'); return; }
+    etapa(4, 3);
+    const c = s.cis.find(c => c.resultado === 'lançando');
+    if (!c) { falar(teste + `Criando as tarefas… ${s.tarefas_feitas} de ${s.tarefas_total}.`); return; }
+    const i = c.tarefas.findIndex(t => t.situacao === 'criando');
+    const t = c.tarefas[i >= 0 ? i : c.tarefas.length - 1];
+    falar(teste + `CI ${c.ci}: ${i >= 0 ? 'preenchendo' : (s.confirmar ? 'gravando e conferindo' : 'conferindo o quadro')} ` +
+          `${c.tarefas.length > 1 ? `a tarefa ${(i >= 0 ? i : c.tarefas.length - 1) + 1} de ${c.tarefas.length}, ` : ''}${t.nome}.`);
+  }
+  window.cenaStatus = s => { ultimo = s; if (naTorre && s.estado === 'enviando') mostrar(s); };
+  // página inicial: chamado quando a pessoa solta ou escolhe o .txt
+  window.cenaReceber = async nome => {
+    humor('trabalhando'); chip('RECEBENDO', true); etapa(1, 0);
+    falar(`Chegou o ${nome}! Indo buscar no Receptor…`);
+    await ir('receptor'); u.classList.add('carregando'); falar(`Peguei o ${nome}. Conferindo…`);
+  };
+
+  (async () => {
+    if (d.estado === 'inicio') {
+      por('doca'); etapa(1, 0);
+      if (d.ocupado === '1') {
+        humor('trabalhando'); chip('OCUPADO', true);
+        falar('Estou lançando outro arquivo agora. Pode soltar o seu .txt: eu confiro, e o envio espera o outro terminar.');
+      } else {
+        humor('parado'); chip('AGUARDANDO .TXT', false);
+        falar('Estou na Doca 01. Solte o .txt na caixa abaixo (ou clique nela) que eu levo para a Conferência. Nada é gravado antes de você conferir.');
+      }
+    } else if (d.estado === 'conferir') {
+      etapa(2, 1);
+      if (d.novo === '1') {
+        por('receptor'); humor('trabalhando'); chip('RECEBENDO', true);
+        u.classList.add('carregando'); falar(`Peguei o ${d.arquivo}. Levando para a Conferência…`); await espera(900);
+        await ir('conferencia'); u.classList.remove('carregando');
+      } else {
+        por('conferencia');
+      }
+      cena.classList.add('conferido'); humor('parado'); chip('AGUARDANDO ENVIO', false); etapa(3, 2);
+      falar(resumoConferido());
+    } else if (d.estado === 'enviando') {
+      por('conferencia'); cena.classList.add('conferido'); humor('trabalhando'); chip('TRABALHANDO', true); etapa(3, 2);
+      falar('Envio aprovado! Indo para a Torre VIOS…');
+      await ir('torre');
+      naTorre = true; cena.classList.add('na-torre');
+      if (ultimo) mostrar(ultimo);
+    } else if (d.estado === 'falhou') {
+      por('torre'); humor('erro'); chip('PAROU', false); etapa(4, 3);
+      falar(`O envio parou: ${d.falha || 'erro desconhecido'}. O que já foi gravado não se repete no próximo envio.`);
+    } else {  // concluido / testado (ou registro reconstruído do log)
+      const final = n('erros') ? 'erro' : 'feliz';
+      if (d.recente === '1') {
+        por('torre'); humor('trabalhando'); chip('VOLTANDO', true); etapa(4, 4);
+        falar('Terminei! Voltando para a doca…'); await ir('doca');
+      } else {
+        por('doca'); etapa(4, 4);
+      }
+      humor(final); chip(d.estado === 'concluido' ? 'CONCLUÍDO' : 'TESTE CONCLUÍDO', false);
+      falar(d.reconstruido === '1' ? 'Este envio foi reconstruído do log: ' + resumoFim() : resumoFim());
+    }
+  })();
+})();
+</script>
+{% endmacro %}

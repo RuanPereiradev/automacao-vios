@@ -1,194 +1,93 @@
-# Roteamento interno, prioridades e validação
+# Roteamento interno, prioridades e duplicidades
 
-## Ordem obrigatória de decisão
+## Ordem de decisão
 
-Analisar separadamente natureza jurídica, fase processual, departamento interno, auxiliar cadastrado e providência concreta. Definir a tarefa nesta ordem:
+Conferir orientação expressa do usuário, providência concreta, fase atual, departamento responsável, auxiliar, natureza/órgão/CNJ e classe/assunto. Nenhum campo isolado substitui a leitura.
 
-1. correção ou orientação expressa do usuário;
-2. providência concreta determinada na intimação;
-3. fase processual atual;
-4. departamento interno responsável pela providência;
-5. advogado auxiliar informado na planilha;
-6. natureza jurídica, órgão e número CNJ;
-7. classe e assunto processual.
-
-Não classificar somente pelo número CNJ, classe, fase ou auxiliar. Um processo trabalhista ou previdenciário pode estar no Departamento de Execução. A presença de `execução`, `penhora`, `alvará` ou `cumprimento de sentença` não basta para classificar o departamento.
+Conferir em conjunto departamento, responsável atual, auxiliar e providência; corrigir cadastro incompatível com o mapeamento institucional abaixo. Não confundir a coluna “Área” de um relatório automático com prova do departamento cadastrado. Tamira efetivamente responsável pela demanda de Execução exige tarefa de Execução. Não confundir esse vínculo com nome lançado por engano em tarefa previdenciária. Não presumir que todo processo contra o INSS permanece no Previdenciário se a transferência interna estiver comprovada.
 
 ## Mapeamento operacional
 
-| Auxiliar | Área normalmente relacionada | Conferência obrigatória |
+| Auxiliar | Área normalmente relacionada | Conferência |
 | --- | --- | --- |
-| Joaquim/JOAQ | Cível | Se a tarefa for Execução, não lançar: confirmar se houve transferência para Tamira. |
-| Joana/JOAN | Cível | Se a tarefa for Execução, não lançar: confirmar se houve transferência para Tamira. |
-| Lili/LILI | Cível | Se a tarefa for Execução, não lançar: confirmar se houve transferência para Tamira. |
-| Suhiane/SUH | Trabalhista Reclamante ou Previdenciário | Diferenciar pelo teor, órgão, partes e número CNJ. |
-| Tamira/TAMI | Execução | Conferir pelo departamento e também pelo responsável: se a Tamira é a responsável, a tarefa é de Execução. Se a tarefa ficar em outra área, não lançar e confirmar o departamento. |
-| Carlos/CARL | Trabalhista Reclamada | Conferir cliente e teor. |
-| Johnys/JOHN | Trabalhista Reclamada | Conferir cliente e teor. |
-| Breno | Petições da Execução da Tamira | Marcar nas tarefas `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO)`. |
+| Joaquim/JOAQ | Cível | Validar eventual transferência para Execução/Tamira |
+| Joana/JOAN | Cível | Validar eventual transferência para Execução/Tamira |
+| Lili/LILI | Cível | Validar eventual transferência para Execução/Tamira |
+| Suhiane/SUH | Trabalhista Reclamante ou Previdenciário | Diferenciar por partes, teor, órgão e CNJ |
+| Tamira/TAMI | Execução | Se efetivamente responsável, usar tarefa de Execução; se o caso/tarefa for previdenciário, corrigir para Suhiane |
+| Johnys/JOHN | Trabalhista Reclamada | Substituir Carlos/CARL em tarefa trabalhista; Carlos não integra mais o Trabalhista |
+| Breno | Petições intermediárias da Execução da Tamira | Marcar como responsável operacional, preservando Tamira como auxiliar |
 
-O mapeamento é alerta de consistência, não substitui a leitura integral.
+SUH em processo da Justiça do Trabalho: usar Trabalhista Reclamante, inclusive na fase executiva, salvo transferência interna confirmada. SUH em benefício/INSS: Previdenciário, ressalvada a mesma confirmação. Palavra “execução” ou classe judicial não basta para mudar o setor.
 
-## Divergências de cadastro
+## Divergências e informações ausentes
 
-Se a tarefa for de Cível, Trabalhista ou Previdenciário, mas o auxiliar for Tamira, usar a tarefa da área correta e informar:
+- Identificar separadamente natureza, fase, departamento confirmado/provável e auxiliar.
+- Se só houver auxiliar, sem prova de departamento compatível, registrar o setor provável como hipótese. Não apresentar essa hipótese como cadastro validado.
+- Tarefa previdenciária cadastrada para Tamira: corrigir para Suhiane. Tarefa trabalhista cadastrada para Carlos: corrigir para Johnys. Não bloquear essas correções já autorizadas pelo usuário.
+- Auxiliar de outra área com providência executiva: confirmar se houve transferência; não trocar setor apenas pelo conteúdo executivo.
+- Divergência não resolvida impede lançamento da tarefa afetada; entregar a providência identificada e as alternativas oficiais. Se o usuário/documento confirmar a transferência e o responsável, registrar a evidência e não repetir pedido de confirmação.
+- Sem setor seguro: `PENDENTE – CONFIRMAR ÁREA CADASTRADA NO VIOS.`
+- Cliente não identificado nas partes: registrar `PENDENTE – CONFIRMAR VÍNCULO DO CLIENTE COM O PROCESSO E POSIÇÃO PROCESSUAL.` Não presumir identidade empresarial por semelhança de nome.
+- Não usar tarefa de outra área como alternativa automática para contornar bloqueio do programa.
+
+Modelo:
 
 ```text
 OBSERVAÇÃO DE CADASTRO:
-A tarefa identificada é da área [ÁREA], mas o processo aparece com a Tamira. Confirmar se o auxiliar está correto ou se o processo já foi transferido para o Departamento de Execução.
+Natureza/fase: [dados do teor].
+Departamento: [confirmado por fonte / pendente].
+Auxiliar informado: [nome].
+Providência: [o que deve ser feito].
+NÃO LANÇAR — confirmar [divergência específica].
+Se permanecer em [área]: [tarefa oficial].
+Se houver transferência confirmada: [tarefa oficial da outra área].
 ```
 
-Se a providência for inequivocamente da Execução e o auxiliar for outro, usar a tarefa de Execução e informar:
+## RPV/precatório
 
-```text
-OBSERVAÇÃO DE CADASTRO:
-O processo exige providência do Departamento de Execução, mas o auxiliar informado é [NOME]. Confirmar a transferência do processo para a Tamira.
-```
+Tratar como prioritários determinação de expedição, minuta, cálculos vinculados, documentos, dados bancários, procuração/contrato, destaque de honorários, retificação, cancelamento, conversão e outras pendências que afetem expedição/conferência/pagamento.
 
-Se houver dúvida real entre Cível e Execução, não escolher silenciosamente. Informar:
+Data: primeiro dia de expediente do escritório seguinte à publicação/recebimento válido. Preservar prazo jurídico e nunca adiá-lo por causa da rotina interna. Essa prioridade prevalece sobre D-2 e sobre a data genérica de análise, salvo providência mais urgente justificada.
 
-```text
-PENDENTE – CONFIRMAR SE O PROCESSO PERMANECE NO CÍVEL OU SE JÁ FOI TRANSFERIDO PARA A EXECUÇÃO.
-Se permanecer no Cível: [tarefa cível].
-Se já estiver na Execução: [tarefa de execução].
-```
+Seguir os cabeçalhos do SKILL.md: prazo único em D-2, depois `PRIORIDADE RPV`, depois resumo. Para análise jurídica, usar as duas datas recursais sem terceira linha. Na minuta de dados de requisitório, usar o exemplo específico sem nomes ou marcador final na descrição. O agendamento permanece no próximo dia de expediente do escritório; a data do cabeçalho não se torna vencimento jurídico.
 
-## Prioridade de RPV e precatório
-
-Tratar como prioritária toda intimação relacionada a determinação ou minuta de RPV/precatório, cálculos, documentos, procuração, contrato ou destaque de honorários, dados bancários, alvará vinculado, cancelamento, conversão, retificação, manifestação ou pendência capaz de impedir expedição, conferência ou pagamento.
-
-- Indicar a tarefa para o dia útil seguinte à publicação ou ao recebimento, mesmo que o prazo jurídico seja maior.
-- Se o dia seguinte não for útil, usar o primeiro dia útil subsequente.
-- Esta prioridade prevalece sobre D-2.
-- Preservar separadamente o prazo jurídico fatal.
-- Usar:
-
-```text
-PRAZO FATAL: DD/MM/AAAA
-```
-
-No resumo:
-
-```text
-PRAZO FATAL: DD/MM/AAAA
-PRIORIDADE RPV/PRECATÓRIO
-[providência]
-```
-
-Não chamar a data prioritária de `PRAZO FATAL (D-2)`.
-
-### Etapas do requisitório
-
-| Situação | Tarefa |
+| Etapa | Tarefa |
 | --- | --- |
-| Decisão determinando futura expedição | Analisar sentença/acórdão/decisão da área. |
-| Cálculos, documentos ou dados bancários necessários | Minutar petição da área. |
-| Minuta já expedida | `ANALISAR MINUTA PRECATORIO/RPV (EXECUCÃO) 2026`. |
-| Alvará expedido sem providência | Ciência da área. |
-| Erro ou pendência no requisitório | Analisar minuta ou decisão, conforme o ato. |
+| Decisão determinando futura expedição | Análise da área responsável |
+| Dados/documentos/cálculos a apresentar | Minuta oficial apropriada da área |
+| Requisitório/minuta já expedido para conferência | `ANALISAR MINUTA PRECATORIO/RPV (EXECUCÃO) 2026`, se setor confirmado |
+| Alvará expedido sem providência | Ciência da área; conferir eventual vínculo com RPV |
+| Erro/pendência no requisitório | Analisar minuta ou decisão conforme o ato; minutar quando a providência já for objetiva |
 
-## Prioridade de emenda da Suhiane
+## Emenda da Suhiane
 
-Quando o auxiliar for Suhiane/SUH e a tarefa for qualquer tarefa de minutar emenda à inicial, aplicar esta prioridade sem distinção de área. A regra abrange obrigatoriamente:
+Aplicar a toda emenda à inicial com auxiliar SUH, trabalhista ou previdenciária, inclusive opção equivalente oficial. Primeiro dia de expediente do escritório seguinte à publicação/recebimento válido, sem D-2 operacional.
 
-- `MINUTAR EMENDA A INICIAL (TRABALHISTA) 2026`;
-- `MINUTAR EMENDA À INICIAL (PREVIDENCIÁRIO) 2026`;
-- qualquer opção equivalente de emenda à inicial sob responsabilidade da Suhiane.
+Usar `PRAZO FATAL D -2:` na descrição da minuta e guardar a prioridade em campo próprio. A data de lançamento prioritária não substitui o controle D-2 do prazo judicial.
 
-- indicar a tarefa para o dia útil seguinte à publicação ou recebimento;
-- preservar o prazo jurídico fatal separadamente;
-- fazer a prioridade prevalecer sobre D-2;
-- não aplicar nem exibir `PRAZO FATAL (D-2)` como data operacional;
-- usar:
+## Tamira e Breno
 
-```text
-PRAZO FATAL: DD/MM/AAAA
-```
-
-No resumo:
-
-```text
-PRAZO FATAL: DD/MM/AAAA
-MINUTAR EMENDA À INICIAL
-[documentos ou informações exigidos]
-```
-
-Não aplicar automaticamente a outras tarefas da Suhiane. A regra é obrigatória para emenda à inicial tanto Trabalhista quanto Previdenciária.
-
-## Petição de Execução da Tamira e Breno
-
-Quando a tarefa for `MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO) 2026)` ou equivalente e pertencer à Tamira, exibir:
+Em petições intermediárias da Execução da Tamira, inclusive `MINUTAR PETIÇÃO (EXECUÇÃO) 2026`, preencher os campos de responsável e auxiliar, fora da descrição:
 
 ```text
 Advogada auxiliar: TAMIRA
 Responsável a marcar na tarefa: BRENO
 ```
 
-Aplicar a dados bancários, documentos, alvará, RPV/precatório, cálculos, prosseguimento, bloqueio, penhora e demais petições intermediárias da Execução. Não substituir Tamira por Breno.
+Aplicar a dados bancários, documentos, RPV, alvará, prosseguimento, penhora e manifestações intermediárias equivalentes. Não presumir essa atribuição para análise, recursos, homologação/impugnação aos cálculos ou outras tarefas especializadas. Preservar Tamira como auxiliar.
 
-## Analisar ou minutar
+## Duplicidades — conferir manualmente também
 
-- Antes das regras gerais, aplicar a regra do SKILL.md para sentença de encerramento ou homologação de acordo envolvendo o cliente: sempre ANALISAR da área responsável, mesmo favorável; conferir erros na homologação e registrar a necessidade de contato com o cliente. Não usar CIÊNCIA nem decidir apenas pela existência de providência objetiva.
+1. Agrupar candidatos por processo, sem eliminar nada.
+2. Comparar ID da decisão, teor/dispositivo, objeto, datas e destinatários. Mesma decisão publicada para partes diferentes pode produzir duas CIs sem exigir duas tarefas. Pequenas diferenças de redação ou resumos feitos por modelos diferentes não tornam o ato distinto.
+3. Mesmo ID e mesmo conteúdo: duplicidade confirmada, ressalvada republicação corretiva ou nova comunicação que modifique o prazo. Se só houver resumos coincidentes sem ID original, classificar como provável e pedir conferência do documento antes de ignorar a CI.
+4. Preservar preferencialmente a comunicação própria do cliente, mais completa e válida para seu prazo. Não adotar prazo da publicação dirigida à parte contrária como prazo do cliente.
+5. Manter cada CI no bloco e posição originais. Na cópia, escrever `DUPLICADA DA CI [NÚMERO]. Não abrir nova tarefa. Utilizar a tarefa indicada na CI mais completa.` Se provável, escrever `PROVÁVEL DUPLICIDADE — CONFERIR ID/TEOR ANTES DE DESCARTAR`.
+6. Se outra CI acrescentar dado útil, incorporar à tarefa existente. Se modificar data/local/prazo por novo ato, analisar cada CI e atualizar a tarefa apropriada; não ignorar a mudança como duplicata.
+7. Não confundir tarefas complementares obrigatórias com duplicidade. Não deduplicar laudos, perícias ou despachos padronizados de processos/clientes diferentes.
+8. Conferir de forma independente avisos automáticos “ato diferente” e “duplicada”. Não afirmar que o bot detectou corretamente sem confronto dos textos.
 
-- Se a intimação determinar objetivamente o que fazer e trouxer prazo, indicar diretamente a tarefa de minutar disponível para a área.
-- Se exigir avaliação de resultado, erro, recurso ou estratégia, indicar analisar.
-- O título decisão, despacho ou sentença não define sozinho a tarefa.
-- Se a ordem for dirigida à parte contrária, não abrir minuta para o cliente.
-- Aplicar as tarefas complementares de pagamento, depósito ou contato quando previstas.
+## Ausência de responsável
 
-## Duplicidades
-
-- Manter cada CI em sua posição e numeração originais, mesmo quando duplicada.
-- Nunca fundir cabeçalhos como `26 e 45. CIs...`.
-- Identificar a CI mais completa e não abrir tarefas repetidas. A CI mais completa é a original; a outra é ignorada (não gera tarefa).
-- Duplicata é a mesma publicação em mais de uma CI do mesmo processo: o texto é praticamente igual e muda só o destinatário, o link ou o código da comunicação (o VIOS costuma trazer uma cópia para cada parte). Quando só muda o destinatário, a original é a CI endereçada ao cliente do escritório; a cópia endereçada à outra parte é ignorada.
-- Mesmo processo com ato diferente (ex.: perícia designada e depois redesignada) não é duplicata: analisar cada CI e, se a mais nova mudar data ou local, atualizar a tarefa existente em vez de abrir outra.
-- O programa detecta as duplicatas automaticamente, marca a cópia como `DUPLICADA DA CI [NÚMERO]` e não a lança no VIOS.
-- Na menos completa, informar:
-
-```text
-DUPLICADA DA CI [NÚMERO].
-Não abrir nova tarefa. Utilizar a tarefa indicada na CI mais completa.
-```
-
-- Se a segunda CI acrescentar prazo, data ou local, atualizar a tarefa existente.
-- Não confundir duplicidade com tarefas complementares exigidas pelo mesmo ato.
-
-## Modelo com data operacional
-
-```text
-[n]. CI [número] — Processo [número]
-Cliente:
-Natureza jurídica:
-Departamento interno provável:
-Advogado auxiliar informado:
-Do que se trata:
-Tarefa no VIOS:
-Advogada auxiliar:
-Responsável a marcar na tarefa:
-Tarefa complementar:
-Prazo jurídico fatal:
-Data operacional normal — D-2:
-DATA DA TAREFA NO VIOS:
-Motivo da data da tarefa:
-Cabe recurso?
-Resumo para tarefa:
-Observação de cadastro:
-Duplicidade:
-```
-
-## Bloqueios antes da resposta
-
-Não finalizar enquanto houver inconsistência não explicada. Conferir em cada CI:
-
-- destinatário da ordem;
-- natureza, fase e departamento;
-- compatibilidade do auxiliar com a tarefa;
-- divergência de cadastro registrada;
-- escolha entre analisar e minutar;
-- prazo fatal e data operacional separados;
-- prioridade de RPV para o dia útil seguinte;
-- toda emenda à inicial da Suhiane, Trabalhista ou Previdenciária, para o primeiro dia útil seguinte, sem D-2 e com o rótulo de prioridade;
-- marcação do Breno na petição de Execução da Tamira;
-- duplicidade sem repetição de tarefa;
-- existência do nome da tarefa na lista oficial do VIOS.
+Não atribuir nenhuma tarefa a Sarah Pontes/Controladoria. Se não houver responsável identificável pelas regras institucionais, registrar `RESPONSÁVEL NÃO IDENTIFICADO`, bloquear a tarefa e listar a pendência fora do arquivo. Não presumir responsável de outra área.

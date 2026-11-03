@@ -1,0 +1,536 @@
+{% from "_ultron.html" import ultron, ultron_script, ultron_icone %}
+{% from "_cena.html" import cena %}
+{% set ESTADOS = {"conferir": ["s-ja", "Conferido, não enviado"], "enviando": ["s-andamento", "Enviando…"],
+                  "testado": ["s-andamento", "Testado (não gravou)"], "concluido": ["s-ok", "Concluído"], "falhou": ["s-erro", "Parou"]} %}
+{% macro tabela_envios(lista) %}
+<div class="rolar"><table class="hist">
+  <tr><th>Quando</th><th>Arquivo</th><th>CIs / tarefas</th><th>Resultado</th><th>Situação</th></tr>
+  {% for id, e in lista %}{% set r = resumo(e) %}{% set s = ESTADOS.get(e.estado, ["s-ja", e.estado]) %}
+  <tr>
+    <td class="nowrap">{{ e.criado.strftime('%d/%m/%Y %H:%M') }}</td>
+    <td><a href="{{ url_for('ver', envio_id=id) }}">{{ e.arquivo }}</a></td>
+    <td>{{ r.cis }} / {{ r.tarefas }}</td>
+    <td class="nowrap">{% if r.gravadas %}<span class="ok">{{ r.gravadas }} gravada(s)</span>{% endif %}
+      {% if r.testadas %}<span class="suave">{{ r.testadas }} testada(s)</span>{% endif %}
+      {% if r.erros %}<span class="erro">{{ r.erros }} erro(s)</span>{% endif %}
+      {% if r.puladas %}<span class="suave">{{ r.puladas }} já no VIOS/duplicada(s)</span>{% endif %}
+      {% if not (r.gravadas or r.testadas or r.erros or r.puladas) %}<span class="suave">—</span>{% endif %}</td>
+    <td><span class="selo {{ s[0] }}">{{ s[1] }}</span></td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% endmacro %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ultron — envio ao VIOS</title>
+{{ ultron_icone() }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root { --fundo: #0a0c11; --cartao: #12161e; --cartao2: #181d27; --borda: #262d3a; --texto: #e6e9ef;
+          --suave: #8b93a3; --red: #ff2a2a; --red-escuro: #b3121b; --verde: #3fb950; --ambar: #e3a72f;
+          --azul: #58a6ff; --metal: #c9d1d9; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--texto);
+         background: radial-gradient(ellipse at top, #1a0b0e 0%, var(--fundo) 55%) fixed, var(--fundo); min-height: 100vh; }
+  a { color: var(--metal); }
+  header { display: flex; align-items: center; gap: 14px; padding: 14px 24px; border-bottom: 1px solid var(--borda);
+           background: rgba(10, 12, 17, .85); position: sticky; top: 0; z-index: 5; backdrop-filter: blur(6px); }
+  header a { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--texto); }
+  .marca { font-family: Orbitron, system-ui, sans-serif; font-weight: 800; letter-spacing: .28em; font-size: 20px; }
+  .marca b { color: var(--red); text-shadow: 0 0 12px rgba(255, 42, 42, .6); }
+  .sub { color: var(--suave); font-size: 13px; letter-spacing: .04em; }
+  main { max-width: 1100px; margin: 28px auto; padding: 0 16px; }
+  .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 14px; padding: 22px; margin-bottom: 16px; }
+  h1 { font-size: 20px; margin: 0 0 10px; }
+  h2 { font-size: 16px; margin: 0 0 10px; }
+  .suave { color: var(--suave); }
+  .erro { color: #ff7b72; }
+  .aviso { color: var(--ambar); }
+  code { background: var(--cartao2); border: 1px solid var(--borda); border-radius: 4px; padding: 0 4px; font-size: 13px; }
+  pre { background: #0d1017; border: 1px solid var(--borda); border-radius: 8px; padding: 12px; white-space: pre-wrap;
+        margin: 8px 0 0; font-size: 13px; color: var(--metal); }
+
+  /* botões */
+  button, .botao { font: inherit; font-weight: 600; border: 1px solid transparent; border-radius: 10px; padding: 10px 18px;
+                   cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: .15s; }
+  .primario { background: linear-gradient(180deg, var(--red), var(--red-escuro)); color: #fff; box-shadow: 0 0 18px rgba(255, 42, 42, .35); }
+  .primario:hover:not(:disabled) { box-shadow: 0 0 26px rgba(255, 42, 42, .6); transform: translateY(-1px); }
+  .secundario { background: var(--cartao2); color: var(--texto); border-color: var(--borda); }
+  .secundario:hover:not(:disabled) { border-color: var(--metal); }
+  button:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+  .acoes { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+  /* selos */
+  .selo { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; border: 1px solid; }
+  .s-ok { color: var(--verde); border-color: rgba(63, 185, 80, .4); background: rgba(63, 185, 80, .1); }
+  .s-erro { color: #ff7b72; border-color: rgba(255, 123, 114, .4); background: rgba(255, 123, 114, .1); }
+  .s-ja { color: var(--suave); border-color: var(--borda); background: var(--cartao2); }
+  .s-andamento { color: var(--azul); border-color: rgba(88, 166, 255, .4); background: rgba(88, 166, 255, .1); }
+  .numeros { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 12px; }
+  .numero { background: var(--cartao2); border: 1px solid var(--borda); border-radius: 10px; padding: 8px 14px; }
+  .numero b { font-size: 20px; display: block; line-height: 1.1; }
+
+  /* caixa de envio do .txt */
+  .soltar { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; cursor: pointer;
+            border: 2px dashed #3a4253; border-radius: 18px; padding: 36px 20px 30px; background: rgba(255, 255, 255, .015); transition: .2s; }
+  .soltar:hover, .soltar.arrastando { border-color: var(--red); background: rgba(255, 42, 42, .05); box-shadow: inset 0 0 40px rgba(255, 42, 42, .08); }
+  .soltar .titulo { font-size: 20px !important; font-weight: 700; margin-top: 6px; }
+  .soltar, .soltar span { text-transform: none; letter-spacing: 0; font-size: 15px; color: var(--texto); }
+  .soltar .suave { color: var(--suave); font-size: 14px; }
+  .soltar input[type=file] { display: none; }
+
+  /* mascote (bot/templates/_ultron.html): brilho, piscar e flutuar vêm do ultron_script() */
+  .ultron { width: var(--tam); display: inline-flex; flex-direction: column; align-items: center; flex: none; }
+  .ultron .corpo { width: 100%; }
+  .ultron svg { width: 100%; display: block; overflow: visible; }
+  .ultron.subindo svg { transform: translateY(calc(var(--tam) / -48)); } /* 1/3 de pixel da grade */
+  .ultron .olho-r { filter: drop-shadow(0 0 calc(.8px * var(--brilho, .6)) #ff5a3c); }
+  .ultron .olho-o { filter: drop-shadow(0 0 calc(1.4px * var(--brilho, .6)) #ff5a3c); }
+  .ultron.piscando .olho-r, .ultron.piscando .olho-o { fill: #1d1e21; filter: none; }
+  .ultron .sombra { width: 70%; height: calc(var(--tam) * .05); margin-top: calc(var(--tam) * .03); border-radius: 50%;
+                    background: radial-gradient(rgba(255, 90, 60, .3), transparent 70%); }
+  .ultron.trabalhando .braco.esq { animation: braco .3s steps(1) infinite; }
+  .ultron.trabalhando .braco.dir { animation: braco .3s steps(1) infinite .15s; }
+  .ultron.trabalhando .perna { animation: braco .6s steps(1) infinite; }
+  .ultron.feliz .corpo { animation: pular .7s steps(3) 3; }
+  .ultron.feliz .braco { animation: braco .2s steps(1) 10; }
+  .ultron.erro .corpo { animation: tremer .45s steps(4) 2; }
+  .ultron.erro .olho-r, .ultron.erro .olho-o { animation: falhar 1.2s steps(2) infinite; }
+  @keyframes braco { 50% { transform: translateY(-.34px); } }
+  @keyframes pular { 40% { transform: translateY(calc(var(--tam) / -4)); } }
+  @keyframes tremer { 25% { transform: translateX(calc(var(--tam) / -16)); } 75% { transform: translateX(calc(var(--tam) / 16)); } }
+  @keyframes falhar { 50% { opacity: .2; } }
+
+  /* andamento do envio */
+  .painel { display: flex; gap: 28px; align-items: center; }
+  .painel .info { flex: 1; min-width: 0; }
+  .fase { font-family: Orbitron, system-ui, sans-serif; font-size: 15px; letter-spacing: .08em; color: var(--metal); }
+  .barra { height: 12px; border-radius: 999px; background: #0d1017; border: 1px solid var(--borda); overflow: hidden; margin: 12px 0 6px; position: relative; }
+  .barra i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--red-escuro), var(--red));
+             box-shadow: 0 0 14px var(--red); transition: width .6s ease; }
+  .barra.ativa::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .18), transparent);
+                        animation: scan 1.4s linear infinite; }
+  @keyframes scan { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+  .lista { list-style: none; margin: 0; padding: 0; }
+  .lista > li { border: 1px solid var(--borda); background: var(--cartao2); border-radius: 12px; padding: 12px 14px; margin-top: 10px; transition: .3s; }
+  .lista > li.atual { border-color: var(--red); box-shadow: 0 0 18px rgba(255, 42, 42, .2); }
+  .lista .topo { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+  .lista .ultima { font-size: 12px; color: var(--suave); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tarefas { list-style: none; padding: 0; margin: 8px 0 0; }
+  .tarefas li { display: flex; gap: 10px; align-items: center; font-size: 14px; padding: 3px 0; }
+  .icone { width: 20px; height: 20px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 800;
+           border: 2px solid var(--borda); color: var(--suave); }
+  .icone.criando { border-color: var(--red); border-top-color: transparent; animation: girar .8s linear infinite; }
+  .icone.adicionada { border-color: var(--azul); color: var(--azul); }
+  .icone.gravada, .icone.testada { border-color: var(--verde); background: var(--verde); color: #08130b; }
+  .icone.erro { border-color: #ff7b72; background: #ff7b72; color: #1a0705; }
+  .icone.pulada { border-style: dashed; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+
+  /* edição */
+  .tarefa + .tarefa { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--borda); }
+  ul { margin: 6px 0 0; padding-left: 18px; }
+  details summary { cursor: pointer; color: var(--metal); font-weight: 600; }
+  label { display: block; font-size: 12px; color: var(--suave); text-transform: uppercase; letter-spacing: .04em; }
+  input:not([type=checkbox]), textarea { display: block; width: 100%; margin-top: 4px; font: inherit; font-size: 14px; color: var(--texto);
+    border: 1px solid var(--borda); border-radius: 8px; padding: 8px 10px; background: #0d1017; text-transform: none; letter-spacing: 0; }
+  input:focus, textarea:focus { outline: none; border-color: var(--red); box-shadow: 0 0 0 3px rgba(255, 42, 42, .15); }
+  textarea { resize: vertical; }
+  input[type=checkbox] { accent-color: var(--red); }
+  .mono { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  .grade { display: grid; grid-template-columns: 2fr 130px 90px 2fr auto; gap: 10px; align-items: end; margin-bottom: 10px; }
+  .remover { white-space: nowrap; padding-bottom: 10px; text-transform: none; }
+  .ci-topo { display: flex; gap: 12px; align-items: end; margin-bottom: 6px; }
+  .campo-ci { width: 110px; font-weight: 700; }
+  .com-problema { border-left: 4px solid #ff7b72; }
+  .barra-salvar { position: sticky; bottom: 0; padding: 14px 0; text-align: right;
+                  background: linear-gradient(transparent, var(--fundo) 40%); }
+  /* cena do envio (bot/templates/_cena.html), no estilo da vila */
+  .cena-cartao { padding: 0; overflow: hidden; background: #1b1d21; border-color: #3a3326; }
+  .cena-etapas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; list-style: none; margin: 0; padding: 14px 18px 12px;
+                 font: 700 13px "Cormorant Garamond", Georgia, serif; color: #8f8a7e; letter-spacing: .04em; }
+  .cena-etapas li { border-top: 3px solid #3a3f46; padding-top: 6px; }
+  .cena-etapas li span { display: block; font-size: 15px; color: #b9b2a3; }
+  .cena-etapas li.feita { border-top-color: #c98a2e; color: #c98a2e; }
+  .cena-etapas li.atual { border-top-color: #ff5a3c; color: #ff5a3c; }
+  .cena-etapas li.feita span, .cena-etapas li.atual span { color: #efe6d2; }
+  .cena { position: relative; container-type: inline-size; }
+  .cena-palco { position: relative; aspect-ratio: 960 / 340; overflow: hidden; }
+  .cena-fundo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .cena-rotulo { font: 700 11px "Cormorant Garamond", Georgia, serif; letter-spacing: 1.6px; fill: #efe6d2; }
+  .cena-contador { font: 700 13px ui-monospace, monospace; fill: #ff5a3c; }
+  .cena .cena-placa-contador { opacity: 0; transition: opacity .4s; }
+  .cena.na-torre .cena-placa-contador { opacity: 1; }
+  .cena .cena-linhas { opacity: 0; transition: opacity .6s; }
+  .cena.conferido .cena-linhas { opacity: 1; }
+  .cena .cena-sinal { opacity: 0; }
+  .cena.na-torre .cena-sinal { animation: sinal 1.2s steps(2) infinite; }
+  .cena.na-torre .cena-luz { animation: luz .8s steps(2) infinite; }
+  @keyframes sinal { 50% { opacity: 1; } }
+  @keyframes luz { 50% { fill: #ff5a3c; } }
+  .cena-topo { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 18px 12px; }
+  .cena-chip { font: 700 13px "Cormorant Garamond", Georgia, serif; letter-spacing: .08em; color: #efe6d2; background: #1b1d21;
+               border: 1.5px solid #c98a2e; padding: 3px 10px; display: inline-flex; align-items: center; gap: 7px; }
+  .cena-chip:empty { display: none; }
+  .cena-chip i { width: 7px; height: 7px; background: #ff5a3c; display: inline-block; }
+  .cena-chip.ativo i { animation: luz-chip .8s steps(2) infinite; }
+  @keyframes luz-chip { 50% { opacity: .2; } }
+  .cena-teste { border-color: #ff5a3c; color: #ffb3a6; }
+  .cena-ultron { position: absolute; top: 47.4%; width: 6.25%; transition-property: left; transition-timing-function: linear; }
+  .cena-ultron .ultron { width: 100% !important; }
+  .cena-ultron.virado .ultron svg { transform: scaleX(-1); }
+  .cena-papel { position: absolute; left: 30%; top: -42%; width: 40%; aspect-ratio: 3 / 4; background: #f4efe3; border: 2px solid #1b1d21;
+                display: none; flex-direction: column; justify-content: center; gap: 12%; padding: 0 14%; }
+  .cena-papel i { height: 2px; background: #6a7079; display: block; }
+  .cena-ultron.carregando .cena-papel { display: flex; }
+  .ultron.andando .perna { animation: braco .22s steps(1) infinite; }
+  .ultron.andando .braco.esq { animation: braco .22s steps(1) infinite .11s; }
+  .ultron.andando .braco.dir { animation: braco .22s steps(1) infinite; }
+  .cena-fala { position: absolute; left: 1.6%; right: 1.6%; bottom: 3.5%; background: #efe6d2; color: #1c1d20; border: 3px solid #1c1d20;
+               box-shadow: inset 0 0 0 2px #efe6d2, inset 0 0 0 3px #1c1d20; padding: 14px 40px 12px 16px;
+               font: 700 clamp(14px, 2cqw, 19px)/1.35 "Cormorant Garamond", Georgia, serif; }
+  .cena-quem { position: absolute; top: -13px; left: 14px; background: #1c1d20; color: #efe6d2; font-size: 12px; letter-spacing: .12em; padding: 2px 9px; }
+  .cena-seta { position: absolute; right: 14px; bottom: 10px; color: #ff2a2a; font-size: 13px; animation: luz-chip 1s steps(2) infinite; }
+  @media (max-width: 640px) { .cena-fala { position: relative; left: auto; right: auto; bottom: auto; margin: 14px 10px 10px; }
+    .cena-etapas { grid-template-columns: repeat(2, 1fr); } .cena-chip { font-size: 11px; } }
+
+  /* histórico */
+  .topo-hist { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .topo-hist h2 { margin: 0; }
+  .rolar { overflow-x: auto; }
+  table.hist { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .hist th { text-align: left; font-size: 12px; color: var(--suave); text-transform: uppercase; letter-spacing: .04em; padding: 8px; }
+  .hist td { padding: 9px 8px; border-top: 1px solid var(--borda); vertical-align: top; }
+  .hist tr:hover td { background: rgba(255, 255, 255, .02); }
+  .hist .ok { color: var(--verde); }
+  .hist td span + span { margin-left: 8px; }
+  .nowrap { white-space: nowrap; }
+  .busca { max-width: 320px; }
+  @media (max-width: 860px) { .grade { grid-template-columns: 1fr 1fr; } .grade .largo { grid-column: 1 / -1; } }
+  @media (max-width: 640px) { .painel { flex-direction: column; text-align: center; } header .sub { display: none; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <a href="{{ url_for('inicio') }}">{{ ultron("parado", 48, "ultron-topo") }}
+    <span><span class="marca"><b>U</b>LTRON</span><br><span class="sub">envio de tarefas ao VIOS</span></span></a>
+  <a class="botao secundario" style="margin-left: auto" href="{{ url_for('historico') }}">Histórico</a>
+</header>
+<main>
+{% if tela == "inicio" %}
+  {{ cena(ocupado=ocupado) }}
+  <div class="cartao">
+    <form action="{{ url_for('ler') }}" method="post" enctype="multipart/form-data" id="form-arquivo">
+      <label class="soltar" id="soltar">
+        {{ ultron("parado", 48, "ultron-caixa") }}
+        <span class="titulo" id="soltar-titulo">Solte o .txt aqui</span>
+        <span class="suave" id="soltar-sub">ou clique para escolher o arquivo — o Ultron confere tudo antes de gravar</span>
+        <input type="file" name="arquivo" accept=".txt,text/plain" required id="arquivo">
+      </label>
+    </form>
+    {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+  </div>
+  <div class="cartao">
+    <details>
+      <summary>Formato do arquivo</summary>
+      <p class="suave">Um bloco por tarefa, separados por uma linha só com <code>---</code>. A <code>DESCRIÇÃO:</code> vem por último:
+        tudo abaixo dela vai para a Observação da tarefa. Duas tarefas da mesma CI ficam em blocos seguidos.</p>
+<pre>CI: 42484
+TAREFA: MINUTAR PETIÇÃO (EXECUÇÃO) 2026
+DATA: 29/10/2026
+HORA:
+RESPONSÁVEIS: TAMIRA LOIOLA, BRENO SILVA MOTA
+DESCRIÇÃO:
+PRAZO FATAL: 02/11/2026
+MINUTAR PETIÇÃO PARA INFORMAR OS DEMAIS DADOS NECESSÁRIOS PARA A CONFECÇÃO DOS REQUISITÓRIOS (RPV/PRECATÓRIO)
+Despacho: considerando a certidão de ID 192859275, intime-se a parte exequente para, no prazo de 5 dias, ...
+---
+CI: 42491
+TAREFA: ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026
+DATA: 29/10/2026
+HORA:
+RESPONSÁVEIS: automático
+DESCRIÇÃO:
+PRAZO DE EMBARGOS: 02/11/2026
+PRAZO DE RECURSO: 16/11/2026
+SENTENÇA
+[dispositivo]</pre>
+      <ul class="suave">
+        <li><b>TAREFA</b>: nome exato da lista oficial do VIOS.</li>
+        <li><b>DATA</b>: DD/MM/AAAA. Só a CIÊNCIA pode ficar sem data (vai para o dia do envio).</li>
+        <li><b>HORA</b>: HH:MM. Obrigatória em audiência, perícia e sustentação oral; vazia nas demais.</li>
+        <li><b>RESPONSÁVEIS</b>: <code>automático</code> (o VIOS marca o auxiliar) ou os nomes, separados por vírgula.</li>
+      </ul>
+    </details>
+  </div>
+  <div class="cartao">
+    <div class="topo-hist"><h2>Últimos envios</h2>
+      <a class="botao secundario" href="{{ url_for('historico') }}">Histórico completo · {{ total_lancadas }} CI(s) gravadas</a></div>
+    {% if recentes %}{{ tabela_envios(recentes) }}
+    {% else %}<p class="suave">Nenhum envio registrado ainda.</p>{% endif %}
+  </div>
+  <script>
+    // escolheu ou soltou o arquivo: já envia para conferir (nada é gravado nesta etapa)
+    const form = document.getElementById('form-arquivo'), caixa = document.getElementById('soltar'),
+          campo = document.getElementById('arquivo');
+    async function ler(nome) {
+      document.getElementById('soltar-titulo').textContent = 'Lendo ' + nome + '…';
+      document.getElementById('soltar-sub').textContent = 'conferindo tarefas, datas, responsáveis e duplicatas';
+      document.getElementById('ultron-caixa').classList.replace('parado', 'trabalhando');
+      if (window.cenaReceber) await Promise.race([window.cenaReceber(nome), new Promise(r => setTimeout(r, 2500))]);
+      form.submit();
+    }
+    // também dá para soltar o arquivo em cima da cena
+    const palco = document.querySelector('.cena-cartao');
+    if (palco) {
+      ['dragenter', 'dragover'].forEach(ev => palco.addEventListener(ev, e => { e.preventDefault(); caixa.classList.add('arrastando'); }));
+      palco.addEventListener('dragleave', () => caixa.classList.remove('arrastando'));
+      palco.addEventListener('drop', e => {
+        e.preventDefault(); caixa.classList.remove('arrastando');
+        if (!e.dataTransfer.files.length) return;
+        campo.files = e.dataTransfer.files; ler(campo.files[0].name);
+      });
+    }
+    campo.addEventListener('change', () => campo.files.length && ler(campo.files[0].name));
+    ['dragenter', 'dragover'].forEach(ev => caixa.addEventListener(ev, e => { e.preventDefault(); caixa.classList.add('arrastando'); }));
+    ['dragleave', 'drop'].forEach(ev => caixa.addEventListener(ev, e => { e.preventDefault(); caixa.classList.remove('arrastando'); }));
+    caixa.addEventListener('drop', e => {
+      if (!e.dataTransfer.files.length) return;
+      campo.files = e.dataTransfer.files;
+      ler(campo.files[0].name);
+    });
+  </script>
+
+{% elif tela == "historico" %}
+  <div class="cartao">
+    <div class="topo-hist"><h1>Histórico de envios</h1><a class="botao secundario" href="{{ url_for('inicio') }}">Enviar um .txt</a></div>
+    <p class="suave">Cada arquivo enviado fica guardado em <code>saida/envios/</code>, com o resultado de cada CI — não some ao reiniciar.</p>
+    {% if envios_todos %}{{ tabela_envios(envios_todos) }}{% else %}<p class="suave">Nenhum envio registrado ainda.</p>{% endif %}
+  </div>
+  <div class="cartao">
+    <div class="topo-hist"><h2>Tarefas gravadas no VIOS · {{ gravadas | length }} CI(s), {{ total_tarefas }} tarefa(s)</h2>
+      <input class="busca" id="busca" placeholder="Buscar CI, tarefa ou responsável…" autocomplete="off"></div>
+    <p class="suave">Registro do robô (<code>saida/lancamentos.json</code>): é ele que impede lançar a mesma CI duas vezes.</p>
+    <div class="rolar"><table class="hist" id="tabela-gravadas">
+      <tr><th>Gravada em</th><th>CI</th><th>Tarefa</th><th>Data</th><th>Responsáveis</th></tr>
+      {% for ci, r in gravadas %}{% for t in r.tarefas or [{}] %}
+      <tr>
+        <td class="nowrap">{{ r.quando }}</td><td><b>{{ ci }}</b></td><td>{{ t.tarefa }}</td>
+        <td class="nowrap">{{ t.data }}</td><td>{{ (t.responsaveis or []) | join(", ") or "automático" }}</td>
+      </tr>
+      {% endfor %}{% endfor %}
+    </table></div>
+  </div>
+  <script>
+    document.getElementById('busca').addEventListener('input', e => {
+      const q = e.target.value.toLowerCase();
+      document.querySelectorAll('#tabela-gravadas tr:not(:first-child)').forEach(tr =>
+        tr.hidden = q && !tr.textContent.toLowerCase().includes(q));
+    });
+  </script>
+
+{% else %}
+  {% set com_problema = envio.cis | selectattr("problemas") | list %}
+  {% set ja = envio.cis | selectattr("ja_lancada") | list %}
+
+  {{ cena(envio, aptas, com_problema, ja, agora) }}
+
+  {% if envio.estado == "enviando" %}
+  <div class="cartao">
+    <div class="fase" id="fase">{{ "GRAVANDO NO VIOS" if envio.confirmar else "TESTANDO (NÃO GRAVA)" }}…</div>
+    <div class="barra ativa"><i id="barra"></i></div>
+    <div class="suave" id="contagem">Preparando…</div>
+    <ul class="lista" id="lista"></ul>
+  </div>
+  <script>
+    // acompanha o envio ao vivo; quando termina, recarrega para mostrar o resultado
+    const FASES = { login: 'ENTRANDO NO VIOS', duplicatas: 'CONFERINDO DUPLICATAS', lancando: 'CRIANDO AS TAREFAS' };
+    const ROTULO = { 'gravada': ['s-ok', 'Gravada'], 'testada': ['s-ok', 'Teste ok'], 'lançando': ['s-andamento', 'Criando…'],
+                     'conferindo': ['s-andamento', 'Conferindo…'], 'duplicada': ['s-ja', 'Duplicata'], 'pulada': ['s-ja', 'Já tinha tarefa'],
+                     'erro': ['s-erro', 'Erro'], '': ['s-ja', 'Na fila'] };
+    const ICONE = { gravada: '✓', testada: '✓', adicionada: '•', erro: '!', pulada: '–', criando: '', aguardando: '' };
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    async function atualizar() {
+      let s;
+      try { s = await (await fetch('{{ url_for("status", envio_id=envio_id) }}', { cache: 'no-store' })).json(); }
+      catch (e) { return setTimeout(atualizar, 3000); }
+      document.getElementById('fase').textContent = (FASES[s.fase] || 'TRABALHANDO') + (s.confirmar ? '' : ' · TESTE') + '…';
+      const pct = s.tarefas_total ? Math.round(100 * s.tarefas_feitas / s.tarefas_total) : 0;
+      document.getElementById('barra').style.width = Math.max(pct, s.fase === 'login' ? 4 : 8) + '%';
+      document.getElementById('contagem').textContent =
+        `${s.tarefas_feitas} de ${s.tarefas_total} tarefa(s) · ${s.concluidas} de ${s.total} CI(s) concluída(s)`;
+      document.getElementById('lista').innerHTML = s.cis.map(c => {
+        const [classe, texto] = ROTULO[c.resultado] || ROTULO[''];
+        const atual = c.resultado === 'lançando' || c.resultado === 'conferindo';
+        return `<li class="${atual ? 'atual' : ''}"><div class="topo"><b>CI ${esc(c.ci)}</b><span class="selo ${classe}">${texto}</span></div>
+          <ul class="tarefas">${c.tarefas.map(t => `<li><span class="icone ${t.situacao}">${ICONE[t.situacao] || ''}</span>
+            <span>${esc(t.nome)} <span class="suave">· ${esc(t.data || 'dia do envio')}${t.hora ? ' às ' + esc(t.hora) : ''}</span></span></li>`).join('')}</ul>
+          ${atual && c.ultima ? `<div class="ultima">${esc(c.ultima)}</div>` : ''}</li>`;
+      }).join('');
+      if (window.cenaStatus) window.cenaStatus(s);
+      if (s.estado === 'enviando') setTimeout(atualizar, 1500);
+      else { document.getElementById('barra').style.width = '100%'; setTimeout(() => location.reload(), 1200); }
+    }
+    atualizar();
+  </script>
+  {% endif %}
+
+  {% if envio.estado in ("concluido", "testado", "falhou") %}
+  {% set gravadas = envio.cis | selectattr("resultado", "equalto", "gravada") | list %}
+  {% set testadas = envio.cis | selectattr("resultado", "equalto", "testada") | list %}
+  {% set erros = envio.cis | selectattr("resultado", "equalto", "erro") | list %}
+  {% set puladas = envio.cis | selectattr("resultado", "in", ["pulada", "duplicada"]) | list %}
+  <div class="cartao">
+    <div class="painel">
+      <div class="info">
+        {% if envio.estado == "falhou" %}
+          <h1 class="erro">O envio parou</h1>
+          <p>{{ envio.falha }}</p><p class="suave">Confira o log (logs/bot.log) e tente de novo — o que já foi gravado não é repetido.</p>
+        {% else %}
+          <h1>{{ "Envio concluído" if envio.estado == "concluido" else "Teste concluído (nada foi gravado)" }}</h1>
+          <div class="numeros">
+            {% if envio.estado == "concluido" %}<div class="numero"><b style="color: var(--verde)">{{ gravadas | length }}</b>CI(s) gravada(s)</div>
+            {% else %}<div class="numero"><b style="color: var(--verde)">{{ testadas | length }}</b>CI(s) testada(s)</div>{% endif %}
+            <div class="numero"><b style="color: #ff7b72">{{ erros | length }}</b>com erro</div>
+            <div class="numero"><b>{{ puladas | length }}</b>duplicada(s) / já no VIOS</div>
+          </div>
+          {% if envio.estado == "testado" %}<p class="suave">Prints do formulário em logs/ (<code>lancamento_ci*.png</code>).{% if not envio.so_teste %} Se estiver tudo certo, clique em <b>Enviar ao VIOS</b>.{% endif %}</p>{% endif %}
+          {% if erros %}<p class="aviso">Corrija as CIs com erro abaixo e envie de novo; as gravadas não vão outra vez.</p>{% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="cartao">
+    <h1>{{ envio.arquivo }}</h1>
+    <div class="numeros">
+      <div class="numero"><b style="color: var(--verde)">{{ aptas | length }}</b>pronta(s) para enviar</div>
+      <div class="numero"><b style="color: #ff7b72">{{ com_problema | length }}</b>com problema</div>
+      <div class="numero"><b>{{ ja | length }}</b>já lançada(s)</div>
+    </div>
+    {% if envio.reconstruido %}<p class="aviso">{{ envio.reconstruido }}</p>{% endif %}
+    <p class="suave">CIs com problema ou já lançadas não são enviadas. Duplicatas: conferidas com as intimações que o Ultron
+      capturou{% if nao_capturadas %} ({{ nao_capturadas | length }} CI(s) deste arquivo não foram capturadas){% endif %} e de novo
+      no envio, lendo no VIOS o texto de cada CI antes de gravar. A cópia não é lançada.</p>
+
+    {% if editavel %}
+    {% if envio.so_teste %}<p class="aviso"><b>Arquivo de teste</b> (começa com <code>MODO: TESTE</code>): o Ultron só preenche o
+      formulário do VIOS e tira print, <b>nada é gravado</b>.</p>{% endif %}
+    <form method="post" action="{{ url_for('enviar', envio_id=envio_id) }}" class="acoes" id="form-enviar">
+      {% if envio.so_teste %}
+      <button class="primario" {% if not aptas or ocupado %}disabled{% endif %}>Testar sem gravar ({{ aptas | length }})</button>
+      {% else %}
+      <button class="primario" name="confirmar" value="1" {% if not aptas or ocupado %}disabled{% endif %}
+        onclick="return confirm('Gravar {{ aptas | length }} CI(s) no VIOS?')">Enviar ao VIOS ({{ aptas | length }})</button>
+      {% if envio.estado != "testado" %}
+      <button class="secundario" {% if not aptas or ocupado %}disabled{% endif %}>Testar sem gravar</button>
+      {% endif %}
+      {% endif %}
+      <a class="botao secundario" href="{{ url_for('inicio') }}">Subir outro arquivo</a>
+      {% if ocupado %}<span class="aviso">O Ultron está ocupado com outro envio.</span>{% endif %}
+      <span class="aviso" id="nao-salvo" hidden>Há alterações não salvas: clique em "Salvar e conferir" antes de enviar.</span>
+    </form>
+    <p class="suave">Para corrigir, edite os campos abaixo e clique em <b>Salvar e conferir</b>. "Testar sem gravar" preenche o
+      formulário do VIOS e tira print, sem gravar.</p>
+    {% endif %}
+  </div>
+
+  {% if not editavel and envio.estado != "enviando" %}
+  <div class="cartao">
+    <h2>CIs deste envio</h2>
+    <div class="rolar"><table class="hist">
+      <tr><th>CI</th><th>Tarefa(s)</th><th>Resultado</th></tr>
+      {% for c in envio.cis %}
+      <tr>
+        <td><b>{{ c.ci }}</b></td>
+        <td>{% for t in c.tarefas %}<div>{{ t.nome }} <span class="suave">· {{ t.data_tarefa or "dia do envio" }}{% if t.hora %} às {{ t.hora }}{% endif %}
+          · {{ t.responsaveis | join(", ") if t.responsaveis else "automático" }}</span></div>{% endfor %}</td>
+        <td>{% if c.resultado == "gravada" %}<span class="selo s-ok">Gravada no VIOS</span>
+          {% elif c.resultado == "testada" %}<span class="selo s-ok">Teste ok</span>
+          {% elif c.resultado == "pulada" %}<span class="selo s-ja">Já tinha tarefa no VIOS</span>
+          {% elif c.resultado == "duplicada" %}<span class="selo s-ja">Duplicata</span>
+          {% elif c.resultado == "erro" %}<span class="selo s-erro">Erro</span>
+          {% elif c.problemas %}<span class="selo s-erro">Não enviada</span>
+          {% elif c.ja_lancada %}<span class="selo s-ja">Já lançada</span>
+          {% else %}<span class="selo s-ja">Não enviada</span>{% endif %}
+          {% if c.mensagens %}<details><summary>Detalhes</summary><ul class="suave">{% for m in c.mensagens %}<li>{{ m }}</li>{% endfor %}</ul></details>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </table></div>
+  </div>
+  {% endif %}
+
+  {% if editavel %}
+  <form method="post" action="{{ url_for('salvar', envio_id=envio_id) }}" id="form-editar">
+    <datalist id="lista-tarefas">{% for n in oficiais %}<option value="{{ n }}">{% endfor %}</datalist>
+    <datalist id="lista-pessoas"><option value="automático">{% for p in pessoas %}<option value="{{ p }}">{% endfor %}</datalist>
+    {% for c in envio.cis %}{% set g = loop.index0 %}
+    <div class="cartao ci {% if c.problemas %}com-problema{% endif %}">
+      <div class="ci-topo">
+        <label>CI <input name="g{{ g }}_ci" value="{{ c.ci }}" class="campo-ci" inputmode="numeric"></label>
+        {% if c.resultado == "gravada" %}<span class="selo s-ok">Gravada no VIOS</span>
+        {% elif c.resultado == "testada" %}<span class="selo s-ok">Teste ok</span>
+        {% elif c.resultado == "pulada" %}<span class="selo s-ja">Já tinha tarefa no VIOS</span>
+        {% elif c.resultado == "duplicada" %}<span class="selo s-ja">Duplicata (não lançada)</span>
+        {% elif c.resultado == "erro" %}<span class="selo s-erro">Erro no VIOS</span>
+        {% elif c.problemas %}<span class="selo s-erro">Corrigir antes de enviar</span>
+        {% elif c.ja_lancada %}<span class="selo s-ja">Já lançada</span>
+        {% else %}<span class="selo s-ok">Pronta</span>{% endif %}
+      </div>
+      {% if c.problemas %}<ul class="erro">{% for p in c.problemas %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
+      {% if c.avisos %}<ul class="aviso">{% for a in c.avisos %}<li>{{ a }}</li>{% endfor %}</ul>{% endif %}
+      {% if c.mensagens %}<details><summary>Detalhes do VIOS</summary><ul class="suave">{% for m in c.mensagens %}<li>{{ m }}</li>{% endfor %}</ul></details>{% endif %}
+      {% for t in c.tarefas %}{% set p = "g" ~ g ~ "_t" ~ loop.index0 ~ "_" %}
+      <div class="tarefa">
+        <div class="grade">
+          <label class="largo">Tarefa <input name="{{ p }}nome" value="{{ t.nome }}" list="lista-tarefas"></label>
+          <label>Data <input name="{{ p }}data" value="{{ t.data_tarefa }}" maxlength="10"
+            placeholder="{{ 'vazio = dia do envio' if t.nome.startswith('CIÊNCIA') else 'DD/MM/AAAA' }}"
+            title="{{ 'CIÊNCIA não tem prazo: vazio, vai para o dia em que for enviada ao VIOS' if t.nome.startswith('CIÊNCIA') else 'Data da tarefa no VIOS' }}"></label>
+          <label>Hora <input name="{{ p }}hora" value="{{ t.hora }}" placeholder="HH:MM" maxlength="5"></label>
+          <label class="largo">Responsáveis <input name="{{ p }}responsaveis" list="lista-pessoas"
+            value="{{ t.responsaveis | join(', ') if t.responsaveis else 'automático' }}"></label>
+          <label class="remover"><input type="checkbox" name="{{ p }}remover" value="1"> Remover tarefa</label>
+        </div>
+        <label>Descrição (vai para a Observação no VIOS)
+          <textarea name="{{ p }}descricao" rows="{{ [t.descricao.count('\n') + 2, 14] | min }}">{{ t.descricao }}</textarea></label>
+        {% if t.soltas %}
+        <label class="erro">Linhas fora do formato (apague, ou passe para a descrição)
+          <textarea name="{{ p }}soltas" rows="{{ t.soltas | length + 1 }}">{{ t.soltas | join('\n') }}</textarea></label>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    <div class="barra-salvar"><button class="primario">Salvar e conferir</button></div>
+  </form>
+
+  <div class="cartao">
+    <details>
+      <summary>Editar como texto (para colar ou acrescentar blocos)</summary>
+      <form method="post" action="{{ url_for('salvar', envio_id=envio_id) }}">
+        <input type="hidden" name="modo" value="texto">
+        <textarea name="texto" rows="24" class="mono">{{ texto }}</textarea>
+        <p><button class="primario">Salvar texto e conferir</button></p>
+      </form>
+    </details>
+  </div>
+  <script>
+    // alteração não salva: bloqueia o envio até salvar (senão iria a versão anterior)
+    document.getElementById('form-editar').addEventListener('input', () => {
+      document.getElementById('nao-salvo').hidden = false;
+      document.querySelectorAll('#form-enviar button').forEach(b => b.disabled = true);
+    });
+  </script>
+  {% endif %}
+{% endif %}
+</main>
+{{ ultron_script() }}
+</body>
+</html>

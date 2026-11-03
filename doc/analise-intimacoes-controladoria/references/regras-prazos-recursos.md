@@ -1,101 +1,63 @@
-# Regras de Prazos e Recursos
+# Prazos, cabimento e calendário
 
-Use este arquivo para orientar cálculo de prazo e indicação de cabimento. Se o documento ou manual da Controladoria trouxer regra mais específica, use a regra específica.
+Índice: validação; prazos de referência; calendário; casos especiais; apresentação.
 
-## Regra operacional
+## Validar antes de calcular
 
-- Sempre que houver prazo fatal calculável, indicar a data operacional em D-2 com o rótulo exato `PRAZO FATAL (D-2):`.
-- Se houver audiência ou perícia antes do D-2, usar no campo `PRAZO FATAL (D-2)` uma data anterior ao ato.
-- Em descrições de tarefas VIOS, usar a data de trabalho interna quando a operação exigir D-2.
-- Ao responder ao usuário, diferenciar `Prazo fatal:` e `PRAZO FATAL (D-2):`.
-- No resumo destinado à tarefa VIOS, inserir somente `PRAZO FATAL (D-2): DD/MM/AAAA`; não repetir ali o prazo jurídico fatal real.
+Identificar cliente destinatário, meio/providência, rito, órgão que praticou o ato, prazo expresso ou legal, termo inicial e calendário aplicável. Separar prazo da parte contrária. Não afirmar ausência geral de recurso só porque o ato favorece o cliente: avaliar interesse e vícios próprios.
 
-## Embargos e recursos
+Distinguir disponibilização, publicação e ciência eletrônica. Não tratar data de captura/geração do relatório como publicação. No DJEN, confirmar a publicação efetiva e contar do primeiro dia útil subsequente, conforme as regras aplicáveis. Intimação pessoal/portal pode ter regra distinta: verificar a modalidade antes de substituir o termo inicial.
 
-Regras extraídas do POP:
+Aplicar prazo expresso confirmado para a providência; se divergir da regra legal, registrar a divergência e a necessidade de conferência, sem alongar silenciosamente o controle. Se faltar prazo no texto, usar o legal apenas quando confirmada sua aplicação ao rito e inexistir prazo específico pertinente nos autos. Preservar controle preventivo identificado se a validação ainda estiver pendente.
 
-- Embargos: 5 dias.
-- Recurso em Juizado: 10 dias.
-- Recurso na Justiça Comum: 15 dias.
+## Prazos legais de referência
 
-### Regra obrigatória para tarefas de análise
+Conferir a legislação vigente e as exceções do caso. A tabela não prova cabimento nem afasta regra especial.
 
-Sempre que a tarefa indicada for `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO`, exibir as duas linhas, nesta ordem:
-
-```text
-PRAZO PARA EMBARGOS: [resultado]
-PRAZO PARA RECURSO: [resultado]
-```
-
-Preencher `[resultado]` com:
-
-- a data operacional em D-2, quando cabível e calculável;
-- `NÃO CABE`, quando o meio não for cabível;
-- com cabimento pendente (o teor não permite concluir), a data em D-2 pelo prazo legal — o advogado decide se recorre e precisa da data;
-- se não couber embargos nem recurso, omitir as duas linhas e deixar somente o `PRAZO FATAL (D-2)`.
-
-Não omitir nenhuma das duas linhas em tarefas de análise. Para tarefas diferentes de análise, exibir somente as linhas efetivamente aplicáveis.
-
-Quando couber embargos:
-
-```text
-PRAZO PARA EMBARGOS: DD/MM/AAAA
-```
-
-Quando couber outro recurso:
-
-```text
-PRAZO PARA RECURSO: DD/MM/AAAA
-```
-
-Quando couberem ambos:
-
-```text
-PRAZO PARA EMBARGOS: DD/MM/AAAA
-PRAZO PARA RECURSO: DD/MM/AAAA
-```
-
-## Prazo previsto em lei (quando o ato não informar o prazo)
-
-Quando a intimação não trouxer o número de dias, usar o prazo previsto em lei abaixo e escrever na descrição da tarefa que o prazo é o legal, por exemplo: `Prazo previsto em lei: 15 dias úteis (Apelação).`
-
-Só usar `PENDENTE – NÃO CONSTA NO DOCUMENTO` quando o caso não estiver nesta tabela nem nas regras do Previdenciário.
-
-### Processo Civil
-
-| Meio | Prazo |
+| Rito/meio | Prazo de referência |
 | --- | --- |
-| Prazo geral dos recursos: Apelação, Agravo de Instrumento, Agravo Interno, Recurso Especial e Recurso Extraordinário | 15 dias úteis |
-| Embargos de Declaração (qualquer que seja a decisão) | 5 dias úteis |
+| CPC: apelação, agravo de instrumento/interno, REsp e RE | 15 dias úteis, quando cabíveis |
+| Embargos de declaração cíveis/previdenciários/JEC | 5 dias úteis, quando cabíveis |
+| Sentença de JEC/JEF: recurso inominado | 10 dias úteis, ressalvadas exceções de cabimento |
+| Manifestação sobre laudo, art. 477, §1º, CPC | 15 dias úteis, se aplicável e sem prazo específico confirmado |
+| Trabalhista: RO, RR, agravo de instrumento/petição e embargos ao TST | 8 dias úteis, observados pressupostos e regras especiais |
+| Embargos de declaração trabalhistas | 5 dias úteis, quando cabíveis |
+| Embargos à execução trabalhista | 5 dias úteis após o marco próprio da CLT, inclusive garantia/penhora quando exigida; não presumir início pela mera publicação |
+| RE ao STF em matéria trabalhista | 15 dias úteis, quando cabível |
 
-### Processo do Trabalho
+Nos campos externos de controle, identificar `Prazo previsto em lei: N dias úteis ([meio/providência e fundamento]).`, mantendo breve a descrição. Se faltar base para aplicar a tabela ou dado para contar, registrar pendência, não prazo fatal validado.
 
-| Meio | Prazo |
-| --- | --- |
-| Recursos em geral: Recurso Ordinário, Recurso de Revista, Agravo de Instrumento, Agravo de Petição, Embargos ao TST (Recurso de Embargos à SDI-1) | 8 dias úteis |
-| Embargos de Declaração (contra sentença ou acórdão, para sanar omissão, contradição, obscuridade ou manifesto equívoco) | 5 dias úteis |
-| Embargos à Execução (para o executado se manifestar ou contestar a penhora, após a notificação) | 5 dias úteis |
-| Recurso Extraordinário (ao STF, regra do CPC) | 15 dias úteis |
+## Calendário e contagem
 
-### Contagem do prazo legal
+- Aplicar o calendário simplificado do SKILL.md a todas as contagens de prazos em dias úteis: contar segunda a sexta e excluir somente sábados e domingos, inclusive em embargos, recursos e manifestações. Incluir feriados, pontos facultativos, recesso e suspensões. Não exigir consulta de feriados nem bloquear pela ausência de calendário oficial.
+- Excluir o dia da publicação/ciência informada e iniciar no próximo dia de segunda a sexta. Preservar o marco documental e a duração expressa ou legal pertinente. Não inventar ciência do cliente a partir de intimação exclusiva da parte contrária.
+- D-2: retroceder dois dias de segunda a sexta do vencimento de referência, incluindo feriados. Análises/ciências e prioridades usam esse mesmo calendário para agendamento, com o corte das 12h previsto no SKILL.md.
+- Identificar uma vez, fora dos resumos: `Contagem solicitada: segunda a sexta, incluindo feriados; vencimentos sem validação do calendário judicial oficial.` Não chamar o resultado de vencimento jurídico oficial confirmado.
+- Preservar datas-limite expressamente fixadas pelo juízo e data/hora exatas dos eventos. Prazos em horas ou dias corridos mantêm a unidade e regime próprios, inclusive no Criminal; o calendário simplificado não converte dias corridos em dias úteis.
+- Se o usuário pedir especificamente validação jurídica oficial, distinguir essa conferência da contagem simplificada e consultar as regras e fontes oficiais do órgão competente.
 
-- Contar em dias úteis.
-- Excluir o dia do começo e incluir o dia do vencimento.
-- No Previdenciário continuam valendo as regras próprias: embargos em 5 dias, recurso em Juizado em 10 dias e recurso na Justiça Comum em 15 dias.
-- Quando o cabimento estiver pendente (`PENDENTE – CONFIRMAR CABIMENTO`), informar mesmo assim o prazo legal do meio, para não perder o prazo.
+## Casos especiais
 
-## Cuidados
+### Homologação de conciliação no JEC
 
-- Não afirmar cabimento de recurso quando o teor da decisão/sentença/acórdão não permitir concluir.
-- Quando depender de avaliação jurídica, indicar: `Cabe análise do advogado sobre recurso/embargos.`
-- Não sugerir abertura direta de recurso quando a regra da Controladoria exigir tarefa de análise primeiro.
-- Quando a intimação já for expressamente para contrarrazões, pode sugerir tarefa de contrarrazões.
-- Se faltar data de publicação/intimação, não calcule prazo; marque pendência.
+Verificar o art. 41 da Lei 9.099/95, que exclui essa sentença do recurso ordinário do Juizado. Não aplicar automaticamente dez dias só por se tratar de sentença de JEC. Conferir a natureza da homologação e instrumento; se o documento for insuficiente, registrar cabimento pendente. Não excluir a análise obrigatória da sentença nem a avaliação de embargos/correção por vício específico.
 
-## Contagem
+### Julgamento de embargos
 
-- Cível, Trabalhista e JEC: usar dias úteis, salvo regra específica em sentido contrário.
-- Criminal: usar dias corridos, salvo regra específica em sentido contrário.
-- Considerar feriados nacionais e feriados locais previstos nos manuais internos disponíveis.
+Conferir tempestividade e efeitos dos embargos para avaliar interrupção e novo termo recursal. Novos embargos podem exigir exame de vício próprio da decisão integrativa ou persistência de omissão não sanada. Não usar a frase absoluta “somente por vício novo”; não estimular repetição do mérito ou embargos protelatórios.
 
-Se não houver calendário de feriados disponível na sessão, informe a pendência em vez de inventar a data.
+### Honorários recursais
+
+Antes de sugerir omissão ou majoração do art. 85, §11, CPC, conferir honorários previamente fixados em desfavor da parte recorrente e demais requisitos da jurisprudência vigente. Ausência de honorários na origem não gera automaticamente omissão no recurso.
+
+### Laudo no Previdenciário/JEF
+
+A tarefa é de manifestação sobre laudo, não de comparecimento a perícia ou de análise de sentença. Usar quinze dias do art. 477, §1º, CPC apenas sob premissa de aplicação subsidiária adequada e inexistência de prazo específico no expediente/decisão. Identificar essa premissa quando só houver trecho resumido.
+
+## Apresentar os resultados
+
+Aplicar integralmente os cabeçalhos e datas do SKILL.md. Em análise jurídica de sentença/acórdão/decisão, calcular e mostrar ambas as datas em D-2, inclusive como controle preventivo quando houver restrição de cabimento; reservar a decisão ao advogado. Não substituir datas por `NÃO CABE`. Indicar a ressalva jurídica nos campos externos, sem afirmar admissibilidade. Na homologação de conciliação em JEC, conservar a ressalva do art. 41 fora da descrição e não chamar o controle preventivo de recurso validado.
+
+Usar embargos + recurso OU prazo fatal, nunca os três na mesma descrição. Minutas: `PRAZO FATAL D -2:` (exceção de apresentação da minuta prioritária de requisitórios conforme SKILL.md). Análises operacionais com prazo objetivo e sem controle recursal: somente prazo fatal. Preservar prazo de obrigação distinta em campo externo/tarefa própria.
+
+Analisar/ciência: mesmo dia de expediente do escritório até 12h; após 12h, próximo dia de expediente do escritório. Prioridades: próximo dia de expediente do escritório. Não excluir feriados do agendamento interno nem da contagem simplificada. Aplicar segunda a sexta, inclusive feriados, à contagem e ao D-2, conforme a regra simplificada do SKILL.md. Audiência/perícia/sustentação: data e hora exatas do ato; inscrição/envio são prazos preparatórios separados. Se faltarem elementos de cálculo ou dados necessários de ID/evento/expediente, bloquear a tarefa e listar a pendência fora do arquivo. Não afirmar que editar a Skill alterou o programa do bot.

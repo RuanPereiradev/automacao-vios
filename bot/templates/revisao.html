@@ -119,6 +119,8 @@
 
   .prazo { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .prazo input { width: 9.5em; font-size: 22px; font-weight: 700; letter-spacing: .01em; font-variant-numeric: tabular-nums; padding: 6px 10px; }
+  input.hora { width: 6em; font-size: 18px; font-variant-numeric: tabular-nums; padding: 6px 10px; }
+  .opcional { font-weight: 400; text-transform: none; color: var(--suave); }
   .prazo .dia { font-size: 15px; color: var(--tinta-2); }
   .prazo .dia.fimsemana { color: var(--prazo); font-weight: 600; }
   .nota { margin: 6px 0 0; font-size: 13.5px; color: var(--suave); }
@@ -382,6 +384,9 @@ function desenhar() {
             value="${esc(t.data_tarefa || "")}" ${bloqueio}><span class="dia"></span></div>
           ${t.data_analise ? `<p class="nota aviso-data">Recalculada para hoje (${t.tipo_data === "MESMO_DIA" ? "tarefa do mesmo dia" : "tarefa do dia útil seguinte"}). Na análise estava ${esc(t.data_analise)}.</p>` : ""}
           <p class="nota erro erro-data" ${t.data_tarefa && !dataOk(t.data_tarefa) ? "" : "hidden"}>Data inválida. Use o formato DD/MM/AAAA.</p></div>
+        <div><label class="rotulo" for="hora${n}">Horário <span class="opcional">(audiência, perícia, sustentação)</span></label>
+          <input id="hora${n}" type="text" class="hora" inputmode="numeric" placeholder="HH:MM" maxlength="5"
+            value="${esc(t.hora || "")}" ${bloqueio}></div>
         <div><span class="rotulo">Responsáveis</span><div class="resp"></div></div>
         <div><div class="desc-topo"><span class="rotulo">Descrição na Observação do VIOS</span>
             ${EDITAVEL ? `<button type="button" class="alternar editar-texto">Editar texto</button>` : ""}</div>
@@ -422,6 +427,12 @@ function desenhar() {
       }
     };
     campo.onblur = () => { erro.hidden = !(t.data_tarefa && !dataOk(t.data_tarefa)); };
+    const hora = d.querySelector(".hora");
+    hora.oninput = () => {
+      const n = hora.value.replace(/\D/g, "").slice(0, 4);
+      hora.value = n.length > 2 ? `${n.slice(0, 2)}:${n.slice(2)}` : n;
+      t.hora = hora.value;
+    };
 
     const rem = d.querySelector(".remover");
     if (rem) rem.onclick = () => { if (confirm("Remover esta tarefa?")) { tarefas.splice(n, 1); desenhar(); } };

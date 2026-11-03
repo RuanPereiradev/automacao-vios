@@ -12,6 +12,335 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — A vila recebe e mostra o Zangão (Bumblebee)
+- `POST /eventos` no Ultron (`bot/envio_web.py` + `eventos.receber`): recebe os eventos do
+  Zangão (branch `bot-edita-vios`, `bot/vila.py`) com a mesma senha da página e grava no
+  `saida/eventos.jsonl`. Só aceita `bot: "zangao"`; valida tamanho (64 KB), `envio` e `tipo`;
+  o `n` é sempre do Ultron; guarda o `ts` do Zangão; retira chaves de dados de cliente e
+  textos no formato CNJ (garantia, o Zangão já não manda). Testado com o `bot/vila.py` real:
+  eventos gravados, senha errada recusada (401), 4 threads × 20 eventos sem `n` repetido.
+- Vila 02 (`bot/vila/vila.html`, modo servidor): anima a execução real do Zangão (entrar no
+  VIOS, ler o calendário, classificar, cada tarefa e o resumo), com painel "Comprovantes
+  previdenciários" (tarefa pelo `pxe_id`, processo pelo id interno, situação e motivo em
+  português) e linha no Registro. Ao abrir, mostra a última execução. Testado no Chrome com
+  eventos de verdade; a Vila 01 (Ultron) e o modo simulado não mudaram.
+- `doc/vila/ligar_zangao.py`: reaplica essa mudança se a vila for baixada de novo do site.
+- `doc/vila/contrato-eventos.md`: seção do Zangão (rota, validação e o que a vila mostra).
+
+### Adicionado — Prompt do contrato de eventos do Zangão (Bumblebee) para a vila
+- `doc/vila/prompt-zangao.md`: o que o bot de comprovantes previdenciários (Bumblebee/Zangão)
+  precisa emitir para a Vila 02 mostrá-lo trabalhando. Eventos com `bot: "zangao"`
+  (`execucao_iniciada`, `fase`, `calendario`, `tarefa`, `execucao_fim`), enviados por
+  `POST /eventos` ao servidor do Ultron, com dados mínimos (sem CNJ, órgão, valor nem nome de
+  cliente) e sem nunca travar o bot.
+- Pendente do lado do Ultron: rota `POST /eventos` e a vila passar a ler os eventos do Zangão
+  (hoje ela só lê `bot: "ultron"`).
+
+### Adicionado — Mac como servidor da página de envio (`servidor_mac.sh`)
+- `./servidor_mac.sh instalar` cria um serviço do `launchd` (`~/Library/LaunchAgents/
+  br.automacao-vios.envio.plist`) que roda o `./rodar_envio.sh` sozinho quando o usuário entra
+  no Mac, religa se cair (`KeepAlive`) e usa `caffeinate -i` para o Mac não dormir enquanto roda.
+- `parar` desliga e tira do login; `status` mostra se está rodando; `log` acompanha
+  `logs/servidor.log`.
+- Avisa se o `.env` não tem `ENVIO_REDE=true`/`ENVIO_SENHA` ou se falta
+  `saida/lancamentos.json`.
+- Reinstalar com o serviço já ligado dava `Bootstrap failed: 5: Input/output error`: agora
+  espera o `launchd` soltar o serviço antes de ligar de novo, confere o `.plist` (`plutil`) e
+  avisa se a porta 5001 está ocupada por outro programa.
+
+### Corrigido — `instalar.sh` recria a `.venv` copiada do Linux
+- A checagem antiga só rodava o python da `.venv`; no Mac o `/usr/bin/python3` existe, então
+  uma `.venv` trazida do Linux passava e ficava com o Python errado e sem os pacotes. Agora o
+  script compara a versão gravada em `.venv/pyvenv.cfg` com a do Python escolhido e recria a
+  `.venv` se forem diferentes.
+
+### Alterado — Página do envio com a cena do Ultron (estilo da vila)
+- `bot/templates/_cena.html`: cena em pixel-art como a vila (piso metálico, canos de cobre,
+  Doca 01, Receptor TXT, Conferência e Torre VIOS), **só com o Ultron**, no topo da página do
+  envio. Etapas 01 Arquivo subido → 02 Conferido → 03 Envio aprovado → 04 Criando no VIOS,
+  etiquetas de status e caixa de fala do Ultron.
+- O Ultron anda conforme o andamento real (`/envio/<id>/status`): ao subir o arquivo, sai da
+  doca, pega o papel no Receptor e leva à Conferência (a tela acende) e diz quantas CIs estão
+  prontas; no envio, vai à Torre VIOS (sinal e luz piscando, placa com tarefas feitas/total) e
+  fala o que está fazendo (entrando no VIOS, conferindo duplicatas, "CI X: preenchendo a
+  tarefa 2 de 2, ..."); no fim, volta à doca e comemora, ou treme se houve erro / se parou.
+- A página inicial também tem a cena: o Ultron espera na Doca 01 e explica o que fazer (ou avisa
+  que está ocupado com outro envio). Ao soltar ou escolher o .txt (na caixa ou em cima da
+  cena), ele vai buscar o arquivo no Receptor, e a página do envio continua dali, levando o
+  papel à Conferência. O mascote da caixa de envio ficou menor (o Ultron principal é o da cena).
+- O mascote e a barra do painel antigo saíram (a cena mostra o Ultron); a lista das tarefas
+  ao vivo e o resumo final continuam abaixo. No celular, a fala fica embaixo da cena.
+
+### Alterado — Navegador um pouco mais rápido (`NAVEGADOR_RAPIDO`)
+- `NAVEGADOR_RAPIDO=true` (padrão; `.env.example`): o Chrome usa `page_load_strategy="eager"`
+  (o `driver.get` não espera recursos que o robô não usa; as esperas do robô continuam).
+  As esperas do login, da navegação e do lançamento olham a tela a cada 0,1 s (antes 0,5 s).
+- Medido no VIOS com o `ultron_teste_vios.txt` (sem gravar), alternando os modos no mesmo
+  momento: ~3% mais rápido. O tempo é quase todo do servidor do VIOS (~1,5 s por Adicionar,
+  ~1,2 s para abrir o lançamento, ~0,7 s a Conferência nos horários bons; o dobro ou mais nos
+  lentos). Bloquear as imagens foi descartado: ganha pouco e o VIOS deixa de desenhar os
+  botões "Texto intimação" e "Concluir tarefa?", que são a prova no print.
+- Testado também que o VIOS aceita duas sessões simultâneas do mesmo usuário (base para
+  lançar em paralelo, ainda não feito).
+
+### Adicionado — Vila instalada em `/vila`
+- `autobots/` (clone do repositório da vila, que tem o git próprio) entrou no `.gitignore`.
+- `bot/vila/vila.html`: cópia da vila publicada em https://ruanpereiradev.github.io/autobots/
+  (HTML único, com React e fontes embutidos; não depende de internet). Servida pelo Ultron
+  em `/vila`, na mesma origem e com a mesma senha, lendo `/eventos` a cada 2 s.
+- Corrigido na cópia: o ajuste "fonte" da vila tem padrão `simulado` e ganhava da regra
+  "em `/vila`, usar o servidor", então ela nunca lia os eventos. Agora, em `/vila`, usa
+  sempre o servidor; fora dele (GitHub Pages), continua como antes. A correção precisa ir
+  também para o código-fonte da vila, senão some quando a cópia for atualizada.
+- A versão no GitHub Pages serve só para a simulação: ela não alcança o Ultron (página
+  HTTPS na internet × Ultron HTTP na rede interna).
+- Testado com o VIOS simulado: a vila acompanhou arquivo subido → conferido → envio (teste) →
+  tarefas no quadro/erro → finalizado.
+
+### Adicionado — Eventos para a vila (`/eventos` e `/vila`)
+- `bot/eventos.py`: `emitir()` acrescenta cada evento em `saida/eventos.jsonl` (uma linha JSON,
+  `n` sequencial, `ts`, `bot`, `envio`, `tipo`), com `threading.Lock` + `fcntl.flock`; erro ao
+  gravar evento só vai para o log. `ler()` devolve `{"ultimo", "eventos"}` com `n > desde`
+  (no 1º acesso, os últimos 500).
+- A página de envio emite os 6 tipos do contrato (`doc/vila/contrato-eventos.md`):
+  `arquivo_subido`, `conferido` (também depois de editar), `envio_iniciado` (`gravar`/`teste`),
+  `fase` (`entrando_vios` → `conferindo_duplicatas` → `criando_tarefas`), `ci` por tarefa
+  (`no_quadro`, `gravada` com `tarefa_num` = `"<CI>-<posição>"`, `erro` com motivo, `ja_tinha`,
+  `duplicata`) e `envio_fim` (`concluido`/`testado`/`parou`). Só CI, tarefa e contagens.
+- Rotas novas com a mesma senha: `GET /eventos?desde=N` e `/vila` (serve `bot/vila/vila.html`;
+  sem o arquivo, mostra um aviso).
+- O log do lançamento passa a guardar o motivo do erro (texto da exceção) nos detalhes da CI.
+- Testado com o VIOS simulado (gravar e teste) e com 3 processos × 4 threads gravando ao mesmo
+  tempo (1.200 eventos, `n` sem repetir).
+
+### Adicionado — Arquivo de teste (`MODO: TESTE`)
+- `.txt` que começa com a linha `MODO: TESTE` só pode ser testado: a página mostra só
+  "Testar sem gravar" e o servidor recusa gravar mesmo se pedirem (`so_teste` no envio).
+  Para ver o Ultron preenchendo o VIOS com intimações reais sem risco.
+
+### Corrigido
+- A lista oficial da skill tem `SUSTENTAÇÃO ORAL PPREVIDENCIÁRIO) 2026` (erro de digitação);
+  o nome certo do VIOS, `SUSTENTAÇÃO ORAL (PREVIDENCIÁRIO) 2026`, era recusado na página de
+  envio. Novo apelido em `APELIDOS` (`bot/lancamento.py`) e a página aceita os nomes certos
+  dos apelidos.
+
+### Alterado — Mascote novo do Ultron ("Crista")
+- Mascote trocado pelo desenho "Crista": robô cromado com o corpo do mascote do Claude e
+  expressão de máquina hostil, em grade 16 × 12 com paleta fixa (brilho, base e sombra do
+  metal; olhos vermelhos com núcleo claro). A grade e a paleta ficam editáveis no topo de
+  `bot/templates/_ultron.html`.
+- Animação como na especificação (tick de 100 ms): pulso do brilho dos olhos
+  (0,6 + 0,4 × sin(t/4), raio 0,8 e 1,4 pixel), piscar (t % 46 < 2) e flutuar 1/3 de pixel
+  a cada 6 ticks. Trabalhando, o tempo corre 2× e braços e pernas mexem; no fim, pula
+  (deu certo) ou treme com os olhos falhando (houve erro).
+- Cada cor é desenhada como um traçado só e os tamanhos são múltiplos de 48 px, para não
+  aparecer linha entre os pixels. Ícone da aba com o mascote.
+- `doc/mascote/`: `mascote.html` (HTML + CSS + JS puro, com a grade e a paleta para editar
+  e a animação), `mascote.svg` (estático, com brilho nos olhos) e `mascote.png` (512 × 512).
+
+### Corrigido — Histórico de envios não some mais
+- A lista "Envios desta sessão" ficava só na memória e sumia ao reiniciar a página
+  (o registro das tarefas gravadas, `saida/lancamentos.json`, nunca foi perdido).
+  Agora cada envio é gravado em `saida/envios/<data_hora>_<id>.json` (escrita
+  atômica) ao subir, ao salvar edições, ao começar, a cada CI concluída e no fim; a
+  página carrega tudo ao iniciar. Envio interrompido por reinício aparece como
+  "Parou", com as CIs sem resultado marcadas para conferir no VIOS.
+- Nova página **Histórico** (`/historico`, botão no topo): todos os envios (quando,
+  arquivo, CIs/tarefas, gravadas/erros/duplicadas, situação) e todas as tarefas
+  gravadas no VIOS (`lancamentos.json`), com busca por CI, tarefa ou responsável. A
+  tela inicial mostra os últimos 8 envios.
+- Os 3 envios feitos pela página antes desta mudança (29/10 13:42 teste com 18 CIs,
+  29/10 15:30 com 26 gravadas, 30/10 14:51 com 25 gravadas) foram reconstruídos do
+  `logs/bot.log`; ficam só para consulta (sem descrição das tarefas, não reenviam).
+
+### Alterado — Página de envio com a cara do Ultron (30/10/2026)
+- O bot agora se chama **Ultron**. A página de envio (`bot/templates/envio.html`) ganhou
+  tema escuro e o mascote do Ultron (`bot/templates/_ultron.html`): pixel-art no formato
+  do mascote do Claude Code, em metal, com olhos e boca vermelhos.
+- Caixa de envio: arrastar o `.txt` ou clicar para escolher; a leitura começa sozinha
+  (sem o botão "Ler arquivo"). O resto do fluxo não mudou: conferir → Enviar ao VIOS.
+- Envio acompanhado ao vivo, sem recarregar a página: fase (entrando no VIOS,
+  conferindo duplicatas, criando as tarefas), barra de progresso por tarefa e cada CI
+  com as suas tarefas (na fila → criando → no quadro → gravada / erro). Novo endpoint
+  `/envio/<id>/status` (JSON) em `bot/envio_web.py`; a tarefa conta como criada quando
+  o log do lançamento registra "CI X tarefa N".
+- Mascote animado: flutua parado, "digita" e varre com os olhos enquanto trabalha,
+  pula e acena no fim e treme quando há erro. Resumo final com CIs gravadas, com erro
+  e duplicadas.
+- Testado com o VIOS simulado (5 CIs: gravada, erro, com problema, várias tarefas) e
+  na largura de celular.
+
+### Alterado — Skill nova da Controladoria (30/10/2026)
+- `doc/analise-intimacoes-controladoria/` trocada pela skill revisada (cópia em
+  `doc/skill-original/6_2026-10-30_contagem-simplificada/`, com o `.zip` recebido;
+  `LEIAME.md` resume as mudanças): contagem simplificada (só sábado e domingo
+  ficam de fora, feriados contam), corte das 12h para análise/ciência,
+  `PRAZO DE EMBARGOS:`/`PRAZO DE RECURSO:` sempre com data, `PRAZO FATAL D -2:`
+  nas minutas, `PRIORIDADE RPV` de volta na descrição.
+- Nova referência `validacao-lancamento.md` em `bot/skill.py` (prompt do bot e
+  skill única).
+- `gerar_skill_unica.py`: troca os links markdown `[x.md](references/x.md)` e as
+  menções a "SKILL.md" pelo nome da seção. Skill única regerada.
+- `doc/skill-unica/regras-do-programa.md` reescrito: agora descreve só o que o
+  robô confere e bloqueia no envio do `.txt` (as regras de data e descrição são
+  as da skill). `arquivo-para-o-robo.md` e `pedido-arquivo-robo.txt` com os
+  rótulos novos e exemplos recalculados (conferidos pelo leitor do robô).
+- `bot/analise.py`: `PRIORIDADE RPV`/`PRIORIDADE EMENDA` saíram da lista de
+  linhas proibidas na descrição (a página de envio não avisa mais).
+- Pendente: a análise pela API (`bot/prazos.py`, `bot/analise.py`) ainda usa as
+  regras antigas de data e descrição.
+
+### Adicionado — Rodar no Mac e no Linux
+- `instalar.sh`: cria a `.venv` (recria se veio copiada de outro computador),
+  instala as dependências, cria `saida/` e `logs/` e avisa se faltar `.env` ou o
+  Chrome. Exige Python 3.8 a 3.12 (procura o `python3.12` primeiro). Testado no
+  Linux numa cópia limpa; pacotes conferidos para Mac (Apple Silicon e Intel)
+  com Python 3.12.
+
+### Alterado
+- `rodar*.sh`: `cd "$(dirname "$0")"` no lugar de `readlink -f` (não existe em
+  macOS antigos).
+
+### Removido
+- `pkg_resources==0.0.0` do `requirements.txt` (resto do Ubuntu; o `pip` falha
+  com ele no Mac).
+
+### Adicionado — Skill original recuperada
+- `doc/skill-original/`: as versões da skill ao longo do tempo, uma pasta por
+  versão (skill aberta + `.zip`), para a Controladoria achar em qual momento a
+  análise esteve melhor: 1 original (23/10, idêntica ao pacote de 20/10),
+  2 prazo em lei (26/10), 3 revisão de 27/10, 4 revisão de 28/10 (reconstruída
+  do texto enviado à IA naquele dia; mesmo tamanho do `SKILL.md` de então) e
+  5 atual (29/10). `LEIAME.md` resume o que muda de uma para a outra. A skill
+  que o bot usa continua em `doc/analise-intimacoes-controladoria/`.
+
+### Adicionado — Duplicatas conferidas na leitura e no envio
+- **Na leitura:** a captura (`main.py`) marca a cópia em `intimacoes_*.json`
+  (`duplicada_de`, `duplicidade_motivo`) e registra no log "CI X é cópia da
+  CI Y".
+- **No envio do .txt:** ao subir, a página confere com as capturas salvas (e com
+  o que a análise marcou). Na hora de enviar, o robô lê no VIOS o teor, o
+  processo e o cliente de cada CI do arquivo (`ler_intimacao`, tela "Lançar
+  Intimação", só leitura) e compara com as outras CIs do arquivo e com as
+  capturas: cópia de CI já lançada ou que está no arquivo não é gravada
+  ("Duplicata (não lançada)"); cópia de CI que não está no arquivo nem foi
+  lançada vira erro para a pessoa conferir. Funciona para CI que o robô não
+  capturou.
+- `bot/duplicidade.py` compara só o teor (`teor()`: sem o cabeçalho de datas e
+  sem Comarca/Diário/Esfera depois do comunicacao_id), para o texto da tela de
+  lançamento bater com o da captura (antes: 24 palavras diferentes; agora 0).
+  Duplicatas das capturas salvas continuam as mesmas (42501 → 42500).
+- Skill: a regra de duplicidade explica os dois momentos e pede para o chat
+  também não colocar a cópia no arquivo para o robô.
+- Testado com o VIOS simulado: cópia de CI do arquivo, cópia de CI já lançada
+  (texto real da 42501) e CI normal.
+
+### Adicionado — Página de envio do .txt (sem gastar tokens da API)
+- `./rodar_envio.sh` (http://127.0.0.1:5001): a pessoa sobe o `.txt` com as
+  tarefas já ajustadas (análise feita no chat com a skill única), confere a
+  tabela e clica em **Testar sem gravar** ou **Enviar ao VIOS**. O robô só
+  lança, sem chamar a IA. Novos `bot/envio_txt.py` (leitura e conferência),
+  `bot/envio_web.py`, `bot/templates/envio.html`, `enviar.py`.
+- O `.txt` não é enviado quando a CI tem problema (tarefa fora da lista
+  oficial, data ou horário inválido, audiência/perícia/sustentação sem
+  horário, responsável fora da lista do VIOS, descrição vazia, linha fora do
+  formato) ou já foi lançada. Avisos: data passada, fim de semana, linhas que a
+  Controladoria pediu para não usar na descrição.
+- Skill única: nova seção "Arquivo para o robô (.txt)"
+  (`doc/skill-unica/arquivo-para-o-robo.md`), para o chat entregar o arquivo
+  pronto. O exemplo da seção foi conferido pelo leitor do robô.
+- Testado com o VIOS simulado (leitura, teste, envio, CI já lançada, CI com
+  problema, arquivo salvo em ANSI). Falta o primeiro envio real.
+- Edição dos erros na própria página: depois de subir o `.txt`, cada tarefa vira
+  um formulário (CI, tarefa com a lista oficial, data, hora, responsáveis,
+  descrição, remover). **Salvar e conferir** refaz o `.txt` e confere de novo;
+  **Editar como texto** para colar/acrescentar blocos. Envio bloqueado enquanto
+  houver alteração não salva. Mensagens de problema sem número de linha.
+- CI que a análise do bot marcou como cópia (`duplicada_de`) não é enviada pela
+  página: aparece com o problema "cópia da CI X" (caso da 42501, cópia da
+  42500 já lançada, que veio no arquivo de 29/10). Campo Data da CIÊNCIA
+  mostra "vazio = dia do envio".
+- Página de envio disponível na rede (`ENVIO_REDE=true` ou `--rede`), em
+  `http://<IP da máquina>:5001`.
+- **Segurança:** na rede a página exige senha (`ENVIO_SENHA`, autenticação
+  básica do navegador); sem senha ela não abre na rede, porque grava no VIOS
+  com o usuário do robô. Variáveis novas no `.env.example`.
+- `doc/skill-unica/pedido-arquivo-robo.txt`: texto pronto para colar no chat
+  depois dos ajustes, pedindo o arquivo no padrão (regras + exemplo conferido
+  pelo leitor do robô).
+
+### Alterado — Correções da revisão de 29/10 (análises de 27/10)
+- Descrição da tarefa sem `Responsável a marcar na tarefa: BRENO`,
+  `Advogada auxiliar: TAMIRA` e `PRIORIDADE RPV/PRECATÓRIO` (caso da CI 42484).
+  Breno continua marcado como responsável no VIOS. A skill não pede mais essas
+  linhas e o código as apaga se a IA ainda escrever (`FORA_DA_DESCRICAO`).
+- Audiência no padrão da Controladoria, uma informação por linha e sem
+  parágrafos ou `OBS:`: `AUDIÊNCIA [TIPO]`, `DATA`, `HORA`, `FORMATO`,
+  `LINK/LOCAL` (só o link ou o endereço), `ID da reunião` e `SENHA` (só na
+  virtual). Caso da CI 42502. Ajustados `SKILL.md`, `pop-fluxo-intimacoes.md`,
+  `tarefas-vios.md` e o adendo do bot.
+- Sentença ou acórdão sempre gera `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO`, nunca
+  minuta: regra explícita na skill e bloqueio no código (não lança se faltar a
+  tarefa de análise).
+- Pacotes `.zip` da skill e da skill única gerados de novo.
+
+### Adicionado — `gerar_skill_unica.py`
+- Monta a skill única a partir da skill do bot (`SKILL.md` + referências) e de
+  `doc/skill-unica/regras-do-programa.md`, e gera o `.zip`. Evita editar duas
+  cópias da mesma regra.
+
+### Alterado — Correções da revisão de 28/10 (análises de 26/10)
+- Tarefa `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` passa a ficar para o **mesmo dia**
+  (antes ia para o D-2 mais cedo entre embargos, recurso e prazo). As datas de
+  embargos e recurso (D-2) continuam na descrição; a linha `PRAZO FATAL (D-2)`
+  sai quando há essas duas linhas. Skill (`SKILL.md`, `regras-prazos-recursos.md`,
+  `pop-fluxo-intimacoes.md`) e `bot/analise.py` ajustados.
+- Tarefas com horário (sustentação oral, audiência, perícia) ficam na data
+  exata do ato, nunca no D-2; na sessão virtual, o 1º dia da sessão. Modelo da
+  sustentação em sessão virtual na skill ("DATA: De 06/11/2026 a 13/11/2026.").
+- Prazo previsto em lei para manifestação sobre laudo pericial: 15 dias úteis
+  (art. 477, § 1º, CPC), inclusive no Juizado e no Previdenciário. Antes a IA
+  usava 5 dias.
+- No lançamento pela linha de comando, tarefa `MESMO_DIA` vai para o dia do
+  lançamento (como já fazia a página de revisão).
+- Pacote `doc/analise-intimacoes-controladoria.zip` gerado de novo com a skill
+  atualizada (o anterior era de 23/10, com os arquivos de 20/10).
+
+### Adicionado — Skill em arquivo único (para o chat de validação)
+- `doc/skill-unica/analise-intimacoes-controladoria/SKILL.md` (e `.zip`): a skill
+  e as 4 referências num arquivo só, mais a seção "Regras do programa" com o que
+  o bot faz no código (contagem de prazo, D-2, data de cada tarefa, quando não
+  lançar, alertas e duplicidade). Para a Controladoria usar no chat e comparar
+  com as análises do bot. A skill que o bot usa continua em
+  `doc/analise-intimacoes-controladoria/`; o arquivo único é uma cópia de 28/10.
+- Na skill única, explicação de disponibilização × publicação (o arquivo leva a
+  data de disponibilização; publicação no 1º dia útil seguinte).
+
+### Alterado — Relatório mostra a disponibilização
+- O relatório (`saida/analise_*.md`) mostra no cabeçalho a data de
+  disponibilização e a de publicação, e cada CI mostra as duas. Antes só aparecia
+  a publicação, e o chat de validação leu `analise_2026-10-27` (disponibilizadas
+  em 27/10) com publicação em 28/10 como erro. O JSON da análise passa a guardar
+  `disponibilizacao`.
+
+### Corrigido — Aviso de CI original repetido
+- A cada recálculo (`--recalcular`), o aviso "CI original: … cópia(s) desta" era
+  gravado também na resposta salva da IA e se repetia no relatório (na CI 42500
+  aparecia duas vezes). O aviso agora fica só no resultado; a resposta da IA de
+  `analise_2026-10-27.json` foi limpa.
+
+### Adicionado — Horário da tarefa no VIOS
+- A IA informa `hora_informada` (HH:MM) e o bot preenche o campo Horário
+  (`fo[hora_prevista]`) do formulário do VIOS, conferindo na tela. Respostas
+  antigas usam o horário da linha "HORA:" da descrição.
+- Página de revisão: campo Horário editável em cada tarefa.
+- Tarefa com horário sem o horário não é lançada (bloqueio).
+
+### Adicionado — Intimação que só indica o evento
+- Intimação do eproc que só diz "O ato refere-se ao seguinte evento: Evento N"
+  (sem o teor) não é lançada: a tarefa depende de abrir o evento no sistema
+  (caso da CI 42478, lançada como CIÊNCIA quando era embargos/contrarrazões).
+
 ### Adicionado — Segundo usuário do VIOS (função nova, em definição)
 - Branch `nova-funcao` para desenvolver a função nova sem afetar o robô de
   intimações no `main`.

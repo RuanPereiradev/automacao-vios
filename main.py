@@ -3,7 +3,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from bot import config
+from bot import config, duplicidade
 from bot.analise import analisar_arquivo
 from bot.extracao import extrair_cards, extrair_tabela, salvar_cards_txt, salvar_txt
 from bot.intimacoes import extrair_intimacoes, pesquisar, salvar_json
@@ -36,15 +36,19 @@ def main(caminho_env=".env"):
         log.error(e)
         return 1
 
-    driver = criar_driver(cfg.headless, cfg.manter_aberto)
+    driver = criar_driver(cfg.headless, cfg.manter_aberto, cfg.navegador_rapido)
     try:
         fazer_login(driver, cfg)
         ir_ate_tabela(driver, cfg)
         if cfg.pesquisa_data:
             inicio, fim = pesquisar(driver, cfg)
             itens, erros = extrair_intimacoes(driver, cfg, inicio, fim)
+            # 1ª conferência de duplicatas: já na leitura (a 2ª é no envio do .txt)
+            for ci, d in duplicidade.marcar(itens).items():
+                log.info("CI %s é cópia da CI %s (%s): não gera tarefa", ci, d["original"], d["motivo"])
             arquivo = salvar_json(itens, cfg.pasta_saida, inicio, fim)
-            log.info("Concluído: %d intimações, %d com erro -> %s", len(itens), erros, arquivo)
+            log.info("Concluído: %d intimações (%d cópia(s)), %d com erro -> %s",
+                     len(itens), sum(1 for i in itens if i.get("duplicada_de")), erros, arquivo)
             if itens and cfg.analise_ativa:
                 relatorio, total, falhas = analisar_arquivo(arquivo, caminho_env)
                 log.info("Análise: %d intimações, %d com erro -> %s", total, falhas, relatorio)

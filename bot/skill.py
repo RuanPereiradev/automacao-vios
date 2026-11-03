@@ -7,6 +7,7 @@ REFERENCIAS = [
     "roteamento-interno.md",
     "tarefas-vios.md",
     "regras-prazos-recursos.md",
+    "validacao-lancamento.md",
 ]
 
 # respostas permitidas além das tarefas da lista oficial

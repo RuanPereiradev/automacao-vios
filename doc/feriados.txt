@@ -40,3 +40,11 @@
 30/10/2026 ; JUSTIÇA ESTADUAL/ES ; Dia do Servidor Público transferido de 28/10 — Ato Normativo 176/2026 (fonte: https://www.tjes.jus.br/consultas/feriados/)
 07/12/2026 ; JUSTIÇA ESTADUAL/ES ; Ponto facultativo na véspera do Dia da Justiça — Ato Normativo 176/2026 (fonte: https://www.tjes.jus.br/consultas/feriados/) ; AVISO
 08/12/2026 ; JUSTIÇA ESTADUAL/ES ; Dia da Justiça — Ato Normativo 176/2026 (fonte: https://www.tjes.jus.br/consultas/feriados/)
+
+# Pesquisa automática na internet em 28/10/2026 (bot/feriados_web.py) — pode editar ou apagar
+28/10/2026 ; JUSTIÇA ESTADUAL/CE ; Dia do Servidor Público (28/10). Não achei o ato do TJCE de 2026, então não sei se houve transferência ou ponto facultativo. A busca ficou indisponível. (sem fonte) ; AVISO
+
+# Pesquisa automática na internet em 28/10/2026 (bot/feriados_web.py) — pode editar ou apagar
+28/10/2026 ; JUSTIÇA DO TRABALHO/CE ; Dia do Servidor Público: não confirmei se o TRT7 transferiu a data ou decretou ponto facultativo em 2026 (sem fonte) ; AVISO
+28/10/2026 ; JUSTIÇA DO TRABALHO/MA ; Dia do Servidor Público (ponto facultativo). Não encontrei o ato do TRT16 para 2026 que diga se foi mantido, transferido ou o efeito nos prazos. (fonte: https://www.trt16.jus.br/site/conteudo/publicacoes/pub_inteiro_teor.php?id=76277) ; AVISO
+28/10/2026 ; JUSTIÇA FEDERAL/CE ; Dia do Servidor Público: não consegui confirmar o ato do ano (portaria da SJCE ou do TRF5) porque a pesquisa ficou indisponível. Não confirmei se houve transferência, ponto facultativo ou efeito nos prazos. (sem fonte) ; AVISO

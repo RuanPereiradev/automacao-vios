@@ -1,0 +1,72 @@
+{# Mascote do Ultron ("Crista"): robô cromado com o corpo do mascote do Claude (Clawd) e
+   expressão de máquina hostil. Grade 16×12 (1 caractere = 1 pixel) e paleta abaixo; a mesma
+   grade está em doc/mascote/mascote.html. Animação (pulso do brilho, piscar e flutuar) no
+   ultron_script(); humor: "parado", "trabalhando", "feliz" ou "erro". #}
+{% set GRADE = [
+  ".......LD.......",
+  "...D...LD...D...",
+  "..LLLLLLLLLLLL..",
+  "..LMMMMMMMMMMD..",
+  "..MRMMMMMMMMRD..",
+  "..MRORMMMMRORD..",
+  "LLMMMMMMMMMMMMDD",
+  "DDMMMMMMMMMMMMDD",
+  "..MMMDKKKKDMMD..",
+  "..DDDDDDDDDDDD..",
+  "...M.M....M.M...",
+  "...D.D....D.D...",
+] %}
+{% set CORES = {"L": "#d4d8de", "M": "#9aa0a8", "D": "#5a5f67", "K": "#1d1e21", "R": "#c81e14", "O": "#ff5a3c"} %}
+
+{% macro ultron(humor="parado", tamanho=120, id="ultron") %}
+<div class="ultron {{ humor }}" id="{{ id }}" style="--tam: {{ tamanho }}px" aria-hidden="true">
+  <div class="corpo">
+    <svg viewBox="0 0 16 12" shape-rendering="crispEdges">
+      {#- um traçado por cor e parte (sem emendas entre os pixels) #}
+      {%- set partes = {} %}
+      {%- for linha in GRADE %}{% set y = loop.index0 %}{% for c in linha %}{% set x = loop.index0 %}{% if c != "." %}
+        {%- if c == "R" %}{% set classe = "olho-r" %}{% elif c == "O" %}{% set classe = "olho-o" %}
+        {%- elif y in (6, 7) and x < 2 %}{% set classe = "braco esq" %}{% elif y in (6, 7) and x > 13 %}{% set classe = "braco dir" %}
+        {%- elif y >= 10 %}{% set classe = "perna" %}{% else %}{% set classe = "" %}{% endif %}
+        {%- set chave = classe ~ "|" ~ CORES[c] %}
+        {%- set _ = partes.update({chave: partes.get(chave, "") ~ "M" ~ x ~ " " ~ y ~ "h1v1h-1z"}) %}
+      {%- endif %}{% endfor %}{% endfor %}
+      {%- for chave, d in partes.items() %}{% set classe, cor = chave.split("|") %}
+      <path d="{{ d }}" fill="{{ cor }}"{% if classe %} class="{{ classe }}"{% endif %}/>
+      {%- endfor %}
+    </svg>
+  </div>
+  <div class="sombra"></div>
+</div>
+{% endmacro %}
+
+{# Uma vez por página: tick de 100 ms (contador t), como na especificação do mascote.
+   Brilho = 0,6 + 0,4 × sin(t/4); pisca quando t % 46 < 2; sobe 1/3 de pixel a cada 6 ticks.
+   Trabalhando, o tempo corre 2× mais rápido. #}
+{% macro ultron_script() %}
+<script>
+(() => {
+  let t = 0;
+  const mascotes = () => document.querySelectorAll('.ultron');
+  setInterval(() => {
+    mascotes().forEach(m => {
+      const tt = m.classList.contains('trabalhando') ? t * 2 : t;
+      m.style.setProperty('--brilho', (0.6 + 0.4 * Math.sin(tt / 4)).toFixed(3));
+      m.classList.toggle('piscando', !m.classList.contains('erro') && tt % 46 < 2);
+      m.classList.toggle('subindo', Math.floor(tt / 6) % 2 === 1);
+    });
+    t++;
+  }, 100);
+})();
+</script>
+{% endmacro %}
+
+{# Ícone da aba: o mesmo desenho, sem animação. #}
+{% macro ultron_icone() -%}
+{%- set svg -%}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -2 16 16" shape-rendering="crispEdges">
+{%- for linha in GRADE %}{% set y = loop.index0 %}{% for c in linha %}{% if c != "." %}<rect x="{{ loop.index0 }}" y="{{ y }}" width="1" height="1" fill="{{ CORES[c] }}"/>{% endif %}{% endfor %}{% endfor -%}
+</svg>
+{%- endset -%}
+<link rel="icon" href="data:image/svg+xml,{{ svg | urlencode }}">
+{%- endmacro %}

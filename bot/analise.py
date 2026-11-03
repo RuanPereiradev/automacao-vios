@@ -34,6 +34,16 @@ TEXTO_SITUACAO = {
 TIPOS_DATA = ["D-2", "PRIORIDADE_RPV", "PRIORIDADE_EMENDA_SUHIANE", "MESMO_DIA", "DIA_SEGUINTE", "DATA_INFORMADA", "SEM_DATA"]
 PENDENTE = "PENDENTE – NÃO CONSTA NO DOCUMENTO"
 CNJ = re.compile(r"\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}")
+# tarefas com horário: data exata do ato (sem D-2) e horário no campo Horário do VIOS
+COM_HORARIO = ("AUDIÊNCIA", "PERÍCIA TÉCNICA", "PERÍCIA MÉDICA", "SUSTENTAÇÃO ORAL", "SUSTENTACÃO ORAL")
+HORA = re.compile(r"\b([01]?\d|2[0-3]) *(?::|H) *([0-5]\d)\b", re.I)
+# eproc: "O ato refere-se ao seguinte evento: Evento 23 - 22/10/2026 - PETICAO" (sem o teor do evento)
+SO_EVENTO = re.compile(r"refere-se ao seguinte evento: *(Evento \d+[^|]*)", re.I)
+# linhas que não vão na descrição da tarefa (responsável vai no campo Responsáveis; revisão de 29/10).
+# "PRIORIDADE RPV" voltou a ir na descrição com a skill de 30/10
+FORA_DA_DESCRICAO = re.compile(r"^\s*(RESPONSÁVEL A MARCAR NA TAREFA|ADVOGADA? AUXILIAR)\b", re.I)
+# sentença e acórdão sempre geram ANALISAR (o advogado decide se recorre)
+ATOS_DE_ANALISE = {"SENTENÇA", "ACÓRDÃO"}
 
 # Triagem (LLM_MODELO_SIMPLES): intimação que cita um destes atos vai direto para o
 # modelo principal; as outras passam antes pelo modelo barato (texto sem acento)
@@ -75,19 +85,31 @@ Você informa apenas:
   - `D-2`: data operacional = D-2 do prazo principal;
   - `PRIORIDADE_RPV`: RPV/precatório (dia útil seguinte à publicação);
   - `PRIORIDADE_EMENDA_SUHIANE`: emenda à inicial com auxiliar SUH;
-  - `MESMO_DIA`: lançar para hoje (ex.: verificar viabilidade de sustentação);
+  - `MESMO_DIA`: lançar para hoje (ex.: verificar viabilidade de sustentação e
+    toda tarefa ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO — a análise fica para o mesmo
+    dia; as datas de embargos e recurso vão só na descrição);
   - `DIA_SEGUINTE`: próximo dia útil (ex.: aviso e instrução de perícia social);
   - `DATA_INFORMADA`: a data do próprio ato (audiência, perícia, sessão de
-    sustentação) — preencha `data_informada` com DD/MM/AAAA;
+    sustentação) — preencha `data_informada` com DD/MM/AAAA. Tarefa com horário
+    (audiência, perícia, sustentação oral) NUNCA vai para o D-2: fica na data
+    exata em que o ato acontece. Na sessão virtual, a data é o 1º dia da
+    sessão (não o prazo de envio da sustentação gravada);
   - `SEM_DATA`: tarefa sem prazo (ex.: ciência).
   `data_informada` fica "" nos demais casos.
+- `hora_informada`: horário do ato em HH:MM (audiência, perícia, sustentação
+  oral; na sessão virtual, o horário de início), que o programa coloca no campo
+  Horário do VIOS. "" quando a tarefa não tem horário.
 
 Tarefas — `nome` deve ser exatamente um item da lista oficial. Em `resumo`
 escreva a descrição que vai na tarefa do VIOS seguindo o modelo da tarefa, mas
 SEM as linhas "PRAZO FATAL (D-2):", "PRAZO PARA EMBARGOS:", "PRAZO PARA RECURSO:",
-"PRAZO FATAL:", "Responsável a marcar na tarefa:" e "DATA DA TAREFA NO VIOS" — o programa insere
-essas linhas com as datas calculadas. Coloque a tarefa principal primeiro e as
-complementares depois.
+"PRAZO FATAL:" e "DATA DA TAREFA NO VIOS" — o programa insere essas linhas com
+as datas calculadas. Também não escreva "Responsável a marcar na tarefa:",
+"Advogada auxiliar:" nem "PRIORIDADE RPV/PRECATÓRIO": responsáveis vão no campo
+Responsáveis do VIOS. Audiência: exatamente o padrão da skill (AUDIÊNCIA [TIPO],
+DATA, HORA, FORMATO, LINK/LOCAL, ID da reunião, SENHA), uma informação por linha,
+sem parágrafos nem OBS. Coloque a tarefa principal primeiro e as complementares
+depois.
 
 Use `observacoes` para observações obrigatórias da skill (cadastro, duplicidade,
 audiência de réu sem contestação etc.) e `pendencias` para o que precisa ser
@@ -99,6 +121,10 @@ horário, formato, local ou link/ID/senha (se virtual); perícia sem data,
 horário ou local; data do ato que não consta. Se a lista não estiver vazia, o
 programa NÃO lança a CI no VIOS. Deixe vazia quando a tarefa puder ser lançada
 com o que a intimação traz (pendências de conferência não entram aqui).
+Intimação que só indica um evento do processo, sem o teor (ex.: "O ato
+refere-se ao seguinte evento: Evento 23 - PETIÇÃO"), não permite saber a
+tarefa: coloque em `faltam_dados` o teor do evento (conferir no sistema) e
+não use CIÊNCIA por falta de informação.
 
 Área — conferir pelo departamento e também pelo auxiliar responsável: se o
 auxiliar for só TAMI (Tamira, Departamento de Execução), a tarefa é de
@@ -134,6 +160,7 @@ def schema(nomes_tarefas):
             "finalidade": texto,
             "tipo_data": {"type": "string", "enum": TIPOS_DATA},
             "data_informada": texto,
+            "hora_informada": texto,
             "resumo": texto,
         })},
         "observacoes": lista_texto,
@@ -250,11 +277,8 @@ class Agente:
         if r["prazo"]["trecho"] and not fatal:
             alertas.append(f"Há prazo no texto (\"{r['prazo']['trecho']}\"), mas sem dias para calcular a data.")
 
-        embargos, embargos_d2, embargos_fatal = self._meio(r["embargos"], publicacao, corridos)
-        recurso, recurso_d2, recurso_fatal = self._meio(r["recurso"], publicacao, corridos)
-        # tarefa de análise vai para o D-2 mais cedo entre embargos, recurso e prazo principal
-        datas_analise = [d for d in (embargos_d2, recurso_d2, d2) if d]
-
+        embargos, _, embargos_fatal = self._meio(r["embargos"], publicacao, corridos)
+        recurso, _, recurso_fatal = self._meio(r["recurso"], publicacao, corridos)
         tarefas = []
         for t in r["tarefas"]:
             rotulo, data_tarefa = "", ""
@@ -271,14 +295,18 @@ class Agente:
             elif tipo == "DATA_INFORMADA":
                 data_tarefa = t["data_informada"] if _data(t["data_informada"]) else PENDENTE
             if t["nome"].startswith("ANALISAR SENTENÇA"):
-                # toda tarefa de analisar gera um prazo; sem prazo no ato, dia útil seguinte à publicação
-                if datas_analise:
-                    rotulo, data_tarefa = "PRAZO FATAL (D-2)", _br(min(datas_analise))
-                elif publicacao:
-                    rotulo, data_tarefa = "PRAZO FATAL", _br(self.cal.proximo_util(publicacao))
+                # a análise fica para o mesmo dia; embargos e recurso (D-2) vão na descrição
+                tipo, rotulo, data_tarefa = "MESMO_DIA", "", _br(hoje)
+            hora = ""
+            if t["nome"].startswith(COM_HORARIO):
+                # data exata do ato, nunca D-2
+                if tipo == "D-2":
+                    tipo, rotulo = "DATA_INFORMADA", ""
+                    data_tarefa = t["data_informada"] if _data(t["data_informada"]) else PENDENTE
+                hora = _hora(t.get("hora_informada", "")) or _hora_do_resumo(t["resumo"])
             tarefas.append({
                 "nome": t["nome"], "finalidade": t["finalidade"], "tipo_data": tipo,
-                "data_tarefa": data_tarefa, "rotulo_data": rotulo, "resumo": t["resumo"].strip(),
+                "data_tarefa": data_tarefa, "hora": hora, "rotulo_data": rotulo, "resumo": _limpar_resumo(t["resumo"]),
                 "marcar_breno": "MINUTAR PETIÇÃO EXECUÇÃO" in t["nome"],
             })
 
@@ -288,13 +316,23 @@ class Agente:
         # motivos para NÃO lançar no VIOS (falta informação que só o PJe ou a Controladoria têm)
         bloqueios = [f"Falta no documento: {f}" for f in r.get("faltam_dados", [])]
         bloqueios += self._conferir_area(item, tarefas)
+        evento = SO_EVENTO.search(item.get("texto", ""))
+        if evento:
+            bloqueios.append(f"A intimação só indica o {evento.group(1).strip()}, sem o teor: "
+                             "conferir o evento no sistema para definir a tarefa.")
+        for t in tarefas:
+            if t["nome"].startswith(COM_HORARIO) and t["tipo_data"] == "DATA_INFORMADA" and not t["hora"]:
+                bloqueios.append(f"Falta o horário de {t['nome']} (vai no campo Horário do VIOS).")
+        if r["ato"] in ATOS_DE_ANALISE and not any(t["nome"].startswith("ANALISAR SENTENÇA") for t in tarefas):
+            bloqueios.append(f"{r['ato'].capitalize()} sem a tarefa ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO: "
+                             "o advogado é quem decide se cabe recurso.")
         if any(t["nome"].startswith("ANALISAR SENTENÇA") for t in tarefas):
             for nome, texto in (("embargos", embargos), ("recurso", recurso)):
                 if texto == PENDENTE:
                     bloqueios.append(f"Cabe {nome}, mas sem prazo para calcular a data.")
 
         for t in tarefas:
-            t["descricao"] = _descricao(t, r["embargos"]["situacao"], r["recurso"]["situacao"], embargos, recurso)
+            t["descricao"] = _descricao(t, r["embargos"]["situacao"], r["recurso"]["situacao"], embargos, recurso, d2)
 
         return {
             "ci": item.get("ci", ""),
@@ -302,6 +340,7 @@ class Agente:
             "cliente": r["cliente"] or item.get("cliente", ""),
             "posicao_cliente": r["posicao_cliente"],
             "auxiliar": item.get("auxiliares", ""),
+            "disponibilizacao": item.get("disponibilizacao", ""),
             "publicacao": item.get("publicacao", ""),
             "ato": r["ato"],
             "area": r["area"],
@@ -317,8 +356,8 @@ class Agente:
             "calendario": self.cal.descricao(),
             "feriados_considerados": considerados,
             "avisos_calendario": avisos_cal,
-            "observacoes": r["observacoes"],
-            "pendencias": r["pendencias"],
+            "observacoes": list(r["observacoes"]),  # cópia: a duplicidade acrescenta avisos aqui, não na resposta da IA
+            "pendencias": list(r["pendencias"]),
             "alertas": alertas,
             "bloqueios": bloqueios,
             "link_lancar": item.get("link_lancar", ""),
@@ -417,22 +456,42 @@ def _data(texto):
         return None
 
 
+def _datas(resultados, campo):
+    """Datas distintas do campo, em ordem ("27/10/2026" ou "23/10/2026, 24/10/2026")."""
+    dias = sorted({d for d in (_data(r.get(campo)) for r in resultados) if d})
+    return ", ".join(_br(d) for d in dias)
+
+
+def _hora(texto):
+    m = HORA.search(texto or "")
+    return f"{int(m.group(1)):02d}:{m.group(2)}" if m else ""
+
+
+def _hora_do_resumo(resumo):
+    """Respostas antigas (sem hora_informada): horário da linha "HORA:" do resumo."""
+    m = re.search(r"^ *HORA:(.*)$", resumo or "", re.M | re.I)
+    return _hora(m.group(1)) if m else ""
+
+
 def _processo(item):
     achados = CNJ.findall(item.get("numeros", ""))
     return achados[0] if achados else PENDENTE
 
 
-def _descricao(t, sit_embargos, sit_recurso, embargos, recurso):
-    """Na análise: se cabe (ou pode caber) embargos ou recurso, as duas linhas com data;
-    se não cabe nenhum, só o PRAZO FATAL — toda tarefa de analisar tem prazo."""
+def _limpar_resumo(resumo):
+    """Tira do texto da IA as linhas que não vão na descrição (FORA_DA_DESCRICAO)."""
+    return "\n".join(l for l in resumo.strip().splitlines() if not FORA_DA_DESCRICAO.match(l)).strip()
+
+
+def _descricao(t, sit_embargos, sit_recurso, embargos, recurso, d2=None):
+    """Na análise (tarefa do mesmo dia): se cabe (ou pode caber) embargos ou recurso, as
+    duas linhas com data em D-2; se não cabe nenhum, o PRAZO FATAL (D-2) do ato, se houver."""
     linhas = []
-    if t["marcar_breno"]:
-        linhas.append("Responsável a marcar na tarefa: BRENO")
     if t["nome"].startswith("ANALISAR SENTENÇA"):
         if {sit_embargos, sit_recurso} & {"CABE", "PENDENTE_CONFIRMAR_CABIMENTO"}:
             linhas += [f"PRAZO PARA EMBARGOS: {embargos}", f"PRAZO PARA RECURSO: {recurso}"]
-        if t["rotulo_data"]:
-            linhas.append(f"{t['rotulo_data']}: {t['data_tarefa']}")
+        elif d2:
+            linhas.append(f"PRAZO FATAL (D-2): {_br(d2)}")
     elif t["rotulo_data"]:
         linhas.append(f"{t['rotulo_data']}: {t['data_tarefa']}")
     linhas.append(t["resumo"])
@@ -721,6 +780,13 @@ def relatorio_md(resultados, agente, origem):
         f"- Intimações: {len(resultados)} — com alerta: {sum(1 for r in resultados if r.get('alertas'))}",
         "- **Sugestão automática: revisar antes de lançar no VIOS.**",
     ]
+    disponibilizadas, publicadas = _datas(resultados, "disponibilizacao"), _datas(resultados, "publicacao")
+    if disponibilizadas:
+        # o nome do arquivo leva a data de disponibilização; a publicação é o 1º dia útil seguinte
+        linhas.append(f"- Intimações disponibilizadas em {disponibilizadas}"
+                      + (f" (publicação em {publicadas})" if publicadas else "")
+                      + ". O arquivo leva a data de disponibilização; considera-se publicada no 1º dia útil "
+                        "seguinte (Lei 11.419/2006, art. 4º, § 3º) e o prazo conta da publicação.")
     if getattr(agente, "gasto", None) and agente.gasto.total:
         linhas.append(f"- Gasto estimado com a IA nesta execução: {agente.gasto.resumo()}")
     linhas.append("- Datas: dias úteis com feriados nacionais, Lei 5.010/66 (Justiça Federal), estaduais e "
@@ -735,13 +801,16 @@ def relatorio_md(resultados, agente, origem):
         if r.get("erro"):
             linhas += ["", f"**ERRO NA ANÁLISE:** {r['erro']}"]
             continue
-        linhas += ["", f"**Auxiliar:** {r['auxiliar']} · **Área:** {r['area']} · **Ato:** {r['ato']} · **Publicação:** {r['publicacao']}"]
+        disp = f" · **Disponibilização:** {r['disponibilizacao']}" if r.get("disponibilizacao") else ""
+        linhas += ["", f"**Auxiliar:** {r['auxiliar']} · **Área:** {r['area']} · **Ato:** {r['ato']}"
+                       f"{disp} · **Publicação:** {r['publicacao']}"]
         if r.get("modelo"):
             linhas.append(f"Modelo: {r['modelo']}" + (f" ({r['triagem']})" if r.get("triagem") else ""))
         linhas += ["", "**Do que se trata:**", r["do_que_se_trata"]]
         for i, t in enumerate(r["tarefas"], 1):
             titulo = "Tarefa no VIOS" if i == 1 else f"Tarefa complementar {i - 1}"
             data = f" — data: {t['data_tarefa']}" if t["data_tarefa"] else ""
+            data += f" às {t['hora']}" if t.get("hora") else ""
             linhas += ["", f"**{titulo}:** {t['nome']}{data}"]
             if t["finalidade"]:
                 linhas.append(f"Finalidade: {t['finalidade']}")
