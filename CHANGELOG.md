@@ -20,6 +20,9 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   `logs/servidor.log`.
 - Avisa se o `.env` não tem `ENVIO_REDE=true`/`ENVIO_SENHA` ou se falta
   `saida/lancamentos.json`.
+- Reinstalar com o serviço já ligado dava `Bootstrap failed: 5: Input/output error`: agora
+  espera o `launchd` soltar o serviço antes de ligar de novo, confere o `.plist` (`plutil`) e
+  avisa se a porta 5001 está ocupada por outro programa.
 
 ### Corrigido — `instalar.sh` recria a `.venv` copiada do Linux
 - A checagem antiga só rodava o python da `.venv`; no Mac o `/usr/bin/python3` existe, então

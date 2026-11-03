@@ -52,7 +52,20 @@ case "$1" in
 </dict>
 </plist>
 EOF
+        # se já estava instalado, desliga e espera o launchd soltar o serviço (senão o bootstrap
+        # falha com "5: Input/output error")
         launchctl bootout "$DOMINIO/$ROTULO" 2>/dev/null
+        for _ in 1 2 3 4 5 6 7 8 9 10; do
+            launchctl print "$DOMINIO/$ROTULO" >/dev/null 2>&1 || break
+            sleep 1
+        done
+        plutil -lint "$PLIST" >/dev/null || { echo "Arquivo do serviço inválido: $PLIST"; exit 1; }
+        if lsof -nP -iTCP:5001 -sTCP:LISTEN >/dev/null 2>&1; then
+            echo "A porta 5001 está ocupada por outro programa (um ./rodar_envio.sh aberto?):"
+            lsof -nP -iTCP:5001 -sTCP:LISTEN
+            echo "Feche-o (Ctrl+C na janela dele ou kill <PID>) e rode de novo."
+            exit 1
+        fi
         launchctl bootstrap "$DOMINIO" "$PLIST" || exit 1
         sleep 3
         IP=$(ipconfig getifaddr en0 || ipconfig getifaddr en1)

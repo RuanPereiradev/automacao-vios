@@ -566,6 +566,10 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   a `saida/` copiada do computador antigo.
 - Comandos: `./servidor_mac.sh instalar` | `parar` | `status` | `log`
   (log em `logs/servidor.log`).
+- `instalar` também serve para reiniciar (ex.: depois de mudar o `.env`). Se a
+  porta 5001 estiver ocupada (um `./rodar_envio.sh` aberto), ele avisa e para.
+- A `saida/` **não vai para o GitHub** (o repositório é público e ela tem dados
+  de clientes): copiar com `rsync` ou pendrive (Passo 21).
 - Para funcionar sem ninguém por perto:
   - o Mac precisa estar **com o usuário logado** (o serviço roda na sessão
     dele, porque o robô abre o Chrome). Para voltar sozinho depois de faltar
