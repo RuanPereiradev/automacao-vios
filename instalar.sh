@@ -17,10 +17,15 @@ case "$VERSAO" in
 esac
 echo "Usando $PYTHON (Python $VERSAO)"
 
-# .venv copiada de outro computador (ex.: do Linux) não funciona: recria
-if [ -d .venv ] && ! .venv/bin/python -c 'import sys' 2>/dev/null; then
-    echo "A .venv existente não funciona nesta máquina: recriando"
-    rm -rf .venv
+# .venv copiada de outro computador (ex.: do Linux) não funciona: recria.
+# Compara a versão gravada no pyvenv.cfg sem rodar o python dela (no Mac o /usr/bin/python3
+# existe, então a .venv do Linux "abriria", mas com outro Python e sem os pacotes).
+if [ -d .venv ]; then
+    VENV_VERSAO=$(sed -n 's/^version[_info]* *= *\([0-9]*\.[0-9]*\).*/\1/p' .venv/pyvenv.cfg 2>/dev/null | head -n 1)
+    if [ "$VENV_VERSAO" != "$VERSAO" ] || ! .venv/bin/python -c 'import sys' 2>/dev/null; then
+        echo "A .venv existente não é deste computador/Python: recriando"
+        rm -rf .venv
+    fi
 fi
 [ -d .venv ] || "$PYTHON" -m venv .venv || exit 1
 .venv/bin/python -m pip install --upgrade pip -q || exit 1

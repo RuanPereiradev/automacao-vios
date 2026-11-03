@@ -534,7 +534,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `requirements.txt`.
 - `./instalar.sh` prepara um computador novo: procura o Python 3.12 (aceita
   3.8 a 3.12; no 3.13 o `MarkupSafe` fixado não tem pacote pronto), cria a
-  `.venv` (recria se ela veio copiada de outro computador), instala as
+  `.venv` (recria se ela veio copiada de outro computador ou é de outra versão
+  do Python, conferindo o `.venv/pyvenv.cfg`), instala as
   dependências, cria `saida/` e `logs/` e avisa se faltar `.env` ou o Google
   Chrome. Conferido que todos os pacotes têm versão pronta para Mac com
   Python 3.12 (Apple Silicon e Intel).

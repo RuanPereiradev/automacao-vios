@@ -12,6 +12,12 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — `instalar.sh` recria a `.venv` copiada do Linux
+- A checagem antiga só rodava o python da `.venv`; no Mac o `/usr/bin/python3` existe, então
+  uma `.venv` trazida do Linux passava e ficava com o Python errado e sem os pacotes. Agora o
+  script compara a versão gravada em `.venv/pyvenv.cfg` com a do Python escolhido e recria a
+  `.venv` se forem diferentes.
+
 ### Alterado — Página do envio com a cena do Ultron (estilo da vila)
 - `bot/templates/_cena.html`: cena em pixel-art como a vila (piso metálico, canos de cobre,
   Doca 01, Receptor TXT, Conferência e Torre VIOS), **só com o Ultron**, no topo da página do
