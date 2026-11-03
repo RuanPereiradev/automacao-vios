@@ -12,6 +12,16 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Zangão roda pela própria vila (Vila 02)
+- A Vila 02 (vila do Mac, `/vila`) voltou a ter os botões para rodar o Zangão: "Testar sem
+  gravar" (qualquer dia, não grava) e "Rodar e gravar no VIOS" (só nos 3 últimos dias do mês; o
+  1º clique vira "Confirmar: gravar no VIOS", válido por 6 s), além de "Abrir painel". Enquanto
+  ele roda, os botões somem e o rodapé diz desde quando. Chamam as mesmas rotas da página
+  (`/zangao/status` e `POST /zangao/rodar`). Etapa 2 do `doc/vila/ligar_zangao.py`.
+- A página `/zangao` continua como alternativa (botão "Zangão" no topo do Ultron).
+- A vila do GitHub (`ruanpereiradev.github.io/autobots`) continua só em simulação: a que mostra e
+  roda os bots de verdade é a do Mac (`http://<IP do Mac>:5001/vila`).
+
 ### Adicionado — Página do Zangão no servidor (como a do Ultron)
 - `/zangao` (`bot/templates/zangao.html`): a mesma tela da página do Ultron, nas cores do
   Zangão. Cena no estilo da vila (Doca 01 · Zangão, Filtro previdenciário, Captura de dados e

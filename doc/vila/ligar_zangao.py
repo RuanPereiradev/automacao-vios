@@ -1,7 +1,8 @@
 """Liga a Vila 02 (Zangão) ao servidor do Ultron (só no modo servidor, em /vila):
 - etapa 1: anima os eventos reais do Zangão (bot: "zangao");
-- etapa 2: botão "Página do Zangão" (é lá que se roda o Zangão; a vila só assiste) e rodapé com
-  o que ele está fazendo (/zangao/status do Ultron);
+- etapa 2: botões para rodar o Zangão pela Vila 02: "Testar sem gravar", "Rodar e gravar no VIOS"
+  (só nos 3 últimos dias, com confirmação) e "Painel", que chamam /zangao/status e
+  /zangao/rodar do Ultron; o rodapé diz o que ele está fazendo;
 - etapa 3 (Ultron e Zangão): aba escondida ou fila grande de eventos não fazem o robô reprisar
   tudo devagar; a vila pula direto para o estado atual.
 uso: python3 doc/vila/ligar_zangao.py bot/vila/vila.html  (edita no lugar; o modo simulado continua igual;
@@ -14,7 +15,7 @@ linhas = open(caminho, encoding="utf-8").read().split("\n")
 IDX = next(i for i, l in enumerate(linhas) if l.startswith('"<!DOCTYPE html>'))
 t = json.loads(linhas[IDX])
 ETAPA1 = "zhandle(ev)" not in t  # eventos do Zangão na Vila 02
-ETAPA2 = "zbotoes()" not in t  # atalho para a página do Zangão
+ETAPA2 = "zrodar(modo)" not in t  # botões para rodar o Zangão pela vila
 ETAPA3 = "alcancar()" not in t  # pular para o estado atual (aba escondida / fila grande)
 if not (ETAPA1 or ETAPA2 or ETAPA3):
     sys.exit("a vila já está com tudo do Zangão")
@@ -246,11 +247,11 @@ if ETAPA1:
     t = t[:fim_classe] + ZREAL + t[fim_classe + len("\n}\n</script>"):]
 
 # ---------------- etapa 2: botões para rodar o Zangão pela vila ----------------
-troca("zcal: null, zresult: null };", "zcal: null, zresult: null, zsrv: null };", 2)
+troca("zcal: null, zresult: null };", "zcal: null, zresult: null, zsrv: null, zconf: 0, zpedido: false };", 2)
 troca("e preencho N.º CNJ, órgão julgador e valor da ação.';",
-      "e preencho N.º CNJ, órgão julgador e valor da ação. Para me pôr a trabalhar, use a página do Zangão.';", 2)
+      "e preencho N.º CNJ, órgão julgador e valor da ação. Para me pôr a trabalhar, use os botões aqui embaixo.';", 2)
 troca("cancelAnimationFrame(this.raf); clearInterval(this.poll);",
-      "cancelAnimationFrame(this.raf); clearInterval(this.poll); clearInterval(this.zpoll);", 2)
+      "cancelAnimationFrame(this.raf); clearInterval(this.poll); clearInterval(this.zpoll); clearTimeout(this.zconfT);", 2)
 troca("    tick(); this.poll = setInterval(tick, 2000);",
       "    tick(); this.poll = setInterval(tick, 2000);\n"
       "    this.zstatusTick(); this.zpoll = setInterval(() => this.zstatusTick(), 4000);", 2)
@@ -263,11 +264,37 @@ troca("\n  zValsReal() {", r"""
       if (r.ok) this.setState({ zsrv: await r.json() });
     } catch (e) { /* sem conexão: o topo já mostra pelo /eventos */ }
   }
+  async zrodar(modo) {
+    if (this.state.zpedido) return;
+    clearTimeout(this.zconfT);
+    this.setState({ zpedido: true, zconf: 0 });
+    try {
+      const r = await fetch('/zangao/rodar', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modo }) });
+      const j = await r.json().catch(() => ({}));
+      if (j && 'rodando' in j) this.setState({ zsrv: j });
+      if (!r.ok) this.zsay('Não deu para rodar: ' + (j.erro || 'HTTP ' + r.status) + '.');
+      else this.zsay(modo === 'gravar' ? 'Pedido recebido! Vou entrar no VIOS e gravar de verdade.' : 'Pedido recebido! Vou rodar o teste: preencho e não gravo nada.');
+    } catch (e) { this.zsay('Sem conexão com o servidor. Tente de novo.'); }
+    this.setState({ zpedido: false });
+  }
   zbotoes() {
-    const s = this.state, T = s.ztasks;
-    const out = { a: null, p: null, rodando: !!(s.zsrv && s.zsrv.rodando),
-      b: { label: 'Página do Zangão', bg: '#3a2f1f', fn: () => { location.href = '/zangao'; } } };
-    if (T.length) out.a = { label: s.zpanelOpen ? 'Fechar painel' : 'Abrir painel', fn: () => this.setState(st => ({ zpanelOpen: !st.zpanelOpen })) };
+    const s = this.state, srv = s.zsrv, T = s.ztasks, rodando = !!(srv && srv.rodando) || s.zpedido;
+    const painel = { label: s.zpanelOpen ? 'Fechar painel' : 'Abrir painel', fn: () => this.setState(st => ({ zpanelOpen: !st.zpanelOpen })) };
+    const out = { a: null, b: null, p: null, rodando };
+    if (!srv || !srv.configurado || rodando) { if (T.length) out.a = painel; return out; }
+    out.a = { label: 'Testar sem gravar', fn: () => this.zrodar('teste') };
+    if (srv.janela) {
+      const conf = s.zconf > Date.now();
+      out.b = { label: conf ? 'Confirmar: gravar no VIOS' : 'Rodar e gravar no VIOS', bg: conf ? '#c81e14' : '#3a2f1f',
+        fn: () => {
+          if (this.state.zconf > Date.now()) return this.zrodar('gravar');
+          this.setState({ zconf: Date.now() + 6000 });
+          this.zsay('Isto grava no VIOS de verdade. Para confirmar, clique em "Confirmar: gravar no VIOS" em até 6 segundos.');
+          clearTimeout(this.zconfT); this.zconfT = setTimeout(() => this.setState({ zconf: 0 }), 6000);
+        } };
+    }
+    if (T.length) out.p = painel;
     return out;
   }
   zValsReal() {""", 2)
@@ -278,7 +305,7 @@ troca("      sendHint: zp === 'done' && fimTxt ? fimTxt + (r.texto ? ' ' + r.tex
       "      sendHint: !srv ? 'Conectando ao servidor…' : !srv.configurado ? 'O Zangão não está instalado neste servidor (ZANGAO_PASTA).'\n"
       "        : B.rodando ? (srv.modo === 'gravar' ? 'Rodando e gravando no VIOS' : srv.modo === 'teste' ? 'Rodando o teste (não grava)' : 'Rodando') + (srv.inicio ? ' desde ' + srv.inicio.slice(11, 16) : '') + '.'\n"
       "        : zp === 'done' && fimTxt ? fimTxt + (r.texto ? ' ' + r.texto + '.' : '')\n"
-      "        : 'Para rodar (teste ou gravar), use a página do Zangão.',\n"
+      "        : srv.janela ? 'Hoje é dia de rodar: teste ou grave no VIOS.' : 'O teste roda em qualquer dia e não grava. Gravar no VIOS só a partir de ' + srv.proxima_janela + '.',\n"
       "      showAction2: !!B.b, actionLabel2: B.b ? B.b.label : '', action2: () => B.b && B.b.fn(), action2Bg: B.b ? B.b.bg : '#3a2f1f',\n"
       "      showPainel: !!B.p, painelLabel: B.p ? B.p.label : '', painel: () => B.p && B.p.fn(),", 2)
 troca("      showAction, actionLabel, action: () => this.action()\n    };",

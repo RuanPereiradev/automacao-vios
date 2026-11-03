@@ -600,10 +600,15 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `saida/vila_pendentes.jsonl` dele).
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py bot/vila/vila.html`.
 
-### Passo 24 — Página do Zangão no servidor (Mac)
+### Passo 24 — Rodar o Zangão pela vila ou pela página dele (Mac)
 - O Zangão fica instalado no Mac, numa pasta própria (`~/zangao`, branch
   `bot-edita-vios`, com `.venv` e `.env` dele), e o `.env` do Ultron aponta para
   ela: `ZANGAO_PASTA=~/zangao`.
+- **Pela vila** (o jeito principal): `http://<IP do Mac>:5001/vila` → Vila 02 ·
+  Zangão. Os botões "Testar sem gravar" e "Rodar e gravar no VIOS" (este só nos
+  3 últimos dias, com confirmação) ficam na caixa de fala; enquanto ele roda, os
+  botões somem e a vila mostra cada passo. A vila do GitHub
+  (`ruanpereiradev.github.io/autobots`) é só simulação.
 - Página: `http://<IP do Mac>:5001/zangao` (mesma senha; também pelo botão
   "Zangão" no topo da página do Ultron ou "Página do Zangão" na Vila 02). É a
   mesma tela do Ultron: cena com o Zangão andando entre Doca, Filtro
