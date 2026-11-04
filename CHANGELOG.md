@@ -12,6 +12,14 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Jarvis na Vila 04 (04/11/2026)
+- A vila passa de 3 para 4 vilas: a Vila 04 é do **Jarvis**, o robô do relatório mensal de
+  processos (segundo usuário do VIOS). Ela fica acesa, com placas próprias (Doca 01 · Jarvis,
+  Leitura dos processos, Planilhas, Torre VIOS), e o Jarvis faz a ronda com o mascote dele
+  (carmesim e dourado, com propulsores) e se apresenta no diálogo. A Vila 03 continua vaga.
+- `doc/vila/ligar_jarvis.py` aplica a mudança no `bot/vila/vila.html` (como o `ligar_zangao.py`).
+- Ainda sem eventos: o Jarvis aparece sempre como "Ocioso".
+
 ### Adicionado — Albi: sessão em conflito e tela de novo pedido (04/11/2026)
 - Se o login cair em `/login-conflito` (sessão aberta em outro lugar), o Albi clica em "Encerrar
   a outra sessão"; se o Sonar voltar para a tela de login, entra de novo. Botão configurável em

@@ -600,6 +600,18 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `saida/vila_pendentes.jsonl` dele).
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py bot/vila/vila.html`.
 
+### Passo 28 — Jarvis na Vila 04 (relatório mensal de processos)
+- A vila tem 4 vilas: 01 · Ultron, 02 · Zangão, 03 · vaga e **04 · Jarvis**. O Jarvis é o
+  robô do relatório mensal de processos por Grupo Cliente (`relatorio_processos.py`,
+  segundo usuário do VIOS, só leitura; detalhes em `RELATORIO_PROCESSOS.md`).
+- A Vila 04 fica acesa, com as placas Doca 01 · Jarvis, Leitura dos processos, Planilhas e
+  Torre VIOS; o Jarvis (mascote carmesim e dourado com propulsores) faz a ronda e se
+  apresenta no diálogo. `/vila?vila=4` abre direto nela.
+- Ainda **não recebe eventos**: o relatório roda em outra máquina e não manda nada para a
+  vila; por enquanto ele aparece sempre como "Ocioso".
+- Se a vila for baixada de novo do site: rodar `ligar_zangao.py` e depois
+  `python3 doc/vila/ligar_jarvis.py bot/vila/vila.html`.
+
 ### Passo 27 — Segurança das rotas
 - Com `ENVIO_REDE=true`, toda rota (GET e POST) pede a senha (`ENVIO_SENHA`).
 - POST que vem de outro site é recusado (403): o navegador guarda a senha e a

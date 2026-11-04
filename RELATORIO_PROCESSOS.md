@@ -281,6 +281,8 @@ Reaproveita do robô de intimações: `bot/config.py`, `bot/login.py`,
 2. Incluir Plasfran (3 grupos) e LD Urbanismo.
 3. Salvar no Google Drive (`RELATORIO_PASTA` apontando para a pasta
    sincronizada) e agendar a execução mensal.
+4. Mandar eventos para a vila: o robô se chama **Jarvis** e já tem a Vila 04
+   (`DOCUMENTACAO.md`, Passo 28), mas por enquanto aparece sempre "Ocioso".
 
 ---
 
