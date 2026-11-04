@@ -187,7 +187,7 @@ SENTENÇA
       document.getElementById('lista').innerHTML = s.cis.map(c => {
         const [classe, texto] = ROTULO[c.resultado] || ROTULO[''];
         const atual = c.resultado === 'lançando' || c.resultado === 'conferindo';
-        return `<li class="${atual ? 'atual' : ''}"><div class="topo"><b>CI ${esc(c.ci)}</b><span class="selo ${classe}">${texto}</span></div>
+        return `<li class="${atual ? 'atual' : ''}"><div class="topo"><span><b>CI ${esc(c.ci)}</b> <span class="processo">${esc(c.processo || 'sem nº do processo')}</span></span><span class="selo ${classe}">${texto}</span></div>
           <ul class="tarefas">${c.tarefas.map(t => `<li><span class="icone ${t.situacao}">${ICONE[t.situacao] || ''}</span>
             <span>${esc(t.nome)} <span class="suave">· ${esc(t.data || 'dia do envio')}${t.hora ? ' às ' + esc(t.hora) : ''}</span></span></li>`).join('')}</ul>
           ${atual && c.ultima ? `<div class="ultima">${esc(c.ultima)}</div>` : ''}</li>`;
@@ -265,10 +265,11 @@ SENTENÇA
   <div class="cartao">
     <h2>CIs deste envio</h2>
     <div class="rolar"><table class="hist">
-      <tr><th>CI</th><th>Tarefa(s)</th><th>Resultado</th></tr>
+      <tr><th>CI</th><th>Processo</th><th>Tarefa(s)</th><th>Resultado</th></tr>
       {% for c in envio.cis %}
       <tr>
         <td><b>{{ c.ci }}</b></td>
+        <td class="nowrap processo">{{ c.processo or "—" }}</td>
         <td>{% for t in c.tarefas %}<div>{{ t.nome }} <span class="suave">· {{ t.data_tarefa or "dia do envio" }}{% if t.hora %} às {{ t.hora }}{% endif %}
           · {{ t.responsaveis | join(", ") if t.responsaveis else "automático" }}</span></div>{% endfor %}</td>
         <td>{% if c.resultado == "gravada" %}<span class="selo s-ok">Gravada no VIOS</span>
@@ -294,6 +295,7 @@ SENTENÇA
     <div class="cartao ci {% if c.problemas %}com-problema{% endif %}">
       <div class="ci-topo">
         <label>CI <input name="g{{ g }}_ci" value="{{ c.ci }}" class="campo-ci" inputmode="numeric"></label>
+        <label>Processo <input name="g{{ g }}_processo" value="{{ c.processo or '' }}" class="campo-processo" placeholder="0000000-00.0000.0.00.0000"></label>
         {% if c.resultado == "gravada" %}<span class="selo s-ok">Gravada no VIOS</span>
         {% elif c.resultado == "testada" %}<span class="selo s-ok">Teste ok</span>
         {% elif c.resultado == "pulada" %}<span class="selo s-ja">Já tinha tarefa no VIOS</span>

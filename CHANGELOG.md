@@ -12,6 +12,23 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Número do processo em cada CI (04/11/2026)
+- **.txt do chat**: novo campo `PROCESSO:` logo depois de `CI:`, com o número no padrão CNJ, em
+  todos os blocos. Ele é opcional para o robô: arquivo antigo sem o campo continua passando.
+  Skill única gerada de novo (`arquivo-para-o-robo.md`, `pedido-arquivo-robo.txt`,
+  `regras-do-programa.md`).
+- **Página de envio**: cada CI mostra o número do processo, na conferência (campo "Processo",
+  editável), no andamento ao vivo e na lista do envio. Ele vem do `PROCESSO:` do arquivo; sem ele,
+  do que foi capturado do VIOS (campo Números ou, se vazio, o teor). Há aviso quando não há número,
+  quando está fora do formato ou quando é diferente do capturado. O .txt refeito depois de editar
+  leva o `PROCESSO:`.
+- **Análise pelo robô**: `numero_processo()` em `bot/analise.py` procura no campo Números e, se
+  não achar, no teor da intimação, aceitando também os 20 dígitos sem pontos ("Processo:
+  01081327420158060167" → 0108132-74.2015.8.06.0167). Só fica PENDENTE quando não aparece em lugar
+  nenhum.
+- Testado: arquivo com e sem `PROCESSO:`, número da captura, sem número, número inválido, ida e
+  volta do .txt e edição na página (com o aviso de número diferente).
+
 ### Adicionado — Lançamento: corte das 12h para ciência e análise (04/11/2026)
 - Ao preencher cada tarefa no VIOS, o robô olha a hora e o dia. Tarefas **CIÊNCIA** e **ANALISAR
   SENTENÇA/ACÓRDÃO/DECISÃO** (cível, trabalhista, execução, previdenciário e reclamante) com data

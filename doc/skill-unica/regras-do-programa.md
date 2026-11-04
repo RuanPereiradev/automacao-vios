@@ -19,6 +19,11 @@ O robô não refaz a análise: ele lança no VIOS exatamente as tarefas do arqui
 
 Avisos (a CI é lançada, mas a página mostra para conferir): data já passada, data em sábado ou domingo, e linhas `Responsável a marcar na tarefa` / `Advogada auxiliar` na descrição (responsáveis vão no campo `RESPONSÁVEIS`).
 
+### Número do processo
+
+- Cada CI mostra o número do processo na página de envio. Vem do campo `PROCESSO:` do arquivo; sem ele, do número capturado do VIOS (campo Números ou, se vazio, o teor da intimação). Sem nenhum dos dois, ou fora do padrão `0000000-00.0000.0.00.0000`, a página avisa (a CI ainda é lançada). Número do arquivo diferente do capturado também vira aviso.
+- Na análise do robô, o número sai sempre que estiver no campo Números ou no teor (aceita os 20 dígitos sem pontos); só fica `PENDENTE` quando não aparece em lugar nenhum.
+
 ### Como o robô preenche a tarefa no VIOS
 
 - Tarefa, data, horário (campo Horário do VIOS) e descrição na Observação.

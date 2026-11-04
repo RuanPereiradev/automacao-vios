@@ -142,7 +142,7 @@ def status_envio(envio):
         "tarefas_feitas": sum(s in ("gravada", "testada", "adicionada", "pulada")
                               for c in cis for s in _situacao_tarefas(c)),
         "falha": envio.get("falha", ""),
-        "cis": [{"ci": c["ci"], "resultado": c.get("resultado", ""),
+        "cis": [{"ci": c["ci"], "processo": c.get("processo", ""), "resultado": c.get("resultado", ""),
                  "ultima": (c.get("mensagens") or [""])[-1][:160],
                  "tarefas": [{"nome": t["nome"], "data": t["data_tarefa"], "hora": t["hora"], "situacao": s}
                              for t, s in zip(c["tarefas"], _situacao_tarefas(c))]}
@@ -184,6 +184,12 @@ def _capturas(pasta_saida):
 def _links_capturados(pasta_saida):
     """{ci: link "Lançar Intimação"} de todas as capturas salvas."""
     return {ci: i["link_lancar"] for ci, i in _capturas(pasta_saida).items() if i.get("link_lancar")}
+
+
+def _processos_capturados(pasta_saida):
+    """{ci: número do processo} das capturas salvas (campo Números do VIOS; senão, o texto)."""
+    from bot.analise import numero_processo
+    return {ci: numero_processo(i.get("numeros", ""), i.get("texto", "")) for ci, i in _capturas(pasta_saida).items()}
 
 
 def _duplicadas(pasta_saida):
@@ -258,7 +264,7 @@ def _cis_do_form(form):
                 })
             m += 1
         if tarefas:
-            cis.append({"ci": form[f"g{g}_ci"].strip(), "tarefas": tarefas})
+            cis.append({"ci": form[f"g{g}_ci"].strip(), "processo": form.get(f"g{g}_processo", "").strip(), "tarefas": tarefas})
         g += 1
     return cis
 
@@ -314,7 +320,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     def conferir(texto):
         """Lê o .txt e confere cada CI (a mesma conferência na subida e depois de editar)."""
         return envio_txt.ler(texto, oficiais, pessoas(), lancadas(), _links_capturados(pasta_saida), base_url,
-                             duplicadas=_duplicadas(pasta_saida))
+                             duplicadas=_duplicadas(pasta_saida), processos=_processos_capturados(pasta_saida))
 
     @app.route("/")
     def inicio():

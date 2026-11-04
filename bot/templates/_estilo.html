@@ -114,8 +114,10 @@
   .mono { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
   .grade { display: grid; grid-template-columns: 2fr 130px 90px 2fr auto; gap: 10px; align-items: end; margin-bottom: 10px; }
   .remover { white-space: nowrap; padding-bottom: 10px; text-transform: none; }
-  .ci-topo { display: flex; gap: 12px; align-items: end; margin-bottom: 6px; }
+  .ci-topo { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 6px; }
   .campo-ci { width: 110px; font-weight: 700; }
+  .campo-processo { width: 250px; font-variant-numeric: tabular-nums; }
+  .processo { font-variant-numeric: tabular-nums; color: var(--suave); }
   .com-problema { border-left: 4px solid #ff7b72; }
   .barra-salvar { position: sticky; bottom: 0; padding: 14px 0; text-align: right;
                   background: linear-gradient(transparent, var(--fundo) 40%); }

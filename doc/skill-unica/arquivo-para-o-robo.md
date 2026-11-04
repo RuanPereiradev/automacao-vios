@@ -6,6 +6,7 @@ Formato — um bloco por tarefa, separados por uma linha só com `---`:
 
 ```text
 CI: 42484
+PROCESSO: 0000123-45.2026.8.06.0001
 TAREFA: MINUTAR PETIÇÃO (EXECUÇÃO) 2026
 DATA: 29/10/2026
 HORA:
@@ -16,6 +17,7 @@ MINUTAR PETIÇÃO PARA INFORMAR OS DEMAIS DADOS NECESSÁRIOS PARA A CONFECÇÃO 
 Despacho: considerando a certidão de ID 192859275, intime-se a parte exequente para, no prazo de 5 dias, informar os demais dados necessários para a confecção dos requisitórios.
 ---
 CI: 42502
+PROCESSO: 0000456-78.2026.5.07.0001
 TAREFA: AUDIÊNCIA UNA/INSTRUÇÃO (TRABALHISTA) 2026
 DATA: 22/01/2027
 HORA: 08:20
@@ -30,6 +32,7 @@ ID da reunião: 851 6451 3045
 SENHA: 355957
 ---
 CI: 42491
+PROCESSO: 0000789-01.2025.8.06.0001
 TAREFA: ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026
 DATA: 29/10/2026
 HORA:
@@ -46,6 +49,7 @@ No exemplo, as três intimações foram publicadas em 28/10/2026. Na 42484 (dado
 Regras do arquivo:
 
 - `CI`: só o número da CI do VIOS.
+- `PROCESSO`: **sempre** o número do processo da CI no padrão CNJ (`0000000-00.0000.0.00.0000`), como está no campo Números da intimação (ou no teor). A página de envio mostra esse número em cada CI; se faltar, ela usa o número capturado do VIOS e avisa quando não acha nenhum.
 - `TAREFA`: o nome exato da lista oficial (seção "Referência — Tarefas VIOS e Modelos de Descrição").
 - `DATA`: a data da tarefa no VIOS (DD/MM/AAAA), já calculada pelas regras de data da skill (D-2; prioridade RPV/Suhiane no próximo dia de segunda a sexta; análise e ciência no mesmo dia até 12h ou no próximo dia depois das 12h; data exata do ato), sempre com a contagem simplificada (só sábado e domingo ficam de fora). Só `CIÊNCIA` pode ficar com `DATA:` vazia (vai para o dia do envio).
 - `HORA`: HH:MM em audiência, perícia e sustentação oral (na sessão virtual, o horário de início); vazia nas demais tarefas.

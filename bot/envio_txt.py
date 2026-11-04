@@ -5,6 +5,7 @@ Formato (um bloco por tarefa, separados por uma linha só com ---; tarefas da me
 seguidas viram uma CI com várias tarefas):
 
     CI: 42484
+    PROCESSO: 0000123-45.2026.8.06.0001
     TAREFA: MINUTAR PETIÇÃO (EXECUÇÃO) 2026
     DATA: 29/10/2026
     HORA:
@@ -17,12 +18,13 @@ seguidas viram uma CI com várias tarefas):
 import re
 from datetime import date, datetime
 
-from bot.analise import COM_HORARIO, FORA_DA_DESCRICAO
+from bot.analise import COM_HORARIO, FORA_DA_DESCRICAO, numero_processo
 from bot.lancamento import APELIDOS, _normalizar
 
 SEPARADOR = re.compile(r"^\s*-{3,}\s*$")
 CAMPO = re.compile(r"^\s*([A-Za-zÀ-ú ]+?)\s*:\s?(.*)$")
-CAMPOS = {"CI": "ci", "TAREFA": "nome", "DATA": "data", "HORA": "hora", "HORARIO": "hora",
+CAMPOS = {"CI": "ci", "PROCESSO": "processo", "NUMERO DO PROCESSO": "processo", "N DO PROCESSO": "processo",
+          "TAREFA": "nome", "DATA": "data", "HORA": "hora", "HORARIO": "hora",
           "RESPONSAVEIS": "responsaveis", "DESCRICAO": "descricao"}
 AUTOMATICO = {"", "AUTOMATICO", "AUTOMATICO PELO VIOS"}
 LINK_LANCAR = "index.php?pag=sys/publicacoes/int-lanca.php&imp_pub_id={ci}"
@@ -66,8 +68,9 @@ def _data(texto):
         return None
 
 
-def ler(texto, oficiais, pessoas=(), lancadas=(), links=None, base_url="", hoje=None, duplicadas=None):
-    """Devolve a lista de CIs: {ci, link_lancar, tarefas, problemas, avisos, ja_lancada}.
+def ler(texto, oficiais, pessoas=(), lancadas=(), links=None, base_url="", hoje=None, duplicadas=None, processos=None):
+    """Devolve a lista de CIs: {ci, processo, link_lancar, tarefas, problemas, avisos, ja_lancada}.
+    processos = {ci: número do processo capturado do VIOS}, usado quando o arquivo não traz PROCESSO.
     CI com problema não é lançada. oficiais = nomes da lista oficial; pessoas = responsáveis
     do VIOS; lancadas = CIs já gravadas (lancamentos.json); links = {ci: link capturado};
     duplicadas = {ci: CI original} das análises do bot (cópia da mesma publicação)."""
@@ -79,6 +82,7 @@ def ler(texto, oficiais, pessoas=(), lancadas=(), links=None, base_url="", hoje=
     por_pessoa = {_normalizar(p): p for p in pessoas}
     links = links or {}
     duplicadas = duplicadas or {}
+    processos = processos or {}
     cis = []
     for _, linhas in _blocos(texto):
         campos, desconhecidos = _ler_bloco(linhas)
@@ -135,7 +139,13 @@ def ler(texto, oficiais, pessoas=(), lancadas=(), links=None, base_url="", hoje=
             "marcar_breno": not responsaveis and "MINUTAR PETIÇÃO EXECUÇÃO" in nome,
             "soltas": desconhecidos,  # linhas fora do formato: ficam visíveis até a pessoa tirar
         }
+        processo_txt = campos.get("processo", "")
+        processo = numero_processo(processo_txt)
+        if processo_txt and not processo:
+            avisos.append(f"Número do processo fora do formato ('{processo_txt}'): use 0000000-00.0000.0.00.0000.")
         if cis and cis[-1]["ci"] == ci:
+            if processo and not cis[-1]["processo"]:
+                cis[-1]["processo"] = processo
             cis[-1]["tarefas"].append(tarefa)
             cis[-1]["problemas"] += problemas
             cis[-1]["avisos"] += avisos
@@ -148,10 +158,20 @@ def ler(texto, oficiais, pessoas=(), lancadas=(), links=None, base_url="", hoje=
         if any(c["ci"] == ci for c in cis):
             problemas.append(f"CI {ci} aparece separada em mais de um lugar do arquivo: junte as tarefas.")
         cis.append({
-            "ci": ci, "tarefas": [tarefa], "problemas": problemas, "avisos": avisos,
+            "ci": ci, "processo": processo, "tarefas": [tarefa], "problemas": problemas, "avisos": avisos,
             "ja_lancada": ci in lancadas,
             "link_lancar": links.get(ci) or (base_url + LINK_LANCAR.format(ci=ci) if ci else ""),
         })
+    # número do processo: o do arquivo; sem ele, o da captura do VIOS; sem nenhum, aviso
+    for c in cis:
+        capturado = numero_processo(processos.get(c["ci"], ""))
+        if not c["processo"]:
+            c["processo"] = capturado
+        elif capturado and capturado != c["processo"]:
+            c["avisos"].append(f"Número do processo do arquivo ({c['processo']}) diferente do capturado no VIOS "
+                               f"para a CI {c['ci']} ({capturado}): confira.")
+        if not c["processo"] and c["ci"]:
+            c["avisos"].append("Sem número do processo: não veio no arquivo (PROCESSO:) nem na captura do VIOS.")
     return cis
 
 
@@ -160,7 +180,8 @@ def gerar(cis):
     blocos = []
     for c in cis:
         for t in c["tarefas"]:
-            linhas = [f"CI: {c['ci']}", f"TAREFA: {t['nome']}", f"DATA: {t['data_tarefa']}", f"HORA: {t['hora']}",
+            linhas = [f"CI: {c['ci']}"] + ([f"PROCESSO: {c['processo']}"] if c.get("processo") else []) + [
+                      f"TAREFA: {t['nome']}", f"DATA: {t['data_tarefa']}", f"HORA: {t['hora']}",
                       f"RESPONSÁVEIS: {', '.join(t['responsaveis']) or 'automático'}"]
             linhas += t.get("soltas") or []
             linhas += ["DESCRIÇÃO:", t["descricao"]]

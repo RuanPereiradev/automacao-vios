@@ -473,9 +473,26 @@ def _hora_do_resumo(resumo):
     return _hora(m.group(1)) if m else ""
 
 
+CNJ_SEM_PONTOS = re.compile(r"(?<!\d)(\d{7})(\d{2})(\d{4})(\d)(\d{2})(\d{4})(?!\d)")
+
+
+def numero_processo(*textos):
+    """1º número de processo (CNJ) dos textos, já formatado (0000000-00.0000.0.00.0000); "" se não há.
+    Procura primeiro no formato com pontos e depois nos 20 dígitos seguidos (ex.: "Processo: 01081327420158060167")."""
+    for texto in textos:
+        achado = CNJ.search(texto or "")
+        if achado:
+            return achado.group(0)
+    for texto in textos:
+        m = CNJ_SEM_PONTOS.search(texto or "")
+        if m:
+            return "{}-{}.{}.{}.{}.{}".format(*m.groups())
+    return ""
+
+
 def _processo(item):
-    achados = CNJ.findall(item.get("numeros", ""))
-    return achados[0] if achados else PENDENTE
+    """Campo "Números" do VIOS; se estiver vazio, o número que aparece no texto da intimação."""
+    return numero_processo(item.get("numeros", ""), item.get("texto", "")) or PENDENTE
 
 
 def _limpar_resumo(resumo):
