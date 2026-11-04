@@ -630,6 +630,14 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   ("Baixar Resultados"), em `<empresa>/S<pedido> - <nome>.pdf` / `.xls`. Escreve o
   `resultado.txt` (por empresa: CPF ; nome ; pedido ; resultado ; arquivos). Tudo em
   `saida/albi/<id>/` do Ultron, para baixar na página.
+- **Relatório dos processos** (automático, no fim): o Albi lê as planilhas e escreve
+  `relatorio.html`, `relatorio.pdf` e `processos.csv` na pasta da execução. Por empresa,
+  traz o resumo de todos e, de cada processo de quem tem processos: número CNJ, tribunal,
+  vara, ramo, ação, assunto, data, papel da pessoa (ré/autora, pelo CPF), outra parte,
+  valor e status. Na página: "Ver relatório dos processos", "relatório PDF" e
+  "processos.csv (Excel)". Numa execução antiga, use "Gerar relatório dos processos", que
+  usa o que já foi baixado e não entra no Sonar. Pelo terminal: `cd albi &&
+  .venv/bin/python relatorio.py <pasta>`.
 - **Baixar de novo** (não compra): na execução já confirmada, o botão "Baixar de novo
   os resultados de cada um" (ou `./rodar.sh --arquivo X --baixar`) pega o número de
   cada pedido no registro e baixa de novo o PDF e a planilha, sem abrir a Nova

@@ -495,6 +495,26 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         # caminho completo: com SAIDA_PASTA relativa (ex.: "saida"), o Flask procuraria dentro de bot/
         return send_from_directory(albi.pasta_resultado(pasta_saida, _id_albi(envio_id)).resolve(), nome, as_attachment=True)
 
+    @app.route("/albi/relatorio/<envio_id>", methods=["POST"])
+    def albi_relatorio(envio_id):
+        """Gera o relatório dos processos com o que já foi baixado (não entra no Sonar) e abre."""
+        try:
+            albi.gerar_relatorio(pasta_albi, pasta_saida, _id_albi(envio_id))
+        except albi.AlbiErro as e:
+            return redirect(url_for("albi_pagina", erro=str(e)))
+        return redirect(url_for("albi_ver", envio_id=envio_id))
+
+    @app.route("/albi/ver/<envio_id>")
+    def albi_ver(envio_id):
+        """relatorio.html na tela (não baixa). Sem scripts: CSP só deixa o estilo da própria página."""
+        base = albi.pasta_resultado(pasta_saida, _id_albi(envio_id)).resolve()
+        if not (base / "relatorio.html").is_file():
+            abort(404)
+        r = send_from_directory(base, "relatorio.html")
+        r.headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'; img-src data:"
+        r.headers["Cache-Control"] = "no-store"
+        return r
+
     @app.route("/albi/zip/<envio_id>")
     def albi_zip(envio_id):
         """Tudo desta execução num .zip (resultado.txt e as planilhas, por empresa)."""

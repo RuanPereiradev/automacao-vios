@@ -85,6 +85,8 @@ EMPRESA: Empresa B
         <li>Depois ele espera o Sonar terminar cada pedido e baixa o resultado de <b>cada pessoa</b>: o PDF da página do pedido
           (inclusive de quem deu "não consta") e, de quem tem processos encontrados, também a planilha ("Baixar Resultados").
           No fim fica o <b>resultado.txt</b> (empresa, CPF, nome, pedido e o que achou), os PDFs e as planilhas, para baixar aqui (ou tudo em .zip).</li>
+        <li>Ele mesmo lê as planilhas e monta o <b>relatório dos processos</b> (na tela, em PDF e em .csv para o Excel): por empresa,
+          quem tem processos e, de cada processo, número, tribunal, vara, ação, assunto, data, se a pessoa é ré ou autora, a outra parte, o valor e o status.</li>
         <li>CPF já pesquisado para a mesma empresa nos últimos 30 dias não é comprado de novo: o Albi usa o pedido anterior.</li>
         <li>"Só testar" faz tudo até antes do Confirmar e não compra nada.</li>
         <li>Uma execução por vez, com até {{ max_linhas }} linhas. Entrar no Sonar encerra a outra sessão aberta com o mesmo login.</li>
@@ -181,6 +183,7 @@ EMPRESA: Empresa B
                                ("conferir", "a conferir", "erro"), ("erros", "erro(s)", "erro"), ("invalidos", "inválida(s)", "erro")] %}
             {% if k.get(c) %}<span class="{{ cls }}">{{ k[c] }} {{ t }}</span>{% endif %}{% endfor %}
           {% if e.fim and e.fim.motivo %}<span class="suave">{{ e.fim.motivo }}</span>{% endif %}
+          {% if "relatorio.html" in e.arquivos %}<a href="{{ url_for('albi_ver', envio_id=e.id) }}" target="_blank" rel="noopener">relatório</a>{% endif %}
           {% if e.arquivos %}<a href="{{ url_for('albi_zip', envio_id=e.id) }}">.zip</a>{% endif %}
         </td>
         <td><span class="selo {{ r[0] }}">{{ r[1] }}</span></td>
@@ -205,7 +208,8 @@ EMPRESA: Empresa B
   const plural = (q, s, p) => q + ' ' + (q === 1 ? s : p);
   const FINAIS = ['pronto', 'erro', 'ja_pesquisado', 'encontrados', 'nao_consta', 'sem_resultado', 'conferir', 'sem_pedido'];
   const ARQ = '{{ url_for("albi_arquivo", envio_id="ID", nome="NOME") }}', ZIP = '{{ url_for("albi_zip", envio_id="ID") }}';
-  const RODAR = '{{ url_for("albi_rodar", envio_id="ID") }}';
+  const RODAR = '{{ url_for("albi_rodar", envio_id="ID") }}', VER = '{{ url_for("albi_ver", envio_id="ID") }}';
+  const RELATORIO = '{{ url_for("albi_relatorio", envio_id="ID") }}';
   const link = (id, nome) => ARQ.replace('ID', encodeURIComponent(id)).replace('NOME', nome.split('/').map(encodeURIComponent).join('/'));
 
   function cartao(e) {
@@ -224,6 +228,14 @@ EMPRESA: Empresa B
     const arqs = e.arquivos || [];
     if (arqs.length) h += `<p class="acoes"><a class="botao primario" href="${ZIP.replace('ID', encodeURIComponent(e.id))}">Baixar tudo (.zip)</a>` +
       (arqs.includes('resultado.txt') ? ` <a class="botao secundario" href="${link(e.id, 'resultado.txt')}">resultado.txt</a>` : '') + '</p>';
+    // relatório dos processos (gerado pelo Albi no fim; para execução antiga, o botão gera com o que já foi baixado)
+    const ver = VER.replace('ID', encodeURIComponent(e.id)), temRel = arqs.includes('relatorio.html');
+    if (temRel) h += `<p class="acoes"><a class="botao primario" href="${ver}" target="_blank" rel="noopener">Ver relatório dos processos</a>` +
+      (arqs.includes('relatorio.pdf') ? ` <a class="botao secundario" href="${link(e.id, 'relatorio.pdf')}">relatório PDF</a>` : '') +
+      (arqs.includes('processos.csv') ? ` <a class="botao secundario" href="${link(e.id, 'processos.csv')}">processos.csv (Excel)</a>` : '') + '</p>';
+    else if (compra && !rodando && arqs.includes('resultado.txt'))
+      h += `<form method="post" action="${RELATORIO.replace('ID', encodeURIComponent(e.id))}" class="acoes">` +
+           '<button class="primario">Gerar relatório dos processos</button></form>';
     // pesquisa já comprada e terminada: baixar de novo o PDF e a planilha de cada pedido (não compra nada)
     if (compra && !rodando && e.pedidos.some(p => p.pedido))
       h += `<form method="post" action="${RODAR.replace('ID', encodeURIComponent(e.id))}" class="acoes">` +
@@ -250,7 +262,8 @@ EMPRESA: Empresa B
     return '<ul class="lista">' + ps.map(p => {
       const s = T.etapas[p.etapa] || ['s-ja', p.etapa];
       const meus = p.pedido ? arqs.filter(a => a.split('/').pop().startsWith('S' + p.pedido + ' ')) : [];
-      const baixar = meus.map(a => `<a href="${link(e.id, a)}">${/\.pdf$/i.test(a) ? 'baixar PDF' : 'baixar planilha'}</a>`).join(' · ');
+      const baixar = (p.etapa === 'encontrados' && arqs.includes('relatorio.html') ? [`<a href="${VER.replace('ID', encodeURIComponent(e.id))}#S${encodeURIComponent(p.pedido)}" target="_blank" rel="noopener">ver processos</a>`] : [])
+        .concat(meus.map(a => `<a href="${link(e.id, a)}">${/\.pdf$/i.test(a) ? 'baixar PDF' : 'baixar planilha'}</a>`)).join(' · ');
       const det = [p.pedido ? 'Pedido S' + p.pedido : '', p.resultado && p.resultado !== '—' ? p.resultado : '',
                    p.valor && p.etapa === 'pronto' ? 'Valor no Sonar: ' + p.valor : '', p.motivo || ''].filter(Boolean).map(esc).join(' · ');
       return `<li class="pedido-a${p.etapa === 'preenchendo' ? ' atual' : ''}"><div class="topo"><span><b>Linha ${p.linha}</b> ` +

@@ -164,6 +164,7 @@ evento como `@evento {json}` na saída padrão e o Ultron grava em `saida/evento
 | `execucao_iniciada` | `modo` (`preencher` · `confirmar` · `baixar`), `total`, `validos`, `empresas` | o Albi leu e conferiu as linhas (Conferência) |
 | `fase` | `fase`: `entrando_sonar` → `preenchendo` (teste) ou `confirmando` → `aguardando_resultados` | Torre Sonar |
 | `pedido` | `linha`, `grupo` (n.º da empresa no arquivo: 1, 2…), `doc` ("CPF final 06"), `etapa`, `valor`, `motivo`, `pedido` (n.º no Sonar), `resultado` ("14 Processos"), `baixado`; no `preenchendo`, `i` e `de` (pessoa 5 de 27) | `etapa`: `invalido` · `preenchendo` · `pronto` (teste) · `confirmado` · `ja_pesquisado` · `encontrados` · `nao_consta` · `sem_resultado` · `conferir` (erro depois de confirmar) · `erro` (não comprado) · `sem_pedido` (no `baixar`: sem número no registro); `baixado` = PDF e/ou planilha salvos |
+| `relatorio` | `com_processos`, `processos`, `pdf` | relatório gerado no fim (a vila pode ignorar) |
 | `execucao_fim` | `resultado` (`concluido` · `parou`), `motivo`, `contagens` {`prontos`, `erros`, `invalidos`; ao confirmar também `confirmados`, `pdfs`, `baixados`…; no `baixar`, `sem_pedido`} | fim (volta à doca). Se o Albi fechar sem mandar, o Ultron manda `parou` |
 
 Dados mínimos: nunca o documento inteiro, o nome da pessoa nem o da empresa (o .txt inteiro fica

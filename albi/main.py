@@ -8,7 +8,9 @@ faz uma Pesquisa de Processos, uma por vez:
      e, só com --confirmar, clica em "Confirmar Pedido" (R$ 15,70 cada) e guarda o número do pedido;
   3. espera o Sonar terminar cada pedido e baixa o resultado de cada um: o PDF da página do pedido
      (todos, inclusive "não consta") e a planilha ("Baixar Resultados") de quem tem processos
-     encontrados; escreve resultado.txt (empresa, CPF, nome, pedido, o que achou e os arquivos).
+     encontrados; escreve resultado.txt (empresa, CPF, nome, pedido, o que achou e os arquivos);
+  4. lê as planilhas e gera o relatório (relatorio.py): relatorio.html, relatorio.pdf e processos.csv,
+     com cada processo de quem tem processos (número, tribunal, vara, ação, papel da pessoa, status...).
 Sem --confirmar ele faz o 1 e o 2 e NÃO compra nada (teste). CPF já pesquisado para a mesma
 empresa nos últimos 30 dias não é comprado de novo: usa o pedido anterior
 (registro em saida/pedidos_confirmados.json).
@@ -46,6 +48,7 @@ from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 from dotenv import load_dotenv
+import relatorio
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
@@ -695,6 +698,8 @@ def rodar_pedidos(driver, cfg, pedidos, confirmar=False, saida=None, nome_txt="p
         escrever()
     if confirmar:
         aguardar_e_baixar(driver, cfg, [p for p in validos if p.get("pedido")], saida, k, escrever)
+        escrever()
+        gerar_relatorio(driver, saida)
     return k
 
 
@@ -726,7 +731,23 @@ def baixar_de_novo(driver, cfg, pedidos, saida, nome_txt):
     entrar(driver, cfg)
     log.info("Login OK: %s · baixando de novo %d pedido(s) (nada é comprado)", driver.current_url, len(alvo))
     aguardar_e_baixar(driver, cfg, alvo, saida, k, escrever)
+    escrever()
+    gerar_relatorio(driver, saida)
     return k
+
+
+def gerar_relatorio(driver, saida):
+    """relatorio.html / .pdf e processos.csv a partir do resultado.txt e das planilhas (nunca derruba a execução)."""
+    try:
+        info = relatorio.gerar(saida, driver=driver)
+    except Exception as e:
+        log.error("O relatório não foi gerado: %s", mensagem(e))
+        return
+    log.info("Relatório: %d pessoa(s), %d com processos, %d processo(s)%s · %s", info["pessoas"], info["com_processos"],
+             info["processos"], "" if info["pdf"] else " (sem PDF: " + info.get("erro_pdf", "") + ")", Path(saida) / "relatorio.html")
+    for a in info["avisos"]:
+        log.warning("Relatório: %s", a)
+    evento("relatorio", com_processos=info["com_processos"], processos=info["processos"], pdf=info["pdf"])
 
 
 def aguardar_e_baixar(driver, cfg, pedidos, saida, k, escrever):

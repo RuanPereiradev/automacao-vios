@@ -12,6 +12,28 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Albi: relatório dos processos, sem ninguém abrir as planilhas (04/11/2026)
+- Novo `albi/relatorio.py` (só biblioteca padrão; nada a instalar). Lê o `resultado.txt` e as
+  planilhas do Sonar. O arquivo vem como `.xls`, mas é `.xlsx` por dentro, com o cabeçalho na
+  linha 5 e os processos a partir da 8. Escreve na pasta da execução:
+  - **relatorio.html** e **relatorio.pdf**: por empresa, o resumo de todas as pessoas (com
+    processos, não consta, quantos em andamento, quantos como réu/polo passivo, destaque para
+    trabalhista/criminal) e, de quem tem processos, uma tabela com cada um: número CNJ (com
+    link do tribunal), tribunal · comarca · vara, ramo · ação · assunto, distribuição, **papel
+    da pessoa** (achado pelo CPF dela nas partes), outra parte, valor da causa e status (em
+    andamento antes, depois encerrados);
+  - **processos.csv**: um processo por linha, para abrir no Excel (com BOM e `;`; célula que
+    começaria com `=`/`+`/`-`/`@` ganha `'` na frente para não virar fórmula).
+- O Albi gera o relatório **sozinho** no fim de cada pesquisa confirmada e do "baixar de novo"
+  (evento `relatorio` com as contagens). Se falhar, só registra no log, sem derrubar a execução.
+- Página `/albi`: "Ver relatório dos processos" (abre na tela, em `/albi/ver/<id>`, com CSP sem
+  scripts), "relatório PDF", "processos.csv (Excel)" e "ver processos" em cada pessoa. Numa
+  execução antiga (sem relatório), o botão **"Gerar relatório dos processos"** (`POST
+  /albi/relatorio/<id>`) monta o relatório com o que já foi baixado, sem entrar no Sonar.
+- Pelo terminal: `cd albi && .venv/bin/python relatorio.py <pasta do resultado>`.
+- Testado com uma planilha real de 14 processos (pedido antigo), pela página e no fim de um
+  `--baixar` no Sonar (nada comprado). Os arquivos de teste foram apagados.
+
 ### Adicionado — Albi: resultado de cada pessoa em PDF e "baixar de novo" (04/11/2026)
 - Ao terminar cada pedido, o Albi salva agora a **página do pedido no Sonar em PDF** para todo
   mundo, inclusive quem deu "Não consta processo" (o Sonar só tem "Baixar Resultados", a

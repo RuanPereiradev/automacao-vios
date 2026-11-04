@@ -255,6 +255,27 @@ def iniciar(p, pasta_saida, envio_id, modo):
     return envio_id
 
 
+def gerar_relatorio(p, pasta_saida, envio_id):
+    """Roda o albi/relatorio.py na pasta desta execução (lê o resultado.txt e as planilhas já
+    baixadas; não entra no Sonar): relatorio.html, relatorio.pdf e processos.csv. Levanta AlbiErro."""
+    p = Path(p)
+    base = pasta_resultado(pasta_saida, envio_id)
+    if not (base / "resultado.txt").exists():
+        raise AlbiErro("esta execução ainda não tem resultado.txt")
+    if not configurado(p) or not (p / "relatorio.py").exists():
+        raise AlbiErro(f"o Albi não está instalado (ou está desatualizado) em {p}")
+    try:
+        r = subprocess.run([str(_python(p)), "relatorio.py", str(base.resolve())], cwd=p, env=_ambiente(),
+                           stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=180)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise AlbiErro(f"o relatório não foi gerado: {e}")
+    if r.returncode != 0 or not (base / "relatorio.html").exists():
+        raise AlbiErro("o relatório não foi gerado: " + ((r.stderr or r.stdout).strip().splitlines() or ["erro"])[-1])
+    log.info("Relatório do Albi gerado (id %s): %s", envio_id, r.stdout.strip().splitlines()[0] if r.stdout.strip() else "")
+    return r.stdout.strip()
+
+
 def arquivos(pasta_saida, envio_id):
     """resultado.txt e planilhas desta execução (caminhos relativos à pasta do resultado)."""
     base = pasta_resultado(pasta_saida, envio_id)
