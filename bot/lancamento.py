@@ -9,7 +9,7 @@ import json
 import logging
 import re
 import unicodedata
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from selenium.webdriver.common.by import By
@@ -78,6 +78,52 @@ def _data_conclusao(tarefa, hoje):
 
 # linhas de prazo que vão em vermelho (com a data): "PRAZO FATAL...", "PRAZO PARA/DE EMBARGOS:" e "PRAZO PARA/DE RECURSO:"
 PRAZO_VERMELHO = re.compile(r"\s*PRAZO\s+(FATAL|(PARA|DE)\s+(EMBARGOS|RECURSO))\b", re.I)
+
+
+# Corte das 12h (skill da Controladoria): CIÊNCIA e ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO lançadas depois das
+# 12:00 (ou no fim de semana) com data de hoje vão para o próximo dia de segunda a sexta (contagem simplificada:
+# feriado não pula). Só a data da tarefa muda: PRAZO PARA EMBARGOS/RECURSO e PRAZO FATAL da descrição ficam.
+CORTE_HORA = (12, 0)
+CORTE_TAREFAS = ("CIÊNCIA", "ANALISAR SENTENÇA")
+DIAS = ("segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo")
+
+
+def _proximo_dia_semana(dia):
+    dia += timedelta(days=1)
+    while dia.weekday() >= 5:
+        dia += timedelta(days=1)
+    return dia
+
+
+def _prazos_da_descricao(descricao):
+    """Datas das linhas de prazo (PRAZO FATAL..., PRAZO PARA EMBARGOS/RECURSO) da descrição."""
+    datas = []
+    for linha in (descricao or "").splitlines():
+        if PRAZO_VERMELHO.match(linha):
+            for d in re.findall(r"\d{2}/\d{2}/\d{4}", linha):
+                try:
+                    datas.append(datetime.strptime(d, "%d/%m/%Y").date())
+                except ValueError:
+                    pass
+    return datas
+
+
+def corte_meio_dia(tarefa, data, agora):
+    """Aplica o corte das 12h. Devolve (data, motivo); motivo vazio = nada mudou.
+    Nunca passa a tarefa para depois de um prazo da descrição: aí ela fica hoje (urgente)."""
+    if not tarefa["nome"].startswith(CORTE_TAREFAS):
+        return data, ""
+    hoje = agora.date()
+    fim_de_semana = hoje.weekday() >= 5
+    if data != hoje or not (fim_de_semana or (agora.hour, agora.minute) > CORTE_HORA):
+        return data, ""
+    nova = _proximo_dia_semana(hoje)
+    antes = [p for p in _prazos_da_descricao(tarefa.get("descricao")) if p < nova]
+    if antes:
+        return data, (f"lançada após as 12h, mas MANTIDA em {hoje:%d/%m/%Y}: o prazo {min(antes):%d/%m/%Y} da "
+                      f"descrição vem antes de {nova:%d/%m/%Y} (URGENTE)")
+    quando = "no fim de semana" if fim_de_semana else f"às {agora:%H:%M}"
+    return nova, f"lançada {quando}: data passou de {hoje:%d/%m/%Y} para {nova:%d/%m/%Y} ({DIAS[nova.weekday()]})"
 
 
 def _linha_html(linha):
@@ -323,7 +369,10 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
             if sobra:
                 raise LancamentoErro(f"quadro Tarefas já tem {len(sobra)} linha(s) antes de adicionar: {sobra}")
             for n, t in enumerate(r["tarefas"], 1):
-                tela = preencher(driver, t, _data_conclusao(t, hoje), timeout)
+                data, motivo = corte_meio_dia(t, _data_conclusao(t, hoje), datetime.now())
+                if motivo:
+                    log.info("CI %s tarefa %d (%s): corte das 12h: %s", ci, n, t["nome"], motivo)
+                tela = preencher(driver, t, data, timeout)
                 log.info("CI %s tarefa %d: %s | prazo %s %s %s | responsáveis %s | texto da intimação: %s",
                          ci, n, tela["tarefa"], tela["tipo_prazo"], tela["data_prevista"], tela["hora"],
                          ", ".join(tela["responsaveis"]), "sim" if tela["texto_intimacao"] else "não")

@@ -643,9 +643,10 @@ Avisos (a CI é lançada, mas a página mostra para conferir): data já passada,
 ### Como o robô preenche a tarefa no VIOS
 
 - Tarefa, data, horário (campo Horário do VIOS) e descrição na Observação.
-- Descrição toda em negrito; as linhas que começam com `PRAZO FATAL` (`PRAZO FATAL:` e `PRAZO FATAL D -2:`) em negrito e vermelho. O teor da intimação que o VIOS acrescenta fica normal.
+- Descrição toda em negrito; as linhas `PRAZO FATAL:`, `PRAZO FATAL D -2:`, `PRAZO PARA EMBARGOS:` e `PRAZO PARA RECURSO:` em negrito e vermelho, junto com a data. O teor da intimação que o VIOS acrescenta fica normal.
 - `RESPONSÁVEIS: automático`: o VIOS marca sozinho (em geral o auxiliar da intimação). Com nomes: o robô marca exatamente essas pessoas. Na petição da Execução da Tamira: `TAMIRA LOIOLA, BRENO SILVA MOTA`.
 - `CIÊNCIA` com `DATA:` vazia vai para o dia do envio.
+- **Corte das 12h na hora do lançamento:** `CIÊNCIA` e `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` com data de hoje (ou ciência sem data) lançadas depois das 12:00, ou no sábado/domingo, vão para o próximo dia de segunda a sexta (sexta 12:01 → segunda). Só a data da tarefa muda; `PRAZO PARA EMBARGOS`, `PRAZO PARA RECURSO` e `PRAZO FATAL` da descrição ficam como estão. Se alguma dessas datas vier antes do novo dia, a tarefa fica para hoje (urgente). Data já futura no arquivo não é mexida.
 - Duas tarefas da mesma CI são gravadas juntas e conferidas na tela de conferência do VIOS.
 
 ### Duplicidade

@@ -12,6 +12,25 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Lançamento: corte das 12h para ciência e análise (04/11/2026)
+- Ao preencher cada tarefa no VIOS, o robô olha a hora e o dia. Tarefas **CIÊNCIA** e **ANALISAR
+  SENTENÇA/ACÓRDÃO/DECISÃO** (cível, trabalhista, execução, previdenciário e reclamante) com data
+  de hoje, ou ciência sem data, lançadas **depois das 12:00** ou no sábado/domingo, vão para o
+  **próximo dia de segunda a sexta**. Ex.: sexta 12:01 → segunda; terça 15:00 → quarta; 12:00 em
+  ponto ainda fica no dia. É a regra da skill da Controladoria, com a mesma contagem simplificada
+  (feriado não pula).
+- **Só a data da tarefa muda** (decisão do usuário): as linhas `PRAZO PARA EMBARGOS`, `PRAZO PARA
+  RECURSO` e `PRAZO FATAL` da descrição continuam no D-2 calculado.
+- Segue a skill ("nunca alongar prazo judicial pela rotina interna"): se alguma data de prazo da
+  descrição vier antes do novo dia, a tarefa fica para hoje e o log avisa **URGENTE**.
+- Data que já está no futuro (o chat já aplicou o corte) não é mexida. Vale para os dois fluxos (o
+  .txt da página de envio e a análise pela API) e para o "Testar sem gravar". Cada mudança fica no
+  log: "corte das 12h: lançada às 12:01: data passou de 06/11/2026 para 09/11/2026 (segunda)".
+- `corte_meio_dia()` em `bot/lancamento.py`. Testado com: sexta 11:59, 12:00 e 12:01; terça 15:00;
+  sábado; embargos D-2 no próprio dia; tarefa de outro tipo; data já futura.
+- Regras do programa da skill única atualizadas (`doc/skill-unica/regras-do-programa.md`, também com
+  embargos/recurso em vermelho).
+
 ### Alterado — VIOS: prazo para embargos e prazo para recurso em vermelho (04/11/2026)
 - Na descrição da tarefa no VIOS, as linhas **"PRAZO PARA EMBARGOS: dd/mm/aaaa"** e **"PRAZO PARA
   RECURSO: dd/mm/aaaa"** (também "PRAZO DE EMBARGOS/RECURSO") agora saem em **negrito e vermelho**,

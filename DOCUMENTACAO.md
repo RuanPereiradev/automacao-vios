@@ -276,6 +276,7 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 | Horário (`fo[hora_prevista]`) | Horário do ato em audiência, perícia e sustentação oral (HH:MM); vazio nas demais. Conferido na tela antes de adicionar |
 | Responsáveis | O que o VIOS marca sozinho ao escolher a tarefa (em geral o auxiliar da intimação) + BRENO quando a regra pede; ou exatamente as pessoas escolhidas manualmente na revisão |
 | Texto intimação | Marcado (padrão do VIOS) |
+| Data (corte das 12h) | `CIÊNCIA` e `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` com data de hoje, lançadas depois das 12:00 (ou no fim de semana), vão para o próximo dia de segunda a sexta (sexta 12:01 → segunda). Só a data da tarefa: as linhas de embargos, recurso e prazo fatal não mudam. Se uma delas vier antes do novo dia, fica hoje (urgente, aparece no log). A hora é a do computador do servidor, na hora de preencher cada tarefa |
 | Observação | Descrição da tarefa, toda em **negrito**; as linhas `PRAZO FATAL (D-2): ...`, `PRAZO FATAL: ...` (RPV e emenda da Suhiane), `PRAZO PARA EMBARGOS: ...` e `PRAZO PARA RECURSO: ...` (também com "DE") em **negrito e vermelho**, junto com a data. O teor que o VIOS acrescenta depois fica normal |
 
 - **Dois passos no VIOS:** *Adicionar* põe a tarefa no quadro "Tarefas"
