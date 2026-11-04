@@ -600,6 +600,34 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `saida/vila_pendentes.jsonl` dele).
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py bot/vila/vila.html`.
 
+### Passo 28 — Albi: .txt de CPF/CNPJ, página `/albi` e Vila 03
+- O Albi recebe um `.txt` com **um CPF ou CNPJ por linha** (com ou sem pontuação;
+  depois de `;` vem o "Identificador Projeto", opcional; linha vazia ou com `#` no
+  começo é ignorada):
+  ```
+  12.345.678/0001-90 ; Cliente X
+  123.456.789-00
+  ```
+- Antes de entrar no Sonar ele confere cada linha (11 ou 14 números, dígito
+  verificador, repetidos); linha inválida fica de fora e aparece na página.
+- Para cada linha válida: Nova Pesquisa → Tipo **CPF/CNPJ** → documento →
+  "Continuar" → passo 2 ("Pedido"), onde confere o documento mostrado e lê o
+  valor (hoje R$ 15,70). **Ele para ali: nunca clica em "Confirmar Pedido"**.
+- Pela página: `http://<IP do Mac>:5001/albi` (link "Albi" no topo do Ultron).
+  Soltar o `.txt` na caixa; o Albi roda em segundo plano (um por vez, até 500
+  linhas) e a página mostra cada linha ao vivo. Histórico em `/albi/historico`.
+  O arquivo fica em `saida/albi/<id>.txt`; o log do Albi em
+  `albi/logs/execucoes_ultron.log`.
+- Pelo terminal: `cd albi && ./rodar.sh --arquivo pedidos.txt`.
+- A **Vila 03** acendeu: é a vila do Albi (Doca 01 · Albi, Receptor TXT,
+  Conferência, Torre Sonar), com o mascote dele (`albi/mascote/`). Os eventos
+  levam só o número da linha e o final do documento ("CNPJ final 77"), nunca o
+  documento inteiro nem o identificador.
+- O Ultron acha o Albi em `albi/` deste repositório; noutra pasta, `ALBI_PASTA`
+  no `.env` do Ultron.
+- Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py
+  bot/vila/vila.html` e depois `python3 doc/vila/ligar_albi.py bot/vila/vila.html`.
+
 ### Passo 27 — Segurança das rotas
 - Com `ENVIO_REDE=true`, toda rota (GET e POST) pede a senha (`ENVIO_SENHA`).
 - POST que vem de outro site é recusado (403): o navegador guarda a senha e a
@@ -618,7 +646,7 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   em "Encerrar a outra sessão" e, se voltar para o login, entra de novo.
 - Depois vai direto para Pesquisa de Processos > Nova Pesquisa
   (`/modulos/pesquisa-processos/novo-pedido`, a tela do botão "Iniciar Pesquisa").
-  As próximas etapas ainda vão ser definidas.
+  Daí em diante, ver o passo 28 (pedidos pelo `.txt`).
 - Instalar: `cd albi && ./instalar.sh`; preencher `albi/.env`
   (`SONAR_CPF_CNPJ`, `SONAR_EMAIL`, `SONAR_SENHA`; modelo comentado em
   `albi/.env.example`); testar: `./rodar.sh` (diz "Login OK" e "Tela de novo
@@ -707,9 +735,10 @@ selenium/
 │   ├── envio_web.py     # página de envio do .txt (Flask)
 │   ├── eventos.py       # eventos para a vila (saida/eventos.jsonl, GET /eventos; POST /eventos do Zangão)
 │   ├── zangao.py        # roda o Zangão em segundo plano pela vila (/zangao/status, /zangao/rodar)
+│   ├── albi.py          # página /albi: guarda o .txt, roda o Albi e repassa os eventos dele à vila
 │   ├── vila/            # vila.html (servido em /vila)
-│   ├── templates/       # HTML das páginas de revisão, de envio e do Zangão (zangao.html);
-│   │                    # _estilo.html = estilo comum; _ultron.html / _zangao.html = mascotes;
+│   ├── templates/       # HTML das páginas de revisão, de envio, do Zangão e do Albi (albi.html);
+│   │                    # _estilo.html = estilo comum; _ultron.html / _zangao.html / _albi.html = mascotes;
 │   │                    # _vila.html = vila embutida no topo da página do Ultron
 │   ├── prazos.py        # dias úteis, feriados, prazo fatal, D-2
 │   └── ia/              # provedores de IA: openai_ia.py, anthropic_ia.py
@@ -822,6 +851,7 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `ENVIO_REDE` | não | Página de envio aberta para a rede (padrão: só nesta máquina) | `true` |
 | `ENVIO_SENHA` | com `ENVIO_REDE=true` | Senha pedida pela página de envio | (definir no `.env`) |
 | `ZANGAO_PASTA` | não | Pasta do Zangão neste computador (com `.venv` e `.env` dele); liga os botões da Vila 02 | `~/zangao` |
+| `ALBI_PASTA` | não | Pasta do Albi (com `.venv` e `.env` dele); vazio = `albi/` deste repositório | `~/albi` |
 
 ---
 

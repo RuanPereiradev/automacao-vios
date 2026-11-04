@@ -151,3 +151,20 @@ Na vila (`bot/vila/vila.html`, só no modo servidor, em `/vila`):
 - A mudança foi feita na cópia por `doc/vila/ligar_zangao.py`. Se a vila for baixada de novo
   do site, rodar `python3 doc/vila/ligar_zangao.py bot/vila/vila.html` (e levar a mudança para
   o código-fonte da vila).
+
+## Albi (bot do Sonar) na Vila 03 (04/11/2026)
+
+O Albi roda dentro do servidor do Ultron (página `/albi`, `bot/albi.py`): ele escreve cada
+evento como `@evento {json}` na saída padrão e o Ultron grava em `saida/eventos.jsonl` com
+`bot: "albi"` e `envio` = id da execução (o mesmo de `saida/albi/<id>.txt`).
+
+| `tipo` | campos | quando |
+| --- | --- | --- |
+| `arquivo_subido` | `arquivo`, `linhas` | o Ultron recebeu o .txt (Receptor TXT) |
+| `execucao_iniciada` | `modo: "preencher"`, `total`, `validos` | o Albi leu e conferiu as linhas (Conferência) |
+| `fase` | `fase`: `entrando_sonar` → `preenchendo` | Torre Sonar |
+| `pedido` | `linha`, `doc` ("CNPJ final 77"), `etapa`, `valor`, `motivo` | `etapa`: `invalido` · `preenchendo` · `pronto` (no passo 2, não confirmado) · `erro` |
+| `execucao_fim` | `resultado` (`concluido` · `parou`), `motivo`, `contagens` {`prontos`, `erros`, `invalidos`} | fim (volta à doca). Se o Albi fechar sem mandar, o Ultron manda `parou` |
+
+Dados mínimos: nunca o documento inteiro nem o identificador (podem ter nome de cliente).
+A Vila 03 foi ligada por `doc/vila/ligar_albi.py` (rodar depois do `ligar_zangao.py`).

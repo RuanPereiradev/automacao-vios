@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 
 from flask import Flask, Response, abort, jsonify, redirect, render_template, request, url_for
 
-from bot import config, duplicidade, envio_txt, eventos, skill, zangao
+from bot import albi, config, duplicidade, envio_txt, eventos, skill, zangao
 from bot.lancamento import REGISTRO, lancar, ler_intimacao
 from bot.login import fazer_login
 from bot.navegador import criar_driver
@@ -296,6 +296,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     pasta_saida = Path(cfg.pasta_saida)
     # Zangão instalado neste computador (pasta com .venv e .env dele); vazio = sem botões na vila
     pasta_zangao = os.path.expanduser(os.getenv("ZANGAO_PASTA", "").strip())
+    pasta_albi = albi.pasta()  # Albi (bot do Sonar): ALBI_PASTA ou a pasta albi/ deste repositório
     arquivo_pessoas = pasta_saida / "responsaveis.json"
     envios = carregar_envios(pasta_saida)  # id -> {arquivo, cis, estado, confirmar, ...}
     trava = threading.Lock()  # um envio por vez (um navegador só)
@@ -435,7 +436,43 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
 
     @app.context_processor
     def menu():
-        return {"zangao_ligado": bool(pasta_zangao)}
+        return {"zangao_ligado": bool(pasta_zangao), "albi_ligado": albi.configurado(pasta_albi)}
+
+    @app.route("/albi")
+    def albi_pagina():
+        """Página do Albi: solta o .txt (um CPF/CNPJ por linha) e ele preenche no Sonar, sem confirmar."""
+        return render_template("albi.html", tela="inicio", textos=albi.TEXTOS, erro=request.args.get("erro"),
+                               max_linhas=albi.MAX_LINHAS)
+
+    @app.route("/albi/enviar", methods=["POST"])
+    def albi_enviar():
+        arquivo = request.files.get("arquivo")
+        if not arquivo or not arquivo.filename:
+            return redirect(url_for("albi_pagina"))
+        bruto = arquivo.read()
+        try:
+            texto = bruto.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            texto = bruto.decode("cp1252")  # salvo pelo Bloco de Notas antigo
+        try:
+            albi.rodar(pasta_albi, pasta_saida, texto, Path(arquivo.filename).name)
+        except albi.AlbiErro as e:
+            return redirect(url_for("albi_pagina", erro=str(e)))
+        log.info("Albi disparado pela página (%s) por %s", arquivo.filename, request.remote_addr)
+        return redirect(url_for("albi_pagina"))
+
+    @app.route("/albi/andamento")
+    def albi_andamento():
+        return jsonify(albi.andamento(pasta_albi, pasta_saida))
+
+    @app.route("/albi/historico")
+    def albi_historico():
+        return render_template("albi.html", tela="historico", execucoes=albi.execucoes(pasta_saida), textos=albi.TEXTOS)
+
+    @app.route("/albi/execucao/<execucao_id>")
+    def albi_execucao(execucao_id):
+        e = next((e for e in albi.execucoes(pasta_saida) if e["id"] == execucao_id), None) or abort(404)
+        return render_template("albi.html", tela="execucao", e=e, textos=albi.TEXTOS)
 
     @app.route("/zangao")
     def zangao_pagina():

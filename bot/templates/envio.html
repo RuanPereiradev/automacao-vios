@@ -37,6 +37,7 @@
     <span><span class="marca"><b>U</b>LTRON</span><br><span class="sub">envio de tarefas ao VIOS</span></span></a>
   <span class="acoes" style="margin-left: auto">
     {% if zangao_ligado %}<a class="botao secundario" href="{{ url_for('zangao_pagina') }}">Zangão</a>{% endif %}
+    {% if albi_ligado %}<a class="botao secundario" href="{{ url_for('albi_pagina') }}">Albi</a>{% endif %}
     <a class="botao secundario" href="{{ url_for('historico') }}">Histórico</a>
   </span>
 </header>

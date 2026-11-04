@@ -1,0 +1,194 @@
+{# Página do Albi (bot do Sonar), como a do Ultron: Vila 03 no topo, caixa para soltar o .txt
+   (um CPF/CNPJ por linha) e o andamento de cada linha, ao vivo. Os dados vêm dos eventos do
+   próprio Albi (bot/albi.py monta as execuções). Por enquanto ele só preenche: não confirma. #}
+{% from "_ultron.html" import ultron_script %}
+{% from "_albi.html" import albi, albi_icone %}
+{% from "_vila.html" import vila_cartao %}
+{% set RES = textos.resultados %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Albi — pesquisa de processos no Sonar</title>
+{{ albi_icone() }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
+{% include "_estilo.html" %}
+<style>
+  /* cores do Albi por cima do estilo do Ultron */
+  :root { --red: #f29bbf; --red-escuro: #c96a93; }
+  body { background: radial-gradient(ellipse at top, #1d1218 0%, var(--fundo) 55%) fixed, var(--fundo); }
+  .marca b { text-shadow: 0 0 12px rgba(242, 155, 191, .6); }
+  .primario { color: #1d1e21; box-shadow: 0 0 18px rgba(242, 155, 191, .3); }
+  .lista > li.atual { box-shadow: 0 0 18px rgba(242, 155, 191, .2); }
+  .barra i { box-shadow: 0 0 14px rgba(242, 155, 191, .7); }
+  .soltar.desligado { opacity: .55; pointer-events: none; }
+  /* mascote: pisca, achata como no original e a fivela brilha */
+  .albi.piscando .olho-a { fill: #f29bbf; }
+  .albi.subindo svg { transform: scale(1.03, .97) translateY(1.5%); }
+  .albi .fivela { animation: fivela 1s steps(1) infinite; }
+  @keyframes fivela { 50% { fill: #f0c46a; } }
+  .albi .sombra { background: radial-gradient(rgba(242, 155, 191, .3), transparent 70%); }
+  .pedido-a .detalhe { font-size: 13px; color: var(--suave); margin-top: 4px; }
+  .pedido-a code { font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <a href="{{ url_for('albi_pagina') }}">{{ albi("parado", 48, "albi-topo") }}
+    <span><span class="marca"><b>A</b>LBI</span><br><span class="sub">pesquisa de processos no Sonar</span></span></a>
+  <span class="acoes" style="margin-left: auto">
+    <a class="botao secundario" href="{{ url_for('inicio') }}">Ultron</a>
+    {% if zangao_ligado %}<a class="botao secundario" href="{{ url_for('zangao_pagina') }}">Zangão</a>{% endif %}
+    <a class="botao secundario" href="{{ url_for('albi_historico') }}">Histórico</a>
+  </span>
+</header>
+<main>
+{% if tela == "inicio" %}
+  {{ vila_cartao(3) }}
+  <div class="cartao">
+    <form action="{{ url_for('albi_enviar') }}" method="post" enctype="multipart/form-data" id="form-arquivo">
+      <label class="soltar" id="soltar">
+        {{ albi("parado", 48, "albi-caixa") }}
+        <span class="titulo" id="soltar-titulo">Solte o .txt aqui</span>
+        <span class="suave" id="soltar-sub">um CPF/CNPJ por linha — o Albi preenche a pesquisa no Sonar e para antes de confirmar</span>
+        <input type="file" name="arquivo" accept=".txt,text/plain" required id="arquivo">
+      </label>
+    </form>
+    {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+    <p class="erro" id="rodar-erro" hidden></p>
+  </div>
+
+  <div class="cartao" id="execucao"><p class="suave">Carregando a última execução…</p></div>
+
+  <div class="cartao">
+    <details>
+      <summary>Formato do arquivo</summary>
+      <p class="suave">Um CPF ou CNPJ por linha, com ou sem pontuação. Depois de <code>;</code> vem o
+        <b>Identificador Projeto</b> do Sonar (opcional). Linha vazia ou começando com <code>#</code> é ignorada.</p>
+<pre>12.345.678/0001-90 ; Cliente X
+123.456.789-00
+98765432000110 ; Projeto Y</pre>
+      <ul class="suave">
+        <li>O Albi confere o dígito verificador antes de entrar no Sonar: linha inválida ou repetida fica de fora e aparece aqui.</li>
+        <li>Para cada linha ele abre <b>Pesquisa de Processos → Nova Pesquisa</b>, escolhe <b>CPF/CNPJ</b>, preenche e avança até o passo
+          <b>Pedido</b>, onde lê o valor. <b>Não clica em "Confirmar Pedido"</b>: nada é comprado.</li>
+        <li>Uma execução por vez, com até {{ max_linhas }} linhas. Entrar no Sonar encerra a outra sessão aberta com o mesmo login.</li>
+      </ul>
+    </details>
+  </div>
+
+{% elif tela == "historico" %}
+  <div class="cartao">
+    <div class="topo-hist"><h2>Execuções do Albi</h2>
+      <a class="botao secundario" href="{{ url_for('albi_pagina') }}">Voltar</a></div>
+    {% if not execucoes %}<p class="suave">Nenhuma execução ainda.</p>{% else %}
+    <div class="rolar"><table class="hist">
+      <tr><th>Quando</th><th>Arquivo</th><th>Linhas</th><th>Resultado</th><th>Situação</th></tr>
+      {% for e in execucoes %}{% set k = e.fim.contagens if e.fim else {} %}
+      {% set r = RES.get(e.fim.resultado if e.fim else "interrompida", ["s-ja", e.fim.resultado if e.fim else "—"]) %}
+      <tr>
+        <td class="nowrap"><a href="{{ url_for('albi_execucao', execucao_id=e.id) }}">{{ e.inicio[8:10] }}/{{ e.inicio[5:7] }}/{{ e.inicio[:4] }} {{ e.inicio[11:16] }}</a></td>
+        <td>{{ e.arquivo or "—" }}</td>
+        <td>{{ e.pedidos | length }}</td>
+        <td class="nowrap">
+          {% if k.get("prontos") %}<span class="ok">{{ k.prontos }} pronto(s)</span>{% endif %}
+          {% if k.get("erros") %}<span class="erro">{{ k.erros }} erro(s)</span>{% endif %}
+          {% if k.get("invalidos") %}<span class="erro">{{ k.invalidos }} inválida(s)</span>{% endif %}
+          {% if e.fim and e.fim.motivo %}<span class="suave">{{ e.fim.motivo }}</span>{% endif %}
+        </td>
+        <td><span class="selo {{ r[0] }}">{{ r[1] }}</span></td>
+      </tr>
+      {% endfor %}
+    </table></div>
+    {% endif %}
+  </div>
+
+{% elif tela == "execucao" %}
+  <div class="cartao" id="execucao"></div>
+  <p><a class="botao secundario" href="{{ url_for('albi_historico') }}">Voltar ao histórico</a></p>
+{% endif %}
+</main>
+{{ ultron_script() }}
+<script>
+(() => {
+  const T = {{ textos | tojson }};
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const dataHora = ts => ts ? `${ts.slice(8, 10)}/${ts.slice(5, 7)}/${ts.slice(0, 4)} ${ts.slice(11, 16)}` : '';
+  const plural = (q, s, p) => q + ' ' + (q === 1 ? s : p);
+
+  function cartao(e) {
+    if (!e) return '<h2>Nenhuma execução ainda</h2><p class="suave">Solte um .txt acima para ver o Albi trabalhando. Ele só preenche: não confirma nenhum pedido.</p>';
+    const rodando = !e.fim && !e.interrompida;
+    const res = rodando ? T.resultados.rodando : e.fim ? (T.resultados[e.fim.resultado] || ['s-ja', e.fim.resultado]) : T.resultados.interrompida;
+    const titulo = rodando ? (e.fase === 'preenchendo' ? 'Preenchendo no Sonar (sem confirmar)' : 'Entrando no Sonar…')
+      : e.fim ? (e.fim.resultado === 'concluido' ? 'Execução concluída (nada foi confirmado)' : 'A execução parou')
+      : 'Execução interrompida';
+    let h = `<div class="topo-hist"><h2>${esc(titulo)}</h2><span class="selo ${res[0]}">${esc(res[1])}</span></div>`;
+    h += `<p class="suave">${esc(e.arquivo || 'arquivo')} · início ${esc(dataHora(e.inicio))}${e.fim && e.fim.ts ? ' · fim ' + esc(e.fim.ts.slice(11, 16)) : ''}</p>`;
+    if (e.fim && e.fim.motivo) h += `<p class="erro">${esc(e.fim.motivo)}</p>`;
+    if (e.interrompida) h += '<p class="aviso">Não chegou o fim desta execução (o Albi foi fechado no meio ou a página reiniciou).</p>';
+    if (e.alvo) h += `<div class="barra${rodando ? ' ativa' : ''}"><i style="width:${Math.round(100 * e.feitos / e.alvo)}%"></i></div>` +
+                     `<p class="suave" style="margin-top:0">${e.feitos} de ${plural(e.alvo, 'linha válida', 'linhas válidas')}</p>`;
+    const conta = s => e.pedidos.filter(p => p.etapa === s).length;
+    const nums = [[e.pedidos.length, 'no arquivo']];
+    [['pronto', 'pronto(s) no passo 2', 'ok'], ['erro', 'com erro', 'erro'], ['invalido', 'inválida(s)', 'erro']]
+      .forEach(([s, t, c]) => { const q = conta(s); if (q) nums.push([q, t, c]); });
+    h += '<div class="numeros">' + nums.map(([q, t, c]) => `<div class="numero"><b class="${c || ''}">${q}</b>${esc(t)}</div>`).join('') + '</div>';
+    if (e.pedidos.length) {
+      h += '<ul class="lista">' + e.pedidos.map(p => {
+        const s = T.etapas[p.etapa] || ['s-ja', p.etapa];
+        const det = [p.valor ? 'Valor no Sonar: ' + p.valor : '', p.motivo || ''].filter(Boolean).join(' · ');
+        return `<li class="pedido-a${p.etapa === 'preenchendo' ? ' atual' : ''}"><div class="topo"><span><b>Linha ${p.linha}</b> ` +
+               `<code>${esc(p.texto || p.doc || '')}</code></span><span class="selo ${s[0]}">${esc(s[1])}</span></div>` +
+               `${det ? `<div class="detalhe">${esc(det)}</div>` : ''}</li>`;
+      }).join('') + '</ul>';
+    }
+    return h;
+  }
+
+  {% if tela == "execucao" %}
+  $('execucao').innerHTML = cartao({{ e | tojson }});
+  {% elif tela == "inicio" %}
+  const form = $('form-arquivo'), caixa = $('soltar'), campo = $('arquivo');
+  function enviar(nome) {
+    $('soltar-titulo').textContent = 'Enviando ' + nome + '…';
+    $('soltar-sub').textContent = 'o Albi confere as linhas e entra no Sonar';
+    $('albi-caixa').classList.replace('parado', 'trabalhando');
+    form.submit();
+  }
+  campo.addEventListener('change', () => campo.files.length && enviar(campo.files[0].name));
+  ['dragenter', 'dragover'].forEach(ev => caixa.addEventListener(ev, e => { e.preventDefault(); caixa.classList.add('arrastando'); }));
+  ['dragleave', 'drop'].forEach(ev => caixa.addEventListener(ev, e => { e.preventDefault(); caixa.classList.remove('arrastando'); }));
+  caixa.addEventListener('drop', e => {
+    if (!e.dataTransfer.files.length || caixa.classList.contains('desligado')) return;
+    campo.files = e.dataTransfer.files; enviar(campo.files[0].name);
+  });
+
+  let ultimoHtml = '';
+  async function atualizar() {
+    try {
+      const r = await fetch('{{ url_for("albi_andamento") }}', { credentials: 'same-origin' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const info = await r.json();
+      const ocupado = !info.configurado || info.rodando;
+      caixa.classList.toggle('desligado', ocupado);
+      campo.disabled = ocupado;
+      $('soltar-titulo').textContent = !info.configurado ? 'O Albi não está instalado neste servidor'
+        : info.rodando ? 'O Albi está trabalhando…' : 'Solte o .txt aqui';
+      $('soltar-sub').textContent = !info.configurado ? 'falta a pasta albi/ com .venv e .env (veja albi/README.md)'
+        : info.rodando ? 'uma execução por vez: espere terminar para soltar outro arquivo'
+        : 'um CPF/CNPJ por linha — o Albi preenche a pesquisa no Sonar e para antes de confirmar';
+      const h = cartao(info.execucao);
+      if (h !== ultimoHtml) { $('execucao').innerHTML = h; ultimoHtml = h; }
+      $('rodar-erro').hidden = true;
+    } catch (err) { $('rodar-erro').textContent = 'Sem conexão com o servidor. Tentando de novo…'; $('rodar-erro').hidden = false; }
+  }
+  atualizar(); setInterval(atualizar, 1500);
+  {% endif %}
+})();
+</script>
+</body>
+</html>

@@ -12,6 +12,26 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Albi: pedidos pelo .txt, página `/albi` e Vila 03 (04/11/2026)
+- `albi/main.py --arquivo pedidos.txt`: um CPF/CNPJ por linha (`; identificador` opcional).
+  Confere cada linha antes (11/14 números, dígito verificador, repetidos) e, para cada válida,
+  preenche Nova Pesquisa → Tipo CPF/CNPJ → documento → Continuar, confere o documento no passo 2
+  ("Pedido") e lê o valor. **Não clica em "Confirmar Pedido"** (decisão de 04/11: por enquanto
+  só preencher). Erro numa linha não para as outras (print em `albi/logs/`).
+- `--eventos`: cada passo sai como `@evento {json}` na saída padrão, só com o número da linha e
+  o final do documento ("CNPJ final 77").
+- Ultron: página `/albi` (Vila 03 no topo, caixa para soltar o .txt, andamento ao vivo de cada
+  linha, `/albi/historico`), `bot/albi.py` (guarda o .txt em `saida/albi/`, roda o Albi com o
+  `.venv`/`.env` dele, um por vez, até 500 linhas, e repassa os eventos à vila), link "Albi" no
+  topo das páginas do Ultron e do Zangão e `ALBI_PASTA` no `.env.example` (vazio = `albi/`).
+- Vila: a Vila 03 acendeu para o Albi (`doc/vila/ligar_albi.py`): placas Doca 01 · Albi, Receptor
+  TXT, Conferência e Torre Sonar, o mascote de `albi/mascote/` (22×19, pisca, achata e a fivela
+  brilha) andando conforme os eventos, e o painel "Pesquisa de processos" com cada linha.
+- Mascote do Albi na página e no ícone da aba (`bot/templates/_albi.html`).
+- Testado no Sonar real pela página (CNPJ do escritório + um CPF inválido): linha 1 pronta no
+  passo 2 com R$ 15,70, linha 2 recusada antes; nada confirmado. O resumo do pedido mostrou 1
+  item só (os testes anteriores não acumularam num carrinho).
+
 ### Adicionado — Albi: sessão em conflito e tela de novo pedido (04/11/2026)
 - Se o login cair em `/login-conflito` (sessão aberta em outro lugar), o Albi clica em "Encerrar
   a outra sessão"; se o Sonar voltar para a tela de login, entra de novo. Botão configurável em
