@@ -1,8 +1,8 @@
 """Põe o Jarvis (relatório mensal de processos, segundo usuário do VIOS) na Vila 04:
 - a vila passa de 3 para 4 vilas; a Vila 04 acende (cores, placas e torre) e ganha o nome Jarvis;
-- o Jarvis (mascote carmesim e dourado com propulsores) faz a ronda na Vila 04 e se apresenta no diálogo.
+- o Jarvis (núcleo de IA: esfera azul em espiral, com anéis e o centro pulsando; ou o mascote carmesim com propulsores) faz a ronda na Vila 04 e se apresenta no diálogo.
 Ainda não recebe eventos: o relatório roda em outra máquina e só aparece aqui quando os eventos forem ligados.
-uso: python3 doc/vila/ligar_jarvis.py bot/vila/vila.html  (edita no lugar; rodar de novo não muda nada)"""
+uso: python3 doc/vila/ligar_jarvis.py bot/vila/vila.html [nucleo|propulsor]  (edita no lugar; rodar de novo não muda nada)"""
 import json
 import sys
 
@@ -63,13 +63,43 @@ troca("  patrol() {", r"""  jpatrol() {
       dialogShown: txt.slice(0, s.jtyped || 0), moreOpacity: (s.jtyped || 0) >= txt.length ? 1 : 0 };
   }
   patrol() {""")
-troca("    const eyes = {", r"""    { const j = this.j, voando = j.path.length > 0 && j.wait <= 0, jb = voando ? -2 : (f >> 4) % 2 ? -3 : -2, pisca = f % 220 < 5, chama = (f >> 2) % 2;
+DESENHO = {
+    # armadura carmesim e dourada com propulsores (o fogo pisca)
+    "propulsor": r"""      const pisca = f % 220 < 5, chama = (f >> 2) % 2;
       const JP = { R: '#b3202f', H: '#e0525c', S: '#6e1019', G: '#c99a3a', Y: '#f0c46a', K: '#1d1e21', E: pisca ? '#1d1e21' : '#7fe3ff', B: pisca ? '#1d1e21' : '#e6fbff',
         C: '#7fe3ff', W: '#ffffff', F: chama ? '#ffd23f' : '#ff7a1a', Q: chama ? '#ff7a1a' : null };
+      Component.JSPR.forEach((row, y) => row.split('').forEach((ch, x) => { if (ch !== '.' && JP[ch]) R(j.x + x, j.y + jb + y - 2, 1, 1, JP[ch]); }));""",
+    # núcleo de IA: esfera em espiral girando, dois anéis tracejados e o centro pulsando
+    "nucleo": r"""      const cx = j.x + 8, cy = j.y + jb + 4, rot = f * 0.025, rr = 6.5 + 0.4 * Math.sin(f * 0.06), ct = Math.cos(0.42), sn = Math.sin(0.42);
+      const halo = c.createRadialGradient(cx, cy, 0, cx, cy, rr * 1.9);
+      halo.addColorStop(0, 'rgba(120,200,255,.35)'); halo.addColorStop(1, 'rgba(30,90,160,0)');
+      c.fillStyle = halo; c.fillRect(cx - rr * 2, cy - rr * 2, rr * 4, rr * 4);
+      for (let i = 0; i < 70; i++) {
+        const t0 = i / 69, ph = Math.acos(1 - 2 * t0), th = t0 * 10 * Math.PI * 2;
+        const x = rr * Math.sin(ph) * Math.cos(th), y = rr * Math.cos(ph), z = rr * Math.sin(ph) * Math.sin(th);
+        const x1 = x * Math.cos(rot) - z * Math.sin(rot), z1 = x * Math.sin(rot) + z * Math.cos(rot), y2 = y * ct - z1 * sn, z2 = y * sn + z1 * ct;
+        R(cx + x1, cy + y2, 1, 1, z2 < 0 ? ((i + (f >> 3)) % 7 ? '#5ab4ff' : '#e6fbff') : '#1f4f86');
+      }
+      [[1.45, 0.32, 0.03, '#7fc8ff'], [1.2, -0.5, -0.045, '#cfeaff']].forEach(([k, inc, vel, cor]) => {
+        for (let s = 0; s < 40; s++) {
+          if ((s >> 2) % 2) continue;
+          const a = s / 40 * Math.PI * 2 + f * vel, x = rr * k * Math.cos(a), z = rr * k * Math.sin(a);
+          R(cx + x, cy + z * inc, 1, 1, z < 0 ? cor : '#2f6fae');
+        }
+      });
+      const p = 0.85 + 0.15 * Math.sin(f * 0.06);
+      const nucleo = c.createRadialGradient(cx, cy, 0, cx, cy, 4 * p);
+      nucleo.addColorStop(0, 'rgba(255,255,255,1)'); nucleo.addColorStop(0.35, 'rgba(170,235,255,.85)'); nucleo.addColorStop(1, 'rgba(60,150,255,0)');
+      c.fillStyle = nucleo; c.fillRect(cx - 5, cy - 5, 10, 10);
+      R(cx - 1, cy - 1, 2, 2, '#ffffff');""",
+}
+MASCOTE = sys.argv[2] if len(sys.argv) > 2 else "nucleo"
+assert MASCOTE in DESENHO, f"mascote '{MASCOTE}' não existe: {', '.join(DESENHO)}"
+troca("    const eyes = {", r"""    { const j = this.j, voando = j.path.length > 0 && j.wait <= 0, jb = voando ? -2 : (f >> 4) % 2 ? -3 : -2;
       R(960 + 63, 4, 3, 3, (f >> 5) % 2 ? '#7fe3ff' : '#1a4f5c');
       R(960 + TX + 15, TY, 2, 2, (f >> 5) % 2 ? '#7fe3ff' : '#1a4f5c');
       c.fillStyle = 'rgba(0,0,0,.22)'; c.fillRect(Math.round(j.x + 4), Math.round(j.y + 15), 8, 2);
-      Component.JSPR.forEach((row, y) => row.split('').forEach((ch, x) => { if (ch !== '.' && JP[ch]) R(j.x + x, j.y + jb + y - 2, 1, 1, JP[ch]); })); }
+""" + DESENHO[MASCOTE] + """ }
     const eyes = {""")
 
 # 4) painel da Vila 04

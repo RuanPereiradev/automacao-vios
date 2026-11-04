@@ -20,6 +20,11 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 - `doc/vila/ligar_jarvis.py` aplica a mudança no `bot/vila/vila.html` (como o `ligar_zangao.py`).
 - Ainda sem eventos: o Jarvis aparece sempre como "Ocioso".
 
+### Alterado — Mascote do Jarvis: núcleo de IA (04/11/2026)
+- O Jarvis passa a ser um núcleo de IA em pixel: esfera azul em espiral girando, dois anéis
+  tracejados e o centro pulsando (versão em miniatura do `nucleo-ia.html`). O mascote com
+  propulsores continua no script: `ligar_jarvis.py bot/vila/vila.html propulsor`.
+
 ### Adicionado — Albi: sessão em conflito e tela de novo pedido (04/11/2026)
 - Se o login cair em `/login-conflito` (sessão aberta em outro lugar), o Albi clica em "Encerrar
   a outra sessão"; se o Sonar voltar para a tela de login, entra de novo. Botão configurável em

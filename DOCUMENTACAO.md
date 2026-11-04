@@ -605,12 +605,13 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   robô do relatório mensal de processos por Grupo Cliente (`relatorio_processos.py`,
   segundo usuário do VIOS, só leitura; detalhes em `RELATORIO_PROCESSOS.md`).
 - A Vila 04 fica acesa, com as placas Doca 01 · Jarvis, Leitura dos processos, Planilhas e
-  Torre VIOS; o Jarvis (mascote carmesim e dourado com propulsores) faz a ronda e se
-  apresenta no diálogo. `/vila?vila=4` abre direto nela.
+  Torre VIOS; o Jarvis (núcleo de IA: esfera azul em espiral, com anéis e o centro
+  pulsando) faz a ronda e se apresenta no diálogo. `/vila?vila=4` abre direto nela.
 - Ainda **não recebe eventos**: o relatório roda em outra máquina e não manda nada para a
   vila; por enquanto ele aparece sempre como "Ocioso".
 - Se a vila for baixada de novo do site: rodar `ligar_zangao.py` e depois
-  `python3 doc/vila/ligar_jarvis.py bot/vila/vila.html`.
+  `python3 doc/vila/ligar_jarvis.py bot/vila/vila.html` (no fim, `propulsor` troca o
+  núcleo pelo mascote com propulsores).
 
 ### Passo 27 — Segurança das rotas
 - Com `ENVIO_REDE=true`, toda rota (GET e POST) pede a senha (`ENVIO_SENHA`).
