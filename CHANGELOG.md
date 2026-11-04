@@ -12,6 +12,15 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — VIOS: prazo para embargos e prazo para recurso em vermelho (04/11/2026)
+- Na descrição da tarefa no VIOS, as linhas **"PRAZO PARA EMBARGOS: dd/mm/aaaa"** e **"PRAZO PARA
+  RECURSO: dd/mm/aaaa"** (também "PRAZO DE EMBARGOS/RECURSO") agora saem em **negrito e vermelho**,
+  junto com a data, como já acontecia com "PRAZO FATAL...". A regra é uma só (`PRAZO_VERMELHO` em
+  `bot/lancamento.py`) e vale também para a prévia da página de revisão (`revisao.html`). Texto
+  que só cita "prazo para recurso" no meio da frase continua sem cor.
+- Pedido feito com um print do VIOS (tarefa com "PRAZO PARA EMBARGOS: 06/11/2026" e "PRAZO PARA
+  RECURSO: 20/11/2026").
+
 ### Adicionado — Albi: mensagem no padrão da CAC para cada pessoa com processos (04/11/2026)
 - Novo `albi/mensagem_cac.py` (chamado pelo `relatorio.py`). Escreve `mensagens_cac.txt` e
   `mensagens_cac.json`, com **uma mensagem por pessoa com processos**, no modelo da Central de

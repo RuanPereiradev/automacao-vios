@@ -76,13 +76,18 @@ def _data_conclusao(tarefa, hoje):
         return hoje
 
 
+# linhas de prazo que vão em vermelho (com a data): "PRAZO FATAL...", "PRAZO PARA/DE EMBARGOS:" e "PRAZO PARA/DE RECURSO:"
+PRAZO_VERMELHO = re.compile(r"\s*PRAZO\s+(FATAL|(PARA|DE)\s+(EMBARGOS|RECURSO))\b", re.I)
+
+
 def _linha_html(linha):
-    """Texto do robô em negrito; linhas "PRAZO FATAL..." (": ", " (D-2): ", " D -2: ") em negrito e vermelho.
+    """Texto do robô em negrito; linhas de prazo ("PRAZO FATAL...", "PRAZO PARA EMBARGOS: 06/11/2026",
+    "PRAZO PARA RECURSO: 20/11/2026", também com "DE") em negrito e vermelho, junto com a data.
     O teor que o VIOS acrescenta depois ("---------- Intimação: ...") não passa por aqui e fica normal."""
     if not linha.strip():
         return "<p>&nbsp;</p>"
     texto = html.escape(linha)
-    if linha.startswith("PRAZO FATAL"):
+    if PRAZO_VERMELHO.match(linha):
         texto = f'<span style="color: #ff0000;">{texto}</span>'
     return f"<p><strong>{texto}</strong></p>"
 
