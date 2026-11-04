@@ -82,8 +82,9 @@ EMPRESA: Empresa B
       <ul class="suave">
         <li>Ao soltar, o Albi <b>só confere</b> (dígito verificador, repetidos, quem já foi pesquisado) e mostra quantos vão ser pesquisados e o total em R$. A compra só começa quando você confirma.</li>
         <li>Para cada pessoa, uma por vez: Nova Pesquisa → <b>Identificador Projeto = nome da empresa</b> → CPF/CNPJ → Continuar → Sacado (o escritório) → <b>Confirmar Pedido</b>.</li>
-        <li>Depois ele espera o Sonar terminar cada pedido e baixa a planilha ("Baixar Resultados") de quem tem processos encontrados.
-          No fim fica o <b>resultado.txt</b> (empresa, CPF, nome, pedido e o que achou) e as planilhas, para baixar aqui (ou tudo em .zip).</li>
+        <li>Depois ele espera o Sonar terminar cada pedido e baixa o resultado de <b>cada pessoa</b>: o PDF da página do pedido
+          (inclusive de quem deu "não consta") e, de quem tem processos encontrados, também a planilha ("Baixar Resultados").
+          No fim fica o <b>resultado.txt</b> (empresa, CPF, nome, pedido e o que achou), os PDFs e as planilhas, para baixar aqui (ou tudo em .zip).</li>
         <li>CPF já pesquisado para a mesma empresa nos últimos 30 dias não é comprado de novo: o Albi usa o pedido anterior.</li>
         <li>"Só testar" faz tudo até antes do Confirmar e não compra nada.</li>
         <li>Uma execução por vez, com até {{ max_linhas }} linhas. Entrar no Sonar encerra a outra sessão aberta com o mesmo login.</li>
@@ -175,7 +176,8 @@ EMPRESA: Empresa B
         <td class="nowrap">
           {% for c, t, cls in [("confirmados", "confirmado(s)", "ok"), ("ja_pesquisados", "já pesquisado(s)", "suave"),
                                ("encontrados", "com processos", "aviso"), ("nao_consta", "não consta", "suave"),
-                               ("baixados", "planilha(s)", "ok"), ("prontos", "testado(s)", "suave"),
+                               ("pdfs", "PDF(s)", "ok"), ("baixados", "planilha(s)", "ok"), ("prontos", "testado(s)", "suave"),
+                               ("sem_pedido", "sem pedido", "erro"),
                                ("conferir", "a conferir", "erro"), ("erros", "erro(s)", "erro"), ("invalidos", "inválida(s)", "erro")] %}
             {% if k.get(c) %}<span class="{{ cls }}">{{ k[c] }} {{ t }}</span>{% endif %}{% endfor %}
           {% if e.fim and e.fim.motivo %}<span class="suave">{{ e.fim.motivo }}</span>{% endif %}
@@ -201,15 +203,17 @@ EMPRESA: Empresa B
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const dataHora = ts => ts ? `${ts.slice(8, 10)}/${ts.slice(5, 7)}/${ts.slice(0, 4)} ${ts.slice(11, 16)}` : '';
   const plural = (q, s, p) => q + ' ' + (q === 1 ? s : p);
-  const FINAIS = ['pronto', 'erro', 'ja_pesquisado', 'encontrados', 'nao_consta', 'sem_resultado', 'conferir'];
+  const FINAIS = ['pronto', 'erro', 'ja_pesquisado', 'encontrados', 'nao_consta', 'sem_resultado', 'conferir', 'sem_pedido'];
   const ARQ = '{{ url_for("albi_arquivo", envio_id="ID", nome="NOME") }}', ZIP = '{{ url_for("albi_zip", envio_id="ID") }}';
+  const RODAR = '{{ url_for("albi_rodar", envio_id="ID") }}';
   const link = (id, nome) => ARQ.replace('ID', encodeURIComponent(id)).replace('NOME', nome.split('/').map(encodeURIComponent).join('/'));
 
   function cartao(e) {
     if (!e) return '<h2>Nenhuma execução ainda</h2><p class="suave">Solte um .txt acima: o Albi confere e mostra o total antes de pesquisar.</p>';
     const rodando = !e.fim && !e.interrompida, compra = e.modo === 'confirmar';
     const res = rodando ? T.resultados.rodando : e.fim ? (T.resultados[e.fim.resultado] || ['s-ja', e.fim.resultado]) : T.resultados.interrompida;
-    const titulo = rodando ? ({ confirmando: 'Pesquisando no Sonar, uma pessoa por vez', aguardando_resultados: 'Aguardando os resultados do Sonar',
+    const titulo = rodando && e.baixando ? (e.fase === 'aguardando_resultados' ? 'Baixando de novo os resultados (não compra)' : 'Entrando no Sonar para baixar de novo…')
+      : rodando ? ({ confirmando: 'Pesquisando no Sonar, uma pessoa por vez', aguardando_resultados: 'Aguardando os resultados do Sonar',
                                 preenchendo: 'Teste: preenchendo no Sonar (não compra)' }[e.fase] || 'Entrando no Sonar…')
       : e.fim ? (e.fim.resultado === 'concluido' ? (compra ? 'Pesquisa concluída' : 'Teste concluído (nada foi comprado)') : 'A execução parou')
       : 'Execução interrompida';
@@ -220,13 +224,17 @@ EMPRESA: Empresa B
     const arqs = e.arquivos || [];
     if (arqs.length) h += `<p class="acoes"><a class="botao primario" href="${ZIP.replace('ID', encodeURIComponent(e.id))}">Baixar tudo (.zip)</a>` +
       (arqs.includes('resultado.txt') ? ` <a class="botao secundario" href="${link(e.id, 'resultado.txt')}">resultado.txt</a>` : '') + '</p>';
+    // pesquisa já comprada e terminada: baixar de novo o PDF e a planilha de cada pedido (não compra nada)
+    if (compra && !rodando && e.pedidos.some(p => p.pedido))
+      h += `<form method="post" action="${RODAR.replace('ID', encodeURIComponent(e.id))}" class="acoes">` +
+           '<button class="secundario" name="modo" value="baixar">Baixar de novo os resultados de cada um (não compra)</button></form>';
     if (e.alvo) h += `<div class="barra${rodando ? ' ativa' : ''}"><i style="width:${Math.round(100 * e.feitos / e.alvo)}%"></i></div>` +
                      `<p class="suave" style="margin-top:0">${e.feitos} de ${plural(e.alvo, 'pessoa válida', 'pessoas válidas')}</p>`;
     const conta = s => e.pedidos.filter(p => p.etapa === s).length;
     const nums = [[e.pedidos.length, 'no arquivo']];
     [['confirmado', 'aguardando o Sonar', ''], ['encontrados', 'com processos', 'aviso'], ['nao_consta', 'não consta', 'ok'],
      ['ja_pesquisado', 'já pesquisada(s)', ''], ['pronto', 'testada(s)', 'ok'], ['conferir', 'conferir no Sonar', 'erro'],
-     ['sem_resultado', 'sem resultado', 'erro'], ['erro', 'com erro', 'erro'], ['invalido', 'inválida(s)', 'erro']]
+     ['sem_resultado', 'sem resultado', 'erro'], ['sem_pedido', 'sem pedido no registro', 'erro'], ['erro', 'com erro', 'erro'], ['invalido', 'inválida(s)', 'erro']]
       .forEach(([s, t, c]) => { const q = conta(s); if (q) nums.push([q, t, c]); });
     h += '<div class="numeros">' + nums.map(([q, t, c]) => `<div class="numero"><b class="${c || ''}">${q}</b>${esc(t)}</div>`).join('') + '</div>';
     const grupos = [];
@@ -241,12 +249,13 @@ EMPRESA: Empresa B
   function lista(ps, e, arqs) {
     return '<ul class="lista">' + ps.map(p => {
       const s = T.etapas[p.etapa] || ['s-ja', p.etapa];
-      const planilha = p.pedido && arqs.find(a => a.split('/').pop().startsWith('S' + p.pedido + ' '));
+      const meus = p.pedido ? arqs.filter(a => a.split('/').pop().startsWith('S' + p.pedido + ' ')) : [];
+      const baixar = meus.map(a => `<a href="${link(e.id, a)}">${/\.pdf$/i.test(a) ? 'baixar PDF' : 'baixar planilha'}</a>`).join(' · ');
       const det = [p.pedido ? 'Pedido S' + p.pedido : '', p.resultado && p.resultado !== '—' ? p.resultado : '',
                    p.valor && p.etapa === 'pronto' ? 'Valor no Sonar: ' + p.valor : '', p.motivo || ''].filter(Boolean).map(esc).join(' · ');
       return `<li class="pedido-a${p.etapa === 'preenchendo' ? ' atual' : ''}"><div class="topo"><span><b>Linha ${p.linha}</b> ` +
              `<code>${esc(p.texto || p.doc || '')}</code></span><span class="selo ${s[0]}">${esc(s[1])}</span></div>` +
-             (det || planilha ? `<div class="detalhe">${det}${planilha ? (det ? ' · ' : '') + `<a href="${link(e.id, planilha)}">baixar planilha</a>` : ''}</div>` : '') + '</li>';
+             (det || baixar ? `<div class="detalhe">${det}${baixar ? (det ? ' · ' : '') + baixar : ''}</div>` : '') + '</li>';
     }).join('') + '</ul>';
   }
 

@@ -12,6 +12,28 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Albi: resultado de cada pessoa em PDF e "baixar de novo" (04/11/2026)
+- Ao terminar cada pedido, o Albi salva agora a **página do pedido no Sonar em PDF** para todo
+  mundo, inclusive quem deu "Não consta processo" (o Sonar só tem "Baixar Resultados", a
+  planilha, para quem tem processos encontrados). Fica em
+  `<saída>/<empresa>/S<pedido> - <nome>.pdf`, ao lado da planilha `.xls` (quando houver).
+- `resultado.txt`: a última coluna virou **arquivos** (o PDF e, se tiver, a planilha, separados
+  por ` + `). Na página `/albi`, cada pessoa tem "baixar PDF" e, se tiver processos, "baixar
+  planilha"; o .zip leva tudo.
+- **"Baixar de novo os resultados de cada um (não compra)"**: botão na execução já confirmada
+  (página `/albi` e `/albi/execucao/<id>`), ou `./rodar.sh --arquivo X --baixar` no terminal.
+  Pega no registro (`albi/saida/pedidos_confirmados.json`) o número do pedido de cada pessoa da
+  mesma empresa e baixa de novo o PDF e a planilha, na mesma pasta da execução. **Nunca abre a
+  Nova Pesquisa nem clica em Confirmar**; quem não tem pedido no registro fica como "Sem pedido
+  no registro". Só aparece num arquivo que já foi confirmado, e não apaga a trava que impede
+  confirmar o mesmo arquivo duas vezes.
+- Vila 03: fala do PDF, o "Sem pedido no registro" e o fim do "baixar de novo" (etapa 4 do
+  `doc/vila/ligar_albi.py`, já aplicada em `bot/vila/vila.html`).
+- Segurança: `resultado*.txt` no `.gitignore` (tem CPF e nome de clientes).
+- Corrigido junto: nome de pessoa com ponto (ex.: "Jr.") cortava o nome do arquivo da planilha.
+- Testado no Sonar com dois pedidos antigos (1 com processos, 1 "não consta") e um registro
+  temporário: 2 PDFs e 1 planilha baixados, nada comprado; arquivos de teste apagados.
+
 ### Corrigido — Albi: links do resultado.txt e das planilhas (04/11/2026)
 - Na página `/albi`, "resultado.txt" e "baixar planilha" davam "Not Found" no Mac. Com
   `SAIDA_PASTA` relativa (`saida`), o Flask procurava a pasta a partir de `bot/`. Agora a rota

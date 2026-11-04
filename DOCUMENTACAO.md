@@ -625,9 +625,15 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `albi/.env`) e clica em **"Confirmar Pedido"** (R$ 15,70 cada). Guarda o número
   do pedido.
 - Depois espera o Sonar terminar cada pedido (até `SONAR_ESPERA_MIN`, padrão 120
-  min), baixa a planilha ("Baixar Resultados") de quem tem processos encontrados
-  e escreve o `resultado.txt` (por empresa: CPF ; nome ; pedido ; resultado ;
-  planilha). Tudo em `saida/albi/<id>/` do Ultron, para baixar na página.
+  min) e baixa o resultado de **cada pessoa**: o **PDF da página do pedido** (todos,
+  inclusive "não consta") e, de quem tem processos encontrados, a **planilha**
+  ("Baixar Resultados"), em `<empresa>/S<pedido> - <nome>.pdf` / `.xls`. Escreve o
+  `resultado.txt` (por empresa: CPF ; nome ; pedido ; resultado ; arquivos). Tudo em
+  `saida/albi/<id>/` do Ultron, para baixar na página.
+- **Baixar de novo** (não compra): na execução já confirmada, o botão "Baixar de novo
+  os resultados de cada um" (ou `./rodar.sh --arquivo X --baixar`) pega o número de
+  cada pedido no registro e baixa de novo o PDF e a planilha, sem abrir a Nova
+  Pesquisa. Quem não tem pedido no registro fica como "Sem pedido no registro".
 - Não compra duas vezes: CPF já pesquisado para a mesma empresa nos últimos 30
   dias usa o pedido anterior (registro `albi/saida/pedidos_confirmados.json`).
 - Pela página: `http://<IP do Mac>:5001/albi` (link "Albi" no topo do Ultron).
@@ -635,11 +641,14 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   pesquisado e o **total em R$**. "Só testar" faz tudo menos confirmar;
   "Confirmar e pesquisar" (dois cliques) compra. Roda em segundo plano (um por
   vez, até 500 linhas); a página mostra cada pessoa ao vivo, agrupada por
-  empresa, com o pedido, o resultado e os links das planilhas e do .zip. Histórico em `/albi/historico`.
+  empresa, com o pedido, o resultado e os links do PDF, da planilha e do .zip. Histórico em `/albi/historico`.
   O arquivo fica em `saida/albi/<id>.txt`; o log do Albi em
   `albi/logs/execucoes_ultron.log`.
 - Pelo terminal: `cd albi && ./rodar.sh --arquivo pedidos.txt` (teste) ou
-  `... --confirmar` (compra; resultado em `albi/saida/<data_hora>/`).
+  `... --confirmar` (compra; resultado em `albi/saida/<data_hora>/`) ou `... --baixar`
+  (só baixa de novo os resultados dos pedidos já comprados).
+- Se a Vila 03 for reaplicada: `python3 doc/vila/ligar_albi.py bot/vila/vila.html` (etapas
+  1 a 4; pode rodar de novo, não repete).
 - A **Vila 03** acendeu: é a vila do Albi (Doca 01 · Albi, Receptor TXT,
   Conferência, Torre Sonar), com o mascote dele (`albi/mascote/`). Os eventos
   levam só o número da linha, o número da empresa e o final do documento

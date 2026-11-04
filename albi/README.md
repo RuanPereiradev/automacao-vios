@@ -5,7 +5,8 @@ Bot separado do Ultron e do Zangão: tudo dele fica nesta pasta (`.venv`, `.env`
 
 **Status:** recebe um `.txt` por empresa (`CPF ; nome`) e, para cada pessoa, faz a Pesquisa de
 Processos no Sonar: preenche, escolhe o Sacado, **confirma o pedido** (com `--confirmar`; R$ 15,70
-cada), espera o resultado, baixa a planilha de quem tem processos e escreve o `resultado.txt`.
+cada), espera o resultado, baixa o resultado de cada pessoa (PDF do pedido e, de quem tem processos,
+a planilha) e escreve o `resultado.txt`.
 
 ## O que ele faz
 
@@ -18,8 +19,10 @@ cada), espera o resultado, baixa a planilha de quem tem processos e escreve o `r
 4. No passo 2 ("Pedido") confere o documento mostrado, escolhe o **Sacado** (`SONAR_SACADO`; vazio =
    o escritório) e, só com `--confirmar`, clica em **Confirmar Pedido** e guarda o número.
 5. Com todos confirmados, abre a página de cada pedido até o Sonar terminar (até `SONAR_ESPERA_MIN`
-   minutos), clica em **Baixar Resultados** nos que têm processos encontrados e escreve o
-   `resultado.txt` (por empresa: `CPF ; nome ; pedido ; resultado ; planilha`).
+   minutos), salva a página de cada pedido em **PDF** (todos, inclusive "não consta"), clica em
+   **Baixar Resultados** nos que têm processos encontrados e escreve o `resultado.txt` (por
+   empresa: `CPF ; nome ; pedido ; resultado ; arquivos`).
+   Para baixar tudo de novo sem comprar: `--baixar` (usa o número de cada pedido do registro).
 6. Não compra duas vezes: o registro `saida/pedidos_confirmados.json` é anotado antes de cada
    clique em Confirmar; CPF já pesquisado para a mesma empresa nos últimos 30 dias usa o pedido
    anterior. Erro depois do clique vira "Conferir no Sonar" (nunca clica de novo); 3 seguidos param.
@@ -74,6 +77,7 @@ certos; só mude se a tela do Sonar mudar.
 ./rodar.sh                         # só entra e abre a tela de novo pedido (confere o .env)
 ./rodar.sh --arquivo pedidos.txt               # teste: preenche até o passo 2 e NÃO compra
 ./rodar.sh --arquivo pedidos.txt --confirmar   # COMPRA, espera e baixa (resultado em saida/<data_hora>/)
+./rodar.sh --arquivo pedidos.txt --baixar      # NÃO compra: baixa de novo PDF e planilha dos pedidos já feitos
 ./rodar.sh --arquivo pedidos.txt --conferir    # só mostra o que seria feito (JSON, sem navegador)
 ```
 

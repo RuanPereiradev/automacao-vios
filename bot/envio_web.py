@@ -477,7 +477,8 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
 
     @app.route("/albi/rodar/<envio_id>", methods=["POST"])
     def albi_rodar(envio_id):
-        """Roda o Albi: modo "teste" (preenche e não compra) ou "confirmar" (compra)."""
+        """Roda o Albi: modo "teste" (preenche e não compra), "confirmar" (compra) ou "baixar"
+        (arquivo já confirmado: só baixa de novo os resultados, não compra)."""
         modo = request.form.get("modo")
         if modo == "confirmar" and request.form.get("certeza") != "sim":
             return redirect(url_for("albi_conferir", envio_id=envio_id))

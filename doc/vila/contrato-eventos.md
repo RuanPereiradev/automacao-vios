@@ -161,11 +161,13 @@ evento como `@evento {json}` na saída padrão e o Ultron grava em `saida/evento
 | `tipo` | campos | quando |
 | --- | --- | --- |
 | `arquivo_subido` | `arquivo`, `linhas` | o Ultron recebeu o .txt (Receptor TXT) |
-| `execucao_iniciada` | `modo: "preencher"`, `total`, `validos`, `empresas` | o Albi leu e conferiu as linhas (Conferência) |
+| `execucao_iniciada` | `modo` (`preencher` · `confirmar` · `baixar`), `total`, `validos`, `empresas` | o Albi leu e conferiu as linhas (Conferência) |
 | `fase` | `fase`: `entrando_sonar` → `preenchendo` (teste) ou `confirmando` → `aguardando_resultados` | Torre Sonar |
-| `pedido` | `linha`, `grupo` (n.º da empresa no arquivo: 1, 2…), `doc` ("CPF final 06"), `etapa`, `valor`, `motivo`, `pedido` (n.º no Sonar), `resultado` ("14 Processos"), `baixado`; no `preenchendo`, `i` e `de` (pessoa 5 de 27) | `etapa`: `invalido` · `preenchendo` · `pronto` (teste) · `confirmado` · `ja_pesquisado` · `encontrados` · `nao_consta` · `sem_resultado` · `conferir` (erro depois de confirmar) · `erro` (não comprado) |
-| `execucao_fim` | `resultado` (`concluido` · `parou`), `motivo`, `contagens` {`prontos`, `erros`, `invalidos`} | fim (volta à doca). Se o Albi fechar sem mandar, o Ultron manda `parou` |
+| `pedido` | `linha`, `grupo` (n.º da empresa no arquivo: 1, 2…), `doc` ("CPF final 06"), `etapa`, `valor`, `motivo`, `pedido` (n.º no Sonar), `resultado` ("14 Processos"), `baixado`; no `preenchendo`, `i` e `de` (pessoa 5 de 27) | `etapa`: `invalido` · `preenchendo` · `pronto` (teste) · `confirmado` · `ja_pesquisado` · `encontrados` · `nao_consta` · `sem_resultado` · `conferir` (erro depois de confirmar) · `erro` (não comprado) · `sem_pedido` (no `baixar`: sem número no registro); `baixado` = PDF e/ou planilha salvos |
+| `execucao_fim` | `resultado` (`concluido` · `parou`), `motivo`, `contagens` {`prontos`, `erros`, `invalidos`; ao confirmar também `confirmados`, `pdfs`, `baixados`…; no `baixar`, `sem_pedido`} | fim (volta à doca). Se o Albi fechar sem mandar, o Ultron manda `parou` |
 
 Dados mínimos: nunca o documento inteiro, o nome da pessoa nem o da empresa (o .txt inteiro fica
 só em `saida/albi/`, para a página `/albi`).
 A Vila 03 foi ligada por `doc/vila/ligar_albi.py` (rodar depois do `ligar_zangao.py`).
+O "baixar de novo" (`modo: "baixar"`) usa o mesmo `envio` da execução confirmada: a página trata
+como a mesma execução (a contagem recomeça) e não troca o modo dela.

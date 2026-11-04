@@ -6,8 +6,9 @@ faz uma Pesquisa de Processos, uma por vez:
   1. Nova Pesquisa: Identificador Projeto = nome da EMPRESA, tipo CPF/CNPJ, documento, Continuar;
   2. passo 2 ("Pedido"): confere o documento, escolhe o Sacado (SONAR_SACADO, padrão o escritório)
      e, só com --confirmar, clica em "Confirmar Pedido" (R$ 15,70 cada) e guarda o número do pedido;
-  3. espera o Sonar terminar cada pedido, baixa a planilha ("Baixar Resultados") dos que têm
-     processos encontrados e escreve resultado.txt (empresa, CPF, nome, pedido e o que achou).
+  3. espera o Sonar terminar cada pedido e baixa o resultado de cada um: o PDF da página do pedido
+     (todos, inclusive "não consta") e a planilha ("Baixar Resultados") de quem tem processos
+     encontrados; escreve resultado.txt (empresa, CPF, nome, pedido, o que achou e os arquivos).
 Sem --confirmar ele faz o 1 e o 2 e NÃO compra nada (teste). CPF já pesquisado para a mesma
 empresa nos últimos 30 dias não é comprado de novo: usa o pedido anterior
 (registro em saida/pedidos_confirmados.json).
@@ -24,11 +25,14 @@ uso (dentro de albi/):
   ./rodar.sh                                  só entra e abre a tela de novo pedido (confere o .env)
   ./rodar.sh --arquivo pedidos.txt            teste: preenche até o passo 2 e não compra
   ./rodar.sh --arquivo pedidos.txt --confirmar   COMPRA as pesquisas, espera e baixa os resultados
+  ./rodar.sh --arquivo pedidos.txt --baixar      NÃO compra: baixa de novo os resultados (PDF e
+                                                 planilha) dos pedidos já comprados (pelo registro)
   ./rodar.sh --arquivo pedidos.txt --conferir    só lê o .txt e mostra (JSON) o que seria feito
-  --saida PASTA   onde ficam resultado.txt e as planilhas (padrão: saida/<data_hora>/)
+  --saida PASTA   onde ficam resultado.txt, os PDFs e as planilhas (padrão: saida/<data_hora>/)
   --eventos       escreve os eventos da vila na saída padrão (assim o Ultron roda o Albi pela /albi)
   ./rodar.sh [caminho/do/.env] ...            outro .env
 """
+import base64
 import json
 import logging
 import os
@@ -481,9 +485,18 @@ def baixar_resultado(driver, cfg, pasta_downloads, destino):
         time.sleep(1)
     if not arquivo:
         raise AlbiErro("a planilha não baixou")
-    final = destino.with_suffix(arquivo.suffix or ".xls")
+    final = destino.with_name(destino.name + (arquivo.suffix or ".xls"))
     final.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(str(arquivo), str(final))
+    return final
+
+
+def salvar_pdf(driver, destino):
+    """Salva a página do pedido aberta (o resultado no Sonar) em PDF: destino + ".pdf"."""
+    dados = driver.execute_cdp_cmd("Page.printToPDF", {"printBackground": True, "preferCSSPageSize": True})
+    final = destino.with_name(destino.name + ".pdf")
+    final.parent.mkdir(parents=True, exist_ok=True)
+    final.write_bytes(base64.b64decode(dados["data"]))
     return final
 
 
@@ -493,9 +506,9 @@ def nome_arquivo(texto):
 
 
 def escrever_resultado(saida, pedidos, nome_txt):
-    """resultado.txt: por empresa, uma linha por pessoa: CPF ; nome ; pedido ; resultado ; planilha."""
+    """resultado.txt: por empresa, uma linha por pessoa: CPF ; nome ; pedido ; resultado ; arquivos."""
     linhas = [f"# Resultado do Albi · {nome_txt} · {datetime.now():%d/%m/%Y %H:%M}",
-              "# CPF ; nome ; pedido ; resultado ; planilha", ""]
+              "# CPF ; nome ; pedido ; resultado ; arquivos (PDF do pedido + planilha, se tiver processos)", ""]
     empresa = None
     for p in pedidos:
         if p["empresa"] != empresa:
@@ -505,7 +518,7 @@ def escrever_resultado(saida, pedidos, nome_txt):
             linhas.append(f"EMPRESA: {empresa or '(sem empresa)'}")
         r = p.get("situacao") or ""
         partes = [formatar(p["doc"]), p["nome"] or "", f"S{p['pedido']}" if p.get("pedido") else "—", r,
-                  p.get("planilha") or ""]
+                  " + ".join(p.get("arquivos") or [])]
         linhas.append(" ; ".join(partes).rstrip(" ;"))
     Path(saida).mkdir(parents=True, exist_ok=True)
     (Path(saida) / "resultado.txt").write_text("\n".join(linhas) + "\n", encoding="utf-8")
@@ -592,7 +605,7 @@ def rodar_pedidos(driver, cfg, pedidos, confirmar=False, saida=None, nome_txt="p
     if not confirmar:
         k = {"prontos": 0, "erros": 0, "invalidos": len(pedidos) - len(validos)}
     else:
-        k = {"confirmados": 0, "ja_pesquisados": 0, "encontrados": 0, "nao_consta": 0, "baixados": 0,
+        k = {"confirmados": 0, "ja_pesquisados": 0, "encontrados": 0, "nao_consta": 0, "pdfs": 0, "baixados": 0,
              "sem_resultado": 0, "conferir": 0, "erros": 0, "invalidos": len(pedidos) - len(validos)}
     for p in pedidos:
         p["situacao"] = "linha inválida: " + p["problema"] if p["problema"] else ""
@@ -685,8 +698,40 @@ def rodar_pedidos(driver, cfg, pedidos, confirmar=False, saida=None, nome_txt="p
     return k
 
 
+def baixar_de_novo(driver, cfg, pedidos, saida, nome_txt):
+    """--baixar: NÃO compra nada. Pega no registro o número do pedido de cada pessoa (desta empresa)
+    e baixa de novo o resultado (PDF + planilha). Quem não tem pedido no registro fica de fora."""
+    k = {"encontrados": 0, "nao_consta": 0, "pdfs": 0, "baixados": 0, "sem_resultado": 0, "sem_pedido": 0,
+         "invalidos": sum(1 for p in pedidos if p["problema"])}
+    reg = ler_registro()
+    alvo = []
+    for p in pedidos:
+        ev = dict(linha=p["linha"], grupo=p["grupo"], doc=mascarar(p["doc"]))
+        if p["problema"]:
+            p["situacao"] = "linha inválida: " + p["problema"]
+            evento("pedido", etapa="invalido", motivo=p["problema"], **ev)
+            continue
+        r = reg.get(chave(p)) or {}
+        p["pedido"] = r.get("pedido")
+        if p["pedido"]:
+            alvo.append(p)
+            p["situacao"] = "baixando de novo"
+        else:
+            k["sem_pedido"] += 1
+            p["situacao"] = "sem número de pedido no registro: " + ("conferir no Sonar" if r else "não foi comprado")
+            evento("pedido", etapa="sem_pedido", motivo=p["situacao"], **ev)
+    escrever = lambda: escrever_resultado(saida, pedidos, nome_txt)
+    escrever()
+    evento("fase", fase="entrando_sonar")
+    entrar(driver, cfg)
+    log.info("Login OK: %s · baixando de novo %d pedido(s) (nada é comprado)", driver.current_url, len(alvo))
+    aguardar_e_baixar(driver, cfg, alvo, saida, k, escrever)
+    return k
+
+
 def aguardar_e_baixar(driver, cfg, pedidos, saida, k, escrever):
-    """Espera cada pedido terminar no Sonar e baixa a planilha dos que têm processos encontrados."""
+    """Espera cada pedido terminar no Sonar e baixa o resultado de cada um: o PDF da página do pedido
+    (todos, inclusive "não consta") e a planilha ("Baixar Resultados") de quem tem processos encontrados."""
     if not pedidos:
         return
     evento("fase", fase="aguardando_resultados")
@@ -709,14 +754,22 @@ def aguardar_e_baixar(driver, cfg, pedidos, saida, k, escrever):
                 continue
             pendentes.remove(p)
             p["situacao"] = info["status"] + (" · " + info["resultado"] if info["resultado"] else "")
+            p["arquivos"] = []
+            destino = Path(saida) / nome_arquivo(p["empresa"] or "sem empresa") / nome_arquivo(f"S{p['pedido']} - {p['nome'] or formatar(p['doc'])}")
+            try:
+                p["arquivos"].append(str(salvar_pdf(driver, destino).relative_to(saida)))
+                k["pdfs"] += 1
+            except Exception as e:
+                p["situacao"] += " · PDF não salvou: " + mensagem(e)
+                log.error("Pedido S%s: o PDF não salvou: %s", p["pedido"], mensagem(e))
             if info["encontrados"]:
                 k["encontrados"] += 1
                 etapa = "encontrados"
                 if info["pode_baixar"]:
                     try:
-                        destino = Path(saida) / nome_arquivo(p["empresa"] or "sem empresa") / nome_arquivo(f"S{p['pedido']} - {p['nome'] or formatar(p['doc'])}")
                         final = baixar_resultado(driver, cfg, downloads, destino)
                         p["planilha"] = str(final.relative_to(saida))
+                        p["arquivos"].append(p["planilha"])
                         k["baixados"] += 1
                     except Exception as e:
                         p["situacao"] += " · planilha não baixou: " + mensagem(e)
@@ -725,8 +778,8 @@ def aguardar_e_baixar(driver, cfg, pedidos, saida, k, escrever):
                 k["nao_consta"] += 1
                 etapa = "nao_consta"
             log.info("Pedido S%s (linha %d): %s%s", p["pedido"], p["linha"], p["situacao"],
-                     " · planilha " + p["planilha"] if p.get("planilha") else "")
-            evento("pedido", etapa=etapa, resultado=info["resultado"], baixado=bool(p.get("planilha")), **ev)
+                     " · " + " + ".join(p["arquivos"]) if p["arquivos"] else "")
+            evento("pedido", etapa=etapa, resultado=info["resultado"], baixado=bool(p["arquivos"]), **ev)
             escrever()
         if not pendentes:
             break
@@ -764,6 +817,7 @@ def main(*args):
     arquivo = tirar(args, "--arquivo", True)
     saida = tirar(args, "--saida", True)
     confirmar = tirar(args, "--confirmar")
+    so_baixar = tirar(args, "--baixar")
     so_conferir = tirar(args, "--conferir")
     EVENTOS = tirar(args, "--eventos")
     caminho_env = args[0] if args else str(PASTA / ".env")
@@ -785,8 +839,10 @@ def main(*args):
             pedidos = ler_pedidos(ler_arquivo(arquivo))
             if not pedidos:
                 raise AlbiErro("o arquivo não tem nenhuma linha com CPF/CNPJ")
-        elif confirmar:
-            raise AlbiErro("--confirmar precisa de --arquivo")
+        elif confirmar or so_baixar:
+            raise AlbiErro("--confirmar e --baixar precisam de --arquivo")
+        if confirmar and so_baixar:
+            raise AlbiErro("use --confirmar ou --baixar, não os dois")
     except AlbiErro as e:
         log.error("Configuração: %s", e)
         evento("execucao_fim", resultado="parou", motivo=str(e))
@@ -797,8 +853,9 @@ def main(*args):
         empresas = len({p["grupo"] for p in pedidos})
         log.info("Arquivo %s: %d linha(s) em %d empresa(s), %d válida(s). %s", Path(arquivo).name, len(pedidos),
                  empresas, validos, f"CONFIRMANDO (compra, {PRECO} cada; Sacado: {cfg['sacado']}); resultado em {saida}"
-                 if confirmar else "Teste: preenche até o passo 2 e NÃO confirma nenhum pedido.")
-        evento("execucao_iniciada", modo="confirmar" if confirmar else "preencher", total=len(pedidos),
+                 if confirmar else f"Só baixando de novo os resultados (NÃO compra); resultado em {saida}" if so_baixar
+                 else "Teste: preenche até o passo 2 e NÃO confirma nenhum pedido.")
+        evento("execucao_iniciada", modo="confirmar" if confirmar else "baixar" if so_baixar else "preencher", total=len(pedidos),
                validos=validos, empresas=empresas)
         if not validos:
             for p in pedidos:
@@ -823,9 +880,12 @@ def main(*args):
         return 1
     try:
         if pedidos is not None:
-            k = rodar_pedidos(driver, cfg, pedidos, confirmar=confirmar, saida=saida, nome_txt=Path(arquivo).name)
+            if so_baixar:
+                k = baixar_de_novo(driver, cfg, pedidos, saida, Path(arquivo).name)
+            else:
+                k = rodar_pedidos(driver, cfg, pedidos, confirmar=confirmar, saida=saida, nome_txt=Path(arquivo).name)
             log.info("Fim: %s", ", ".join(f"{v} {c}" for c, v in k.items() if v) or "nada")
-            if confirmar:
+            if confirmar or so_baixar:
                 log.info("Resultado em %s", Path(saida) / "resultado.txt")
             evento("execucao_fim", resultado="concluido", contagens=k)
             return 0 if not (k.get("erros") or k.get("conferir")) else 1
@@ -842,7 +902,7 @@ def main(*args):
             pass
         log.error("Falhou: %s (print em %s)", mensagem(e), print_)
         evento("execucao_fim", resultado="parou", motivo=mensagem(e))
-        if pedidos is not None and confirmar:
+        if pedidos is not None and (confirmar or so_baixar):
             try:
                 escrever_resultado(saida, pedidos, Path(arquivo).name)
             except Exception:

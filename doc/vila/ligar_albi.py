@@ -26,7 +26,8 @@ t = json.loads(linhas[IDX])
 ETAPA1 = "ahandle(ev)" not in t  # Vila 03 acesa, mascote, eventos e painel do Albi
 ETAPA2 = "p.grupo" not in t  # empresas (grupo) no painel e na fala
 ETAPA3 = "ja_pesquisado" not in t  # confirmar pedidos, aguardar e baixar os resultados
-if not (ETAPA1 or ETAPA2 or ETAPA3):
+ETAPA4 = "sem_pedido" not in t  # PDF de cada pedido e "baixar de novo" (não compra)
+if not (ETAPA1 or ETAPA2 or ETAPA3 or ETAPA4):
     sys.exit("a vila já está com tudo do Albi")
 if "zhandle(ev)" not in t or "get('vila')" not in t:
     sys.exit("rode antes o doc/vila/ligar_zangao.py (o Albi usa o que ele acrescenta)")
@@ -34,7 +35,7 @@ if "zhandle(ev)" not in t or "get('vila')" not in t:
 
 def troca(velho, novo, etapa=1):
     global t
-    if not {1: ETAPA1, 2: ETAPA2, 3: ETAPA3}[etapa]:
+    if not {1: ETAPA1, 2: ETAPA2, 3: ETAPA3, 4: ETAPA4}[etapa]:
         return
     assert t.count(velho) == 1, ("trecho não encontrado (ou repetido)", velho[:90])
     t = t.replace(velho, novo)
@@ -375,6 +376,28 @@ troca("      sendHint: 'O Albi só preenche até o passo Pedido: não confirma n
       "      sendHint: 'A compra só começa depois de confirmar o total na página do Albi.',", 3)
 troca("const names = ['Arquivo subido', 'Conferir linhas', 'Entrar no Sonar', 'Preencher pedidos'];",
       "const names = ['Arquivo subido', 'Conferir linhas', 'Entrar no Sonar', 'Pesquisar e baixar'];", 3)
+
+# ---------------- etapa 4: PDF de cada pedido e "baixar de novo" ----------------
+troca("aguardando_resultados: 'Pedidos feitos. Agora espero o Sonar terminar cada um e baixo a planilha de quem tem processos.' }[ev.fase]",
+      "aguardando_resultados: 'Agora espero o Sonar terminar cada pedido e baixo o resultado de cada um: o PDF e, de quem tem processos, a planilha.' }[ev.fase]", 4)
+troca("(ev.baixado ? '. Planilha baixada.' : '.'),",
+      "(ev.baixado ? '. PDF e planilha baixados.' : '.'),", 4)
+troca("nao_consta: Lin + ': ' + ped + ' · não consta processo.',",
+      "nao_consta: Lin + ': ' + ped + ' · não consta processo' + (ev.baixado ? '. PDF salvo.' : '.'),\n"
+      "          sem_pedido: Lin + ': sem número de pedido no registro. Não baixei nada (e não comprei).',", 4)
+troca("a.bubble = ['erro', 'conferir', 'sem_resultado'].includes(ev.etapa)",
+      "a.bubble = ['erro', 'conferir', 'sem_resultado', 'sem_pedido'].includes(ev.etapa)", 4)
+troca("conferir: ['Conferir no Sonar', '#ff7a66'] };",
+      "conferir: ['Conferir no Sonar', '#ff7a66'],\n      sem_pedido: ['Sem pedido no registro', '#ff7a66'] };", 4)
+troca("const FINS = ['pronto', 'erro', 'ja_pesquisado', 'encontrados', 'nao_consta', 'sem_resultado', 'conferir'];",
+      "const FINS = ['pronto', 'erro', 'ja_pesquisado', 'encontrados', 'nao_consta', 'sem_resultado', 'conferir', 'sem_pedido'];", 4)
+troca("     ['baixados', 'planilha(s)'], ['prontos', 'testada(s)'],",
+      "     ['pdfs', 'PDF(s)'], ['baixados', 'planilha(s)'], ['sem_pedido', 'sem pedido'], ['prontos', 'testada(s)'],", 4)
+troca(": (ev.contagens && 'confirmados' in ev.contagens ? 'pesquisou no Sonar' : 'teste no Sonar, sem comprar'))",
+      ": (ev.contagens && 'confirmados' in ev.contagens ? 'pesquisou no Sonar' : ev.contagens && 'sem_pedido' in ev.contagens ? 'baixou de novo os resultados' : 'teste no Sonar, sem comprar'))", 4)
+troca("? 'Pronto! Pesquisas feitas; o resultado.txt e as planilhas estão na página do Albi.' :",
+      "? 'Pronto! Pesquisas feitas; o resultado.txt, os PDFs e as planilhas estão na página do Albi.' :\n"
+      "        (ev.contagens && 'sem_pedido' in ev.contagens) ? 'Pronto! Baixei de novo os resultados (não comprei nada); estão na página do Albi.' :", 4)
 
 linhas[IDX] = json.dumps(t, ensure_ascii=False).replace("</", "<\\u002F")
 open(caminho, "w", encoding="utf-8").write("\n".join(linhas))

@@ -38,8 +38,10 @@ ETAPAS = {"fila": ["s-ja", "Na fila"], "preenchendo": ["s-andamento", "Preenchen
           "invalido": ["s-erro", "Linha inválida"], "confirmado": ["s-andamento", "Confirmado · aguardando o Sonar"],
           "ja_pesquisado": ["s-ja", "Já pesquisado (não comprou de novo)"],
           "encontrados": ["s-aviso", "Processos encontrados"], "nao_consta": ["s-ok", "Não consta processo"],
-          "sem_resultado": ["s-erro", "Sem resultado ainda"], "conferir": ["s-erro", "Conferir no Sonar"]}
-MODOS = {"teste": "Teste (não compra)", "confirmar": "Confirmado (compra)", "preencher": "Teste (não compra)"}
+          "sem_resultado": ["s-erro", "Sem resultado ainda"], "conferir": ["s-erro", "Conferir no Sonar"],
+          "sem_pedido": ["s-erro", "Sem pedido no registro"]}
+MODOS = {"teste": "Teste (não compra)", "confirmar": "Confirmado (compra)", "preencher": "Teste (não compra)",
+         "baixar": "Baixar de novo (não compra)"}
 RESULTADOS = {"concluido": ["s-ok", "Concluído"], "parou": ["s-erro", "Parou"],
               "rodando": ["s-andamento", "Rodando…"], "interrompida": ["s-erro", "Interrompida"]}
 TEXTOS = {"etapas": ETAPAS, "resultados": RESULTADOS, "modos": MODOS}
@@ -173,10 +175,11 @@ def pasta_resultado(pasta_saida, envio_id):
 
 
 def iniciar(p, pasta_saida, envio_id, modo):
-    """2.º passo: roda o Albi em segundo plano. modo "teste" (preenche e não compra) ou
-    "confirmar" (COMPRA as pesquisas, espera e baixa os resultados). Levanta AlbiErro."""
+    """2.º passo: roda o Albi em segundo plano. modo "teste" (preenche e não compra),
+    "confirmar" (COMPRA as pesquisas, espera e baixa os resultados) ou "baixar" (num arquivo já
+    confirmado: NÃO compra, só baixa de novo o PDF e a planilha de cada pedido). Levanta AlbiErro."""
     p = Path(p)
-    if modo not in ("teste", "confirmar"):
+    if modo not in ("teste", "confirmar", "baixar"):
         raise AlbiErro("modo inválido")
     meta = _meta(pasta_saida, envio_id)
     txt = _pasta_envio(pasta_saida) / f"{envio_id}.txt"
@@ -184,12 +187,15 @@ def iniciar(p, pasta_saida, envio_id, modo):
         raise AlbiErro("arquivo não encontrado: solte o .txt de novo")
     if modo == "confirmar" and meta.get("iniciado") == "confirmar":
         raise AlbiErro("este arquivo já foi confirmado; para pesquisar de novo, solte o .txt outra vez")
+    if modo == "baixar" and meta.get("iniciado") != "confirmar":
+        raise AlbiErro("só dá para baixar de novo os resultados de um arquivo que já foi confirmado")
     if not configurado(p):
         raise AlbiErro(f"o Albi não está instalado em {p}")
     with _trava:
         if status(p)["rodando"]:
             raise AlbiErro("o Albi já está rodando; espere terminar")
-        meta["iniciado"] = modo
+        if modo != "baixar":  # "baixar" não apaga a marca de "confirmar" (que impede comprar de novo)
+            meta["iniciado"] = modo
         (_pasta_envio(pasta_saida) / f"{envio_id}.json").write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
         nome_arquivo, uteis = meta.get("arquivo"), meta.get("linhas") or {}
         inicio = datetime.now().isoformat(timespec="seconds")
@@ -201,8 +207,8 @@ def iniciar(p, pasta_saida, envio_id, modo):
         saida_log.flush()
         cmd = [str(_python(p)), "main.py", "--arquivo", str(txt.resolve()), "--eventos",
                "--saida", str(pasta_resultado(pasta_saida, envio_id).resolve())]
-        if modo == "confirmar":
-            cmd.append("--confirmar")
+        if modo in ("confirmar", "baixar"):
+            cmd.append("--" + modo)
         try:
             proc = subprocess.Popen(cmd, cwd=p, env=_ambiente(), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                     stderr=saida_log, text=True, encoding="utf-8", errors="replace",
@@ -261,7 +267,7 @@ def arquivos(pasta_saida, envio_id):
 # --- execuções, montadas dos eventos (bot: "albi" em saida/eventos.jsonl) ---
 def _execucao(evs, meta):
     e = {"id": None, "inicio": None, "modo": None, "arquivo": meta.get("arquivo"), "total": None, "validos": None,
-         "empresas": None, "fase": None, "pedidos": [], "fim": None}
+         "empresas": None, "fase": None, "pedidos": [], "fim": None, "baixando": False}
     linhas = meta.get("linhas") or {}
     empresas = meta.get("empresas") or {}
     por_linha = {}
@@ -280,10 +286,16 @@ def _execucao(evs, meta):
         tipo = ev.get("tipo")
         if tipo == "arquivo_subido":
             e["arquivo"] = e["arquivo"] or ev.get("arquivo")
-            e["modo"] = ev.get("modo") or e.get("modo")
+            if ev.get("modo") == "baixar":  # baixar de novo: mesma execução (e pasta); recomeça a contagem
+                e.update(baixando=True, fim=None, fase=None)
+                for p in e["pedidos"]:
+                    if p["etapa"] != "invalido":
+                        p.update(etapa="fila", baixado=False, motivo=None)
+            else:
+                e["modo"] = ev.get("modo") or e.get("modo")
         elif tipo == "execucao_iniciada":
             e.update(total=ev.get("total"), validos=ev.get("validos"), empresas=ev.get("empresas"))
-            if ev.get("modo"):
+            if ev.get("modo") and ev["modo"] != "baixar":
                 e["modo"] = "confirmar" if ev["modo"] == "confirmar" else "teste"
         elif tipo == "fase":
             e["fase"] = ev.get("fase")
@@ -308,7 +320,7 @@ def _execucao(evs, meta):
     e["pedidos"].sort(key=lambda p: p["linha"])
     alvo = [p for p in e["pedidos"] if p["etapa"] != "invalido"]
     e["alvo"] = len(alvo)
-    finais = ("pronto", "erro", "ja_pesquisado", "encontrados", "nao_consta", "sem_resultado", "conferir")
+    finais = ("pronto", "erro", "ja_pesquisado", "encontrados", "nao_consta", "sem_resultado", "conferir", "sem_pedido")
     e["feitos"] = sum(1 for p in alvo if p["etapa"] in finais)
     return e
 
