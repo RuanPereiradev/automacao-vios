@@ -152,7 +152,9 @@
   .cena-chip.ativo i { animation: luz-chip .8s steps(2) infinite; }
   @keyframes luz-chip { 50% { opacity: .2; } }
   .cena-teste { border-color: #ff5a3c; color: #ffb3a6; }
-  .cena-ultron { position: absolute; top: 47.4%; width: 6.25%; transition-property: left; transition-timing-function: linear; }
+  /* mascote do Ultron 28×35 a 2,5 unidades da cena por pixel: 70 de largura, pés na pista (y 206).
+     O Bumblebee (zangao.html, .bee) tem tamanho próprio. */
+  .cena-ultron { position: absolute; top: 34.9%; width: 7.29%; transition-property: left; transition-timing-function: linear; }
   .cena-ultron .ultron { width: 100% !important; }
   .cena-ultron.virado .ultron svg { transform: scaleX(-1); }
   .cena-papel { position: absolute; left: 30%; top: -42%; width: 40%; aspect-ratio: 3 / 4; background: #f4efe3; border: 2px solid #1b1d21;

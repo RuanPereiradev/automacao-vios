@@ -114,7 +114,7 @@
   const d = cena.dataset, n = k => Number(d[k] || 0);
   const u = document.getElementById('cena-ultron'), m = document.getElementById('cena-mascote');
   const X = { doca: 135, receptor: 385, conferencia: 635, torre: 860 };  // centro de cada estação no viewBox
-  const pct = x => ((x - 30) / 960 * 100) + '%';
+  const pct = x => ((x - 35) / 960 * 100) + '%';  // 35 = metade da largura do mascote na cena
   const espera = ms => new Promise(r => setTimeout(r, ms));
   let onde = null;
 

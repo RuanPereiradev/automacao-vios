@@ -12,6 +12,32 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Mascote novo do Ultron e Vila 01 no campo (04/11/2026)
+- **Mascote**: o personagem da imagem que o usuário mandou (`doc/mascote/WhatsApp Image 2026-11-04 at
+  11.19.56.jpeg`), passado para uma grade de pixels de 28×35. Tem cabelo dourado, olhos vermelhos
+  fechados (sorrindo), capa verde com broche, colete com botões e pés descalços.
+  - Substitui o robô cromado na página do Ultron: topo, caixa de soltar o .txt e ícone da aba
+    (`bot/templates/_ultron.html`, com as mesmas animações do ultron_script: brilho e piscar dos
+    olhos, mãos e pés).
+  - Na Vila 01 ele balança parado e alterna os pés andando.
+  - Amostra em `doc/mascote/ultron-campo.html`. O nome continua Ultron.
+- **Vila 01 no campo** (`doc/vila/ligar_vila01_campo.py`, aplicado em `bot/vila/vila.html`), no estilo
+  do cenário que o usuário mandou (`doc/mascote/1e86eacd-….jpeg`):
+  - céu com nuvens e colinas, grama com flores, caminhos de terra e sebe;
+  - casa na colina de porta redonda verde com chaminé fumegando (Doca 01 · Ultron);
+  - moinho com as pás girando (Receptor TXT);
+  - casa de porta amarela com o quadro da conferência;
+  - hortas cercadas (docas livres);
+  - lago com ponte de pedra;
+  - torre de pedra com lanterna (Torre VIOS).
+- A geometria da vila é a mesma, então os caminhos, as portas, os postos e todas as animações
+  (.txt caindo no moinho, CIs no quadro, envio para a torre) continuam iguais. As Vilas 02 e 03 não
+  mudaram.
+- A cena da página (`_cena.html`/`_estilo.html`) foi ajustada para o tamanho do mascote novo.
+- Testado em Chrome sem janela: a vila parada, a simulação inteira (moinho → quadro → torre) e a
+  página do Ultron, sem erro no console. A aplicação do zero dos patches (zangão → albi →
+  bumblebee → campo) dá o mesmo arquivo.
+
 ### Adicionado — Número do processo em cada CI (04/11/2026)
 - **.txt do chat**: novo campo `PROCESSO:` logo depois de `CI:`, com o número no padrão CNJ, em
   todos os blocos. Ele é opcional para o robô: arquivo antigo sem o campo continua passando.

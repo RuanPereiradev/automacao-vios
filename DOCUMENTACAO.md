@@ -680,8 +680,26 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - O Ultron acha o Albi em `albi/` deste repositório; noutra pasta, `ALBI_PASTA`
   no `.env` do Ultron.
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py
-  bot/vila/vila.html`, depois `python3 doc/vila/ligar_albi.py bot/vila/vila.html` e por
-  último `python3 doc/vila/ligar_bumblebee.py bot/vila/vila.html`.
+  bot/vila/vila.html`, depois `python3 doc/vila/ligar_albi.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_bumblebee.py bot/vila/vila.html` e por último
+  `python3 doc/vila/ligar_vila01_campo.py bot/vila/vila.html`.
+
+### Passo 30 — Mascote novo do Ultron e Vila 01 no campo
+- O Ultron ganhou o mascote novo (imagem `doc/mascote/WhatsApp Image 2026-11-04 at
+  11.19.56.jpeg`): cabelo dourado, olhos vermelhos fechados sorrindo, capa verde, colete e pés
+  descalços. É uma grade de 28×35 em `bot/templates/_ultron.html`, a mesma da vila; a amostra
+  está em `doc/mascote/ultron-campo.html`. Aparece no topo da página, na caixa de soltar o .txt,
+  no ícone da aba e na Vila 01. O nome continua **Ultron**.
+- A **Vila 01** foi pintada no estilo do cenário (`doc/mascote/1e86eacd-….jpeg`):
+  - céu com nuvens e colinas, grama com flores, caminhos de terra e sebe nas bordas;
+  - **Doca 01 · Ultron** = casa na colina com porta redonda verde e chaminé soltando fumaça;
+  - **Receptor TXT** = moinho com as pás girando, onde o .txt cai;
+  - **Conferência** = casa de porta amarela com o quadro onde ele organiza as CIs;
+  - **docas livres** = hortas cercadas;
+  - lago com ponte de pedra;
+  - **Torre VIOS** = torre de pedra com lanterna.
+- A geometria é a mesma (blocos, portas e postos), então os caminhos e as etapas não mudaram.
+  Patch: `doc/vila/ligar_vila01_campo.py`. As Vilas 02 e 03 ficam como estavam.
 
 ### Passo 29 — Zangão vira Bumblebee (robô que se transforma em carro)
 - O bot de comprovantes previdenciários passa a se chamar **Bumblebee** no que aparece na tela:

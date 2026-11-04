@@ -1,33 +1,59 @@
-{# Mascote do Ultron ("Crista"): robô cromado com o corpo do mascote do Claude (Clawd) e
-   expressão de máquina hostil. Grade 16×12 (1 caractere = 1 pixel) e paleta abaixo; a mesma
-   grade está em doc/mascote/mascote.html. Animação (pulso do brilho, piscar e flutuar) no
-   ultron_script(); humor: "parado", "trabalhando", "feliz" ou "erro". #}
+{# Mascote do Ultron (desde 04/11/2026): o personagem de doc/mascote/WhatsApp Image 2026-11-04 at
+   11.19.56.jpeg — cabelo dourado, olhos vermelhos fechados (sorrindo), capa verde, colete e pés
+   descalços. Grade 28×35 (1 caractere = 1 pixel), a mesma da Vila 01 (doc/vila/ligar_vila01_campo.py)
+   e de doc/mascote/ultron-campo.html. Animação (brilho dos olhos, piscar, flutuar; mãos e pés)
+   no ultron_script(); humor: "parado", "trabalhando", "feliz" ou "erro". #}
 {% set GRADE = [
-  ".......LD.......",
-  "...D...LD...D...",
-  "..LLLLLLLLLLLL..",
-  "..LMMMMMMMMMMD..",
-  "..MRMMMMMMMMRD..",
-  "..MRORMMMMRORD..",
-  "LLMMMMMMMMMMMMDD",
-  "DDMMMMMMMMMMMMDD",
-  "..MMMDKKKKDMMD..",
-  "..DDDDDDDDDDDD..",
-  "...M.M....M.M...",
-  "...D.D....D.D...",
+  "........KRRRK..KRRRK........",
+  ".......KRYYYRRRYYYRK........",
+  ".....KRROYYYOOOYYYORRK......",
+  "....KYYYYOYYYYOOYYYYYYRK....",
+  "..KRYYOYOYYYYYYOYYOYYYOYRK..",
+  "..KRYYOOYYYOYYYOYYOOYYYORK..",
+  ".KRYYYYOOYYOOYYOOOOOOOYYYYK.",
+  ".KRYYOYOOOOOYYOSSSOOOYOYYRK.",
+  ".KRYYOYOSSSSOOSSSSSSOYOYYRK.",
+  ".KROYYOSSSSSSSSSSSSSSOYYORK.",
+  "KSOYOSSSSSSSSSSSSSSSSSOYOSK.",
+  "KSSRRSSSEEESSSSSEEESSSRRSSK.",
+  "KSSTRSSESSSESSSESSSESSRTSSK.",
+  "KSSTRSSESSSESSSESSSESSRTSSK.",
+  ".KTTRSSSSSSSSSSSSSSSSSRTTK..",
+  "....KSSSSSSMMMMSSSSSSSK.....",
+  ".....KSSSSSSSSSSSSSSSK......",
+  ".....KKKKKHHHHHHHKKKKK......",
+  ".....HHHHKVKYYYKVKHHHH......",
+  "....KGGGGKKKYOYKKKGGGGK.....",
+  "...KGGGGGGGKKYKKGGGGGGGK....",
+  "..KGGGGGKKKVVVVVKKKGGGGGK...",
+  "..KGHHHKSSKVVYVVKSSKHHHGK...",
+  ".KHGKSSSKVVVKYKVVVKSSSKHGK..",
+  ".KHGKSSSKVVVKVKVVVKSSSKHGK..",
+  ".KHGKSSSKVVVKYKVVVKSSSKHGK..",
+  ".KHGKTTTKVVVKVKVVVKTTTKHGK..",
+  ".KHGKKKKKVVVKKKVVVKKKKKHGK..",
+  ".KHGGKKVVVVVVVVVVVVVKKGGHK..",
+  ".KGGGKVVVVVVKKVVVVVVKGGGGK..",
+  "KGGGGKVVVVVVKKVVVVVVKGGGGGK.",
+  "KKKKKKKKKKKK....KKKKKKKKKKK.",
+  "....KSSSSSSK....KSSSSSSK....",
+  "...KSSTSSTSSK..KSSTSSTSSK...",
+  "...KKKKKKKKKK..KKKKKKKKKK...",
 ] %}
-{% set CORES = {"L": "#d4d8de", "M": "#9aa0a8", "D": "#5a5f67", "K": "#1d1e21", "R": "#c81e14", "O": "#ff5a3c"} %}
+{% set CORES = {"K": "#2a2016", "Y": "#fdc155", "O": "#e9ad56", "R": "#ad5c25", "S": "#f6e0c1", "T": "#d9b68e", "E": "#e02b2b", "M": "#3a2418", "G": "#556936", "H": "#3f5230", "V": "#5d341f"} %}
+{% set LARG, ALT = GRADE[0] | length, GRADE | length %}
 
 {% macro ultron(humor="parado", tamanho=120, id="ultron") %}
 <div class="ultron {{ humor }}" id="{{ id }}" style="--tam: {{ tamanho }}px" aria-hidden="true">
   <div class="corpo">
-    <svg viewBox="0 0 16 12" shape-rendering="crispEdges">
+    <svg viewBox="0 0 {{ LARG }} {{ ALT }}" shape-rendering="crispEdges">
       {#- um traçado por cor e parte (sem emendas entre os pixels) #}
       {%- set partes = {} %}
       {%- for linha in GRADE %}{% set y = loop.index0 %}{% for c in linha %}{% set x = loop.index0 %}{% if c != "." %}
-        {%- if c == "R" %}{% set classe = "olho-r" %}{% elif c == "O" %}{% set classe = "olho-o" %}
-        {%- elif y in (6, 7) and x < 2 %}{% set classe = "braco esq" %}{% elif y in (6, 7) and x > 13 %}{% set classe = "braco dir" %}
-        {%- elif y >= 10 %}{% set classe = "perna" %}{% else %}{% set classe = "" %}{% endif %}
+        {%- if c == "E" %}{% set classe = "olho-r" %}
+        {%- elif 22 <= y <= 26 and 4 <= x <= 7 and c in "ST" %}{% set classe = "braco esq" %}
+        {%- elif 22 <= y <= 26 and 19 <= x <= 22 and c in "ST" %}{% set classe = "braco dir" %}
+        {%- elif y >= ALT - 3 %}{% set classe = "perna" %}{% else %}{% set classe = "" %}{% endif %}
         {%- set chave = classe ~ "|" ~ CORES[c] %}
         {%- set _ = partes.update({chave: partes.get(chave, "") ~ "M" ~ x ~ " " ~ y ~ "h1v1h-1z"}) %}
       {%- endif %}{% endfor %}{% endfor %}
@@ -64,7 +90,7 @@
 {# Ícone da aba: o mesmo desenho, sem animação. #}
 {% macro ultron_icone() -%}
 {%- set svg -%}
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -2 16 16" shape-rendering="crispEdges">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="{{ (LARG - ALT) / 2 }} 0 {{ ALT }} {{ ALT }}" shape-rendering="crispEdges">
 {%- for linha in GRADE %}{% set y = loop.index0 %}{% for c in linha %}{% if c != "." %}<rect x="{{ loop.index0 }}" y="{{ y }}" width="1" height="1" fill="{{ CORES[c] }}"/>{% endif %}{% endfor %}{% endfor -%}
 </svg>
 {%- endset -%}

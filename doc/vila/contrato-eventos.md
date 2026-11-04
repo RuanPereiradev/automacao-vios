@@ -173,5 +173,8 @@ evento como `@evento {json}` na saída padrão e o Ultron grava em `saida/evento
 Dados mínimos: nunca o documento inteiro, o nome da pessoa nem o da empresa (o .txt inteiro fica
 só em `saida/albi/`, para a página `/albi`).
 A Vila 03 foi ligada por `doc/vila/ligar_albi.py` (rodar depois do `ligar_zangao.py`).
+
+> 04/11/2026: a Vila 01 passou para o campo, com o mascote novo do Ultron
+> (`doc/vila/ligar_vila01_campo.py`, depois do `ligar_bumblebee.py`). Os eventos não mudaram.
 O "baixar de novo" (`modo: "baixar"`) usa o mesmo `envio` da execução confirmada: a página trata
 como a mesma execução (a contagem recomeça) e não troca o modo dela.
