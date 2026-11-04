@@ -1,0 +1,70 @@
+{# Página do Jarvis (relatório mensal de processos por Grupo Cliente): situação e as planilhas para
+   baixar. Gerar o relatório é pela Vila 04 (botões na caixa de fala); os dados vêm de bot/jarvis.py. #}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jarvis — relatório mensal de processos</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%237fc8ff'/%3E%3Ccircle cx='8' cy='8' r='2.5' fill='%23e6fbff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+{% include "_estilo.html" %}
+<style>
+  /* cores do Jarvis (núcleo azul) por cima do estilo do Ultron */
+  :root { --red: #5ab4ff; --red-escuro: #1f4f86; }
+  body { background: radial-gradient(ellipse at top, #0a1626 0%, var(--fundo) 55%) fixed, var(--fundo); }
+  .marca b { text-shadow: 0 0 12px rgba(90, 180, 255, .6); }
+  .nucleo { width: 44px; height: 44px; border-radius: 50%; flex: none;
+            background: radial-gradient(circle, #fff 0 12%, #aaebff 22%, rgba(60, 150, 255, .35) 50%, transparent 70%);
+            box-shadow: 0 0 0 1px rgba(90, 180, 255, .5) inset, 0 0 18px rgba(90, 180, 255, .45); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--borda); }
+  th { color: var(--suave); font-weight: 600; font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <a href="{{ url_for('jarvis_pagina') }}"><span class="nucleo"></span>
+    <span><span class="marca"><b>J</b>ARVIS</span><br><span class="sub">relatório mensal de processos por grupo cliente</span></span></a>
+  <span class="acoes" style="margin-left: auto">
+    <a class="botao secundario" href="{{ url_for('inicio') }}">Ultron</a>
+    <a class="botao secundario" href="{{ url_for('vila') }}?vila=4">Vila 04</a>
+  </span>
+</header>
+<main>
+  <div class="cartao">
+    <h1>Situação</h1>
+    {% if not info.configurado %}
+      <p class="aviso">O Jarvis não está instalado neste servidor: falta a pasta em <code>JARVIS_PASTA</code>
+        (com <code>.venv</code>, <code>relatorio_processos.py</code> e <code>.env.usuario2</code>).</p>
+    {% elif info.rodando %}
+      <p><span class="selo s-andamento">Rodando</span>
+        {{ "Teste (2 processos por grupo)" if info.modo == "teste" else "Relatório do mês" }} desde {{ info.inicio[11:16] }}.
+        Acompanhe na <a href="{{ url_for('vila') }}?vila=4">Vila 04</a>.</p>
+    {% else %}
+      <p><span class="selo s-ja">Ocioso</span> {{ info.grupos }} grupo(s) no <code>PROCESSOS_GRUPOS</code>.
+        Para gerar, use os botões do Jarvis na <a href="{{ url_for('vila') }}?vila=4">Vila 04</a>.</p>
+    {% endif %}
+  </div>
+  <div class="cartao">
+    <h1>Planilhas</h1>
+    {% if planilhas %}
+      <table>
+        <tr><th>Mês</th><th>Planilha</th><th>Gerada em</th><th></th></tr>
+        {% for p in planilhas %}
+          <tr>
+            <td>{{ p.mes }}</td>
+            <td>{{ p.arquivo }} {% if p.teste %}<span class="selo s-andamento">teste</span>{% endif %}</td>
+            <td class="suave">{{ p.gerada }}</td>
+            <td><a class="botao secundario" href="{{ url_for('jarvis_planilha', mes=p.mes, nome=p.arquivo) }}{{ '?teste=1' if p.teste }}">Baixar</a></td>
+          </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <p class="suave">Nenhuma planilha gerada ainda.</p>
+    {% endif %}
+  </div>
+</main>
+</body>
+</html>

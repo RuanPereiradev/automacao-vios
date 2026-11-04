@@ -1,7 +1,9 @@
 """Põe o Jarvis (relatório mensal de processos, segundo usuário do VIOS) na Vila 04:
 - a vila passa de 3 para 4 vilas; a Vila 04 acende (cores, placas e torre) e ganha o nome Jarvis;
-- o Jarvis (núcleo de IA: esfera azul em espiral, com anéis e o centro pulsando; ou o mascote carmesim com propulsores) faz a ronda na Vila 04 e se apresenta no diálogo.
-Ainda não recebe eventos: o relatório roda em outra máquina e só aparece aqui quando os eventos forem ligados.
+- o Jarvis (núcleo de IA: esfera azul em espiral, com anéis e o centro pulsando; ou o mascote carmesim com propulsores) faz a ronda na Vila 04 e se apresenta no diálogo;
+- no servidor (/vila): botões "Gerar relatório do mês" (com confirmação), "Testar (2 por grupo)" e "Planilhas"
+  (/jarvis/status, /jarvis/rodar e /jarvis do Ultron); os eventos do bot "jarvis" mostram o andamento
+  (grupo, processo X de Y e gasto) e o Jarvis vai à Leitura dos processos e às Planilhas enquanto trabalha.
 uso: python3 doc/vila/ligar_jarvis.py bot/vila/vila.html [nucleo|propulsor]  (edita no lugar; rodar de novo não muda nada)"""
 import json
 import sys
@@ -44,23 +46,120 @@ troca("  static ZSPR = (() => {", r"""  static JIDLE = 'Sou o Jarvis. Uma vez po
 troca("    this.zseq = []; this.zcur = null; this.zevq = [];\n",
       "    this.zseq = []; this.zcur = null; this.zevq = [];\n"
       "    this.j = { x: 63 * 16, y: 64, dir: 'down', path: [], step: 0, wait: 90, i: 0 };\n"
-      "    this.setState({ jtext: Component.JIDLE, jtyped: 0 });\n")
+      "    this.setState({ jtext: Component.JIDLE, jtyped: 0, jsrv: null, jrun: null, jconf: 0, jpedido: false });\n")
 troca("  update() {\n", "  update() {\n    this.jpatrol();\n"
       "    if ((this.state.jtyped || 0) < (this.state.jtext || '').length) this.setState(s => ({ jtyped: (s.jtyped || 0) + 1 }));\n")
-troca("  patrol() {", r"""  jpatrol() {
-    const j = this.j, pts = [[69, 4], [73, 8], [66, 10], [63, 4]];
-    if (j.wait > 0) { j.wait--; return; }
-    if (!j.path.length) { j.path = this.bfs([Math.round(j.x / 16), Math.round(j.y / 16)], pts[j.i++ % pts.length]); if (!j.path.length) j.wait = 120; return; }
-    const sp = 0.9 * (this.props.speed ?? 1), [tx, ty] = j.path[0], px = tx * 16, py = ty * 16, dx = px - j.x, dy = py - j.y;
+# eventos do Jarvis: só montam o estado (sem fila de animação); status do servidor a cada 4 s
+troca("        const zg = evs.filter(e => e.bot === 'zangao');\n",
+      "        const zg = evs.filter(e => e.bot === 'zangao');\n"
+      "        evs.filter(e => e.bot === 'jarvis').forEach(e => this.jreduce(e));\n")
+troca("    this.zstatusTick(); this.zpoll = setInterval(() => this.zstatusTick(), 4000);\n",
+      "    this.zstatusTick(); this.zpoll = setInterval(() => this.zstatusTick(), 4000);\n"
+      "    this.jstatusTick(); this.jpoll = setInterval(() => this.jstatusTick(), 4000);\n")
+troca("clearInterval(this.zpoll);", "clearInterval(this.zpoll); clearInterval(this.jpoll);")
+# tecla A / Enter na Vila 04 = botão principal do Jarvis
+troca("  action() {\n", "  action() {\n    if (this.state.village === 3) { const b = this.jbotoes(); if (b.a) b.a.fn(); return; }\n")
+troca("  patrol() {", r"""  jalvo() {
+    const r = this.state.jrun, srv = this.state.jsrv;
+    if (!r || r.fim || !(srv && srv.rodando)) return null;
+    return r.etapa === 'salvando' ? [75, 4] : [69, 4];  // Planilhas ou Leitura dos processos
+  }
+  jpatrol() {
+    const j = this.j, pts = [[69, 4], [73, 8], [66, 10], [63, 4]], alvo = this.jalvo();
+    if (alvo) {
+      const at = [Math.round(j.x / 16), Math.round(j.y / 16)];
+      if (!j.path.length && (at[0] !== alvo[0] || at[1] !== alvo[1])) j.path = this.bfs(at, alvo);
+      if (!j.path.length) return;
+    } else {
+      if (j.wait > 0) { j.wait--; return; }
+      if (!j.path.length) { j.path = this.bfs([Math.round(j.x / 16), Math.round(j.y / 16)], pts[j.i++ % pts.length]); if (!j.path.length) j.wait = 120; return; }
+    }
+    const sp = (alvo ? 1.4 : 0.9) * (this.props.speed ?? 1), [tx, ty] = j.path[0], px = tx * 16, py = ty * 16, dx = px - j.x, dy = py - j.y;
     const m = Math.min(sp, Math.abs(dx) + Math.abs(dy));
     if (dx) j.x += Math.sign(dx) * m; else j.y += Math.sign(dy) * m;
     j.step += m;
     if (Math.abs(px - j.x) < 0.01 && Math.abs(py - j.y) < 0.01) { j.x = px; j.y = py; j.path.shift(); if (!j.path.length) j.wait = 160; }
   }
+  jdinheiro(v) { return 'US$ ' + Number(v || 0).toFixed(2).replace('.', ','); }
+  jreduce(ev) {
+    this.setState(s => {
+      let r = s.jrun;
+      if (ev.tipo === 'execucao_iniciada' || !r || r.id !== ev.envio)
+        r = { id: ev.envio, grupos: ev.grupos || 0, teste: !!ev.teste, grupo: 0, feito: 0, total: 0, gasto: 0, etapa: 'entrando', fim: null };
+      else r = { ...r };
+      if (ev.tipo === 'grupo') Object.assign(r, { grupo: ev.grupo, grupos: ev.grupos || r.grupos, feito: 0, total: ev.processos || 0, etapa: 'lendo' });
+      else if (ev.tipo === 'processo') Object.assign(r, { grupo: ev.grupo, grupos: ev.grupos || r.grupos, feito: ev.feito, total: ev.total, gasto: ev.gasto, etapa: 'lendo' });
+      else if (ev.tipo === 'grupo_fim') r.etapa = 'salvando';
+      else if (ev.tipo === 'execucao_fim') { r.fim = { resultado: ev.resultado, planilhas: ev.planilhas || 0, falhas: ev.falhas || 0, motivo: ev.motivo }; r.gasto = ev.gasto ?? r.gasto; }
+      return { jrun: r };
+    });
+    setTimeout(() => this.jfalar(), 0);
+  }
+  jfalar() {
+    const s = this.state, r = s.jrun, srv = s.jsrv;
+    if (s.jconf > Date.now()) return;  // não apaga o pedido de confirmação
+    let txt = Component.JIDLE;
+    if (srv && !srv.configurado) txt += ' Ainda não estou instalado neste servidor (falta JARVIS_PASTA).';
+    else if (r && !r.fim && srv && srv.rodando) {
+      const pre = r.teste ? 'Teste · ' : '';
+      txt = r.etapa === 'entrando' ? pre + 'Entrando no VIOS, só para ler…'
+        : r.etapa === 'salvando' ? pre + 'Grupo ' + r.grupo + ' de ' + r.grupos + ' lido: salvando a planilha.'
+        : pre + 'Grupo ' + r.grupo + ' de ' + r.grupos + ': processo ' + r.feito + ' de ' + r.total + ' · gasto ' + this.jdinheiro(r.gasto) + '.';
+    } else if (srv && srv.rodando) txt = 'Começando o relatório…';
+    else if (r && r.fim) {
+      const f = r.fim, g = ' Gasto com a IA: ' + this.jdinheiro(r.gasto) + '.';
+      txt = f.resultado === 'concluido' ? (r.teste ? 'Teste concluído (2 processos por grupo): ' + f.planilhas + ' planilha(s) na pasta teste.' : 'Pronto! ' + f.planilhas + ' planilha(s) do mês gerada(s). Baixe em "Planilhas".') + g
+        : f.resultado === 'com_falha' ? 'Terminei, mas ' + f.falhas + ' grupo(s) tiveram falha (veja o log do Jarvis). ' + f.planilhas + ' planilha(s) salva(s).' + g
+        : 'Parei por um erro. Veja logs/execucoes_vila.log na pasta do Jarvis.' + g;
+    } else if (r && srv && !srv.rodando) txt = 'A última execução foi interrompida antes do fim. Pode gerar de novo.';
+    if (txt !== s.jtext) this.setState({ jtext: txt, jtyped: 0 });
+  }
+  async jstatusTick() {
+    try {
+      const r = await fetch('/jarvis/status', { credentials: 'same-origin' });
+      if (r.ok) { this.setState({ jsrv: await r.json() }); setTimeout(() => this.jfalar(), 0); }
+    } catch (e) { /* sem conexão: o topo já mostra pelo /eventos */ }
+  }
+  async jrodar(modo) {
+    if (this.state.jpedido) return;
+    clearTimeout(this.jconfT);
+    this.setState({ jpedido: true, jconf: 0 });
+    try {
+      const r = await fetch('/jarvis/rodar', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modo }) });
+      const j = await r.json().catch(() => ({}));
+      if (j && 'rodando' in j) this.setState({ jsrv: j });
+      this.setState({ jtext: r.ok ? (modo === 'mes' ? 'Pedido recebido! Vou ler os processos de todos os grupos e montar as planilhas do mês.'
+        : 'Pedido recebido! Teste com 2 processos por grupo.') : 'Não deu para rodar: ' + (j.erro || 'HTTP ' + r.status) + '.', jtyped: 0 });
+    } catch (e) { this.setState({ jtext: 'Sem conexão com o servidor. Tente de novo.', jtyped: 0 }); }
+    this.setState({ jpedido: false });
+  }
+  jbotoes() {
+    const s = this.state, srv = s.jsrv, out = { a: null, b: null, p: null };
+    if (this.fonte() !== 'servidor' || !srv || !srv.configurado) return out;
+    out.p = { label: 'Planilhas', fn: () => window.open('/jarvis', '_blank') };
+    if (srv.rodando || s.jpedido) return out;
+    const conf = s.jconf > Date.now();
+    out.a = { label: conf ? 'Confirmar: gerar o relatório' : 'Gerar relatório do mês', bg: conf ? '#1f6fd1' : '#3a2f1f',
+      fn: () => {
+        if (this.state.jconf > Date.now()) return this.jrodar('mes');
+        this.setState({ jconf: Date.now() + 6000, jtext: 'Vou ler todos os processos dos ' + srv.grupos + ' grupo(s), só leitura no VIOS. Leva uns 15 minutos para cada 100 processos e custa cerca de US$ 0,02 por processo com a IA. Para confirmar, clique em "Confirmar: gerar o relatório" em até 6 segundos.', jtyped: 0 });
+        clearTimeout(this.jconfT); this.jconfT = setTimeout(() => { this.setState({ jconf: 0 }); setTimeout(() => this.jfalar(), 0); }, 6000);
+      } };
+    out.b = { label: 'Testar (2 por grupo)', bg: '#3a2f1f', fn: () => this.jrodar('teste') };
+    return out;
+  }
   jVals() {
-    const s = this.state, txt = s.jtext || '';
-    return { hudStatus: 'Jarvis · Ocioso', dotColor: '#7fe3ff', hudStep: 'Relatório mensal', speaker: 'Jarvis',
+    const s = this.state, txt = s.jtext || '', srv = s.jsrv, r = s.jrun, B = this.jbotoes(), off = s.conn === 'offline';
+    const rodando = !!(srv && srv.rodando);
+    const out = { hudStatus: 'Jarvis · ' + (rodando ? 'Trabalhando' : 'Ocioso'), dotColor: off ? '#5a5f67' : '#7fe3ff',
+      hudStep: off && this.fonte() === 'servidor' ? 'Sem conexão' : rodando && r && r.grupo ? 'Grupo ' + r.grupo + '/' + r.grupos : 'Relatório mensal', speaker: 'Jarvis',
       dialogShown: txt.slice(0, s.jtyped || 0), moreOpacity: (s.jtyped || 0) >= txt.length ? 1 : 0 };
+    if (this.fonte() === 'servidor') Object.assign(out, {
+      showAction: !!B.a, actionLabel: B.a ? B.a.label : '',
+      showAction2: !!B.b, actionLabel2: B.b ? B.b.label : '', action2: () => B.b && B.b.fn(), action2Bg: B.b ? B.b.bg : '#3a2f1f',
+      showPainel: !!B.p, painelLabel: B.p ? B.p.label : '', painel: () => B.p && B.p.fn() });
+    return out;
   }
   patrol() {""")
 DESENHO = {

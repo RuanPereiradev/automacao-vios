@@ -11,9 +11,9 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from flask import Flask, Response, abort, jsonify, redirect, render_template, request, url_for
+from flask import Flask, Response, abort, jsonify, redirect, render_template, request, send_file, url_for
 
-from bot import config, duplicidade, envio_txt, eventos, skill, zangao
+from bot import config, duplicidade, envio_txt, eventos, jarvis, skill, zangao
 from bot.lancamento import REGISTRO, lancar, ler_intimacao
 from bot.login import fazer_login
 from bot.navegador import criar_driver
@@ -296,6 +296,8 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     pasta_saida = Path(cfg.pasta_saida)
     # Zangão instalado neste computador (pasta com .venv e .env dele); vazio = sem botões na vila
     pasta_zangao = os.path.expanduser(os.getenv("ZANGAO_PASTA", "").strip())
+    # Jarvis (relatório mensal de processos) instalado neste computador; vazio = sem botões na Vila 04
+    pasta_jarvis = os.path.expanduser(os.getenv("JARVIS_PASTA", "").strip())
     arquivo_pessoas = pasta_saida / "responsaveis.json"
     envios = carregar_envios(pasta_saida)  # id -> {arquivo, cis, estado, confirmar, ...}
     trava = threading.Lock()  # um envio por vez (um navegador só)
@@ -435,7 +437,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
 
     @app.context_processor
     def menu():
-        return {"zangao_ligado": bool(pasta_zangao)}
+        return {"zangao_ligado": bool(pasta_zangao), "jarvis_ligado": bool(pasta_jarvis)}
 
     @app.route("/zangao")
     def zangao_pagina():
@@ -471,6 +473,34 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         except zangao.ZangaoErro as e:
             return jsonify(erro=str(e), **zangao.status(pasta_zangao)), 409
         log.info("Zangão disparado pela vila (%s) por %s", modo, request.remote_addr)
+        return jsonify(info)
+
+    @app.route("/jarvis")
+    def jarvis_pagina():
+        """Planilhas do relatório mensal geradas pelo Jarvis, para baixar."""
+        return render_template("jarvis.html", info=jarvis.status(pasta_jarvis), planilhas=jarvis.planilhas(pasta_jarvis))
+
+    @app.route("/jarvis/planilha/<mes>/<nome>")
+    def jarvis_planilha(mes, nome):
+        teste = request.args.get("teste") == "1"
+        arquivo = jarvis.planilha(pasta_jarvis, mes, nome, teste) or abort(404)
+        return send_file(arquivo, as_attachment=True, download_name=(f"TESTE {nome}" if teste else nome))
+
+    @app.route("/jarvis/status")
+    def jarvis_status():
+        return jsonify(jarvis.status(pasta_jarvis))
+
+    @app.route("/jarvis/rodar", methods=["POST"])
+    def jarvis_rodar():
+        """Roda o Jarvis em segundo plano: {"modo": "mes"} (todos os grupos) ou {"modo": "teste"} (2 por grupo)."""
+        if not _mesma_origem():
+            return jsonify(erro="pedido recusado"), 403
+        modo = (request.get_json(silent=True) or {}).get("modo")
+        try:
+            info = jarvis.rodar(pasta_jarvis, modo)
+        except jarvis.JarvisErro as e:
+            return jsonify(erro=str(e), **jarvis.status(pasta_jarvis)), 409
+        log.info("Jarvis disparado pela vila (%s) por %s", modo, request.remote_addr)
         return jsonify(info)
 
     @app.route("/vila")

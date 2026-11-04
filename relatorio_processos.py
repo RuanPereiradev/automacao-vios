@@ -2,7 +2,8 @@
 
 Para cada grupo: pesquisa a lista de processos, abre a tela de cada processo (a
 lupa), lê o cadastro e as tarefas, pede à IA as colunas de texto e salva
-<RELATORIO_PASTA>/AAAA-MM/<GRUPO>.xlsx (+ <GRUPO>.json com os dados lidos).
+<RELATORIO_PASTA>/AAAA-MM/<GRUPO>.xlsx (+ <GRUPO>.json com os dados lidos). Com --limite (teste),
+salva em AAAA-MM/teste/, sem tocar na planilha do mês. O andamento vai para a vila (bot/vila_aviso.py).
 """
 import json
 import logging
@@ -18,6 +19,7 @@ from bot.navegacao import ir_ate_tabela
 from bot.navegador import criar_driver
 from bot.processos_detalhe import ler_processo
 from bot.processos_grupo import _normal, grupos_disponiveis, ler_processos, nome_arquivo, pesquisar_grupo
+from bot.vila_aviso import Vila
 from bot.relatorio_planilha import SEM_TAREFAS, SISTEMA, SCHEMA, montar_linha, salvar_xlsx, texto_para_ia
 from main import PASTA_LOGS, configurar_log
 
@@ -48,13 +50,14 @@ def analisar(agente, gasto, modelo, item, proc, log):
         return {"erro": str(e)}
 
 
-def gerar_grupo(driver, cfg, grupo, valor, pasta, agente, gasto, modelo, limite, log):
+def gerar_grupo(driver, cfg, grupo, valor, pasta, agente, gasto, modelo, limite, log, vila, ordem, grupos):
     pesquisar_grupo(driver, valor, cfg.timeout)
     itens, erros = ler_processos(driver, cfg.timeout)
     log.info("%s: %d processos na lista (%d linhas com erro)", grupo, len(itens), erros)
     if limite:
         itens = itens[:limite]
         log.info("%s: só os %d primeiros (--limite)", grupo, len(itens))
+    vila.emitir("grupo", grupo=ordem, grupos=grupos, processos=len(itens))
 
     linhas, brutos, erros_ia = [], [], 0
     for n, item in enumerate(itens, 1):
@@ -71,12 +74,14 @@ def gerar_grupo(driver, cfg, grupo, valor, pasta, agente, gasto, modelo, limite,
         brutos.append({"lista": item, "processo": proc, "ia": resposta})
         log.info("%s: %d/%d CI %s — %d tarefas — gasto %s", grupo, n, len(itens), item["ci"],
                  len(proc["tarefas"]), gasto.resumo())
+        vila.emitir("processo", grupo=ordem, grupos=grupos, feito=n, total=len(itens), gasto=round(gasto.total, 2))
 
     arquivo = pasta / nome_arquivo(grupo)
     salvar_xlsx(arquivo, grupo, linhas, {
         "gerado_em": datetime.now(), "modelo": modelo, "gasto": gasto.resumo(), "erros_ia": erros_ia})
     arquivo.with_suffix(".json").write_text(json.dumps(brutos, ensure_ascii=False, indent=1), encoding="utf-8")
     log.info("%s: %d processos, %d com erro na IA -> %s", grupo, len(linhas), erros_ia, arquivo)
+    vila.emitir("grupo_fim", grupo=ordem, grupos=grupos, processos=len(linhas), erros_ia=erros_ia)
     return erros_ia
 
 
@@ -106,8 +111,18 @@ def main(*args):
         return 1
     gasto = Gasto.do_env()
     pasta = Path(os.getenv("RELATORIO_PASTA", "").strip() or cfg.pasta_saida / "relatorios") / f"{datetime.now():%Y-%m}"
+    if limite:
+        pasta = pasta / "teste"  # teste com poucos processos não substitui a planilha do mês
+    vila = Vila.do_env()
+    vila.emitir("execucao_iniciada", grupos=len(pedidos), teste=bool(limite))
+    vila.emitir("fase", fase="entrando_vios")
 
-    driver = criar_driver(cfg.headless, cfg.manter_aberto, cfg.navegador_rapido)
+    try:
+        driver = criar_driver(cfg.headless, cfg.manter_aberto, cfg.navegador_rapido)
+    except Exception:
+        log.exception("O navegador não abriu")
+        vila.emitir("execucao_fim", resultado="parou", motivo="navegador", gasto=0)
+        return 1
     try:
         fazer_login(driver, cfg)
         ir_ate_tabela(driver, cfg)
@@ -118,14 +133,15 @@ def main(*args):
             pedidos = list(disponiveis)
 
         feitos, falhas = 0, 0
-        for pedido in pedidos:
+        for ordem, pedido in enumerate(pedidos, 1):
             grupo = por_nome.get(_normal(pedido))
             if not grupo:
                 log.error("Grupo '%s' não existe no filtro Grupo Cliente", pedido)
                 falhas += 1
                 continue
             try:
-                erros_ia = gerar_grupo(driver, cfg, grupo, disponiveis[grupo], pasta, agente, gasto, modelo, limite, log)
+                erros_ia = gerar_grupo(driver, cfg, grupo, disponiveis[grupo], pasta, agente, gasto, modelo, limite, log,
+                                       vila, ordem, len(pedidos))
                 feitos += 1
                 falhas += bool(erros_ia)
             except Exception:
@@ -134,11 +150,14 @@ def main(*args):
                 log.exception("Falha no grupo %s (screenshot em %s)", grupo, screenshot)
                 falhas += 1
         log.info("Concluído: %d grupo(s) salvos, %d com falha — gasto com IA %s", feitos, falhas, gasto.resumo())
+        vila.emitir("execucao_fim", resultado="concluido" if not falhas else "com_falha", planilhas=feitos,
+                    falhas=falhas, gasto=round(gasto.total, 2))
         return 0 if not falhas else 1
     except Exception:
         screenshot = PASTA_LOGS / f"erro_{datetime.now():%Y-%m-%d_%H%M%S}.png"
         driver.save_screenshot(str(screenshot))
         log.exception("Falha na execução (screenshot em %s)", screenshot)
+        vila.emitir("execucao_fim", resultado="parou", motivo="erro", gasto=round(gasto.total, 2))
         return 1
     finally:
         if cfg.manter_aberto:

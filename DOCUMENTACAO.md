@@ -607,8 +607,16 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - A Vila 04 fica acesa, com as placas Doca 01 · Jarvis, Leitura dos processos, Planilhas e
   Torre VIOS; o Jarvis (núcleo de IA: esfera azul em espiral, com anéis e o centro
   pulsando) faz a ronda e se apresenta no diálogo. `/vila?vila=4` abre direto nela.
-- Ainda **não recebe eventos**: o relatório roda em outra máquina e não manda nada para a
-  vila; por enquanto ele aparece sempre como "Ocioso".
+- **Rodar pela vila** (como o Zangão): com `JARVIS_PASTA` no `.env` do Ultron (pasta com
+  `.venv`, `relatorio_processos.py` e `.env.usuario2` do Jarvis, branch `relatorio-processos`),
+  a caixa de fala da Vila 04 ganha "Gerar relatório do mês" (com confirmação: segundo clique em
+  até 6 s), "Testar (2 por grupo)" (salva em `AAAA-MM/teste/`) e "Planilhas" (página `/jarvis`,
+  com as planilhas para baixar). Rotas: `/jarvis`, `/jarvis/status`, `POST /jarvis/rodar`,
+  `/jarvis/planilha/<mês>/<arquivo>` (só arquivos listados; nada fora da pasta).
+- O Jarvis roda em segundo plano, com ambiente limpo (nenhuma variável do Ultron chega a ele),
+  e manda o andamento por `POST /eventos` (bot `jarvis`, só contagens: grupo N de M, processo X
+  de Y, gasto). A vila mostra na caixa de fala e leva o Jarvis à Leitura dos processos e às
+  Planilhas. Instalação no Mac: `RELATORIO_PROCESSOS.md`, seção 5.
 - Se a vila for baixada de novo do site: rodar `ligar_zangao.py` e depois
   `python3 doc/vila/ligar_jarvis.py bot/vila/vila.html` (no fim, `propulsor` troca o
   núcleo pelo mascote com propulsores).
@@ -718,8 +726,10 @@ selenium/
 │   ├── web.py           # página de revisão (Flask)
 │   ├── envio_txt.py     # lê e confere o .txt da página de envio
 │   ├── envio_web.py     # página de envio do .txt (Flask)
-│   ├── eventos.py       # eventos para a vila (saida/eventos.jsonl, GET /eventos; POST /eventos do Zangão)
+│   ├── eventos.py       # eventos para a vila (saida/eventos.jsonl, GET /eventos; POST /eventos do Zangão e do Jarvis)
 │   ├── zangao.py        # roda o Zangão em segundo plano pela vila (/zangao/status, /zangao/rodar)
+│   ├── jarvis.py        # roda o Jarvis (relatório de processos) pela vila e lista as planilhas (/jarvis)
+│   ├── vila_aviso.py    # o relatório de processos manda o andamento para a vila (bot "jarvis")
 │   ├── vila/            # vila.html (servido em /vila)
 │   ├── templates/       # HTML das páginas de revisão, de envio e do Zangão (zangao.html);
 │   │                    # _estilo.html = estilo comum; _ultron.html / _zangao.html = mascotes;

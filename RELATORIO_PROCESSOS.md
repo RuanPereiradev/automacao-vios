@@ -157,6 +157,43 @@ Campo vazio no VIOS fica vazio na planilha. Erro na IA aparece como
 
 ## 5. Como rodar
 
+### Pela plataforma (vila do Ultron, no Mac)
+
+O robô se chama **Jarvis** e fica na **Vila 04** da vila do Ultron
+(`http://<IP do Mac>:5001/vila?vila=4`, com a senha da página do Ultron):
+
+| Botão | O que faz |
+| --- | --- |
+| **Gerar relatório do mês** | Lê todos os processos dos grupos de `PROCESSOS_GRUPOS` e gera as planilhas do mês. Pede confirmação (segundo clique em até 6 s), porque gasta IA (~US$ 0,02 por processo) |
+| **Testar (2 por grupo)** | Só os 2 primeiros processos de cada grupo; salva em `AAAA-MM/teste/` e não substitui a planilha do mês (~US$ 0,06) |
+| **Planilhas** | Abre a página `/jarvis`: situação e a lista das planilhas para **baixar** |
+
+Enquanto roda, os botões de gerar somem e a caixa de fala mostra o andamento
+("Grupo 1 de 2: processo 37 de 101 · gasto US$ 0,70"); o Jarvis vai até a Leitura dos
+processos e, ao salvar cada planilha, até Planilhas. No fim: "Pronto! N planilha(s) do mês
+gerada(s)". A vila só recebe contagens: nunca nome de grupo, cliente ou número de processo.
+
+Como funciona: o Ultron (`bot/jarvis.py`, rotas `/jarvis/*` em `bot/envio_web.py`) abre o
+`relatorio_processos.py` da pasta `JARVIS_PASTA` em segundo plano, como faz com o Zangão; o
+relatório manda o andamento por `POST /eventos` (`bot/vila_aviso.py`, `VILA_URL`/`VILA_SENHA`).
+Saída de cada execução: `logs/execucoes_vila.log` na pasta do Jarvis.
+
+### Instalar no Mac (uma vez)
+
+```bash
+git clone https://github.com/RuanPereiradev/automacao-vios.git ~/jarvis
+cd ~/jarvis && git checkout relatorio-processos
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+cp .env.usuario2.example .env.usuario2   # preencher login, ANTHROPIC_API_KEY,
+                                         # HEADLESS=true, VILA_URL=http://127.0.0.1:5001/eventos
+                                         # e VILA_SENHA = ENVIO_SENHA do Ultron
+```
+
+No `.env` **do Ultron**: `JARVIS_PASTA=~/jarvis`, e reiniciar a página do Ultron. O Ultron
+precisa ter o código da Vila 04 e das rotas `/jarvis` (hoje na branch `relatorio-processos`).
+
+### Pelo terminal
+
 No Windows, na pasta do projeto:
 
 ```powershell
@@ -208,6 +245,8 @@ e a chave da IA e **não vai para o GitHub**.
 | `HEADLESS` | Chrome sem janela | `false` |
 | `TIMEOUT` | Espera máxima (s) | `20` |
 | `MANTER_ABERTO` | Chrome continua aberto no fim | `false` |
+| `VILA_URL` | Eventos do Ultron para a Vila 04 (vazio = sem vila) | `http://127.0.0.1:5001/eventos` (no Mac) |
+| `VILA_SENHA` | Senha da página do Ultron (`ENVIO_SENHA`) | (no `.env.usuario2`) |
 | `NAVEGADOR_RAPIDO` | Carregamento "eager" das páginas (do `main`) | padrão `true` |
 
 ---
@@ -221,6 +260,10 @@ automacao-vios/
 ├── bot/processos_grupo.py      # filtro Grupo Cliente, pesquisa e leitura da lista
 ├── bot/processos_detalhe.py    # lupa: Dados do Processo + tarefas
 ├── bot/relatorio_planilha.py   # regras fixas, instruções da IA e gravação da .xlsx
+├── bot/vila_aviso.py           # andamento para a vila (POST /eventos, bot "jarvis")
+├── bot/jarvis.py               # lado do Ultron: roda o Jarvis pela vila e lista as planilhas
+├── bot/templates/jarvis.html   # página /jarvis (planilhas para baixar)
+├── doc/vila/ligar_jarvis.py    # põe a Vila 04 · Jarvis (botões e andamento) no bot/vila/vila.html
 ├── .env.usuario2.example       # modelo do .env do segundo usuário
 ├── .env.usuario2               # configuração real (NÃO versionar — senha e chave)
 └── saida_usuario2/relatorios/  # planilhas e .json (NÃO versionar — dados de clientes)
@@ -281,8 +324,8 @@ Reaproveita do robô de intimações: `bot/config.py`, `bot/login.py`,
 2. Incluir Plasfran (3 grupos) e LD Urbanismo.
 3. Salvar no Google Drive (`RELATORIO_PASTA` apontando para a pasta
    sincronizada) e agendar a execução mensal.
-4. Mandar eventos para a vila: o robô se chama **Jarvis** e já tem a Vila 04
-   (`DOCUMENTACAO.md`, Passo 28), mas por enquanto aparece sempre "Ocioso".
+4. Instalar o Jarvis no Mac (seção 5) e levar a parte da plataforma (Vila 04, `bot/jarvis.py`,
+   rotas `/jarvis`) para o código que o Ultron roda.
 
 ---
 

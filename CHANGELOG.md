@@ -12,6 +12,20 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Jarvis pela plataforma: gerar e baixar o relatório pela Vila 04 (04/11/2026)
+- Vila 04: botões "Gerar relatório do mês" (com confirmação), "Testar (2 por grupo)" e
+  "Planilhas"; a caixa de fala mostra o andamento real (grupo, processo X de Y, gasto) e o
+  Jarvis vai à Leitura dos processos e às Planilhas enquanto trabalha.
+- `bot/jarvis.py` + rotas `/jarvis`, `/jarvis/status`, `POST /jarvis/rodar` e
+  `/jarvis/planilha/<mês>/<arquivo>`: o Ultron roda o Jarvis da pasta `JARVIS_PASTA` em segundo
+  plano (como o Zangão) e lista as planilhas para baixar. Botão "Jarvis" no topo da página do Ultron.
+- `bot/vila_aviso.py`: o relatório manda o andamento por `POST /eventos` (bot `jarvis`, só
+  contagens; `VILA_URL` e `VILA_SENHA` no `.env.usuario2`). `eventos.py` aceita o bot `jarvis`.
+- `--limite` (teste) salva em `AAAA-MM/teste/`, sem substituir a planilha do mês.
+- Se o navegador não abre, o relatório avisa a vila ("parou") em vez de sumir.
+- Testado no PC com a página de demonstração: clique em "Testar" na vila → 2 grupos, 4
+  processos, US$ 0,06, andamento ao vivo e as planilhas na página /jarvis.
+
 ### Adicionado — Jarvis na Vila 04 (04/11/2026)
 - A vila passa de 3 para 4 vilas: a Vila 04 é do **Jarvis**, o robô do relatório mensal de
   processos (segundo usuário do VIOS). Ela fica acesa, com placas próprias (Doca 01 · Jarvis,
