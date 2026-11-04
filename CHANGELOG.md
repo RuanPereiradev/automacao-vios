@@ -12,6 +12,98 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Albi: sessão em conflito e tela de novo pedido (04/11/2026)
+- Se o login cair em `/login-conflito` (sessão aberta em outro lugar), o Albi clica em "Encerrar
+  a outra sessão"; se o Sonar voltar para a tela de login, entra de novo. Botão configurável em
+  `CONFLITO_BOTAO` (vazio = padrão).
+- Depois do login vai direto para `/modulos/pesquisa-processos/novo-pedido` (a tela do botão
+  "Iniciar Pesquisa") e confirma que ela abriu. Testado no Sonar real, passando pela tela de
+  conflito.
+
+### Corrigido — Albi: login no Sonar (04/11/2026)
+- Os seletores dos campos (`css:#loginform #input-cpf-cnpj` etc.) eram cortados no `.env`: sem
+  aspas, tudo depois de " #" vira comentário, e o seletor virava só `#loginform`. O Albi tentava
+  digitar no formulário inteiro e parava com "invalid element state". Agora são escritos sem
+  " #" (`css:#loginform input[id=input-cpf-cnpj]`, `css:#loginform [id=btn-login]`, ...) em
+  `albi/main.py` e `albi/.env.example`. Testado com as credenciais reais: "Login OK".
+
+### Segurança — Revisão de chaves e rotas (03/11/2026)
+- Conferido: nenhuma chave nem senha no repositório nem em todo o histórico do git (os 3 ramos):
+  as chaves da OpenAI e da Anthropic, o usuário e a senha do VIOS e a senha da página não aparecem
+  em nenhum commit; o `.env` nunca foi commitado. A página de revisão só atende no próprio
+  computador (`127.0.0.1`). No servidor do Mac, as 17 rotas da página de envio (GET e POST)
+  respondem 401 sem a senha.
+- Corrigido: POST vindo de outro site é recusado (403) em todas as rotas (`barrar_outro_site` em
+  `bot/envio_web.py`). Antes, um site aberto no mesmo navegador poderia disparar
+  `/envio/<id>/enviar`, `/salvar`, `/ler` ou `/eventos` usando a senha guardada pelo navegador
+  (CSRF). Pedido sem Origin/Referer (o Zangão, em `POST /eventos`) continua decidido só pela senha.
+- Retirado do `CHANGELOG.md` o número de um processo real usado como exemplo (continua no
+  histórico do git, no commit `b1bb149`).
+
+### Adicionado — Albi, bot do Sonar (pasta `albi/`)
+- Começou com o nome Jarvis (pasta `jarvis/`); renomeado para Albi em 04/11/2026.
+- Novo bot, separado do Ultron e do Zangão: tudo em `albi/` (`.venv`, `.env`, `logs/`,
+  `saida/` próprios; não importa nada do `bot/`). Entra em https://sonar.lemeforense.com.br/login
+  com CPF/CNPJ, e-mail e senha e confirma o login. As próximas etapas ainda vão ser definidas.
+- `albi/.env.example` explica como pôr as credenciais (`SONAR_CPF_CNPJ`, `SONAR_EMAIL`,
+  `SONAR_SENHA`; senha com espaço ou " #" entre aspas simples). Campos da tela conferidos na
+  página real e presos ao formulário `#loginform` (a página tem outro formulário, o de
+  recuperar senha, com campos de mesmo nome).
+- `albi/instalar.sh`, `albi/rodar.sh`, `albi/requirements.txt` e `albi/README.md`.
+  O log nunca mostra a senha nem o CPF/CNPJ inteiro.
+
+### Alterado — Vila dos bots no topo da página do Ultron
+- As telas do Ultron (inicial e do envio) mostram no topo a vila dos bots (a mesma `/vila`, com
+  os eventos reais, aberta na Vila 01) no lugar da cena pequena; abaixo continua tudo igual
+  (caixa do .txt, conferência, enviar/testar, edição das CIs, histórico). `bot/templates/_vila.html`
+  (`vila_cartao(n)`).
+- Vila: `/vila?vila=N` abre direto na vila N; ao abrir, os eventos dos últimos 30 s são animados
+  (a página recarrega logo depois de subir o .txt, e o Ultron aparece indo buscar o arquivo e
+  conferindo). Etapa 4 do `doc/vila/ligar_zangao.py`.
+
+### Alterado — Zangão roda pela própria vila (Vila 02)
+- A Vila 02 (vila do Mac, `/vila`) voltou a ter os botões para rodar o Zangão: "Testar sem
+  gravar" (qualquer dia, não grava) e "Rodar e gravar no VIOS" (só nos 3 últimos dias do mês; o
+  1º clique vira "Confirmar: gravar no VIOS", válido por 6 s), além de "Abrir painel". Enquanto
+  ele roda, os botões somem e o rodapé diz desde quando. Chamam as mesmas rotas da página
+  (`/zangao/status` e `POST /zangao/rodar`). Etapa 2 do `doc/vila/ligar_zangao.py`.
+- A página `/zangao` continua como alternativa (botão "Zangão" no topo do Ultron).
+- A vila do GitHub (`ruanpereiradev.github.io/autobots`) continua só em simulação: a que mostra e
+  roda os bots de verdade é a do Mac (`http://<IP do Mac>:5001/vila`).
+
+### Adicionado — Página do Zangão no servidor (como a do Ultron)
+- `/zangao` (`bot/templates/zangao.html`): a mesma tela da página do Ultron, nas cores do
+  Zangão. Cena no estilo da vila (Doca 01 · Zangão, Filtro previdenciário, Captura de dados e
+  Torre VIOS) com o Zangão da vila (`_zangao.html`, mesmo desenho e cores da Vila 02) andando
+  conforme o andamento real; etapas Entrar no VIOS → Ler o calendário → Processar tarefas →
+  Resumo; fala com o que ele está fazendo; placa de tarefas na torre.
+- Botões "Testar sem gravar" (qualquer dia; `main.py --fora-da-janela`, não grava) e "Rodar e
+  gravar no VIOS" (só nos 3 últimos dias do mês; o 1º clique vira "Confirmar: gravar no VIOS",
+  válido por 6 s; `main.py --confirmar`). Uma execução por vez; os botões travam enquanto roda.
+- Cartão da execução atual/última, ao vivo (a cada 1,5 s): barra, contagens e uma linha por
+  tarefa (situação, processo, campos, motivo em português; as ignoradas ficam recolhidas).
+  `/zangao/historico` lista as execuções e `/zangao/execucao/<id>` mostra uma.
+- `bot/zangao.py`: roda o Zangão (instalado em `ZANGAO_PASTA`, com `.venv` e `.env` dele) em
+  segundo plano, como processo separado (continua se a página reiniciar), com ambiente limpo
+  (nenhuma variável do Ultron, como senhas e chaves, chega ao Zangão); monta as execuções dos
+  eventos `bot: "zangao"`. Rotas `/zangao/andamento`, `/zangao/status` e `POST /zangao/rodar`
+  (só aceita pedido da própria página: JSON e mesma origem). Saída de cada execução em
+  `<ZANGAO_PASTA>/logs/execucoes_vila.log`.
+- Página do Ultron: botão "Zangão" no topo (quando `ZANGAO_PASTA` está definida). O estilo das
+  páginas foi para `bot/templates/_estilo.html` (o mesmo nas duas). A placa dos prédios da cena
+  aceita largura maior (`predio(..., placa=)`), sem mudar a do Ultron.
+- Vila 02: botão "Página do Zangão" (a vila continua só assistindo) e o rodapé diz se ele está
+  rodando. Etapa 2 do `doc/vila/ligar_zangao.py`.
+- Nova variável `ZANGAO_PASTA` no `.env`/`.env.example` (vazia = sem página/botão do Zangão).
+
+### Corrigido — Vila parada depois de um envio com a aba escondida
+- Com a aba da vila em segundo plano o Chrome pausa as animações e consulta `/eventos` só uma
+  vez por minuto (visto no envio de 03/11 às 14:06: 77 eventos acumulados). Ao voltar, o
+  Ultron reprisava o envio inteiro passo a passo e parecia parado. Agora, ao voltar para a aba
+  ou com mais de 20 eventos na fila (30 no Zangão), a vila aplica o que faltou sem animar e põe
+  o robô no lugar certo ("Último envio: … · 26 gravadas"). Cada evento é aplicado uma vez só.
+  Etapa 3 do `doc/vila/ligar_zangao.py`.
+
 ### Adicionado — A vila recebe e mostra o Zangão (Bumblebee)
 - `POST /eventos` no Ultron (`bot/envio_web.py` + `eventos.receber`): recebe os eventos do
   Zangão (branch `bot-edita-vios`, `bot/vila.py`) com a mesma senha da página e grava no
@@ -658,8 +750,8 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 - Na descrição da tarefa (Observação do VIOS), a linha
   "DATA DA TAREFA NO VIOS — PRIORIDADE EMENDA/SUHIANE: DD/MM/AAAA" (e a de
   PRIORIDADE RPV) virou apenas "PRAZO FATAL: DD/MM/AAAA", em negrito e
-  vermelho. A data continua a mesma (dia útil seguinte à publicação). Base:
-  processo 0038150-04.2026.4.05.8103. Skill (`SKILL.md` e
+  vermelho. A data continua a mesma (dia útil seguinte à publicação). Base: um processo
+  real da Justiça Federal (número retirado do registro). Skill (`SKILL.md` e
   `references/roteamento-interno.md`) atualizada com o novo rótulo.
 
 ### Adicionado — Prazo previsto em lei na skill

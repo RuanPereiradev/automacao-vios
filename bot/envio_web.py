@@ -3,6 +3,7 @@ confere o que vai ser gravado e o robô lança no VIOS. Não usa a IA (sem gasto
 import hmac
 import json
 import logging
+import os
 import re
 import threading
 import uuid
@@ -12,7 +13,7 @@ from urllib.parse import urlsplit
 
 from flask import Flask, Response, abort, jsonify, redirect, render_template, request, url_for
 
-from bot import config, duplicidade, envio_txt, eventos, skill
+from bot import config, duplicidade, envio_txt, eventos, skill, zangao
 from bot.lancamento import REGISTRO, lancar, ler_intimacao
 from bot.login import fazer_login
 from bot.navegador import criar_driver
@@ -266,6 +267,20 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     app.config["TEMPLATES_AUTO_RELOAD"] = True
 
     @app.before_request
+    def barrar_outro_site():
+        """POST só da própria página (CSRF): o navegador guarda a senha e a mandaria junto num POST
+        disparado por outro site aberto nele. O navegador sempre manda Origin (ou Referer) num
+        POST; se vier de outro endereço, recusa. Sem Origin/Referer (ex.: o Zangão, por
+        urllib, em POST /eventos) passa para a senha decidir."""
+        if request.method != "POST":
+            return None
+        origem = request.headers.get("Origin") or request.headers.get("Referer")
+        if origem and urlsplit(origem).netloc != urlsplit(request.host_url).netloc:
+            log.warning("POST %s recusado: veio de outro site (%s)", request.path, urlsplit(origem).netloc)
+            return Response("Pedido recusado: veio de outro site.", 403)
+        return None
+
+    @app.before_request
     def exigir_senha():
         if not senha:
             return None
@@ -279,6 +294,8 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     partes = urlsplit(cfg.url)
     base_url = f"{partes.scheme}://{partes.netloc}/"
     pasta_saida = Path(cfg.pasta_saida)
+    # Zangão instalado neste computador (pasta com .venv e .env dele); vazio = sem botões na vila
+    pasta_zangao = os.path.expanduser(os.getenv("ZANGAO_PASTA", "").strip())
     arquivo_pessoas = pasta_saida / "responsaveis.json"
     envios = carregar_envios(pasta_saida)  # id -> {arquivo, cis, estado, confirmar, ...}
     trava = threading.Lock()  # um envio por vez (um navegador só)
@@ -409,6 +426,52 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         except OSError:
             return jsonify(erro="não consegui gravar o evento"), 500
         return jsonify(n=n)
+
+    def _mesma_origem():
+        """Pedido feito pela própria página (JSON e, se vier, Origin igual): barra outro site que
+        tente usar a senha guardada no navegador para disparar o Zangão."""
+        origem = request.headers.get("Origin")
+        return request.is_json and (not origem or origem.rstrip("/") == request.host_url.rstrip("/"))
+
+    @app.context_processor
+    def menu():
+        return {"zangao_ligado": bool(pasta_zangao)}
+
+    @app.route("/zangao")
+    def zangao_pagina():
+        """Página do Zangão, como a do Ultron: cena, botões de rodar e andamento ao vivo."""
+        return render_template("zangao.html", tela="inicio", textos=zangao.TEXTOS)
+
+    @app.route("/zangao/historico")
+    def zangao_historico():
+        return render_template("zangao.html", tela="historico", execucoes=zangao.execucoes(pasta_saida),
+                               textos=zangao.TEXTOS)
+
+    @app.route("/zangao/execucao/<execucao_id>")
+    def zangao_execucao(execucao_id):
+        e = next((e for e in zangao.execucoes(pasta_saida) if e["id"] == execucao_id), None) or abort(404)
+        return render_template("zangao.html", tela="execucao", e=e, textos=zangao.TEXTOS)
+
+    @app.route("/zangao/andamento")
+    def zangao_andamento():
+        return jsonify(zangao.andamento(pasta_zangao, pasta_saida))
+
+    @app.route("/zangao/status")
+    def zangao_status():
+        return jsonify(zangao.status(pasta_zangao))
+
+    @app.route("/zangao/rodar", methods=["POST"])
+    def zangao_rodar():
+        """Roda o Zangão em segundo plano: {"modo": "teste"} (simula) ou {"modo": "gravar"}."""
+        if not _mesma_origem():
+            return jsonify(erro="pedido recusado"), 403
+        modo = (request.get_json(silent=True) or {}).get("modo")
+        try:
+            info = zangao.rodar(pasta_zangao, modo)
+        except zangao.ZangaoErro as e:
+            return jsonify(erro=str(e), **zangao.status(pasta_zangao)), 409
+        log.info("Zangão disparado pela vila (%s) por %s", modo, request.remote_addr)
+        return jsonify(info)
 
     @app.route("/vila")
     def vila():

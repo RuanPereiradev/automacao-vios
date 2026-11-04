@@ -1,0 +1,7 @@
+{# Vila dos bots embutida no topo das páginas (no lugar da cena): é a mesma /vila, com os
+   eventos reais, aberta na vila pedida (1 = Ultron, 2 = Zangão). #}
+{% macro vila_cartao(n=1) %}
+<div class="cartao vila-cartao">
+  <iframe class="vila-quadro" src="{{ url_for('vila') }}?vila={{ n }}" title="Vila dos bots"></iframe>
+</div>
+{% endmacro %}

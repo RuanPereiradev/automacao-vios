@@ -1,0 +1,51 @@
+{# Mascote do Zangão: o mesmo desenho da Vila 02 (sprite ZSPR da vila, quadro "de frente").
+   Grade 16×12 (1 caractere = 1 pixel), como o do Ultron, para usar as mesmas animações
+   (ultron_script(): brilho, piscar e flutuar; humor "parado", "trabalhando", "feliz", "erro"). #}
+{% set ZGRADE = [
+  "...K........K...",
+  "....K......K....",
+  "..WYYYYYYYYYYH..",
+  "..YKKKKKKKKKKH..",
+  "..YKEBKKKKBEKH..",
+  "..GYYKMMMMKYYG..",
+  "YYKKKKKKKKKKKKHH",
+  "HHYYYYYYYYYYYYHH",
+  "..KKKKKKKKKKKH..",
+  "..YYYYYYYYYYYH..",
+  "...K.K....K.K...",
+  "...K.K....K.K...",
+] %}
+{% set ZCORES = {"Y": "#e8b923", "H": "#a8780a", "K": "#1d1e21", "W": "#fbe27a", "G": "#4a4f57",
+                 "M": "#8c939c", "E": "#3d8bff", "B": "#cfeaff"} %}
+
+{% macro zangao(humor="parado", tamanho=120, id="zangao") %}
+<div class="ultron zangao {{ humor }}" id="{{ id }}" style="--tam: {{ tamanho }}px" aria-hidden="true">
+  <div class="corpo">
+    <svg viewBox="0 0 16 12" shape-rendering="crispEdges">
+      {%- set partes = {} %}
+      {%- for linha in ZGRADE %}{% set y = loop.index0 %}{% for c in linha %}{% set x = loop.index0 %}{% if c != "." %}
+        {%- if c in "EB" %}{% set classe = "olho-z" %}
+        {%- elif y < 2 %}{% set classe = "antena" %}
+        {%- elif y in (6, 7) and x < 2 %}{% set classe = "braco esq" %}{% elif y in (6, 7) and x > 13 %}{% set classe = "braco dir" %}
+        {%- elif y >= 10 %}{% set classe = "perna" %}{% else %}{% set classe = "" %}{% endif %}
+        {%- set chave = classe ~ "|" ~ ZCORES[c] %}
+        {%- set _ = partes.update({chave: partes.get(chave, "") ~ "M" ~ x ~ " " ~ y ~ "h1v1h-1z"}) %}
+      {%- endif %}{% endfor %}{% endfor %}
+      {%- for chave, d in partes.items() %}{% set classe, cor = chave.split("|") %}
+      <path d="{{ d }}" fill="{{ cor }}"{% if classe %} class="{{ classe }}"{% endif %}/>
+      {%- endfor %}
+    </svg>
+  </div>
+  <div class="sombra"></div>
+</div>
+{% endmacro %}
+
+{# Ícone da aba: o mesmo desenho, sem animação. #}
+{% macro zangao_icone() -%}
+{%- set svg -%}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -2 16 16" shape-rendering="crispEdges">
+{%- for linha in ZGRADE %}{% set y = loop.index0 %}{% for c in linha %}{% if c != "." %}<rect x="{{ loop.index0 }}" y="{{ y }}" width="1" height="1" fill="{{ ZCORES[c] }}"/>{% endif %}{% endfor %}{% endfor -%}
+</svg>
+{%- endset -%}
+<link rel="icon" href="data:image/svg+xml,{{ svg | urlencode }}">
+{%- endmacro %}

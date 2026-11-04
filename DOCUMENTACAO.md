@@ -600,6 +600,76 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `saida/vila_pendentes.jsonl` dele).
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py bot/vila/vila.html`.
 
+### Passo 27 — Segurança das rotas
+- Com `ENVIO_REDE=true`, toda rota (GET e POST) pede a senha (`ENVIO_SENHA`).
+- POST que vem de outro site é recusado (403): o navegador guarda a senha e a
+  mandaria junto num POST disparado por outra página aberta nele. Só a própria
+  página (mesmo endereço) e programas sem navegador (o Zangão mandando eventos)
+  passam, e ainda precisam da senha.
+- A senha vai pela rede local sem criptografia (http): usar só na rede do
+  escritório, nunca abrir a porta 5001 para a internet.
+
+### Passo 26 — Albi, bot do Sonar (pasta `albi/`)
+- Terceiro bot, que funciona de forma totalmente diferente do Ultron e do
+  Zangão: fica em `albi/`, com `.venv`, `.env`, `logs/` e `saida/` próprios, e
+  não usa nada do `bot/`. Detalhes em `albi/README.md`.
+- Entra em https://sonar.lemeforense.com.br/login (CPF/CNPJ, e-mail e senha). Se
+  cair na tela de conflito (`/login-conflito`: sessão aberta em outro lugar), clica
+  em "Encerrar a outra sessão" e, se voltar para o login, entra de novo.
+- Depois vai direto para Pesquisa de Processos > Nova Pesquisa
+  (`/modulos/pesquisa-processos/novo-pedido`, a tela do botão "Iniciar Pesquisa").
+  As próximas etapas ainda vão ser definidas.
+- Instalar: `cd albi && ./instalar.sh`; preencher `albi/.env`
+  (`SONAR_CPF_CNPJ`, `SONAR_EMAIL`, `SONAR_SENHA`; modelo comentado em
+  `albi/.env.example`); testar: `./rodar.sh` (diz "Login OK" e "Tela de novo
+  pedido aberta", ou o motivo).
+
+### Passo 25 — Vila dos bots no topo da página do Ultron
+- Na página do Ultron (`http://<IP do Mac>:5001/`), o topo é a vila dos bots
+  (Vila 01 · Ultron, com os eventos reais); abaixo ficam a caixa do .txt, a
+  conferência, os botões e o histórico, como antes. Pela vila (setas ou
+  "02 · Zangão") dá para ir à Vila 02 e rodar o Zangão.
+- `/vila?vila=2` abre a vila direto na Vila 02. Ao abrir, a vila anima o que
+  aconteceu nos últimos 30 s (por isso, ao subir o .txt, aparece o Ultron indo
+  buscar o arquivo e conferindo).
+
+### Passo 24 — Rodar o Zangão pela vila ou pela página dele (Mac)
+- O Zangão fica instalado no Mac, numa pasta própria (`~/zangao`, branch
+  `bot-edita-vios`, com `.venv` e `.env` dele), e o `.env` do Ultron aponta para
+  ela: `ZANGAO_PASTA=~/zangao`.
+- **Pela vila** (o jeito principal): `http://<IP do Mac>:5001/vila` → Vila 02 ·
+  Zangão. Os botões "Testar sem gravar" e "Rodar e gravar no VIOS" (este só nos
+  3 últimos dias, com confirmação) ficam na caixa de fala; enquanto ele roda, os
+  botões somem e a vila mostra cada passo. A vila do GitHub
+  (`ruanpereiradev.github.io/autobots`) é só simulação.
+- Página: `http://<IP do Mac>:5001/zangao` (mesma senha; também pelo botão
+  "Zangão" no topo da página do Ultron ou "Página do Zangão" na Vila 02). É a
+  mesma tela do Ultron: cena com o Zangão andando entre Doca, Filtro
+  previdenciário, Captura de dados e Torre VIOS conforme o andamento real.
+  - **Testar sem gravar**: qualquer dia; roda `main.py --fora-da-janela`
+    (preenche a tela de edição e não grava);
+  - **Rodar e gravar no VIOS**: só nos 3 últimos dias do mês; o primeiro
+    clique vira "Confirmar: gravar no VIOS" e só o segundo clique (em até 6 s)
+    roda `main.py --confirmar`;
+  - abaixo, a execução atual (ou a última) ao vivo: barra, contagens e cada
+    tarefa com a situação e o motivo; **Histórico** lista todas.
+- O Zangão roda em segundo plano, como processo separado: continua mesmo se a
+  página do Ultron reiniciar. Uma execução por vez (os botões travam).
+- Roda com ambiente limpo: nenhuma variável do Ultron (senhas, chaves de API)
+  chega ao Zangão; ele usa só o `.env` da pasta dele.
+- Saída de cada execução: `~/zangao/logs/execucoes_vila.log` (além do
+  `logs/bot.log` e do relatório CSV do próprio Zangão).
+- Rotas do Ultron (mesma senha da página): `/zangao`, `/zangao/historico`,
+  `/zangao/execucao/<id>`, `/zangao/andamento`, `/zangao/status` e
+  `POST /zangao/rodar` com `{"modo": "teste"}` ou `{"modo": "gravar"}`. O POST
+  só aceita pedido da própria página (JSON e mesma origem), para outro site não
+  conseguir usar a senha guardada no navegador.
+- Também dá para rodar pelo Terminal do Mac: `cd ~/zangao && .venv/bin/python
+  main.py --fora-da-janela` (teste) ou `--confirmar` (gravar, nos 3 últimos dias).
+- A vila não reprisa mais o que aconteceu com a aba escondida: ao voltar para a
+  aba (ou com muitos eventos acumulados), ela pula direto para o estado atual
+  (vale para o Ultron e o Zangão).
+
 ---
 
 ## 3. Estrutura do projeto
@@ -618,6 +688,7 @@ selenium/
 ├── enviar.py            # página de envio: sobe o .txt ajustado e lança no VIOS (sem IA)
 ├── rodar_envio.sh       # atalho para enviar.py
 ├── instalar.sh          # prepara um computador novo (Mac ou Linux): .venv + dependências
+├── albi/              # Albi, bot do Sonar (separado: .venv, .env, logs/ e saida/ próprios)
 ├── servidor_mac.sh      # Mac: página de envio como serviço (launchd) — instalar/parar/status/log
 ├── bot/
 │   ├── config.py        # lê e valida o .env; converte seletores
@@ -635,8 +706,11 @@ selenium/
 │   ├── envio_txt.py     # lê e confere o .txt da página de envio
 │   ├── envio_web.py     # página de envio do .txt (Flask)
 │   ├── eventos.py       # eventos para a vila (saida/eventos.jsonl, GET /eventos; POST /eventos do Zangão)
+│   ├── zangao.py        # roda o Zangão em segundo plano pela vila (/zangao/status, /zangao/rodar)
 │   ├── vila/            # vila.html (servido em /vila)
-│   ├── templates/       # HTML das páginas de revisão e de envio (_ultron.html = mascote)
+│   ├── templates/       # HTML das páginas de revisão, de envio e do Zangão (zangao.html);
+│   │                    # _estilo.html = estilo comum; _ultron.html / _zangao.html = mascotes;
+│   │                    # _vila.html = vila embutida no topo da página do Ultron
 │   ├── prazos.py        # dias úteis, feriados, prazo fatal, D-2
 │   └── ia/              # provedores de IA: openai_ia.py, anthropic_ia.py
 ├── .env                 # configuração real (NÃO versionar — tem senha)
@@ -752,6 +826,7 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `NAVEGADOR_RAPIDO` | não | O Chrome não espera recursos do VIOS que o robô não usa (ganho pequeno, ~3%) | `true` (padrão) |
 | `ENVIO_REDE` | não | Página de envio aberta para a rede (padrão: só nesta máquina) | `true` |
 | `ENVIO_SENHA` | com `ENVIO_REDE=true` | Senha pedida pela página de envio | (definir no `.env`) |
+| `ZANGAO_PASTA` | não | Pasta do Zangão neste computador (com `.venv` e `.env` dele); liga os botões da Vila 02 | `~/zangao` |
 
 ---
 

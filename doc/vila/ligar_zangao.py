@@ -1,5 +1,15 @@
-"""Liga a Vila 02 (Zangão) aos eventos reais (bot: "zangao") no modo servidor.
-uso: python3 doc/vila/ligar_zangao.py bot/vila/vila.html  (edita no lugar; o modo simulado continua igual)"""
+"""Liga a Vila 02 (Zangão) ao servidor do Ultron (só no modo servidor, em /vila):
+- etapa 1: anima os eventos reais do Zangão (bot: "zangao");
+- etapa 2: botões para rodar o Zangão pela Vila 02: "Testar sem gravar", "Rodar e gravar no VIOS"
+  (só nos 3 últimos dias, com confirmação) e "Painel", que chamam /zangao/status e
+  /zangao/rodar do Ultron; o rodapé diz o que ele está fazendo;
+- etapa 3 (Ultron e Zangão): aba escondida ou fila grande de eventos não fazem o robô reprisar
+  tudo devagar; a vila pula direto para o estado atual;
+- etapa 4: abrir direto numa vila pelo endereço (/vila?vila=2 = Vila 02 · Zangão), para embutir
+  a vila nas páginas do Ultron; e, ao abrir, animar os eventos dos últimos 30 s (a página do
+  Ultron recarrega logo depois de subir o .txt, e o robô tem que aparecer recebendo o arquivo).
+uso: python3 doc/vila/ligar_zangao.py bot/vila/vila.html  (edita no lugar; o modo simulado continua igual;
+     pode rodar de novo: aplica só a etapa que falta)"""
 import json
 import sys
 
@@ -7,12 +17,18 @@ caminho = sys.argv[1]
 linhas = open(caminho, encoding="utf-8").read().split("\n")
 IDX = next(i for i, l in enumerate(linhas) if l.startswith('"<!DOCTYPE html>'))
 t = json.loads(linhas[IDX])
-if "zhandle(ev)" in t:
-    sys.exit("a vila já tem os eventos do Zangão")
+ETAPA1 = "zhandle(ev)" not in t  # eventos do Zangão na Vila 02
+ETAPA2 = "zrodar(modo)" not in t  # botões para rodar o Zangão pela vila
+ETAPA3 = "alcancar()" not in t  # pular para o estado atual (aba escondida / fila grande)
+ETAPA4 = "get('vila')" not in t  # /vila?vila=N abre na vila N
+if not (ETAPA1 or ETAPA2 or ETAPA3 or ETAPA4):
+    sys.exit("a vila já está com tudo do Zangão")
 
 
-def troca(velho, novo):
+def troca(velho, novo, etapa=1):
     global t
+    if not {1: ETAPA1, 2: ETAPA2, 3: ETAPA3, 4: ETAPA4}[etapa]:
+        return
     assert t.count(velho) == 1, ("trecho não encontrado (ou repetido)", velho[:80])
     t = t.replace(velho, novo)
 
@@ -229,9 +245,165 @@ ZREAL = r"""
 }
 </script>"""
 # acrescenta zValsReal no fim da classe (o template termina a classe com "\n}\n</script>")
-fim_classe = t.rfind("\n}\n</script>")
-assert fim_classe > 0
-t = t[:fim_classe] + ZREAL + t[fim_classe + len("\n}\n</script>"):]
+if ETAPA1:
+    fim_classe = t.rfind("\n}\n</script>")
+    assert fim_classe > 0
+    t = t[:fim_classe] + ZREAL + t[fim_classe + len("\n}\n</script>"):]
+
+# ---------------- etapa 2: botões para rodar o Zangão pela vila ----------------
+troca("zcal: null, zresult: null };", "zcal: null, zresult: null, zsrv: null, zconf: 0, zpedido: false };", 2)
+troca("e preencho N.º CNJ, órgão julgador e valor da ação.';",
+      "e preencho N.º CNJ, órgão julgador e valor da ação. Para me pôr a trabalhar, use os botões aqui embaixo.';", 2)
+troca("cancelAnimationFrame(this.raf); clearInterval(this.poll);",
+      "cancelAnimationFrame(this.raf); clearInterval(this.poll); clearInterval(this.zpoll); clearTimeout(this.zconfT);", 2)
+troca("    tick(); this.poll = setInterval(tick, 2000);",
+      "    tick(); this.poll = setInterval(tick, 2000);\n"
+      "    this.zstatusTick(); this.zpoll = setInterval(() => this.zstatusTick(), 4000);", 2)
+troca("      if (this.fonte() === 'servidor') { if (this.state.ztasks.length) this.setState(st => ({ zpanelOpen: !st.zpanelOpen })); }",
+      "      if (this.fonte() === 'servidor') { const b = this.zbotoes(); if (b.a) b.a.fn(); }", 2)
+troca("\n  zValsReal() {", r"""
+  async zstatusTick() {
+    try {
+      const r = await fetch('/zangao/status', { credentials: 'same-origin' });
+      if (r.ok) this.setState({ zsrv: await r.json() });
+    } catch (e) { /* sem conexão: o topo já mostra pelo /eventos */ }
+  }
+  async zrodar(modo) {
+    if (this.state.zpedido) return;
+    clearTimeout(this.zconfT);
+    this.setState({ zpedido: true, zconf: 0 });
+    try {
+      const r = await fetch('/zangao/rodar', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modo }) });
+      const j = await r.json().catch(() => ({}));
+      if (j && 'rodando' in j) this.setState({ zsrv: j });
+      if (!r.ok) this.zsay('Não deu para rodar: ' + (j.erro || 'HTTP ' + r.status) + '.');
+      else this.zsay(modo === 'gravar' ? 'Pedido recebido! Vou entrar no VIOS e gravar de verdade.' : 'Pedido recebido! Vou rodar o teste: preencho e não gravo nada.');
+    } catch (e) { this.zsay('Sem conexão com o servidor. Tente de novo.'); }
+    this.setState({ zpedido: false });
+  }
+  zbotoes() {
+    const s = this.state, srv = s.zsrv, T = s.ztasks, rodando = !!(srv && srv.rodando) || s.zpedido;
+    const painel = { label: s.zpanelOpen ? 'Fechar painel' : 'Abrir painel', fn: () => this.setState(st => ({ zpanelOpen: !st.zpanelOpen })) };
+    const out = { a: null, b: null, p: null, rodando };
+    if (!srv || !srv.configurado || rodando) { if (T.length) out.a = painel; return out; }
+    out.a = { label: 'Testar sem gravar', fn: () => this.zrodar('teste') };
+    if (srv.janela) {
+      const conf = s.zconf > Date.now();
+      out.b = { label: conf ? 'Confirmar: gravar no VIOS' : 'Rodar e gravar no VIOS', bg: conf ? '#c81e14' : '#3a2f1f',
+        fn: () => {
+          if (this.state.zconf > Date.now()) return this.zrodar('gravar');
+          this.setState({ zconf: Date.now() + 6000 });
+          this.zsay('Isto grava no VIOS de verdade. Para confirmar, clique em "Confirmar: gravar no VIOS" em até 6 segundos.');
+          clearTimeout(this.zconfT); this.zconfT = setTimeout(() => this.setState({ zconf: 0 }), 6000);
+        } };
+    }
+    if (T.length) out.p = painel;
+    return out;
+  }
+  zValsReal() {""", 2)
+troca("    let showAction = !!T.length, actionLabel = s.zpanelOpen ? 'Fechar painel' : 'Abrir painel';",
+      "    const B = this.zbotoes(), srv = s.zsrv;\n"
+      "    const showAction = !!B.a, actionLabel = B.a ? B.a.label : '';", 2)
+troca("      sendHint: zp === 'done' && fimTxt ? fimTxt + (r.texto ? ' ' + r.texto + '.' : '') : 'O Zangão roda pelo agendador. A vila só assiste.',",
+      "      sendHint: !srv ? 'Conectando ao servidor…' : !srv.configurado ? 'O Zangão não está instalado neste servidor (ZANGAO_PASTA).'\n"
+      "        : B.rodando ? (srv.modo === 'gravar' ? 'Rodando e gravando no VIOS' : srv.modo === 'teste' ? 'Rodando o teste (não grava)' : 'Rodando') + (srv.inicio ? ' desde ' + srv.inicio.slice(11, 16) : '') + '.'\n"
+      "        : zp === 'done' && fimTxt ? fimTxt + (r.texto ? ' ' + r.texto + '.' : '')\n"
+      "        : srv.janela ? 'Hoje é dia de rodar: teste ou grave no VIOS.' : 'O teste roda em qualquer dia e não grava. Gravar no VIOS só a partir de ' + srv.proxima_janela + '.',\n"
+      "      showAction2: !!B.b, actionLabel2: B.b ? B.b.label : '', action2: () => B.b && B.b.fn(), action2Bg: B.b ? B.b.bg : '#3a2f1f',\n"
+      "      showPainel: !!B.p, painelLabel: B.p ? B.p.label : '', painel: () => B.p && B.p.fn(),", 2)
+troca("      showAction, actionLabel, action: () => this.action()\n    };",
+      "      showAction, actionLabel, action: () => this.action(),\n"
+      "      showAction2: false, actionLabel2: '', action2: () => {}, action2Bg: '#3a2f1f', showPainel: false, painelLabel: '', painel: () => {}\n    };", 2)
+troca("{{ actionLabel }}\n        </button>\n      </sc-if>\n",
+      "{{ actionLabel }}\n        </button>\n      </sc-if>\n"
+      "      <sc-if value=\"{{ showAction2 }}\" hint-placeholder-val=\"{{ false }}\">\n"
+      "        <button sc-camel-on-click=\"{{ action2 }}\" style=\"all:unset;cursor:pointer;flex:none;background:{{ action2Bg }};color:#f6f1e6;border-radius:3px;padding:.65em 1.1em;font-size:clamp(11px,1.2cqw,15px);letter-spacing:.06em;white-space:nowrap;\">{{ actionLabel2 }}</button>\n"
+      "      </sc-if>\n"
+      "      <sc-if value=\"{{ showPainel }}\" hint-placeholder-val=\"{{ false }}\">\n"
+      "        <button sc-camel-on-click=\"{{ painel }}\" style=\"all:unset;cursor:pointer;flex:none;border:1px solid #201f1d;color:#201f1d;border-radius:3px;padding:.6em .9em;font-size:clamp(11px,1.2cqw,15px);white-space:nowrap;\">{{ painelLabel }}</button>\n"
+      "      </sc-if>\n", 2)
+
+# ---------------- etapa 3: alcançar o estado atual sem reprisar tudo ----------------
+# com a aba escondida o Chrome pausa as animações e consulta /eventos só 1 vez por minuto; os
+# eventos se acumulam e, ao voltar, o robô reprisava o envio inteiro passo a passo (minutos).
+# Cada evento é aplicado uma vez só (marca no próprio evento), então dá para aplicar o que falta
+# de uma vez e pôr o robô no lugar certo.
+troca("  reduce(ev) {\n    this.setState(s => {",
+      "  reduce(ev) {\n    if (ev.__feito) return;\n    ev.__feito = true;\n    this.setState(s => {", 3)
+troca("  zreduce(ev) {\n    this.setState(s => {",
+      "  zreduce(ev) {\n    if (ev.__zfeito) return;\n    ev.__zfeito = true;\n    this.setState(s => {", 3)
+troca("  handle(ev) {\n", "  handle(ev) {\n    this.atual = ev;\n", 3)
+troca("  zhandle(ev) {\n", "  zhandle(ev) {\n    this.zatual = ev;\n", 3)
+troca("""    evs.forEach(e => this.reduce(e));
+    setTimeout(() => {
+      const ph = this.state.phase, u = this.u;""", """    evs.forEach(e => this.reduce(e));
+    setTimeout(() => this.posicionar(), 0);
+  }
+  posicionar() {
+    {
+      const ph = this.state.phase, u = this.u;
+      u.path = []; u.fx = null; u.progress = null; u.carry = false; this.drop = null;""", 3)
+troca("""      this.say({ conferindo: 'Conferindo as CIs do arquivo…', aguardando: 'Conferência pronta. Aguardando o envio na página Ultron.', enviando: 'Trabalhando na Torre VIOS…' }[ph] || Component.IDLE);
+    }, 0);
+  }""", """      const ult = (this.state.log.find(l => String(l.text).startsWith('Ultron · ')) || {}).text;
+      this.say(ph === 'done' && ult ? 'Último envio: ' + ult.replace(/^Ultron · /, '') + '.'
+        : ({ conferindo: 'Conferindo as CIs do arquivo…', aguardando: 'Conferência pronta. Aguardando o envio na página Ultron.', enviando: 'Trabalhando na Torre VIOS…' }[ph] || Component.IDLE));
+    }
+  }
+  alcancar() {
+    // aba escondida ou fila grande: aplica sem animar o que ficou para trás e põe o Ultron no lugar
+    const q = this.evq.splice(0);
+    if (this.atual) this.reduce(this.atual);
+    q.forEach(e => this.reduce(e));
+    this.seq = []; this.cur = null;
+    setTimeout(() => this.posicionar(), 0);
+  }
+  zalcancar() {
+    const q = this.zevq.splice(0);
+    if (this.zatual) this.zreduce(this.zatual);
+    q.forEach(e => this.zreduce(e));
+    this.zseq = []; this.zcur = null;
+    setTimeout(() => this.zposicionar(), 0);
+  }""", 3)
+troca("""    evs.forEach(e => this.zreduce(e));
+    setTimeout(() => {
+      const s = this.state, zp = s.zphase, z = this.z, O = 20;""", """    evs.forEach(e => this.zreduce(e));
+    setTimeout(() => this.zposicionar(), 0);
+  }
+  zposicionar() {
+    {
+      const s = this.state, zp = s.zphase, z = this.z, O = 20;
+      z.fx = null; z.progress = null; z.carry = false; z.bubble = null; z.wait = 0;""", 3)
+troca("""      this.zst('Trabalhando'); this.zsay('Execução em andamento: ' + (Component.ZMODO[s.zmodo] || s.zmodo || '') + '. Acompanhando o próximo passo…');
+    }, 0);
+  }""", """      this.zst('Trabalhando'); this.zsay('Execução em andamento: ' + (Component.ZMODO[s.zmodo] || s.zmodo || '') + '. Acompanhando o próximo passo…');
+    }
+  }""", 3)
+troca("    if (!this.cur && this.evq.length) this.handle(this.evq.shift());",
+      "    if (this.evq.length > 20) this.alcancar();\n"
+      "    if (this.zevq.length > 30) this.zalcancar();\n"
+      "    if (!this.cur && this.evq.length) this.handle(this.evq.shift());", 3)
+troca("    window.addEventListener('keydown', this.onKey);\n",
+      "    window.addEventListener('keydown', this.onKey);\n"
+      "    this.onVis = () => { if (!document.hidden) { if (this.evq.length > 2) this.alcancar(); if (this.zevq.length > 2) this.zalcancar(); } };\n"
+      "    document.addEventListener('visibilitychange', this.onVis);\n", 3)
+troca("window.removeEventListener('keydown', this.onKey); }",
+      "window.removeEventListener('keydown', this.onKey); document.removeEventListener('visibilitychange', this.onVis); }", 3)
+
+# ---------------- etapa 4: /vila?vila=N abre direto na vila N ----------------
+troca("conn: 'simulado', village: 0,",
+      "conn: 'simulado', village: Math.max(0, Math.min(Component.NV - 1, (parseInt(new URLSearchParams(location.search).get('vila'), 10) || 1) - 1)),", 4)
+troca("        if (first) { this.loadHistory(ul); this.zLoadHistory(zg); first = false; }",
+      "        if (first) {\n"
+      "          // ao abrir: o que aconteceu nos últimos 30 s é animado; o resto só monta o estado\n"
+      "          const recente = e => e.ts && Date.now() - new Date(e.ts).getTime() < 30000;\n"
+      "          const corte = l => { const i = l.findIndex(recente); return i < 0 ? l.length : i; };\n"
+      "          const iu = corte(ul), iz = corte(zg);\n"
+      "          this.loadHistory(ul.slice(0, iu)); this.zLoadHistory(zg.slice(0, iz));\n"
+      "          this.evq.push.apply(this.evq, ul.slice(iu)); this.zevq.push.apply(this.zevq, zg.slice(iz));\n"
+      "          first = false;\n"
+      "        }", 4)
 
 linhas[IDX] = json.dumps(t, ensure_ascii=False).replace("</", "<\\u002F")
 open(caminho, "w", encoding="utf-8").write("\n".join(linhas))

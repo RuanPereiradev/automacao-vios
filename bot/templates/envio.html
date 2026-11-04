@@ -1,5 +1,5 @@
 {% from "_ultron.html" import ultron, ultron_script, ultron_icone %}
-{% from "_cena.html" import cena %}
+{% from "_vila.html" import vila_cartao %}
 {% set ESTADOS = {"conferir": ["s-ja", "Conferido, não enviado"], "enviando": ["s-andamento", "Enviando…"],
                   "testado": ["s-andamento", "Testado (não gravou)"], "concluido": ["s-ok", "Concluído"], "falhou": ["s-erro", "Parou"]} %}
 {% macro tabela_envios(lista) %}
@@ -29,201 +29,20 @@
 {{ ultron_icone() }}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
-<style>
-  :root { --fundo: #0a0c11; --cartao: #12161e; --cartao2: #181d27; --borda: #262d3a; --texto: #e6e9ef;
-          --suave: #8b93a3; --red: #ff2a2a; --red-escuro: #b3121b; --verde: #3fb950; --ambar: #e3a72f;
-          --azul: #58a6ff; --metal: #c9d1d9; }
-  * { box-sizing: border-box; }
-  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--texto);
-         background: radial-gradient(ellipse at top, #1a0b0e 0%, var(--fundo) 55%) fixed, var(--fundo); min-height: 100vh; }
-  a { color: var(--metal); }
-  header { display: flex; align-items: center; gap: 14px; padding: 14px 24px; border-bottom: 1px solid var(--borda);
-           background: rgba(10, 12, 17, .85); position: sticky; top: 0; z-index: 5; backdrop-filter: blur(6px); }
-  header a { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--texto); }
-  .marca { font-family: Orbitron, system-ui, sans-serif; font-weight: 800; letter-spacing: .28em; font-size: 20px; }
-  .marca b { color: var(--red); text-shadow: 0 0 12px rgba(255, 42, 42, .6); }
-  .sub { color: var(--suave); font-size: 13px; letter-spacing: .04em; }
-  main { max-width: 1100px; margin: 28px auto; padding: 0 16px; }
-  .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 14px; padding: 22px; margin-bottom: 16px; }
-  h1 { font-size: 20px; margin: 0 0 10px; }
-  h2 { font-size: 16px; margin: 0 0 10px; }
-  .suave { color: var(--suave); }
-  .erro { color: #ff7b72; }
-  .aviso { color: var(--ambar); }
-  code { background: var(--cartao2); border: 1px solid var(--borda); border-radius: 4px; padding: 0 4px; font-size: 13px; }
-  pre { background: #0d1017; border: 1px solid var(--borda); border-radius: 8px; padding: 12px; white-space: pre-wrap;
-        margin: 8px 0 0; font-size: 13px; color: var(--metal); }
-
-  /* botões */
-  button, .botao { font: inherit; font-weight: 600; border: 1px solid transparent; border-radius: 10px; padding: 10px 18px;
-                   cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: .15s; }
-  .primario { background: linear-gradient(180deg, var(--red), var(--red-escuro)); color: #fff; box-shadow: 0 0 18px rgba(255, 42, 42, .35); }
-  .primario:hover:not(:disabled) { box-shadow: 0 0 26px rgba(255, 42, 42, .6); transform: translateY(-1px); }
-  .secundario { background: var(--cartao2); color: var(--texto); border-color: var(--borda); }
-  .secundario:hover:not(:disabled) { border-color: var(--metal); }
-  button:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
-  .acoes { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-
-  /* selos */
-  .selo { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; border: 1px solid; }
-  .s-ok { color: var(--verde); border-color: rgba(63, 185, 80, .4); background: rgba(63, 185, 80, .1); }
-  .s-erro { color: #ff7b72; border-color: rgba(255, 123, 114, .4); background: rgba(255, 123, 114, .1); }
-  .s-ja { color: var(--suave); border-color: var(--borda); background: var(--cartao2); }
-  .s-andamento { color: var(--azul); border-color: rgba(88, 166, 255, .4); background: rgba(88, 166, 255, .1); }
-  .numeros { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 12px; }
-  .numero { background: var(--cartao2); border: 1px solid var(--borda); border-radius: 10px; padding: 8px 14px; }
-  .numero b { font-size: 20px; display: block; line-height: 1.1; }
-
-  /* caixa de envio do .txt */
-  .soltar { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; cursor: pointer;
-            border: 2px dashed #3a4253; border-radius: 18px; padding: 36px 20px 30px; background: rgba(255, 255, 255, .015); transition: .2s; }
-  .soltar:hover, .soltar.arrastando { border-color: var(--red); background: rgba(255, 42, 42, .05); box-shadow: inset 0 0 40px rgba(255, 42, 42, .08); }
-  .soltar .titulo { font-size: 20px !important; font-weight: 700; margin-top: 6px; }
-  .soltar, .soltar span { text-transform: none; letter-spacing: 0; font-size: 15px; color: var(--texto); }
-  .soltar .suave { color: var(--suave); font-size: 14px; }
-  .soltar input[type=file] { display: none; }
-
-  /* mascote (bot/templates/_ultron.html): brilho, piscar e flutuar vêm do ultron_script() */
-  .ultron { width: var(--tam); display: inline-flex; flex-direction: column; align-items: center; flex: none; }
-  .ultron .corpo { width: 100%; }
-  .ultron svg { width: 100%; display: block; overflow: visible; }
-  .ultron.subindo svg { transform: translateY(calc(var(--tam) / -48)); } /* 1/3 de pixel da grade */
-  .ultron .olho-r { filter: drop-shadow(0 0 calc(.8px * var(--brilho, .6)) #ff5a3c); }
-  .ultron .olho-o { filter: drop-shadow(0 0 calc(1.4px * var(--brilho, .6)) #ff5a3c); }
-  .ultron.piscando .olho-r, .ultron.piscando .olho-o { fill: #1d1e21; filter: none; }
-  .ultron .sombra { width: 70%; height: calc(var(--tam) * .05); margin-top: calc(var(--tam) * .03); border-radius: 50%;
-                    background: radial-gradient(rgba(255, 90, 60, .3), transparent 70%); }
-  .ultron.trabalhando .braco.esq { animation: braco .3s steps(1) infinite; }
-  .ultron.trabalhando .braco.dir { animation: braco .3s steps(1) infinite .15s; }
-  .ultron.trabalhando .perna { animation: braco .6s steps(1) infinite; }
-  .ultron.feliz .corpo { animation: pular .7s steps(3) 3; }
-  .ultron.feliz .braco { animation: braco .2s steps(1) 10; }
-  .ultron.erro .corpo { animation: tremer .45s steps(4) 2; }
-  .ultron.erro .olho-r, .ultron.erro .olho-o { animation: falhar 1.2s steps(2) infinite; }
-  @keyframes braco { 50% { transform: translateY(-.34px); } }
-  @keyframes pular { 40% { transform: translateY(calc(var(--tam) / -4)); } }
-  @keyframes tremer { 25% { transform: translateX(calc(var(--tam) / -16)); } 75% { transform: translateX(calc(var(--tam) / 16)); } }
-  @keyframes falhar { 50% { opacity: .2; } }
-
-  /* andamento do envio */
-  .painel { display: flex; gap: 28px; align-items: center; }
-  .painel .info { flex: 1; min-width: 0; }
-  .fase { font-family: Orbitron, system-ui, sans-serif; font-size: 15px; letter-spacing: .08em; color: var(--metal); }
-  .barra { height: 12px; border-radius: 999px; background: #0d1017; border: 1px solid var(--borda); overflow: hidden; margin: 12px 0 6px; position: relative; }
-  .barra i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--red-escuro), var(--red));
-             box-shadow: 0 0 14px var(--red); transition: width .6s ease; }
-  .barra.ativa::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .18), transparent);
-                        animation: scan 1.4s linear infinite; }
-  @keyframes scan { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
-  .lista { list-style: none; margin: 0; padding: 0; }
-  .lista > li { border: 1px solid var(--borda); background: var(--cartao2); border-radius: 12px; padding: 12px 14px; margin-top: 10px; transition: .3s; }
-  .lista > li.atual { border-color: var(--red); box-shadow: 0 0 18px rgba(255, 42, 42, .2); }
-  .lista .topo { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
-  .lista .ultima { font-size: 12px; color: var(--suave); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tarefas { list-style: none; padding: 0; margin: 8px 0 0; }
-  .tarefas li { display: flex; gap: 10px; align-items: center; font-size: 14px; padding: 3px 0; }
-  .icone { width: 20px; height: 20px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 800;
-           border: 2px solid var(--borda); color: var(--suave); }
-  .icone.criando { border-color: var(--red); border-top-color: transparent; animation: girar .8s linear infinite; }
-  .icone.adicionada { border-color: var(--azul); color: var(--azul); }
-  .icone.gravada, .icone.testada { border-color: var(--verde); background: var(--verde); color: #08130b; }
-  .icone.erro { border-color: #ff7b72; background: #ff7b72; color: #1a0705; }
-  .icone.pulada { border-style: dashed; }
-  @keyframes girar { to { transform: rotate(360deg); } }
-
-  /* edição */
-  .tarefa + .tarefa { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--borda); }
-  ul { margin: 6px 0 0; padding-left: 18px; }
-  details summary { cursor: pointer; color: var(--metal); font-weight: 600; }
-  label { display: block; font-size: 12px; color: var(--suave); text-transform: uppercase; letter-spacing: .04em; }
-  input:not([type=checkbox]), textarea { display: block; width: 100%; margin-top: 4px; font: inherit; font-size: 14px; color: var(--texto);
-    border: 1px solid var(--borda); border-radius: 8px; padding: 8px 10px; background: #0d1017; text-transform: none; letter-spacing: 0; }
-  input:focus, textarea:focus { outline: none; border-color: var(--red); box-shadow: 0 0 0 3px rgba(255, 42, 42, .15); }
-  textarea { resize: vertical; }
-  input[type=checkbox] { accent-color: var(--red); }
-  .mono { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
-  .grade { display: grid; grid-template-columns: 2fr 130px 90px 2fr auto; gap: 10px; align-items: end; margin-bottom: 10px; }
-  .remover { white-space: nowrap; padding-bottom: 10px; text-transform: none; }
-  .ci-topo { display: flex; gap: 12px; align-items: end; margin-bottom: 6px; }
-  .campo-ci { width: 110px; font-weight: 700; }
-  .com-problema { border-left: 4px solid #ff7b72; }
-  .barra-salvar { position: sticky; bottom: 0; padding: 14px 0; text-align: right;
-                  background: linear-gradient(transparent, var(--fundo) 40%); }
-  /* cena do envio (bot/templates/_cena.html), no estilo da vila */
-  .cena-cartao { padding: 0; overflow: hidden; background: #1b1d21; border-color: #3a3326; }
-  .cena-etapas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; list-style: none; margin: 0; padding: 14px 18px 12px;
-                 font: 700 13px "Cormorant Garamond", Georgia, serif; color: #8f8a7e; letter-spacing: .04em; }
-  .cena-etapas li { border-top: 3px solid #3a3f46; padding-top: 6px; }
-  .cena-etapas li span { display: block; font-size: 15px; color: #b9b2a3; }
-  .cena-etapas li.feita { border-top-color: #c98a2e; color: #c98a2e; }
-  .cena-etapas li.atual { border-top-color: #ff5a3c; color: #ff5a3c; }
-  .cena-etapas li.feita span, .cena-etapas li.atual span { color: #efe6d2; }
-  .cena { position: relative; container-type: inline-size; }
-  .cena-palco { position: relative; aspect-ratio: 960 / 340; overflow: hidden; }
-  .cena-fundo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-  .cena-rotulo { font: 700 11px "Cormorant Garamond", Georgia, serif; letter-spacing: 1.6px; fill: #efe6d2; }
-  .cena-contador { font: 700 13px ui-monospace, monospace; fill: #ff5a3c; }
-  .cena .cena-placa-contador { opacity: 0; transition: opacity .4s; }
-  .cena.na-torre .cena-placa-contador { opacity: 1; }
-  .cena .cena-linhas { opacity: 0; transition: opacity .6s; }
-  .cena.conferido .cena-linhas { opacity: 1; }
-  .cena .cena-sinal { opacity: 0; }
-  .cena.na-torre .cena-sinal { animation: sinal 1.2s steps(2) infinite; }
-  .cena.na-torre .cena-luz { animation: luz .8s steps(2) infinite; }
-  @keyframes sinal { 50% { opacity: 1; } }
-  @keyframes luz { 50% { fill: #ff5a3c; } }
-  .cena-topo { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 18px 12px; }
-  .cena-chip { font: 700 13px "Cormorant Garamond", Georgia, serif; letter-spacing: .08em; color: #efe6d2; background: #1b1d21;
-               border: 1.5px solid #c98a2e; padding: 3px 10px; display: inline-flex; align-items: center; gap: 7px; }
-  .cena-chip:empty { display: none; }
-  .cena-chip i { width: 7px; height: 7px; background: #ff5a3c; display: inline-block; }
-  .cena-chip.ativo i { animation: luz-chip .8s steps(2) infinite; }
-  @keyframes luz-chip { 50% { opacity: .2; } }
-  .cena-teste { border-color: #ff5a3c; color: #ffb3a6; }
-  .cena-ultron { position: absolute; top: 47.4%; width: 6.25%; transition-property: left; transition-timing-function: linear; }
-  .cena-ultron .ultron { width: 100% !important; }
-  .cena-ultron.virado .ultron svg { transform: scaleX(-1); }
-  .cena-papel { position: absolute; left: 30%; top: -42%; width: 40%; aspect-ratio: 3 / 4; background: #f4efe3; border: 2px solid #1b1d21;
-                display: none; flex-direction: column; justify-content: center; gap: 12%; padding: 0 14%; }
-  .cena-papel i { height: 2px; background: #6a7079; display: block; }
-  .cena-ultron.carregando .cena-papel { display: flex; }
-  .ultron.andando .perna { animation: braco .22s steps(1) infinite; }
-  .ultron.andando .braco.esq { animation: braco .22s steps(1) infinite .11s; }
-  .ultron.andando .braco.dir { animation: braco .22s steps(1) infinite; }
-  .cena-fala { position: absolute; left: 1.6%; right: 1.6%; bottom: 3.5%; background: #efe6d2; color: #1c1d20; border: 3px solid #1c1d20;
-               box-shadow: inset 0 0 0 2px #efe6d2, inset 0 0 0 3px #1c1d20; padding: 14px 40px 12px 16px;
-               font: 700 clamp(14px, 2cqw, 19px)/1.35 "Cormorant Garamond", Georgia, serif; }
-  .cena-quem { position: absolute; top: -13px; left: 14px; background: #1c1d20; color: #efe6d2; font-size: 12px; letter-spacing: .12em; padding: 2px 9px; }
-  .cena-seta { position: absolute; right: 14px; bottom: 10px; color: #ff2a2a; font-size: 13px; animation: luz-chip 1s steps(2) infinite; }
-  @media (max-width: 640px) { .cena-fala { position: relative; left: auto; right: auto; bottom: auto; margin: 14px 10px 10px; }
-    .cena-etapas { grid-template-columns: repeat(2, 1fr); } .cena-chip { font-size: 11px; } }
-
-  /* histórico */
-  .topo-hist { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-  .topo-hist h2 { margin: 0; }
-  .rolar { overflow-x: auto; }
-  table.hist { width: 100%; border-collapse: collapse; font-size: 14px; }
-  .hist th { text-align: left; font-size: 12px; color: var(--suave); text-transform: uppercase; letter-spacing: .04em; padding: 8px; }
-  .hist td { padding: 9px 8px; border-top: 1px solid var(--borda); vertical-align: top; }
-  .hist tr:hover td { background: rgba(255, 255, 255, .02); }
-  .hist .ok { color: var(--verde); }
-  .hist td span + span { margin-left: 8px; }
-  .nowrap { white-space: nowrap; }
-  .busca { max-width: 320px; }
-  @media (max-width: 860px) { .grade { grid-template-columns: 1fr 1fr; } .grade .largo { grid-column: 1 / -1; } }
-  @media (max-width: 640px) { .painel { flex-direction: column; text-align: center; } header .sub { display: none; } }
-  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
-</style>
+{% include "_estilo.html" %}
 </head>
 <body>
 <header>
   <a href="{{ url_for('inicio') }}">{{ ultron("parado", 48, "ultron-topo") }}
     <span><span class="marca"><b>U</b>LTRON</span><br><span class="sub">envio de tarefas ao VIOS</span></span></a>
-  <a class="botao secundario" style="margin-left: auto" href="{{ url_for('historico') }}">Histórico</a>
+  <span class="acoes" style="margin-left: auto">
+    {% if zangao_ligado %}<a class="botao secundario" href="{{ url_for('zangao_pagina') }}">Zangão</a>{% endif %}
+    <a class="botao secundario" href="{{ url_for('historico') }}">Histórico</a>
+  </span>
 </header>
 <main>
 {% if tela == "inicio" %}
-  {{ cena(ocupado=ocupado) }}
+  {{ vila_cartao(1) }}
   <div class="cartao">
     <form action="{{ url_for('ler') }}" method="post" enctype="multipart/form-data" id="form-arquivo">
       <label class="soltar" id="soltar">
@@ -338,7 +157,7 @@ SENTENÇA
   {% set com_problema = envio.cis | selectattr("problemas") | list %}
   {% set ja = envio.cis | selectattr("ja_lancada") | list %}
 
-  {{ cena(envio, aptas, com_problema, ja, agora) }}
+  {{ vila_cartao(1) }}
 
   {% if envio.estado == "enviando" %}
   <div class="cartao">

@@ -1,0 +1,386 @@
+{# Página do Zangão (bot de comprovantes previdenciários), como a do Ultron: cena no estilo da vila
+   com o Zangão andando conforme o andamento real, botões para rodar e o histórico das execuções.
+   Os dados vêm dos eventos que o próprio Zangão manda (bot/zangao.py monta as execuções). #}
+{% from "_ultron.html" import ultron_script %}
+{% from "_zangao.html" import zangao, zangao_icone %}
+{% from "_cena.html" import predio %}
+{% set RES = textos.resultados %}{% set MODOS = textos.modos %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zangão — comprovantes previdenciários</title>
+{{ zangao_icone() }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
+{% include "_estilo.html" %}
+<style>
+  /* cores do Zangão por cima do estilo do Ultron */
+  :root { --red: #f2c230; --red-escuro: #a8780a; }
+  body { background: radial-gradient(ellipse at top, #19140a 0%, var(--fundo) 55%) fixed, var(--fundo); }
+  .marca b { text-shadow: 0 0 12px rgba(242, 194, 48, .6); }
+  .primario { color: #1d1e21; box-shadow: 0 0 18px rgba(242, 194, 48, .3); }
+  .primario:hover:not(:disabled) { box-shadow: 0 0 26px rgba(242, 194, 48, .55); }
+  .primario.confirmar { background: linear-gradient(180deg, #ff4b3a, #b3121b); color: #fff; box-shadow: 0 0 22px rgba(255, 60, 40, .5); }
+  .s-aviso { color: var(--ambar); border-color: rgba(227, 167, 47, .45); background: rgba(227, 167, 47, .1); }
+  .lista > li.atual { box-shadow: 0 0 18px rgba(242, 194, 48, .2); }
+  input:focus, textarea:focus { box-shadow: 0 0 0 3px rgba(242, 194, 48, .15); }
+  .barra i { box-shadow: 0 0 14px rgba(242, 194, 48, .7); }
+  .zangao .olho-z { filter: drop-shadow(0 0 calc(1.2px * var(--brilho, .6)) #3d8bff); }
+  .zangao.piscando .olho-z { fill: #1d1e21; filter: none; }
+  .zangao .sombra { background: radial-gradient(rgba(242, 194, 48, .3), transparent 70%); }
+  .zangao.trabalhando .antena, .zangao.andando .antena { animation: braco .4s steps(1) infinite; }
+  .cena-chip i { background: #f2c230; }
+  .cena-etapas li.atual { border-top-color: #f2c230; color: #f2c230; }
+  .cena-teste { border-color: #f2c230; color: #f8dc7a; }
+  .cena-seta { color: #f2c230; }
+  .cena-contador { fill: #f2c230; }
+  .cena .cena-sinal { stroke: #f2c230; }
+  .cena.na-torre .cena-luz { animation: luz-z .8s steps(2) infinite; }
+  @keyframes luz-z { 50% { fill: #f2c230; } }
+  .cena.lendo .cena-linhas { opacity: 1; }
+  .rodar-dica { margin: 10px 0 0; }
+  .tarefa-z .detalhe { font-size: 13px; color: var(--suave); margin-top: 4px; white-space: pre-line; }
+  .ignoradas { margin-top: 12px; }
+  .ignoradas li { font-size: 13px; color: var(--suave); }
+</style>
+</head>
+<body>
+<header>
+  <a href="{{ url_for('zangao_pagina') }}">{{ zangao("parado", 48, "zangao-topo") }}
+    <span><span class="marca"><b>Z</b>ANGÃO</span><br><span class="sub">comprovantes previdenciários no VIOS</span></span></a>
+  <span class="acoes" style="margin-left: auto">
+    <a class="botao secundario" href="{{ url_for('inicio') }}">Ultron</a>
+    <a class="botao secundario" href="{{ url_for('zangao_historico') }}">Histórico</a>
+  </span>
+</header>
+<main>
+{% if tela == "inicio" %}
+  <div class="cartao cena-cartao">
+    <ol class="cena-etapas" id="cena-etapas">
+      <li>01<span>Entrar no VIOS</span></li><li>02<span>Ler o calendário</span></li>
+      <li>03<span>Processar tarefas</span></li><li>04<span>Resumo</span></li>
+    </ol>
+    <div class="cena-topo">
+      <span class="cena-chip" id="cena-chip"><i></i>ZANGÃO · …</span>
+      <span class="cena-chip" id="cena-etapa"></span>
+      <span class="cena-chip cena-teste" id="cena-modo" hidden></span>
+    </div>
+    <div class="cena" id="cena">
+      <div class="cena-palco">
+      <svg class="cena-fundo" viewBox="0 0 960 340" shape-rendering="crispEdges" aria-hidden="true">
+        <defs>
+          <pattern id="cena-piso" width="40" height="40" patternUnits="userSpaceOnUse">
+            <rect width="40" height="40" fill="#25292f"/><rect x="1" y="1" width="38" height="38" fill="#2d3239"/>
+            <rect x="1" y="1" width="38" height="2" fill="#343a42"/>
+            <rect x="4" y="4" width="2" height="2" fill="#434952"/><rect x="34" y="4" width="2" height="2" fill="#434952"/>
+            <rect x="4" y="34" width="2" height="2" fill="#434952"/><rect x="34" y="34" width="2" height="2" fill="#434952"/>
+          </pattern>
+        </defs>
+        <rect width="960" height="340" fill="url(#cena-piso)"/>
+        <rect width="960" height="20" fill="#1c1f23"/>
+        {% for i in range(12) %}<rect x="{{ 34 + i * 80 }}" y="8" width="6" height="5" fill="{{ '#f2c230' if i % 3 == 0 else '#3a3f46' }}"/>{% endfor %}
+        {{ predio(40, "DOCA 01 · ZANGÃO", antena=True) }}
+        {{ predio(290, "FILTRO PREVIDENCIÁRIO", placa=190) }}
+        {{ predio(540, "CAPTURA DE DADOS", tela=True, placa=160) }}
+        <rect x="60" y="206" width="830" height="5" fill="#b6782e"/><rect x="60" y="206" width="830" height="1" fill="#d99c4a"/>
+        {% for jx in (135, 385, 635, 860) %}<rect x="{{ jx }}" y="203" width="11" height="11" fill="#d39a45" stroke="#7d5119"/>{% endfor %}
+        <g class="cena-torre">
+          <rect x="800" y="26" width="120" height="22" fill="#1b1d21" stroke="#c98a2e" stroke-width="1.5"/>
+          <text x="860" y="41" text-anchor="middle" class="cena-rotulo">TORRE VIOS</text>
+          <rect x="858" y="58" width="5" height="16" fill="#d4d8de"/>
+          <rect class="cena-luz" x="856" y="52" width="9" height="7" fill="#6b5212"/>
+          <rect x="836" y="74" width="48" height="7" fill="#d4d8de"/><rect x="836" y="80" width="48" height="2" fill="#80878f"/>
+          {% for y in range(82, 196, 16) %}
+            {% set m = (y - 82) // 8 %}
+            <rect x="{{ 846 - m }}" y="{{ y }}" width="5" height="16" fill="#aab1b9"/><rect x="{{ 870 + m }}" y="{{ y }}" width="5" height="16" fill="#aab1b9"/>
+            <rect x="{{ 846 - m }}" y="{{ y + 14 }}" width="{{ 29 + 2 * m }}" height="3" fill="#80878f"/>
+          {% endfor %}
+          <rect x="820" y="196" width="80" height="12" fill="#7b828b"/><rect x="824" y="199" width="72" height="6" fill="#1b1d21"/>
+          <g class="cena-placa-contador">
+            <rect x="752" y="112" width="62" height="34" fill="#1b1d21" stroke="#c98a2e" stroke-width="1.5"/>
+            <text x="783" y="125" text-anchor="middle" class="cena-rotulo" style="font-size: 9px">TAREFAS</text>
+            <text x="783" y="140" text-anchor="middle" class="cena-contador" id="cena-contador"></text>
+          </g>
+          <g class="cena-sinal" fill="none" stroke-width="2">
+            <path d="M876 50 q10 6 0 14"/><path d="M882 44 q18 12 0 26"/><path d="M844 50 q-10 6 0 14"/><path d="M838 44 q-18 12 0 26"/>
+          </g>
+        </g>
+      </svg>
+      <div class="cena-ultron" id="cena-ultron">
+        <div class="cena-papel" aria-hidden="true"><i></i><i></i><i></i></div>
+        {{ zangao("parado", 60, "cena-mascote") }}
+      </div>
+      </div>
+      <div class="cena-fala"><span class="cena-quem">ZANGÃO</span><span id="cena-texto">…</span><b class="cena-seta">▼</b></div>
+    </div>
+  </div>
+
+  <div class="cartao">
+    <h2>Pôr o Zangão para trabalhar</h2>
+    <div class="acoes">
+      <button class="secundario" id="btn-testar" disabled>Testar sem gravar</button>
+      <button class="primario" id="btn-gravar" disabled>Rodar e gravar no VIOS</button>
+    </div>
+    <p class="suave rodar-dica" id="rodar-dica">Conectando…</p>
+    <p class="erro" id="rodar-erro" hidden></p>
+  </div>
+
+  <div class="cartao" id="execucao"><p class="suave">Carregando a última execução…</p></div>
+
+{% elif tela == "historico" %}
+  <div class="cartao">
+    <div class="topo-hist"><h2>Execuções do Zangão</h2>
+      <a class="botao secundario" href="{{ url_for('zangao_pagina') }}">Voltar</a></div>
+    {% if not execucoes %}<p class="suave">Nenhuma execução ainda.</p>{% else %}
+    <div class="rolar"><table class="hist">
+      <tr><th>Quando</th><th>Modo</th><th>Calendário</th><th>Resultado</th><th>Situação</th></tr>
+      {% for e in execucoes %}{% set k = e.fim.contagens if e.fim else {} %}
+      {% set r = RES.get(e.fim.resultado if e.fim else "interrompida", ["s-ja", e.fim.resultado if e.fim else "—"]) %}
+      <tr>
+        <td class="nowrap"><a href="{{ url_for('zangao_execucao', execucao_id=e.id) }}">{{ e.inicio[8:10] }}/{{ e.inicio[5:7] }}/{{ e.inicio[:4] }} {{ e.inicio[11:16] }}</a></td>
+        <td>{{ MODOS.get(e.modo, e.modo or "—") }}{% if e.fora_da_janela %} <span class="suave">· fora da janela</span>{% endif %}</td>
+        <td>{% if e.calendario %}{{ e.calendario.total }} tarefas · {{ e.calendario.processar }} a processar{% else %}<span class="suave">—</span>{% endif %}</td>
+        <td class="nowrap">
+          {% for c, t, cls in [("gravado", "gravada(s)", "ok"), ("teste", "testada(s)", "suave"), ("leitura", "lida(s)", "suave"),
+                               ("ja_estava", "já estava(m)", "suave"), ("pulada", "pulada(s)", "erro"), ("conferir", "a conferir", "erro"),
+                               ("erro", "erro(s)", "erro")] %}{% if k.get(c) %}<span class="{{ cls }}">{{ k[c] }} {{ t }}</span>{% endif %}{% endfor %}
+          {% if e.fim and e.fim.motivo %}<span class="suave">{{ textos.motivos.get(e.fim.motivo, e.fim.motivo) }}</span>{% endif %}
+        </td>
+        <td><span class="selo {{ r[0] }}">{{ r[1] }}</span></td>
+      </tr>
+      {% endfor %}
+    </table></div>
+    {% endif %}
+  </div>
+
+{% elif tela == "execucao" %}
+  <div class="cartao" id="execucao"></div>
+  <p><a class="botao secundario" href="{{ url_for('zangao_historico') }}">Voltar ao histórico</a></p>
+{% endif %}
+</main>
+{{ ultron_script() }}
+<script>
+(() => {
+  const T = {{ textos | tojson }};
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const motivo = c => c ? (T.motivos[c] || c) : '';
+  const CAMPO = { cnj: 'N.º CNJ', orgao: 'órgão julgador', valor: 'valor da ação' };
+  const dataHora = ts => ts ? `${ts.slice(8, 10)}/${ts.slice(5, 7)}/${ts.slice(0, 4)} ${ts.slice(11, 16)}` : '';
+  const plural = (q, s, p) => q + ' ' + (q === 1 ? s : p);
+  const ATIVAS = ['abrindo', 'comprovante', 'preenchendo'];
+
+  // ---- cartão da execução (página inicial, ao vivo, e página de uma execução) ----
+  function situacao(t, e) {
+    const s = (T.situacoes[t.situacao] || ['s-ja', t.situacao]).slice();
+    if (t.situacao === 'preenchendo' && e.modo === 'leitura') s[1] = 'Lendo a edição…';
+    return s;
+  }
+  function detalheTarefa(t) {
+    const partes = [];
+    if (t.motivo && t.motivo !== 'ja_registrada') partes.push(motivo(t.motivo));
+    if (t.campos && t.campos.length) {
+      const nomes = t.campos.map(c => CAMPO[c] || c).join(', ');
+      partes.push((t.situacao === 'lida' ? 'Preencheria: ' : t.situacao === 'testada' ? 'Preencheu (sem gravar): ' : 'Campos: ') + nomes);
+    } else if (t.campos && ['gravada', 'testada', 'lida'].includes(t.situacao)) partes.push('Nenhum campo vazio');
+    if (t.orgao) partes.push(t.orgao === 'cadastrado' ? 'Órgão julgador novo cadastrado no VIOS' : 'Órgão julgador não está na lista (cadastro só ao gravar)');
+    return partes.join('\n');
+  }
+  function cartao(e, info) {
+    if (!e) return '<h2>Nenhuma execução ainda</h2><p class="suave">Clique em "Testar sem gravar" para ver o Zangão trabalhando sem gravar nada.</p>';
+    const rodando = !e.fim && !e.interrompida;
+    const res = rodando ? T.resultados.rodando : e.fim ? (T.resultados[e.fim.resultado] || ['s-ja', e.fim.resultado]) : T.resultados.interrompida;
+    const titulo = rodando ? (e.modo === 'gravar' ? 'Rodando e gravando no VIOS' : e.modo === 'leitura' ? 'Rodando em somente leitura' : 'Rodando o teste (não grava)')
+      : e.fim ? ({ concluido: 'Execução concluída', testado: 'Teste concluído (nada foi gravado)', lido: 'Leitura concluída (nada foi preenchido)',
+                   fora_do_dia: 'Não era dia de rodar', parou: 'A execução parou' }[e.fim.resultado] || 'Execução finalizada')
+      : 'Execução interrompida';
+    let h = `<div class="topo-hist"><h2>${esc(titulo)}</h2><span class="selo ${res[0]}">${esc(res[1])}</span></div>`;
+    h += `<p class="suave">Início ${esc(dataHora(e.inicio))} · ${esc(T.modos[e.modo] || e.modo || '—')}` +
+         `${e.fora_da_janela ? ' · fora dos 3 últimos dias' : ''}${e.tarefa_unica ? ' · uma tarefa só' : ''}` +
+         `${e.fim && e.fim.ts ? ' · fim ' + esc(e.fim.ts.slice(11, 16)) : ''}</p>`;
+    if (e.fim && e.fim.motivo) h += `<p class="erro">${esc(motivo(e.fim.motivo))}</p>`;
+    if (e.interrompida) h += '<p class="aviso">Não chegou o fim desta execução (o Zangão foi fechado no meio ou rodou em outro computador).</p>';
+    if (e.alvo) h += `<div class="barra${rodando ? ' ativa' : ''}"><i style="width:${Math.round(100 * e.feitas / e.alvo)}%"></i></div>` +
+                     `<p class="suave" style="margin-top:0">${e.feitas} de ${e.alvo} tarefas processadas</p>`;
+    const conta = s => e.tarefas.filter(t => t.situacao === s).length;
+    const nums = [];
+    if (e.calendario) nums.push([e.calendario.total, 'no calendário'], [e.calendario.processar, 'a processar', 'ok']);
+    [['gravada', 'gravada(s)', 'ok'], ['testada', 'testada(s)', 'ok'], ['lida', 'lida(s)', 'ok'], ['ja_estava', 'já estava(m)'],
+     ['registrada', 'já registrada(s)'], ['pulada', 'pulada(s)', 'erro'], ['conferir', 'a conferir', 'erro'], ['erro', 'com erro', 'erro'],
+     ['ambigua', 'ambígua(s)', 'aviso'], ['ignorada', 'ignorada(s)']]
+      .forEach(([s, t, c]) => { const q = conta(s); if (q) nums.push([q, t, c]); });
+    if (nums.length) h += '<div class="numeros">' + nums.map(([q, t, c]) => `<div class="numero"><b class="${c || ''}">${q}</b>${esc(t)}</div>`).join('') + '</div>';
+    const principais = e.tarefas.filter(t => t.decisao === 'processar' || t.classe === 'ambigua');
+    if (principais.length) {
+      h += '<ul class="lista">' + principais.map(t => {
+        const s = situacao(t, e), d = detalheTarefa(t);
+        return `<li class="tarefa-z${ATIVAS.includes(t.situacao) ? ' atual' : ''}"><div class="topo"><span><b>Tarefa ${esc(t.id || '(sem id)')}</b>` +
+               `${t.processo ? ' <span class="suave">· processo ' + esc(t.processo) + '</span>' : ''}</span>` +
+               `<span class="selo ${s[0]}">${esc(s[1])}</span></div>${d ? `<div class="detalhe">${esc(d)}</div>` : ''}</li>`;
+      }).join('') + '</ul>';
+    } else if (e.calendario) h += '<p class="suave">Nenhuma tarefa previdenciária "Editar os dados da ação protocolada" no calendário.</p>';
+    const outras = e.tarefas.filter(t => !principais.includes(t));
+    if (outras.length) {
+      h += `<details class="ignoradas"><summary>${plural(outras.length, 'tarefa ignorada', 'tarefas ignoradas')} (não são do Zangão)</summary><ul>` +
+           outras.map(t => `<li>${t.id ? 'Tarefa ' + esc(t.id) : 'Item do calendário sem id'} — ${esc(t.situacao === 'registrada' ? 'já resolvida antes' : motivo(t.motivo) || 'ignorada')}</li>`).join('') +
+           '</ul></details>';
+    }
+    return h;
+  }
+
+  {% if tela == "execucao" %}
+  $('execucao').innerHTML = cartao({{ e | tojson }});
+  {% elif tela == "inicio" %}
+  // ---- cena: o Zangão anda conforme a execução mais recente ----
+  const cena = $('cena'), u = $('cena-ultron'), m = $('cena-mascote');
+  const X = { doca: 135, filtro: 385, captura: 635, torre: 860 };
+  const pct = x => ((x - 30) / 960 * 100) + '%';
+  const espera = ms => new Promise(r => setTimeout(r, ms));
+  let onde = null, andando = false, primeiro = true, viuRodar = false;
+  function por(l) { u.style.transition = 'none'; u.style.left = pct(X[l]); onde = l; void u.offsetWidth; u.style.transition = ''; }
+  async function ir(l) {
+    if (onde === l || andando) return;
+    andando = true;
+    const dur = Math.max(.6, Math.abs(X[l] - X[onde]) / 230);
+    u.classList.toggle('virado', X[l] < X[onde]); u.classList.toggle('carregando', l === 'filtro');
+    u.style.transitionDuration = dur + 's'; m.classList.add('andando'); u.style.left = pct(X[l]); onde = l;
+    await espera(dur * 1000);
+    m.classList.remove('andando'); u.classList.remove('virado', 'carregando'); andando = false;
+  }
+  function mover(l) { if (primeiro) { por(l); primeiro = false; } else if (onde !== l) ir(l); }
+  const falar = t => { const el = $('cena-texto'); if (el.textContent !== t) el.textContent = t; };
+  const humor = h => { if (!m.classList.contains(h)) { m.classList.remove('parado', 'trabalhando', 'feliz', 'erro'); m.classList.add(h); } };
+  const chip = (t, ativo) => { const c = $('cena-chip'); c.lastChild.textContent = 'ZANGÃO · ' + t; c.classList.toggle('ativo', !!ativo); };
+  function etapa(atual, feitas) {
+    [...document.querySelectorAll('#cena-etapas li')].forEach((li, i) => {
+      li.classList.toggle('feita', i < feitas); li.classList.toggle('atual', i === atual - 1 && i >= feitas);
+    });
+    $('cena-etapa').textContent = feitas >= 4 ? 'FINALIZADO' : 'ETAPA ' + atual + '/4';
+  }
+  function resumo(e) {
+    const k = (e.fim && e.fim.contagens) || {}, p = [];
+    [['gravado', 'gravada', 'gravadas'], ['teste', 'testada', 'testadas'], ['leitura', 'lida', 'lidas'], ['ja_estava', 'já estava', 'já estavam'],
+     ['pulada', 'pulada (conferir)', 'puladas (conferir)'], ['conferir', 'a conferir no VIOS', 'a conferir no VIOS'], ['erro', 'com erro', 'com erro']]
+      .forEach(([c, s, pl]) => { if (k[c]) p.push(plural(k[c], s, pl)); });
+    return p.join(', ');
+  }
+
+  function atualizarCena(info) {
+    const e = info.execucao;
+    $('cena-modo').hidden = true;
+    if (!info.configurado) {
+      mover('doca'); humor('parado'); chip('NÃO INSTALADO'); etapa(1, 0);
+      falar('O Zangão não está instalado neste servidor. Falta a pasta dele (ZANGAO_PASTA no .env do Ultron).'); return;
+    }
+    // acabou de ser disparado e ainda não mandou o 1º evento desta execução
+    const nova = e && info.inicio && e.inicio && e.inicio >= info.inicio;
+    const ativa = (info.rodando && (!e || nova || !e.fim)) || (e && !e.fim && !e.interrompida);
+    if (ativa) {
+      viuRodar = true; humor('trabalhando');
+      // execução que está acontecendo agora (uma antiga sem fim não conta se outra foi disparada)
+      const ex = e && !e.fim && (nova || !info.rodando || !info.inicio) ? e : null;
+      const modo = (ex && ex.modo) || info.modo;
+      if (modo && modo !== 'gravar') { $('cena-modo').hidden = false; $('cena-modo').textContent = modo === 'leitura' ? 'SOMENTE LEITURA' : 'MODO TESTE · NÃO GRAVA'; }
+      cena.classList.remove('lendo');
+      if (!ex || !ex.fase || ex.fase === 'entrando_vios') {
+        chip('INDO AO VIOS', true); etapa(1, 0); mover('torre'); falar('Começando! Indo à Torre VIOS para entrar no sistema…');
+      } else if (ex.fase === 'lendo_calendario' && !ex.calendario) {
+        chip('LENDO O CALENDÁRIO', true); etapa(2, 1); mover('torre'); falar('Lendo o calendário do VIOS…');
+      } else if (ex.fase !== 'processando') {
+        const c = ex.calendario;
+        chip('CLASSIFICANDO', true); etapa(2, 1); mover('filtro');
+        falar(`${plural(c.total, 'tarefa', 'tarefas')} no calendário: ${c.processar} a processar, ${c.ignoradas} ignoradas e ${c.ambiguas} ambíguas (conferir à mão).`);
+      } else {
+        etapa(3, 2); $('cena-contador').textContent = ex.alvo ? `${ex.feitas}/${ex.alvo}` : '0/0';
+        const t = ex.tarefas.find(t => ATIVAS.includes(t.situacao));
+        if (!t) {
+          chip('PROCESSANDO', true); mover('torre');
+          falar(ex.alvo ? `Indo para a próxima tarefa… ${ex.feitas} de ${ex.alvo} prontas.` : 'Nenhuma tarefa para processar. Fechando a execução…');
+        } else if (t.situacao === 'comprovante') {
+          chip('TAREFA ' + t.id, true); mover('captura'); cena.classList.add('lendo');
+          falar(`Tarefa ${t.id}: li o comprovante de protocolo (N.º CNJ, órgão julgador e valor da causa).`);
+        } else {
+          chip('TAREFA ' + t.id, true); mover('torre');
+          const campos = (t.campos || []).map(c => CAMPO[c] || c).join(', ');
+          falar(t.situacao === 'abrindo' ? `Tarefa ${t.id}: abrindo a tarefa e o processo no VIOS…`
+            : ex.modo === 'leitura' ? `Tarefa ${t.id}: só leitura · preencheria ${campos || 'nada'}.`
+            : `Tarefa ${t.id}: preenchendo ${campos || 'os campos vazios'}${ex.modo === 'gravar' ? ' e gravando' : ' (sem gravar)'}…`);
+        }
+      }
+      cena.classList.toggle('na-torre', onde === 'torre');
+      return;
+    }
+    cena.classList.remove('na-torre', 'lendo');
+    $('cena-contador').textContent = '';
+    if (e && (e.fim || e.interrompida)) {
+      etapa(4, 4); mover('doca');
+      const r = e.fim ? e.fim.resultado : 'interrompida', k = (e.fim && e.fim.contagens) || {};
+      const ruim = r === 'parou' || r === 'interrompida' || k.erro || k.conferir || k.pulada;
+      humor(viuRodar ? (ruim ? 'erro' : 'feliz') : 'parado');
+      chip(({ concluido: 'CONCLUÍDO', testado: 'TESTE CONCLUÍDO', lido: 'LEITURA CONCLUÍDA', fora_do_dia: 'NÃO ERA DIA', parou: 'PAROU', interrompida: 'INTERROMPIDO' })[r] || 'OCIOSO');
+      const det = resumo(e);
+      falar(r === 'concluido' ? `Pronto! ${det || 'Nada para fazer'}.`
+        : r === 'testado' ? `Teste concluído, nada foi gravado${det ? ': ' + det : ''}.`
+        : r === 'lido' ? `Leitura concluída, nada foi preenchido${det ? ': ' + det : ''}.`
+        : r === 'fora_do_dia' ? 'Hoje não é dia de gravar: só trabalho nos 3 últimos dias do mês. O teste roda em qualquer dia.'
+        : r === 'parou' ? `Parei: ${motivo(e.fim.motivo) || 'erro'}. Veja o log do Zangão.`
+        : 'A última execução não terminou aqui (foi fechada no meio ou rodou em outro computador).');
+    } else {
+      mover('doca'); humor('parado'); chip('OCIOSO'); etapa(1, 0);
+      falar('Estou na Doca 01. Clique em "Testar sem gravar" para me ver trabalhando sem gravar nada no VIOS.');
+    }
+  }
+
+  // ---- botões ----
+  const bt = $('btn-testar'), bg = $('btn-gravar');
+  let confirmarAte = 0, timerConf = null, pedindo = false, ultimo = null;
+  function atualizarBotoes(info) {
+    const pode = info.configurado && !info.rodando && !pedindo;
+    bt.disabled = !pode; bg.disabled = !(pode && info.janela);
+    const conf = confirmarAte > Date.now() && !bg.disabled;
+    bg.classList.toggle('confirmar', conf); bg.textContent = conf ? 'Confirmar: gravar no VIOS' : 'Rodar e gravar no VIOS';
+    $('rodar-dica').textContent = !info.configurado ? 'O Zangão não está instalado neste servidor (ZANGAO_PASTA no .env do Ultron).'
+      : info.rodando ? `Rodando ${info.modo === 'gravar' ? 'e gravando no VIOS' : 'o teste (não grava)'} desde ${(info.inicio || '').slice(11, 16)}. Uma execução por vez: espere terminar.`
+      : conf ? 'Isto grava no VIOS de verdade. Clique em "Confirmar: gravar no VIOS" em até 6 segundos.'
+      : info.janela ? 'Hoje é dia de rodar. "Testar sem gravar" preenche a tela de edição e não grava; "Rodar e gravar" grava no VIOS.'
+      : `"Testar sem gravar" roda em qualquer dia e não grava nada. Gravar no VIOS só nos 3 últimos dias do mês (a partir de ${info.proxima_janela}).`;
+  }
+  async function rodar(modo) {
+    pedindo = true; confirmarAte = 0; $('rodar-erro').hidden = true;
+    if (ultimo) atualizarBotoes(ultimo);
+    try {
+      const r = await fetch('{{ url_for("zangao_rodar") }}', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modo }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { $('rodar-erro').textContent = 'Não deu para rodar: ' + (j.erro || 'HTTP ' + r.status) + '.'; $('rodar-erro').hidden = false; }
+    } catch (err) { $('rodar-erro').textContent = 'Sem conexão com o servidor. Tente de novo.'; $('rodar-erro').hidden = false; }
+    pedindo = false; atualizar();
+  }
+  bt.addEventListener('click', () => rodar('teste'));
+  bg.addEventListener('click', () => {
+    if (confirmarAte > Date.now()) return rodar('gravar');
+    confirmarAte = Date.now() + 6000; clearTimeout(timerConf);
+    timerConf = setTimeout(() => { confirmarAte = 0; if (ultimo) atualizarBotoes(ultimo); }, 6000);
+    if (ultimo) atualizarBotoes(ultimo);
+  });
+
+  // ---- andamento ao vivo ----
+  let ultimoHtml = '';
+  async function atualizar() {
+    try {
+      const r = await fetch('{{ url_for("zangao_andamento") }}', { credentials: 'same-origin' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const info = await r.json(); ultimo = info;
+      atualizarBotoes(info); atualizarCena(info);
+      const h = cartao(info.execucao, info);
+      if (h !== ultimoHtml) { $('execucao').innerHTML = h; ultimoHtml = h; }
+    } catch (err) { $('rodar-dica').textContent = 'Sem conexão com o servidor. Tentando de novo…'; }
+  }
+  atualizar(); setInterval(atualizar, 1500);
+  {% endif %}
+})();
+</script>
+</body>
+</html>
