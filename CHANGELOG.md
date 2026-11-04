@@ -12,6 +12,7 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+<<<<<<< HEAD
 ### Alterado — Vila 03 vira a arena do Albi (04/11/2026)
 - Fundo da Vila 03 trocado pela arena que o usuário fez (`albi/mascote/fundo-arena-albi.html`),
   adaptada ao tamanho da vila (320×224):
@@ -163,6 +164,141 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   continuam iguais, então o bot em si não precisa mudar.
 - Testado em Chrome sem janela: na vila, as fases robô → transformação → carro → robô, sem erro
   no console; na página, a cena, o topo e os links.
+=======
+### Alterado — O bot Faro passou a se chamar Orelha, com o desenho do cão Orelha (04/11/2026)
+- Homenagem ao Orelha, o cão comunitário da Praia Brava (Florianópolis). Pasta `faro/` → `orelha/`;
+  variáveis `FARO_*` → `ORELHA_*` (o `.env` desta máquina foi convertido: só os nomes das chaves);
+  bot dos eventos da vila `"faro"` → `"orelha"` (`BOTS_EXTERNOS` em `bot/eventos.py`);
+  `doc/vila/ligar_faro.py` → `doc/vila/ligar_orelha.py` (a vila foi refeita a partir da `main` com o
+  script novo); log `logs/orelha.log`; relatório "Feito pelo Orelha", selo "O" e cor caramelo.
+- Desenho novo (sprite 20×14 e em pé 14×19, mesmas animações): vira-lata preto e caramelo como o
+  Orelha — dorso e cabeça pretos com brilho, peito, bochechas e patas caramelo, focinho grisalho,
+  orelha dobrada, rabo pra cima com a ponta caramelo, língua de fora nas animações. Ficam o chapéu
+  fedora e o monóculo de leitura; sai a antena com luz. Ficha em `orelha/mascote/ficha.html`.
+- As entradas abaixo (de 04/11/2026) falam em "Orelha" porque foram renomeadas junto; até esta
+  troca, o bot se chamava Faro.
+
+### Alterado — Orelha: processos parados pelo filtro do VIOS e busca de planilhas pelo endereço (04/11/2026)
+- **Parados.** A leitura antiga (lista inteira de ativos + ficha por ficha) estourou o tempo (120 s)
+  na 1ª rodada real. A lista de processos tem o filtro nativo "Com ou sem tipo de tarefa? = Sem" +
+  "Tipo de tarefa = Abertas" (formulário GET): devolve os processos ativos SEM nenhuma tarefa
+  aberta. Conferido: "com" e "sem" não têm processo em comum, e duas fichas sorteadas (81 e 37
+  tarefas) não têm nenhuma aberta. Padrão novo `ORELHA_PARADOS_FONTE=filtro`; a leitura antiga
+  continua com `=fichas`. Lê no máximo 500 por pesquisa; acima disso, por ano de cadastro, dividindo
+  o que vier cheio (`ORELHA_PARADOS_DESDE`, `ORELHA_PARADOS_MAX_PAGINAS`). Grupo = área; "urgente" = sem
+  edição há mais de `ORELHA_PARADOS_DIAS_GRAVE` dias (padrão 60). Rodada real: 1818 processos, 32
+  páginas, cerca de 1 min.
+- **Planilhas do Albi.** A busca do topo é um formulário GET: `campo_pesquisa_selecionado=nro_proc`,
+  `pesq[busca]=<número>`, `pesq[filtros][]=todos`. Padrão novo `ORELHA_PLANILHAS_MODO=url`, um número
+  por vez. Resposta que não é a tela de Processos vira "não deu para conferir", nunca "novo". Teste
+  real com uma pasta de teste fora do repositório: o número existente deu "já está no VIOS", o
+  inventado deu "novo" (o registro do teste foi apagado).
+- `nucleo/vios.buscar_get`: busca a página por GET de dentro da página do VIOS aberta (mesma sessão)
+  SEM desenhar. Com 500 linhas, o Chrome do bot travava mais de 120 s para desenhar a tela; buscando
+  sem desenhar, 500 linhas levam ~5 s. Decodifica pelo charset da página (o VIOS manda
+  ISO-8859-1; `r.text()` trocava os acentos). Só GET; recusa endereço proibido.
+- Rodada real das 5 funções juntas: ~3 min, sem erro.
+- `--simulado` grava em `saida/simulado-<data>/`: antes ia para a mesma pasta do dia e
+  sobrescrevia o relatório real. O `.env.example` tinha `ORELHA_PARADOS_DIAS_GRAVE` duas vezes;
+  agora é uma só, explicando as duas leituras.
+
+### Alterado — Orelha: intimações esquecidas pela pesquisa por endereço, sem filtro de Área (04/11/2026)
+- A tela de pesquisa de intimações é um formulário GET: a mesma pesquisa abre pelo endereço
+  (`pesq[processado]=0` = "Com Tarefa Lançada: Não", `pesq[flag_oculto]=0`, `pesq[tp_data]=data`,
+  `pesq[limit]=500`). Padrão novo `ORELHA_INTIMACOES_LEITURA=url`: o Orelha não envia mais o formulário
+  (a leitura antiga continua com `=formulario`).
+- **Sem o filtro de Área.** Conferido no VIOS, de 20/10 a 02/11/2026: sem filtro, 5 intimações sem
+  tarefa; com "Marcar todas" as 16 áreas (o que o Ultron faz no passo 11), só 2. As 3 que somem
+  não têm área e eram justamente as mais antigas (15 e 9 dias). A 1ª rodada real do Orelha achou 2;
+  agora acha as 5. O Ultron não foi alterado.
+
+### Alterado — Orelha: agenda da equipe toda pela lista de tarefas (04/11/2026)
+- O calendário abre filtrado no usuário logado e agrupa as tarefas. Agora (padrão
+  `ORELHA_AGENDA_TAREFAS_FONTE=lista`) as tarefas da agenda vêm da lista de tarefas, lidas por GET:
+  não concluídas, com data para conclusão hoje ou amanhã, da equipe toda, com a hora da faixa
+  "(09:00 - 23:59)". Do calendário ficam compromissos, feriados e aniversários.
+- Tarefa da lista só entra se o TIPO COMEÇA com o termo (`AUDIÊNCIA UNA` sim; `INFORMAR AUDIÊNCIA`,
+  `LEMBRAR AUDIÊNCIA` e `CIÊNCIA` não). O prefixo `C: ` (consultoria) é ignorado.
+- A etiqueta da tarefa no VIOS (Urgente, Reaberta...) vem separada do tipo e aparece no detalhe
+  ("etiqueta no VIOS: Urgente"), na agenda e nos prazos.
+- Conferido no VIOS: hoje 1 audiência e 2 diligências; amanhã 2 audiências, 2 perícias e 7
+  diligências; as reuniões somam as tarefas (2 hoje, 7 amanhã) e os compromissos do calendário.
+
+### Alterado — Orelha: prazos separam "vencem hoje" e classificam o atraso por idade (04/11/2026)
+- Na rodada real, "limite vencido ou hoje" = urgente deixava 272 de 273 urgentes (o limite costuma
+  ser 1 dia depois da conclusão) e contava como atrasadas 114 tarefas que venciam no dia.
+- Agora: **vencem hoje** (conclusão ou limite hoje, ainda não atrasada) vão para um grupo no topo,
+  como "para saber", e não contam como atrasadas; **atrasada** = data para conclusão já passou, com
+  "urgente" para atraso de mais de `ORELHA_PRAZOS_DIAS_GRAVE` dias (padrão 7) e "atenção" até isso.
+  Uma 3ª leitura pega as tarefas com conclusão hoje e limite depois. O resumo e o histórico da
+  tendência mudaram junto (o histórico grava `vencem_hoje` e o critério).
+- Conferido no VIOS: 154 atrasadas (a pesquisa direta deu 155 minutos antes) e 128 com limite e
+  conclusão hoje (o Orelha achou 128).
+- Responsáveis: na coluna Envolvidos cada nome vem numa linha (`<br>`), e dois nomes grudavam num
+  "responsável" só. Agora o `<br>` vira separador e o grupo é o primeiro responsável: 23 pessoas
+  com atraso (eram 27 "grupos" contando as duplas). O cartão do relatório mostra só as atrasadas
+  (`numeros["destaque"]`), sem somar as que vencem hoje.
+
+### Alterado — Orelha: placar de prazos pela lista de tarefas do VIOS (04/11/2026)
+- Conferido na tela (só leitura): o calendário abre filtrado no usuário logado e, com "Agrupar"
+  ligado, junta as tarefas do dia por tipo num link para a lista de tarefas
+  (`?pag=sys/processos/pxe-lista.php`). Essa lista abre por GET com os filtros no endereço e, sem
+  responsável, traz a equipe toda.
+- `funcoes/prazos.py`: fonte padrão nova (`ORELHA_PRAZOS_FONTE=lista`). Duas leituras de tarefas não
+  concluídas: `pesq[tp_data]=data_prevista` até ontem (atrasadas) e `data_limite` até hoje (graves),
+  desde `ORELHA_PRAZOS_DESDE` (padrão 01/01/2000). Lê da tabela `#tarefas-lista` o tipo, "Para
+  conclusão", "Limite", os "Responsável(eis)" e o link `pxe.php?pxe_id=`. Avisa se a lista vier com
+  1000 linhas (o máximo da tela). A leitura pelo calendário continua com `ORELHA_PRAZOS_FONTE=calendario`.
+- Primeira rodada real (04/11/2026): o VIOS recusa `pesq[limit]` acima de 1000 ("O limite de pesquisa
+  em tabela é ...", página sem tabela). Agora o Orelha lê em janelas (o que tem mais de 1 ano numa
+  só; depois um mês por janela), com `pesq[limit]=1000`, e divide a janela ao meio quando ela vem
+  cheia (até `ORELHA_PRAZOS_MAX_PAGINAS`, padrão 60). A leitura das graves usa a data limite dos
+  últimos 30 dias até hoje. Tela de Tarefas sem tabela = nenhum resultado (não é mais erro).
+  Conferido: o total do usuário logado bate com o painel "Tarefas Processuais Atrasadas".
+- `funcoes/agenda.py`: reconhece o link das tarefas agrupadas (`pxe-lista.php`) e o dos feriados
+  (`cal_feriados.php`). Fixture fictícia `fixtures/prazos/lista.html` e 7 testes novos.
+
+### Adicionado — Orelha: relatório do dia que só lê o VIOS, e a Vila 05 (04/11/2026)
+- Bot novo na pasta **`orelha/`**, separado dos outros como o Albi: `.venv`, `.env`, `logs/` e
+  `saida/` próprios, e nada importado de `bot/` nem de `albi/` (as ideias foram copiadas). Ele
+  entra no VIOS, **só lê** e escreve `orelha/saida/<data>/relatorio.html`, `relatorio.pdf`,
+  `resumo.json` e `eventos.jsonl`. O relatório tem cinco partes:
+  - **agenda** de hoje e amanhã: compromissos, audiências, perícias, reuniões e os feriados até
+    domingo, lidos do calendário;
+  - **prazos**: placar de tarefas atrasadas por responsável ("grave" quando a data limite venceu
+    ou é hoje), com a tendência de 7 dias em `saida/historico/prazos-<data>.json`;
+  - **intimações esquecidas**: "Com Tarefa Lançada = Não" dos últimos 15 dias, fora ontem e hoje e
+    o que o Ultron ainda vai tratar (na segunda, para na quinta). Fica "grave" com mais de 5 dias;
+  - **processos parados**: ativos sem nenhuma tarefa aberta. É lenta: até 300 fichas por execução,
+    com retomada em `saida/historico/parados-progresso.json`. Não roda no padrão: use
+    `--funcoes parados`, no agendamento semanal;
+  - **planilhas do Albi**: confere no VIOS cada processo dos `processos.csv` novos ("já tem",
+    "novo" ou "não deu para conferir"), grava `planilhas-<data>.csv` e o registro
+    `saida/historico/planilhas-conferidas.json`.
+- **Somente leitura.** O bloqueio de envios é copiado do Zangão e ligado antes do login. Ele barra
+  formulário, XHR/fetch POST e `sendBeacon`, e o Orelha para se ele não estiver ativo. Só o
+  calendário roda com XHR liberado, nunca para endereço proibido e, com `ORELHA_XHR_PERMITIDO`, só
+  para os endereços da lista. Os formulários de pesquisa só são enviados se o DESTINO do envio (o
+  action, ou o campo oculto `pag` quando o action não tem `pag=`) for uma tela de pesquisa
+  conhecida e o botão de envio (inclusive `<button>` sem `type`) não tiver termo proibido; estar
+  numa tela de pesquisa não basta. Endereços e cliques proibidos (`ORELHA_URL_PROIBIDA`,
+  `ORELHA_CLIQUE_PROIBIDO`) nunca são abertos nem clicados. A ficha do processo abre com o bloqueio
+  total (`ORELHA_PARADOS_LIBERAR_XHR=nao`).
+- `--simulado` mostra o Orelha funcionando sem senha, com fixtures 100% fictícias, e não mexe no
+  histórico. Testes: `cd orelha && ../.venv/bin/python -m unittest discover -s tests`.
+- Configuração em `orelha/.env` (modelo comentado com todas as variáveis em `orelha/.env.example`).
+  Instalação, agendamento (cron/launchd) e a lista do que ainda falta conferir na tela real estão
+  em `orelha/README.md`. `.gitignore`: `orelha/.env`, `orelha/saida/`, `orelha/logs/` e `orelha/.venv/`.
+- **Vila 05**: o novo `doc/vila/ligar_orelha.py` acrescenta a vila do Orelha no `bot/vila/vila.html`. O
+  mundo passa de 3 para 5 vilas, e a Vila 04 fica vaga. O mascote (cão-robô de chapéu,
+  `orelha/mascote/ficha.html`) anda entre Calendário, Intimações, Torre VIOS, Planilhas e Relatório e
+  late "!" no achado grave. Também tem o painel "Relatório do dia · Orelha". Em `bot/eventos.py`, a
+  única mudança é `"orelha"` em `BOTS_EXTERNOS`, para o Ultron aceitar o `POST /eventos` dele. Os
+  eventos do Orelha levam só fases e contagens, e estão no contrato em `doc/vila/contrato-eventos.md`.
+  O texto sobre a limpeza do Ultron foi corrigido: a lista dele é menor, e a barreira para
+  responsável, empresa e número é a do Orelha.
+- Ainda não rodou contra o VIOS real (não há credenciais aqui).
+>>>>>>> ea66a7d (feat: add orelha bot)
 
 ### Adicionado — Albi: "Capturar resumo", a mensagem para a empresa (04/11/2026)
 - O `albi/relatorio.py` escreve também o **mensagem.txt**, com uma mensagem por empresa, pronta

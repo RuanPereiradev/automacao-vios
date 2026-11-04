@@ -602,6 +602,24 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `saida/vila_pendentes.jsonl` dele).
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py bot/vila/vila.html`.
 
+### Passo 29 — Orelha, o relatório do dia que só lê o VIOS (pasta `orelha/`) e a Vila 05
+- Quarto bot, separado como o Albi: fica em `orelha/`, com `.venv`, `.env`, `logs/` e `saida/`
+  próprios, e não importa nada de `bot/` nem de `albi/`. **Detalhes em `orelha/README.md`**:
+  instalar, configurar, rodar, `--simulado`, agendar (cron/launchd) e o que falta conferir na tela.
+- Entra no VIOS e **só lê**. O bloqueio de envios (ideia do Zangão) é ligado antes do login, e o
+  Orelha para se ele não estiver ativo. O relatório do dia (`orelha/saida/<data>/relatorio.html`, PDF e
+  `resumo.json`) tem agenda de hoje e amanhã, prazos atrasados da equipe, intimações esquecidas (sem
+  tarefa, fora ontem e hoje), processos parados (lenta: `--funcoes parados`, semanal) e a conferência
+  das planilhas do Albi no VIOS.
+- Instalar: `cd orelha && ./instalar.sh`. Preencher o `orelha/.env` (modelo em `orelha/.env.example`).
+  Ver sem senha: `./rodar.sh --simulado`. Rodar: `./rodar.sh`.
+- **Vila 05**: com `VILA_URL` e `VILA_SENHA` no `orelha/.env`, o Orelha manda os eventos por
+  `POST /eventos` ao Ultron. O Ultron aceita porque `"orelha"` está em `BOTS_EXTERNOS`
+  (`bot/eventos.py`), e os eventos levam só fases e contagens (contrato em
+  `doc/vila/contrato-eventos.md`). A vila agora tem 5 vilas, e a Vila 04 está vaga. Abrir direto:
+  `/vila?vila=5`. Se a vila for baixada de novo do site: `ligar_zangao.py`, `ligar_albi.py` e depois
+  `python3 doc/vila/ligar_orelha.py bot/vila/vila.html`.
+
 ### Passo 28 — Albi: .txt de CPF/CNPJ, página `/albi` e Vila 03
 - O Albi recebe um `.txt` **organizado por empresa**: a linha `EMPRESA:` e,
   embaixo, uma pessoa por linha, `CPF ; nome` (modelo em `albi/modelo_pedidos.txt`,
@@ -818,6 +836,7 @@ selenium/
 ├── rodar_envio.sh       # atalho para enviar.py
 ├── instalar.sh          # prepara um computador novo (Mac ou Linux): .venv + dependências
 ├── albi/              # Albi, bot do Sonar (separado: .venv, .env, logs/ e saida/ próprios)
+├── orelha/              # Orelha, relatório do dia só lendo o VIOS (separado como o Albi; ver orelha/README.md)
 ├── servidor_mac.sh      # Mac: página de envio como serviço (launchd) — instalar/parar/status/log
 ├── bot/
 │   ├── config.py        # lê e valida o .env; converte seletores
