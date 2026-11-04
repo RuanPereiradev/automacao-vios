@@ -6,8 +6,12 @@ arquivo_subido (Receptor TXT) → execucao_iniciada (Conferência das linhas) �
 O painel "Pesquisa de processos" mostra cada linha só pelo número da linha e o final do
 documento ("CNPJ final 77"). No modo simulado (site publicado), o Albi só passeia pela vila.
 
+Etapa 2 (04/11/2026): o .txt vem por empresa; o painel mostra "Empresa 1 · CPF final 06"
+(só o número da empresa na ordem do arquivo, nunca o nome dela nem o da pessoa) e a fala diz
+"pessoa 5 de 27".
+
 uso: python3 doc/vila/ligar_albi.py bot/vila/vila.html  (edita no lugar; rodar DEPOIS do
-     ligar_zangao.py; se já estiver aplicado, avisa e não muda nada)"""
+     ligar_zangao.py; pode rodar de novo: aplica só a etapa que falta)"""
 import json
 import sys
 
@@ -15,14 +19,18 @@ caminho = sys.argv[1]
 linhas = open(caminho, encoding="utf-8").read().split("\n")
 IDX = next(i for i, l in enumerate(linhas) if l.startswith('"<!DOCTYPE html>'))
 t = json.loads(linhas[IDX])
-if "ahandle(ev)" in t:
-    sys.exit("a vila já está com o Albi")
+ETAPA1 = "ahandle(ev)" not in t  # Vila 03 acesa, mascote, eventos e painel do Albi
+ETAPA2 = "p.grupo" not in t  # empresas (grupo) no painel e na fala
+if not (ETAPA1 or ETAPA2):
+    sys.exit("a vila já está com tudo do Albi")
 if "zhandle(ev)" not in t or "get('vila')" not in t:
     sys.exit("rode antes o doc/vila/ligar_zangao.py (o Albi usa o que ele acrescenta)")
 
 
-def troca(velho, novo):
+def troca(velho, novo, etapa=1):
     global t
+    if not {1: ETAPA1, 2: ETAPA2}[etapa]:
+        return
     assert t.count(velho) == 1, ("trecho não encontrado (ou repetido)", velho[:90])
     t = t.replace(velho, novo)
 
@@ -298,6 +306,22 @@ ACODE = r"""
   }
   zVals() {"""
 troca("\n  zVals() {", ACODE)
+
+# ---------------- etapa 2: empresas ----------------
+troca("valor: ev.valor || (i >= 0 ? P[i].valor : null),",
+      "valor: ev.valor || (i >= 0 ? P[i].valor : null), grupo: ev.grupo ?? (i >= 0 ? P[i].grupo : null),", 2)
+troca("return { n: String(p.linha).padStart(2, '0'), proc: 'Linha ' + p.linha, task: p.doc || '',",
+      "return { n: String(p.linha).padStart(2, '0'), proc: 'Linha ' + p.linha, task: (p.grupo ? 'Empresa ' + p.grupo + ' · ' : '') + (p.doc || ''),", 2)
+troca("const lin = 'Linha ' + (ev.linha ?? '?') + (ev.doc ? ' (' + ev.doc + ')' : '');",
+      "const lin = (ev.i ? 'Pessoa ' + ev.i + ' de ' + ev.de + ' · ' : '') + 'linha ' + (ev.linha ?? '?') + (ev.grupo ? ', empresa ' + ev.grupo : '') + (ev.doc ? ' (' + ev.doc + ')' : '');", 2)
+troca("this.asay((ev.validos || 0) + ' de ' + (ev.total || 0) + ' linha(s) válidas'",
+      "this.asay((ev.empresas > 1 ? ev.empresas + ' empresas, ' : '') + (ev.validos || 0) + ' de ' + (ev.total || 0) + ' pessoa(s) com CPF/CNPJ válido'", 2)
+troca("this.ast('Linha ' + ev.linha);", "this.ast(ev.i ? ev.i + ' de ' + ev.de : 'Linha ' + ev.linha);", 2)
+troca("this.asay(lin + ': preenchendo a Nova Pesquisa (CPF/CNPJ) e indo ao passo Pedido…');",
+      "this.asay(lin.charAt(0).toUpperCase() + lin.slice(1) + ': preenchendo a Nova Pesquisa (CPF/CNPJ) e indo ao passo Pedido…');", 2)
+troca("this.asay(ev.etapa === 'pronto' ? lin + ': pronto no passo Pedido'",
+      "const Lin = lin.charAt(0).toUpperCase() + lin.slice(1);\n        this.asay(ev.etapa === 'pronto' ? Lin + ': pronto no passo Pedido'", 2)
+troca("'. Não confirmei.' : lin + ' deu erro: '", "'. Não confirmei.' : Lin + ' deu erro: '", 2)
 
 linhas[IDX] = json.dumps(t, ensure_ascii=False).replace("</", "<\\u002F")
 open(caminho, "w", encoding="utf-8").write("\n".join(linhas))

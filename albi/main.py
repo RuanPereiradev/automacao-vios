@@ -5,10 +5,15 @@ Entra no Sonar (encerrando a outra sessão se cair em /login-conflito) e, para c
 .txt, preenche Pesquisa de Processos > Nova Pesquisa até o passo 2 ("Pedido", com o valor).
 NUNCA clica em "Confirmar Pedido": por enquanto ele só preenche.
 
-.txt: um CPF ou CNPJ por linha, com ou sem pontuação; depois de ";" vem o Identificador Projeto
-(opcional). Linha vazia ou começando com # é ignorada.
-    12.345.678/0001-90 ; Cliente X
-    123.456.789-00
+.txt (modelo em modelo_pedidos.txt): um bloco por empresa e uma pessoa por linha, CPF/CNPJ e
+nome separados por ";". O Identificador Projeto do Sonar fica "Empresa · Nome".
+    EMPRESA: Empresa A
+    123.456.789-09 ; Maria da Silva
+    987.654.321-00 ; João Souza
+    ---
+    EMPRESA: Empresa B
+    111.444.777-35 ; Ana Lima
+Linha vazia, começando com # ou só com --- é ignorada. Sem EMPRESA:, vale tudo como uma lista só.
 
 uso (dentro de albi/):
   ./rodar.sh                               só entra e abre a tela de novo pedido (confere o .env)
@@ -172,19 +177,45 @@ def mascarar(numeros):
     return f"{tipo_doc(numeros) if len(numeros) in (11, 14) else 'documento'} final {numeros[-2:]}"
 
 
+EMPRESA = re.compile(r"\A\s*EMPRESA\s*:\s*(.*?)\s*\Z", re.I)
+SO_DOCUMENTO = re.compile(r"\A[\d.\-/\s]+\Z")  # números com pontuação (sem letras)
+
+
+def eh_separador(linha):
+    return set(linha) <= set("-=_") and len(linha) >= 3
+
+
 def ler_pedidos(texto):
-    """Uma linha por pedido: [{"linha", "doc" (só números), "identificador", "problema"}].
-    Linha vazia ou com # no começo fica de fora."""
-    pedidos, vistos = [], {}
+    """Um pedido por linha, organizado por empresa:
+        EMPRESA: Empresa A
+        123.456.789-09 ; Maria da Silva
+        ---
+    Devolve [{"linha", "empresa", "grupo" (1, 2, ... na ordem do arquivo), "doc" (só números),
+    "nome", "identificador", "problema"}]. O CPF/CNPJ pode vir antes ou depois do nome (a parte
+    só com números é o documento). Sem nenhuma linha EMPRESA:, vale tudo como uma lista só.
+    Linha vazia, com # no começo ou só com --- fica de fora."""
+    pedidos, vistos, grupos = [], {}, {}
+    empresa = ""
     for n, bruta in enumerate(texto.splitlines(), 1):
         linha = bruta.strip()
-        if not linha or linha.startswith("#"):
+        if not linha or linha.startswith("#") or eh_separador(linha):
             continue
-        doc_txt, _, ident = linha.partition(";")
-        numeros = re.sub(r"\D", "", doc_txt)
-        p = {"linha": n, "doc": numeros, "identificador": ident.strip(), "problema": None}
-        if re.search(r"[A-Za-z]", doc_txt):
-            p["problema"] = 'tem letras antes do ";" (o documento vem primeiro, só números e pontuação)'
+        m = EMPRESA.match(linha)
+        if m:
+            empresa = m.group(1).strip()
+            continue
+        partes = [x.strip() for x in linha.split(";")]
+        docs = [x for x in partes if x and SO_DOCUMENTO.match(x)]
+        texto_doc = docs[0] if docs else ""
+        nome = " ; ".join(x for x in partes if x and x is not texto_doc)
+        numeros = re.sub(r"\D", "", texto_doc)
+        grupo = grupos.setdefault(empresa, len(grupos) + 1)
+        p = {"linha": n, "empresa": empresa, "grupo": grupo, "doc": numeros, "nome": nome,
+             "identificador": " · ".join(x for x in (empresa, nome) if x), "problema": None}
+        if not docs:
+            p["doc"] = re.sub(r"\D", "", linha)
+            p["problema"] = ('o CPF/CNPJ está misturado com letras (separe o nome com ";")' if p["doc"]
+                             else "não achei o CPF/CNPJ na linha")
         elif len(numeros) not in (11, 14):
             p["problema"] = f"tem {len(numeros)} números (CPF tem 11 e CNPJ tem 14)"
         elif not documento_valido(numeros):
@@ -271,37 +302,58 @@ def preencher_pedido(driver, cfg, doc, identificador=""):
 
 
 def rodar_pedidos(driver, cfg, pedidos):
-    """Entra no Sonar e preenche cada pedido válido. Devolve as contagens."""
+    """Entra no Sonar e preenche cada pedido válido, um por vez. Se a sessão cair no meio (outra
+    pessoa entrou com o mesmo login, ou o Sonar deslogou), entra de novo e tenta a linha mais uma
+    vez; erro numa linha não para as outras. Devolve as contagens."""
     validos = [p for p in pedidos if not p["problema"]]
     k = {"prontos": 0, "erros": 0, "invalidos": len(pedidos) - len(validos)}
     for p in pedidos:
         if p["problema"]:
             log.warning("Linha %d (%s): %s", p["linha"], mascarar(p["doc"]), p["problema"])
-            evento("pedido", linha=p["linha"], doc=mascarar(p["doc"]), etapa="invalido", motivo=p["problema"])
+            evento("pedido", linha=p["linha"], grupo=p["grupo"], doc=mascarar(p["doc"]), etapa="invalido",
+                   motivo=p["problema"])
     evento("fase", fase="entrando_sonar")
     entrar(driver, cfg)
     log.info("Login OK: %s", driver.current_url)
     evento("fase", fase="preenchendo")
     for i, p in enumerate(validos, 1):
         doc = mascarar(p["doc"])
-        log.info("Pedido %d de %d (linha %d, %s): preenchendo", i, len(validos), p["linha"], doc)
-        evento("pedido", linha=p["linha"], doc=doc, etapa="preenchendo")
-        try:
-            r = preencher_pedido(driver, cfg, p["doc"], p["identificador"])
-        except Exception as e:
+        log.info("Pedido %d de %d (linha %d, empresa %d, %s): preenchendo", i, len(validos), p["linha"], p["grupo"], doc)
+        evento("pedido", linha=p["linha"], grupo=p["grupo"], doc=doc, etapa="preenchendo", i=i, de=len(validos))
+        erro = None
+        for tentativa in (1, 2):
+            try:
+                r = preencher_pedido(driver, cfg, p["doc"], p["identificador"])
+                erro = None
+                break
+            except Exception as e:
+                erro = e
+                if tentativa == 2:
+                    break
+                try:
+                    if pagina(driver).startswith("/login"):
+                        log.warning("Linha %d: a sessão do Sonar caiu; entrando de novo", p["linha"])
+                        entrar(driver, cfg)
+                    else:
+                        log.warning("Linha %d: %s; tentando de novo", p["linha"], mensagem(e))
+                except Exception as e2:
+                    erro = e2
+                    break
+        if erro is not None:
             k["erros"] += 1
             print_ = LOGS / f"erro_{datetime.now():%Y-%m-%d_%H%M%S}_linha{p['linha']}.png"
             try:
                 driver.save_screenshot(str(print_))
             except Exception:
                 pass
-            log.error("Linha %d (%s): %s (print em %s)", p["linha"], doc, mensagem(e), print_)
-            evento("pedido", linha=p["linha"], doc=doc, etapa="erro", motivo=mensagem(e))
+            log.error("Linha %d (%s): %s (print em %s)", p["linha"], doc, mensagem(erro), print_)
+            evento("pedido", linha=p["linha"], grupo=p["grupo"], doc=doc, etapa="erro", motivo=mensagem(erro))
             continue
         k["prontos"] += 1
         log.info("Linha %d (%s): pronto no passo 2, sem confirmar · %s · resumo: %s", p["linha"], doc,
                  r["valor"] or "valor não lido", "; ".join(r["itens"]) or "—")
-        evento("pedido", linha=p["linha"], doc=doc, etapa="pronto", valor=r["valor"], itens=len(r["itens"]))
+        evento("pedido", linha=p["linha"], grupo=p["grupo"], doc=doc, etapa="pronto", valor=r["valor"],
+               itens=len(r["itens"]))
     return k
 
 
@@ -332,12 +384,14 @@ def main(*args):
         return 2
     if pedidos is not None:
         validos = sum(1 for p in pedidos if not p["problema"])
-        log.info("Arquivo %s: %d linha(s), %d válida(s). Só preenche: NÃO confirma nenhum pedido.",
-                 Path(arquivo).name, len(pedidos), validos)
-        evento("execucao_iniciada", modo="preencher", total=len(pedidos), validos=validos)
+        empresas = len({p["grupo"] for p in pedidos})
+        log.info("Arquivo %s: %d linha(s) em %d empresa(s), %d válida(s). Só preenche: NÃO confirma nenhum pedido.",
+                 Path(arquivo).name, len(pedidos), empresas, validos)
+        evento("execucao_iniciada", modo="preencher", total=len(pedidos), validos=validos, empresas=empresas)
         if not validos:
             for p in pedidos:
-                evento("pedido", linha=p["linha"], doc=mascarar(p["doc"]), etapa="invalido", motivo=p["problema"])
+                evento("pedido", linha=p["linha"], grupo=p["grupo"], doc=mascarar(p["doc"]), etapa="invalido",
+                       motivo=p["problema"])
             evento("execucao_fim", resultado="parou", motivo="nenhuma linha com CPF/CNPJ válido",
                    contagens={"prontos": 0, "erros": 0, "invalidos": len(pedidos)})
             log.error("Nenhuma linha com CPF/CNPJ válido: nada a fazer")

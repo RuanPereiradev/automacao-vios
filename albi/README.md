@@ -11,22 +11,32 @@ Processos > Nova Pesquisa até o passo 2 ("Pedido", com o valor). **Não confirm
 1. Abre a tela de login e preenche CPF/CNPJ, e-mail e senha.
 2. Se cair na tela de conflito (`/login-conflito`, quando já tem sessão aberta em outro lugar),
    clica em **Encerrar a outra sessão**; se o Sonar voltar para a tela de login, entra de novo.
-3. Para cada linha válida do `.txt`: vai direto para `/modulos/pesquisa-processos/novo-pedido`
-   (a tela do botão **Iniciar Pesquisa**), preenche o Identificador (se tiver), escolhe o tipo
+3. Para cada pessoa válida do `.txt`: vai direto para `/modulos/pesquisa-processos/novo-pedido`
+   (a tela do botão **Iniciar Pesquisa**), preenche o Identificador (`Empresa · Nome`), escolhe o tipo
    **CPF/CNPJ**, digita o documento e clica em **Continuar**.
 4. No passo 2 ("Pedido") confere se o documento mostrado é o mesmo, lê o valor e **para ali**:
    nunca clica em "Confirmar Pedido".
 
-## O arquivo .txt
+## O arquivo .txt (modelo: `modelo_pedidos.txt`)
 
-Um CPF ou CNPJ por linha, com ou sem pontuação. Depois de `;` vem o **Identificador Projeto**
-(opcional). Linha vazia ou começando com `#` é ignorada.
+Um bloco por empresa: a linha `EMPRESA:` com o nome da empresa e, embaixo, uma pessoa por linha,
+`CPF ; nome` (CPF com ou sem pontuação; serve CNPJ). `---` separa as empresas (opcional); linha
+vazia ou começando com `#` é ignorada. O CPF pode vir antes ou depois do nome. Sem `EMPRESA:`,
+o arquivo vale como uma lista só.
 
 ```
-12.345.678/0001-90 ; Cliente X
-123.456.789-00
-98765432000110 ; Projeto Y
+EMPRESA: Empresa A
+123.456.789-09 ; Maria da Silva
+987.654.321-00 ; João Souza
+---
+EMPRESA: Empresa B
+111.444.777-35 ; Ana Lima
 ```
+
+No Sonar, o **Identificador Projeto** de cada pesquisa fica `Empresa · Nome`. Uma pessoa por
+vez, na ordem do arquivo; se a sessão cair no meio, ele entra de novo e tenta a mesma pessoa
+mais uma vez. O modelo vem com `000.000.000-00` de propósito: enviado sem trocar, o Albi recusa
+tudo e nem entra no Sonar.
 
 Antes de entrar no Sonar o Albi confere cada linha: 11 (CPF) ou 14 (CNPJ) números, dígito
 verificador e repetidos. Linha com problema fica de fora (aparece no log e na página).

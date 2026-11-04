@@ -1,0 +1,24 @@
+# Modelo do arquivo do Albi (pesquisa de processos no Sonar)
+#
+# - Um bloco por empresa: comece com "EMPRESA:" e o nome da empresa que pediu a pesquisa.
+# - Embaixo, uma pessoa por linha: CPF (ou CNPJ) ; nome.
+#   O CPF pode ter pontuação ou não (123.456.789-09 ou 12345678909).
+# - Uma linha só com --- separa as empresas (opcional, só para ficar mais fácil de ler).
+# - Linhas começando com # (como estas) são ignoradas.
+# - No Sonar, o "Identificador Projeto" de cada pesquisa fica "Empresa · Nome".
+# - O Albi confere cada CPF antes (11 números, dígito verificador, repetido) e preenche um por
+#   vez. Por enquanto ele NÃO confirma nenhum pedido.
+#
+# Troque os exemplos abaixo pelos dados reais. (Os 000.000.000-00 são de mentira: se este
+# modelo for enviado sem trocar, o Albi recusa as linhas e nem entra no Sonar.)
+
+EMPRESA: Empresa A
+000.000.000-00 ; Nome da Pessoa 1
+000.000.000-00 ; Nome da Pessoa 2
+000.000.000-00 ; Nome da Pessoa 3
+
+---
+
+EMPRESA: Empresa B
+000.000.000-00 ; Nome da Pessoa 4
+000.000.000-00 ; Nome da Pessoa 5

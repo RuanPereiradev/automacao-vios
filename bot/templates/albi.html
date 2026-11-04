@@ -32,6 +32,7 @@
   .albi .sombra { background: radial-gradient(rgba(242, 155, 191, .3), transparent 70%); }
   .pedido-a .detalhe { font-size: 13px; color: var(--suave); margin-top: 4px; }
   .pedido-a code { font-size: 13px; }
+  .empresa-a { font-size: 16px; margin: 18px 0 6px; }
 </style>
 </head>
 <body>
@@ -52,12 +53,14 @@
       <label class="soltar" id="soltar">
         {{ albi("parado", 48, "albi-caixa") }}
         <span class="titulo" id="soltar-titulo">Solte o .txt aqui</span>
-        <span class="suave" id="soltar-sub">um CPF/CNPJ por linha — o Albi preenche a pesquisa no Sonar e para antes de confirmar</span>
+        <span class="suave" id="soltar-sub">um bloco por empresa, uma pessoa por linha (CPF ; nome) — o Albi preenche no Sonar um por um e para antes de confirmar</span>
         <input type="file" name="arquivo" accept=".txt,text/plain" required id="arquivo">
       </label>
     </form>
     {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
     <p class="erro" id="rodar-erro" hidden></p>
+    <p class="suave" style="margin-bottom:0">Primeira vez? <a href="{{ url_for('albi_modelo') }}">Baixe o modelo do .txt</a>,
+      troque os exemplos pelos CPFs e nomes de cada empresa e solte aqui.</p>
   </div>
 
   <div class="cartao" id="execucao"><p class="suave">Carregando a última execução…</p></div>
@@ -65,13 +68,20 @@
   <div class="cartao">
     <details>
       <summary>Formato do arquivo</summary>
-      <p class="suave">Um CPF ou CNPJ por linha, com ou sem pontuação. Depois de <code>;</code> vem o
-        <b>Identificador Projeto</b> do Sonar (opcional). Linha vazia ou começando com <code>#</code> é ignorada.</p>
-<pre>12.345.678/0001-90 ; Cliente X
-123.456.789-00
-98765432000110 ; Projeto Y</pre>
+      <p class="suave">Um bloco por empresa: a linha <code>EMPRESA:</code> com o nome da empresa e, embaixo, uma pessoa por linha,
+        <b>CPF ; nome</b> (CPF com ou sem pontuação; serve CNPJ também). <code>---</code> separa as empresas (opcional);
+        linha vazia ou começando com <code>#</code> é ignorada. <a href="{{ url_for('albi_modelo') }}">Baixar o modelo</a>.</p>
+<pre>EMPRESA: Empresa A
+123.456.789-09 ; Maria da Silva
+987.654.321-00 ; João Souza
+---
+EMPRESA: Empresa B
+111.444.777-35 ; Ana Lima</pre>
       <ul class="suave">
+        <li>No Sonar, o <b>Identificador Projeto</b> de cada pesquisa fica <code>Empresa · Nome</code> (ex.: <code>Empresa A · Maria da Silva</code>).</li>
+        <li>Sem nenhuma linha <code>EMPRESA:</code>, o arquivo vale como uma lista só.</li>
         <li>O Albi confere o dígito verificador antes de entrar no Sonar: linha inválida ou repetida fica de fora e aparece aqui.</li>
+        <li>Ele faz <b>uma pessoa por vez</b>, na ordem do arquivo. Se a sessão do Sonar cair no meio, entra de novo e tenta a mesma pessoa mais uma vez.</li>
         <li>Para cada linha ele abre <b>Pesquisa de Processos → Nova Pesquisa</b>, escolhe <b>CPF/CNPJ</b>, preenche e avança até o passo
           <b>Pedido</b>, onde lê o valor. <b>Não clica em "Confirmar Pedido"</b>: nada é comprado.</li>
         <li>Uma execução por vez, com até {{ max_linhas }} linhas. Entrar no Sonar encerra a outra sessão aberta com o mesmo login.</li>
@@ -137,8 +147,22 @@
     [['pronto', 'pronto(s) no passo 2', 'ok'], ['erro', 'com erro', 'erro'], ['invalido', 'inválida(s)', 'erro']]
       .forEach(([s, t, c]) => { const q = conta(s); if (q) nums.push([q, t, c]); });
     h += '<div class="numeros">' + nums.map(([q, t, c]) => `<div class="numero"><b class="${c || ''}">${q}</b>${esc(t)}</div>`).join('') + '</div>';
-    if (e.pedidos.length) {
-      h += '<ul class="lista">' + e.pedidos.map(p => {
+    const nEmp = new Set(e.pedidos.map(p => p.empresa || '')).size;
+    if (nEmp > 1 || (e.pedidos[0] && e.pedidos[0].empresa)) {
+      // um grupo por empresa, na ordem do arquivo, com quantos já foram feitos
+      const grupos = [];
+      e.pedidos.forEach(p => { const k = p.empresa || '(sem empresa)'; let g = grupos.find(g => g.k === k); if (!g) grupos.push(g = { k, ps: [] }); g.ps.push(p); });
+      h += grupos.map(g => {
+        const v = g.ps.filter(p => p.etapa !== 'invalido'), f = v.filter(p => p.etapa === 'pronto' || p.etapa === 'erro').length;
+        return `<h3 class="empresa-a">${esc(g.k)} <span class="suave">· ${plural(g.ps.length, 'pessoa', 'pessoas')} · ${f} de ${v.length} feitas</span></h3>` + lista(g.ps);
+      }).join('');
+    } else if (e.pedidos.length) h += lista(e.pedidos);
+    return h;
+  }
+  function lista(ps) {
+    let h = '';
+    {
+      h += '<ul class="lista">' + ps.map(p => {
         const s = T.etapas[p.etapa] || ['s-ja', p.etapa];
         const det = [p.valor ? 'Valor no Sonar: ' + p.valor : '', p.motivo || ''].filter(Boolean).join(' · ');
         return `<li class="pedido-a${p.etapa === 'preenchendo' ? ' atual' : ''}"><div class="topo"><span><b>Linha ${p.linha}</b> ` +
@@ -148,6 +172,7 @@
     }
     return h;
   }
+
 
   {% if tela == "execucao" %}
   $('execucao').innerHTML = cartao({{ e | tojson }});
@@ -180,7 +205,7 @@
         : info.rodando ? 'O Albi está trabalhando…' : 'Solte o .txt aqui';
       $('soltar-sub').textContent = !info.configurado ? 'falta a pasta albi/ com .venv e .env (veja albi/README.md)'
         : info.rodando ? 'uma execução por vez: espere terminar para soltar outro arquivo'
-        : 'um CPF/CNPJ por linha — o Albi preenche a pesquisa no Sonar e para antes de confirmar';
+        : 'um bloco por empresa, uma pessoa por linha (CPF ; nome) — o Albi preenche no Sonar um por um e para antes de confirmar';
       const h = cartao(info.execucao);
       if (h !== ultimoHtml) { $('execucao').innerHTML = h; ultimoHtml = h; }
       $('rodar-erro').hidden = true;

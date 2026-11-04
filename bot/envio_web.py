@@ -461,6 +461,15 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         log.info("Albi disparado pela página (%s) por %s", arquivo.filename, request.remote_addr)
         return redirect(url_for("albi_pagina"))
 
+    @app.route("/albi/modelo")
+    def albi_modelo():
+        """O modelo do .txt do Albi (albi/modelo_pedidos.txt), para baixar e preencher."""
+        modelo = albi.PASTA_PADRAO / "modelo_pedidos.txt"
+        if not modelo.exists():
+            abort(404)
+        return Response(modelo.read_bytes(), 200, {"Content-Type": "text/plain; charset=utf-8",
+                        "Content-Disposition": 'attachment; filename="modelo_albi.txt"'})
+
     @app.route("/albi/andamento")
     def albi_andamento():
         return jsonify(albi.andamento(pasta_albi, pasta_saida))

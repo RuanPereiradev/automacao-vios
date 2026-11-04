@@ -12,6 +12,23 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Albi: .txt organizado por empresa (04/11/2026)
+- Formato padrão (modelo em `albi/modelo_pedidos.txt`, para baixar em `/albi/modelo`): um bloco
+  por empresa (`EMPRESA: Empresa A`) e uma pessoa por linha (`CPF ; nome`); `---` separa as
+  empresas (opcional). O CPF pode vir antes ou depois do nome. O Identificador Projeto no Sonar
+  fica `Empresa · Nome`. Sem `EMPRESA:`, o arquivo vale como uma lista só (o formato antigo
+  continua funcionando).
+- O modelo usa `000.000.000-00`: enviado sem trocar, o Albi recusa as linhas e nem entra no Sonar.
+- Feito para listas grandes (ex.: 27 CPFs de 3 empresas), uma pessoa por vez: se a sessão do
+  Sonar cair no meio, entra de novo e tenta a mesma pessoa mais uma vez; erro numa pessoa não
+  para as outras.
+- Página `/albi`: as pessoas aparecem agrupadas por empresa ("Empresa A · 10 pessoas · 9 de 9
+  feitas"). Vila 03 (`doc/vila/ligar_albi.py`, etapa 2): o painel mostra "Empresa 1 · CPF final
+  06" e a fala "Pessoa 5 de 27"; nos eventos só vai o número da empresa (`grupo`), nunca o nome
+  dela nem o da pessoa.
+- Testado sem o Sonar: leitura de 27 CPFs gerados (3 empresas) e casos com erro; página e vila
+  com uma execução de mentira, com o servidor sem o Albi (nenhuma pesquisa aberta).
+
 ### Adicionado — Albi: pedidos pelo .txt, página `/albi` e Vila 03 (04/11/2026)
 - `albi/main.py --arquivo pedidos.txt`: um CPF/CNPJ por linha (`; identificador` opcional).
   Confere cada linha antes (11/14 números, dígito verificador, repetidos) e, para cada válida,

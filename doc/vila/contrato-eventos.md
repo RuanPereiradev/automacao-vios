@@ -161,10 +161,11 @@ evento como `@evento {json}` na saída padrão e o Ultron grava em `saida/evento
 | `tipo` | campos | quando |
 | --- | --- | --- |
 | `arquivo_subido` | `arquivo`, `linhas` | o Ultron recebeu o .txt (Receptor TXT) |
-| `execucao_iniciada` | `modo: "preencher"`, `total`, `validos` | o Albi leu e conferiu as linhas (Conferência) |
+| `execucao_iniciada` | `modo: "preencher"`, `total`, `validos`, `empresas` | o Albi leu e conferiu as linhas (Conferência) |
 | `fase` | `fase`: `entrando_sonar` → `preenchendo` | Torre Sonar |
-| `pedido` | `linha`, `doc` ("CNPJ final 77"), `etapa`, `valor`, `motivo` | `etapa`: `invalido` · `preenchendo` · `pronto` (no passo 2, não confirmado) · `erro` |
+| `pedido` | `linha`, `grupo` (n.º da empresa no arquivo: 1, 2…), `doc` ("CPF final 06"), `etapa`, `valor`, `motivo`; no `preenchendo`, `i` e `de` (pessoa 5 de 27) | `etapa`: `invalido` · `preenchendo` · `pronto` (no passo 2, não confirmado) · `erro` |
 | `execucao_fim` | `resultado` (`concluido` · `parou`), `motivo`, `contagens` {`prontos`, `erros`, `invalidos`} | fim (volta à doca). Se o Albi fechar sem mandar, o Ultron manda `parou` |
 
-Dados mínimos: nunca o documento inteiro nem o identificador (podem ter nome de cliente).
+Dados mínimos: nunca o documento inteiro, o nome da pessoa nem o da empresa (o .txt inteiro fica
+só em `saida/albi/`, para a página `/albi`).
 A Vila 03 foi ligada por `doc/vila/ligar_albi.py` (rodar depois do `ligar_zangao.py`).

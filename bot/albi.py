@@ -5,7 +5,8 @@ A pessoa solta o .txt (um CPF/CNPJ por linha) na página; o Ultron guarda o arqu
 `main.py --arquivo <txt> --eventos`. O Albi escreve cada evento numa linha "@evento {json}" na
 saída padrão; o Ultron lê e grava em <saída>/eventos.jsonl com bot "albi" (a Vila 03 anima).
 
-Por enquanto o Albi só PREENCHE a Nova Pesquisa até o passo 2 ("Pedido", com o valor) e nunca
+O .txt vem organizado por empresa ("EMPRESA: ..." e, embaixo, "CPF ; nome", uma pessoa por
+linha; modelo em albi/modelo_pedidos.txt). Por enquanto o Albi só PREENCHE a Nova Pesquisa até o passo 2 ("Pedido", com o valor) e nunca
 clica em "Confirmar Pedido". Uma execução por vez (duas derrubariam a sessão uma da outra).
 Nos eventos vai só o tipo e o final do documento ("CNPJ final 77"); o .txt inteiro fica em
 <saída>/albi/ e aparece só na página /albi (que tem a mesma senha da página do Ultron).
@@ -13,6 +14,7 @@ Nos eventos vai só o tipo e o final do documento ("CNPJ final 77"); o .txt inte
 import json
 import logging
 import os
+import re
 import subprocess
 import threading
 import uuid
@@ -89,9 +91,23 @@ def status(p):
     return info
 
 
-def linhas_uteis(texto):
-    """Linhas que o Albi vai ler (sem as vazias e as que começam com #)."""
-    return [l for l in texto.splitlines() if l.strip() and not l.strip().startswith("#")]
+EMPRESA = re.compile(r"\A\s*EMPRESA\s*:\s*(.*?)\s*\Z", re.I)
+
+
+def ler_linhas(texto):
+    """{n.º da linha: (empresa, texto)} das linhas de pedido, como o Albi lê: sem as vazias, as que
+    começam com #, as só com --- e as "EMPRESA: ..." (que dizem a empresa das linhas de baixo)."""
+    linhas, empresa = {}, ""
+    for n, bruta in enumerate(texto.splitlines(), 1):
+        l = bruta.strip()
+        if not l or l.startswith("#") or (len(l) >= 3 and set(l) <= set("-=_")):
+            continue
+        m = EMPRESA.match(l)
+        if m:
+            empresa = m.group(1)
+            continue
+        linhas[n] = (empresa, l)
+    return linhas
 
 
 def _meta(pasta_saida, envio_id):
@@ -107,9 +123,9 @@ def rodar(p, pasta_saida, texto, nome_arquivo):
     p = Path(p)
     if not configurado(p):
         raise AlbiErro(f"o Albi não está instalado em {p} (falta .venv, main.py ou .env; veja albi/README.md)")
-    uteis = linhas_uteis(texto)
+    uteis = ler_linhas(texto)
     if not uteis:
-        raise AlbiErro("o arquivo não tem nenhuma linha com CPF/CNPJ")
+        raise AlbiErro("o arquivo não tem nenhuma linha com CPF/CNPJ (veja o modelo)")
     if len(uteis) > MAX_LINHAS:
         raise AlbiErro(f"o arquivo tem {len(uteis)} linhas; o máximo por vez é {MAX_LINHAS}")
     with _trava:
@@ -121,12 +137,10 @@ def rodar(p, pasta_saida, texto, nome_arquivo):
         txt = pasta_envios / f"{envio_id}.txt"
         txt.write_text(texto, encoding="utf-8")
         inicio = datetime.now().isoformat(timespec="seconds")
-        # linha do arquivo -> texto (a página mostra o documento como foi digitado)
-        linhas = {str(n): l.strip() for n, l in enumerate(texto.splitlines(), 1)
-                  if l.strip() and not l.strip().startswith("#")}
-        (pasta_envios / f"{envio_id}.json").write_text(
-            json.dumps({"arquivo": nome_arquivo, "criado": inicio, "linhas": linhas}, ensure_ascii=False),
-            encoding="utf-8")
+        # linha do arquivo -> texto e empresa (a página mostra como foi digitado, agrupado por empresa)
+        (pasta_envios / f"{envio_id}.json").write_text(json.dumps({
+            "arquivo": nome_arquivo, "criado": inicio, "linhas": {str(n): l for n, (_, l) in uteis.items()},
+            "empresas": {str(n): e for n, (e, _) in uteis.items()}}, ensure_ascii=False), encoding="utf-8")
         eventos.emitir(pasta_saida, envio_id, "arquivo_subido", bot="albi", arquivo=nome_arquivo, linhas=len(uteis))
 
         (p / "logs").mkdir(exist_ok=True)
@@ -187,14 +201,15 @@ def rodar(p, pasta_saida, texto, nome_arquivo):
 # --- execuções, montadas dos eventos (bot: "albi" em saida/eventos.jsonl) ---
 def _execucao(evs, meta):
     e = {"id": None, "inicio": None, "arquivo": meta.get("arquivo"), "total": None, "validos": None,
-         "fase": None, "pedidos": [], "fim": None}
+         "empresas": None, "fase": None, "pedidos": [], "fim": None}
     linhas = meta.get("linhas") or {}
+    empresas = meta.get("empresas") or {}
     por_linha = {}
 
     def pedido(n):
         if n not in por_linha:
-            por_linha[n] = {"linha": n, "doc": None, "texto": linhas.get(str(n)), "etapa": "fila",
-                            "valor": None, "motivo": None}
+            por_linha[n] = {"linha": n, "doc": None, "texto": linhas.get(str(n)), "empresa": empresas.get(str(n), ""),
+                            "grupo": None, "etapa": "fila", "valor": None, "motivo": None}
             e["pedidos"].append(por_linha[n])
         return por_linha[n]
 
@@ -205,12 +220,12 @@ def _execucao(evs, meta):
         if tipo == "arquivo_subido":
             e["arquivo"] = e["arquivo"] or ev.get("arquivo")
         elif tipo == "execucao_iniciada":
-            e.update(total=ev.get("total"), validos=ev.get("validos"))
+            e.update(total=ev.get("total"), validos=ev.get("validos"), empresas=ev.get("empresas"))
         elif tipo == "fase":
             e["fase"] = ev.get("fase")
         elif tipo == "pedido" and isinstance(ev.get("linha"), int):
             p = pedido(ev["linha"])
-            p.update(doc=ev.get("doc") or p["doc"], etapa=ev.get("etapa") or p["etapa"])
+            p.update(doc=ev.get("doc") or p["doc"], etapa=ev.get("etapa") or p["etapa"], grupo=ev.get("grupo") or p["grupo"])
             if ev.get("valor"):
                 p["valor"] = ev["valor"]
             if ev.get("motivo"):

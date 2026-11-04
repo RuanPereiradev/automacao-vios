@@ -601,13 +601,22 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py bot/vila/vila.html`.
 
 ### Passo 28 — Albi: .txt de CPF/CNPJ, página `/albi` e Vila 03
-- O Albi recebe um `.txt` com **um CPF ou CNPJ por linha** (com ou sem pontuação;
-  depois de `;` vem o "Identificador Projeto", opcional; linha vazia ou com `#` no
-  começo é ignorada):
+- O Albi recebe um `.txt` **organizado por empresa**: a linha `EMPRESA:` e,
+  embaixo, uma pessoa por linha, `CPF ; nome` (modelo em `albi/modelo_pedidos.txt`,
+  ou "Baixe o modelo" na página `/albi`). `---` separa as empresas (opcional);
+  linha vazia ou com `#` no começo é ignorada; o CPF pode vir antes ou depois do
+  nome; serve CNPJ também. Sem `EMPRESA:`, vale tudo como uma lista só.
   ```
-  12.345.678/0001-90 ; Cliente X
-  123.456.789-00
+  EMPRESA: Empresa A
+  123.456.789-09 ; Maria da Silva
+  987.654.321-00 ; João Souza
+  ---
+  EMPRESA: Empresa B
+  111.444.777-35 ; Ana Lima
   ```
+- No Sonar, o "Identificador Projeto" de cada pesquisa fica `Empresa · Nome`.
+- Uma pessoa por vez, na ordem do arquivo. Se a sessão do Sonar cair no meio,
+  entra de novo e tenta a mesma pessoa mais uma vez; erro numa não para as outras.
 - Antes de entrar no Sonar ele confere cada linha (11 ou 14 números, dígito
   verificador, repetidos); linha inválida fica de fora e aparece na página.
 - Para cada linha válida: Nova Pesquisa → Tipo **CPF/CNPJ** → documento →
@@ -615,14 +624,15 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   valor (hoje R$ 15,70). **Ele para ali: nunca clica em "Confirmar Pedido"**.
 - Pela página: `http://<IP do Mac>:5001/albi` (link "Albi" no topo do Ultron).
   Soltar o `.txt` na caixa; o Albi roda em segundo plano (um por vez, até 500
-  linhas) e a página mostra cada linha ao vivo. Histórico em `/albi/historico`.
+  linhas) e a página mostra cada pessoa ao vivo, agrupada por empresa. Histórico em `/albi/historico`.
   O arquivo fica em `saida/albi/<id>.txt`; o log do Albi em
   `albi/logs/execucoes_ultron.log`.
 - Pelo terminal: `cd albi && ./rodar.sh --arquivo pedidos.txt`.
 - A **Vila 03** acendeu: é a vila do Albi (Doca 01 · Albi, Receptor TXT,
   Conferência, Torre Sonar), com o mascote dele (`albi/mascote/`). Os eventos
-  levam só o número da linha e o final do documento ("CNPJ final 77"), nunca o
-  documento inteiro nem o identificador.
+  levam só o número da linha, o número da empresa e o final do documento
+  ("Empresa 1 · CPF final 06"), nunca o documento inteiro, o nome da pessoa nem o
+  da empresa.
 - O Ultron acha o Albi em `albi/` deste repositório; noutra pasta, `ALBI_PASTA`
   no `.env` do Ultron.
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py
