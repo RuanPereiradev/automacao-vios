@@ -1,6 +1,6 @@
-{# Cena do envio no estilo da vila: só o Ultron, andando entre Doca → Receptor TXT → Conferência →
+{# Cena do envio no estilo da vila: só o Sam, andando entre Doca → Receptor TXT → Conferência →
    Torre VIOS conforme o andamento real (window.cenaStatus recebe o /envio/<id>/status).
-   Coordenadas no viewBox 960 × 340; o Ultron anda pela linha do cano de cobre (y = 206). #}
+   Coordenadas no viewBox 960 × 340; o Sam anda pela linha do cano de cobre (y = 206). #}
 {% from "_ultron.html" import ultron %}
 
 {% macro predio(x, rotulo, tela=False, antena=False, placa=132) %}
@@ -40,7 +40,7 @@
     <li>03<span>Envio aprovado</span></li><li>04<span>Criando no VIOS</span></li>
   </ol>
   <div class="cena-topo">
-    <span class="cena-chip" id="cena-chip"><i></i>ULTRON · OCIOSO</span>
+    <span class="cena-chip" id="cena-chip"><i></i>SAM · OCIOSO</span>
     <span class="cena-chip" id="cena-etapa"></span>
     {% if envio and (envio.so_teste or (envio.estado == "enviando" and not envio.confirmar)) %}<span class="cena-chip cena-teste">MODO TESTE · NÃO GRAVA</span>{% endif %}
   </div>
@@ -70,10 +70,10 @@
       <rect width="960" height="340" fill="url(#cena-piso)"/>
       <rect width="960" height="20" fill="#1c1f23"/>
       {% for i in range(12) %}<rect x="{{ 34 + i * 80 }}" y="8" width="6" height="5" fill="{{ '#e5ab50' if i % 3 == 0 else '#3a3f46' }}"/>{% endfor %}
-      {{ predio(40, "DOCA 01 · ULTRON", antena=True) }}
+      {{ predio(40, "DOCA 01 · SAM", antena=True) }}
       {{ predio(290, "RECEPTOR TXT") }}
       {{ predio(540, "CONFERÊNCIA", tela=True) }}
-      {# cano de cobre por onde o Ultron anda #}
+      {# cano de cobre por onde o Sam anda #}
       <rect x="60" y="206" width="830" height="5" fill="#b6782e"/><rect x="60" y="206" width="830" height="1" fill="#d99c4a"/>
       {% for jx in (135, 385, 635, 860) %}<rect x="{{ jx }}" y="203" width="11" height="11" fill="#d39a45" stroke="#7d5119"/>{% endfor %}
       {# Torre VIOS #}
@@ -104,7 +104,7 @@
       {{ ultron("parado", 60, "cena-mascote") }}
     </div>
     </div>
-    <div class="cena-fala"><span class="cena-quem">ULTRON</span><span id="cena-texto">…</span><b class="cena-seta">▼</b></div>
+    <div class="cena-fala"><span class="cena-quem">SAM</span><span id="cena-texto">…</span><b class="cena-seta">▼</b></div>
   </div>
 </div>
 <script>
@@ -133,7 +133,7 @@
   }
   const falar = t => { document.getElementById('cena-texto').textContent = t; };
   const humor = h => { m.classList.remove('parado', 'trabalhando', 'feliz', 'erro'); m.classList.add(h); };
-  const chip = (t, ativo) => { const c = document.getElementById('cena-chip'); c.lastChild.textContent = 'ULTRON · ' + t; c.classList.toggle('ativo', !!ativo); };
+  const chip = (t, ativo) => { const c = document.getElementById('cena-chip'); c.lastChild.textContent = 'SAM · ' + t; c.classList.toggle('ativo', !!ativo); };
   function etapa(atual, feitas) {
     [...document.querySelectorAll('#cena-etapas li')].forEach((li, i) => {
       li.classList.toggle('feita', i < feitas); li.classList.toggle('atual', i === atual - 1 && i >= feitas);

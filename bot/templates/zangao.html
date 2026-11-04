@@ -1,4 +1,4 @@
-{# Página do Bumblebee (antes "Bumblebee"; bot de comprovantes previdenciários), como a do Ultron: cena
+{# Página do Bumblebee (antes "Zangão"; bot de comprovantes previdenciários), como a do Sam: cena
    no estilo da vila com o Bumblebee indo de um posto a outro (vira carro para andar e volta a robô
    ao chegar) conforme o andamento real, botões para rodar e o histórico das execuções.
    Os dados vêm dos eventos que o próprio bot manda (bot/zangao.py monta as execuções). #}
@@ -17,7 +17,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
 {% include "_estilo.html" %}
 <style>
-  /* cores do Bumblebee por cima do estilo do Ultron */
+  /* cores do Bumblebee por cima do estilo do Sam */
   :root { --red: #f2c230; --red-escuro: #a8780a; }
   body { background: radial-gradient(ellipse at top, #19140a 0%, var(--fundo) 55%) fixed, var(--fundo); }
   .marca b { text-shadow: 0 0 12px rgba(242, 194, 48, .6); }
@@ -56,7 +56,7 @@
   <a href="{{ url_for('zangao_pagina') }}">{{ zangao("parado", 48, "zangao-topo") }}
     <span><span class="marca"><b>B</b>UMBLEBEE</span><br><span class="sub">comprovantes previdenciários no VIOS</span></span></a>
   <span class="acoes" style="margin-left: auto">
-    <a class="botao secundario" href="{{ url_for('inicio') }}">Ultron</a>
+    <a class="botao secundario" href="{{ url_for('inicio') }}">Sam</a>
     {% if albi_ligado %}<a class="botao secundario" href="{{ url_for('albi_pagina') }}">Albi</a>{% endif %}
     <a class="botao secundario" href="{{ url_for('zangao_historico') }}">Histórico</a>
   </span>
@@ -283,7 +283,7 @@
     $('cena-modo').hidden = true;
     if (!info.configurado) {
       mover('doca'); humor('parado'); chip('NÃO INSTALADO'); etapa(1, 0);
-      falar('O Bumblebee não está instalado neste servidor. Falta a pasta dele (ZANGAO_PASTA no .env do Ultron).'); return;
+      falar('O Bumblebee não está instalado neste servidor. Falta a pasta dele (ZANGAO_PASTA no .env do Sam).'); return;
     }
     // acabou de ser disparado e ainda não mandou o 1º evento desta execução
     const nova = e && info.inicio && e.inicio && e.inicio >= info.inicio;
@@ -352,7 +352,7 @@
     bt.disabled = !pode; bg.disabled = !(pode && info.janela);
     const conf = confirmarAte > Date.now() && !bg.disabled;
     bg.classList.toggle('confirmar', conf); bg.textContent = conf ? 'Confirmar: gravar no VIOS' : 'Rodar e gravar no VIOS';
-    $('rodar-dica').textContent = !info.configurado ? 'O Bumblebee não está instalado neste servidor (ZANGAO_PASTA no .env do Ultron).'
+    $('rodar-dica').textContent = !info.configurado ? 'O Bumblebee não está instalado neste servidor (ZANGAO_PASTA no .env do Sam).'
       : info.rodando ? `Rodando ${info.modo === 'gravar' ? 'e gravando no VIOS' : 'o teste (não grava)'} desde ${(info.inicio || '').slice(11, 16)}. Uma execução por vez: espere terminar.`
       : conf ? 'Isto grava no VIOS de verdade. Clique em "Confirmar: gravar no VIOS" em até 6 segundos.'
       : info.janela ? 'Hoje é dia de rodar. "Testar sem gravar" preenche a tela de edição e não grava; "Rodar e gravar" grava no VIOS.'

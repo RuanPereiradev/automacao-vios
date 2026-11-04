@@ -684,7 +684,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `python3 doc/vila/ligar_bumblebee.py bot/vila/vila.html` e por último
   `python3 doc/vila/ligar_vila01_campo.py bot/vila/vila.html`.
 
-### Passo 30 — Mascote novo do Ultron e Vila 01 no campo
+### Passo 30 — Mascote novo do Ultron (agora Sam) e Vila 01 no campo
+- **Nome:** na tela ele se chama **Sam**: página, links, cena e Vila 01. A marca "SAM" fica nas
+  cores do boneco (S dourado, AM verde). Por dentro continua `ultron` (rotas, arquivos, eventos).
 - O Ultron ganhou o mascote novo (imagem `doc/mascote/WhatsApp Image 2026-11-04 at
   11.19.56.jpeg`): cabelo dourado, olhos vermelhos fechados sorrindo, capa verde, colete e pés
   descalços. É uma grade de 28×35 em `bot/templates/_ultron.html`, a mesma da vila; a amostra

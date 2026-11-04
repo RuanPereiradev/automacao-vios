@@ -1,4 +1,8 @@
-"""Vila 01 (Ultron) no campo, com o mascote novo do Ultron.
+"""Vila 01 do Sam (antes "Ultron") no campo, com o mascote novo.
+
+Etapa 1 (UCAMPO): mascote e cenário. Etapa 2: o nome "Ultron" vira "Sam" em tudo que a vila mostra
+(placa, aba, fala, registro, "página do Sam") e a bolinha de status fica dourada como o cabelo dele.
+O código interno e os eventos continuam "ultron".
 
 Mascote: o personagem de doc/mascote/WhatsApp Image 2026-11-04 at 11.19.56.jpeg (grade 28×35 em
 doc/mascote/ultron-campo.html), de cabelo dourado, capa verde, colete e pés descalços. Parado, ele
@@ -21,14 +25,18 @@ caminho = sys.argv[1]
 linhas = open(caminho, encoding="utf-8").read().split("\n")
 IDX = next(i for i, l in enumerate(linhas) if l.startswith('"<!DOCTYPE html>'))
 t = json.loads(linhas[IDX])
-if "UCAMPO" in t:
-    sys.exit("a Vila 01 já está no campo")
+ETAPA1 = "UCAMPO" not in t
+ETAPA2 = "'01 · Sam'" not in t
+if not (ETAPA1 or ETAPA2):
+    sys.exit("a Vila 01 já está no campo, com o Sam")
 if "BROBOT" not in t:
     sys.exit("rode antes o doc/vila/ligar_zangao.py, ligar_albi.py e ligar_bumblebee.py")
 
 
-def troca(velho, novo):
+def troca(velho, novo, etapa=1):
     global t
+    if not {1: ETAPA1, 2: ETAPA2}[etapa]:
+        return
     assert t.count(velho) == 1, ("trecho não encontrado (ou repetido)", velho[:90])
     t = t.replace(velho, novo)
 
@@ -206,7 +214,10 @@ troca("""      if (!on) { R(O + 63, 4, 3, 3, '#3a2a26'); R(X + 15, Y, 2, 2, '#3a
   }
 """)
 
-# 5) a fala de apresentação continua a mesma; o nome continua Ultron
+# 5) etapa 2: o nome na tela vira Sam (o código interno e os eventos continuam "ultron") e a cor dele
+if ETAPA2:
+    troca("dotColor: vi === 0 ? (off ? '#5a5f67' : '#ff5a3c') : '#5a5f67'", "dotColor: vi === 0 ? (off ? '#5a5f67' : '#fdc155') : '#5a5f67'", 2)
+    t = t.replace("página Ultron", "página do Sam").replace("Ultron", "Sam").replace("ULTRON", "SAM")
 linhas[IDX] = json.dumps(t, ensure_ascii=False).replace("</", "<\\u002F")
 open(caminho, "w", encoding="utf-8").write("\n".join(linhas))
-print("Vila 01 no campo, com o mascote novo do Ultron, em", caminho)
+print("Vila 01 no campo, com o Sam, em", caminho)

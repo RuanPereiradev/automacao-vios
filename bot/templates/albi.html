@@ -16,7 +16,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
 {% include "_estilo.html" %}
 <style>
-  /* cores do Albi por cima do estilo do Ultron */
+  /* cores do Albi por cima do estilo do Sam */
   :root { --red: #f29bbf; --red-escuro: #c96a93; }
   body { background: radial-gradient(ellipse at top, #1d1218 0%, var(--fundo) 55%) fixed, var(--fundo); }
   .marca b { text-shadow: 0 0 12px rgba(242, 155, 191, .6); }
@@ -43,7 +43,7 @@
   <a href="{{ url_for('albi_pagina') }}">{{ albi("parado", 48, "albi-topo") }}
     <span><span class="marca"><b>A</b>LBI</span><br><span class="sub">pesquisa de processos no Sonar</span></span></a>
   <span class="acoes" style="margin-left: auto">
-    <a class="botao secundario" href="{{ url_for('inicio') }}">Ultron</a>
+    <a class="botao secundario" href="{{ url_for('inicio') }}">Sam</a>
     {% if zangao_ligado %}<a class="botao secundario" href="{{ url_for('zangao_pagina') }}">Bumblebee</a>{% endif %}
     <a class="botao secundario" href="{{ url_for('albi_historico') }}">Histórico</a>
   </span>

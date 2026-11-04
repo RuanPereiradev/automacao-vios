@@ -25,7 +25,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ultron — envio ao VIOS</title>
+<title>Sam — envio ao VIOS</title>
 {{ ultron_icone() }}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
@@ -34,7 +34,7 @@
 <body>
 <header>
   <a href="{{ url_for('inicio') }}">{{ ultron("parado", 48, "ultron-topo") }}
-    <span><span class="marca"><b>U</b>LTRON</span><br><span class="sub">envio de tarefas ao VIOS</span></span></a>
+    <span><span class="marca marca-sam"><b>S</b>AM</span><br><span class="sub">envio de tarefas ao VIOS</span></span></a>
   <span class="acoes" style="margin-left: auto">
     {% if zangao_ligado %}<a class="botao secundario" href="{{ url_for('zangao_pagina') }}">Bumblebee</a>{% endif %}
     {% if albi_ligado %}<a class="botao secundario" href="{{ url_for('albi_pagina') }}">Albi</a>{% endif %}
@@ -49,7 +49,7 @@
       <label class="soltar" id="soltar">
         {{ ultron("parado", 48, "ultron-caixa") }}
         <span class="titulo" id="soltar-titulo">Solte o .txt aqui</span>
-        <span class="suave" id="soltar-sub">ou clique para escolher o arquivo — o Ultron confere tudo antes de gravar</span>
+        <span class="suave" id="soltar-sub">ou clique para escolher o arquivo — o Sam confere tudo antes de gravar</span>
         <input type="file" name="arquivo" accept=".txt,text/plain" required id="arquivo">
       </label>
     </form>
@@ -235,12 +235,12 @@ SENTENÇA
       <div class="numero"><b>{{ ja | length }}</b>já lançada(s)</div>
     </div>
     {% if envio.reconstruido %}<p class="aviso">{{ envio.reconstruido }}</p>{% endif %}
-    <p class="suave">CIs com problema ou já lançadas não são enviadas. Duplicatas: conferidas com as intimações que o Ultron
+    <p class="suave">CIs com problema ou já lançadas não são enviadas. Duplicatas: conferidas com as intimações que o Sam
       capturou{% if nao_capturadas %} ({{ nao_capturadas | length }} CI(s) deste arquivo não foram capturadas){% endif %} e de novo
       no envio, lendo no VIOS o texto de cada CI antes de gravar. A cópia não é lançada.</p>
 
     {% if editavel %}
-    {% if envio.so_teste %}<p class="aviso"><b>Arquivo de teste</b> (começa com <code>MODO: TESTE</code>): o Ultron só preenche o
+    {% if envio.so_teste %}<p class="aviso"><b>Arquivo de teste</b> (começa com <code>MODO: TESTE</code>): o Sam só preenche o
       formulário do VIOS e tira print, <b>nada é gravado</b>.</p>{% endif %}
     <form method="post" action="{{ url_for('enviar', envio_id=envio_id) }}" class="acoes" id="form-enviar">
       {% if envio.so_teste %}
@@ -253,7 +253,7 @@ SENTENÇA
       {% endif %}
       {% endif %}
       <a class="botao secundario" href="{{ url_for('inicio') }}">Subir outro arquivo</a>
-      {% if ocupado %}<span class="aviso">O Ultron está ocupado com outro envio.</span>{% endif %}
+      {% if ocupado %}<span class="aviso">O Sam está ocupado com outro envio.</span>{% endif %}
       <span class="aviso" id="nao-salvo" hidden>Há alterações não salvas: clique em "Salvar e conferir" antes de enviar.</span>
     </form>
     <p class="suave">Para corrigir, edite os campos abaixo e clique em <b>Salvar e conferir</b>. "Testar sem gravar" preenche o

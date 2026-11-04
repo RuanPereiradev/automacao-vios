@@ -12,6 +12,17 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — O Ultron agora se chama Sam (04/11/2026)
+- Na tela, o bot de envio ao VIOS passa a se chamar **Sam**: título e marca da página, links
+  "Sam" nas páginas do Albi e do Bumblebee, textos da página de envio ("o Sam confere…"), cena da
+  página e, na Vila 01, placa "DOCA 01 · SAM", aba "01 · SAM", fala, status, registro e "página
+  do Sam".
+- A marca do topo está nas cores do boneco: o **S dourado** como o cabelo e o **AM verde** como a
+  capa (`.marca-sam` em `_estilo.html`). A bolinha de status da Vila 01 também ficou dourada.
+- O código interno não muda: rotas, arquivos (`bot/`, `enviar.py`), `ultron()` nos templates e
+  eventos `bot: "ultron"`. Na vila, a troca está na etapa 2 do `doc/vila/ligar_vila01_campo.py`
+  (já aplicada).
+
 ### Alterado — Mascote novo do Ultron e Vila 01 no campo (04/11/2026)
 - **Mascote**: o personagem da imagem que o usuário mandou (`doc/mascote/WhatsApp Image 2026-11-04 at
   11.19.56.jpeg`), passado para uma grade de pixels de 28×35. Tem cabelo dourado, olhos vermelhos
