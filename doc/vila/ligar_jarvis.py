@@ -59,10 +59,16 @@ troca("    this.zstatusTick(); this.zpoll = setInterval(() => this.zstatusTick()
 troca("clearInterval(this.zpoll);", "clearInterval(this.zpoll); clearInterval(this.jpoll);")
 # tecla A / Enter na Vila 04 = botão principal do Jarvis
 troca("  action() {\n", "  action() {\n    if (this.state.village === 3) { const b = this.jbotoes(); if (b.a) b.a.fn(); return; }\n")
-troca("  patrol() {", r"""  jalvo() {
+troca("  patrol() {", r"""  jfase() {
     const r = this.state.jrun, srv = this.state.jsrv;
-    if (!r || r.fim || !(srv && srv.rodando)) return null;
-    return r.etapa === 'salvando' ? [75, 4] : [69, 4];  // Planilhas ou Leitura dos processos
+    if (!r) return null;
+    if (r.planilhasAte && Date.now() < r.planilhasAte) return 'planilhas';  // fica um pouco nas Planilhas
+    if (r.fim || !(srv && srv.rodando)) return null;
+    return r.etapa === 'entrando' ? 'torre' : r.etapa === 'salvando' ? 'planilhas' : 'leitura';
+  }
+  jalvo() {
+    // Torre VIOS (entrando no VIOS), Leitura dos processos (lendo cada processo) e Planilhas (salvando)
+    return { torre: [74, 10], leitura: [69, 4], planilhas: [75, 4] }[this.jfase()] || null;
   }
   jpatrol() {
     const j = this.j, pts = [[69, 4], [73, 8], [66, 10], [63, 4]], alvo = this.jalvo();
@@ -89,8 +95,12 @@ troca("  patrol() {", r"""  jalvo() {
       else r = { ...r };
       if (ev.tipo === 'grupo') Object.assign(r, { grupo: ev.grupo, grupos: ev.grupos || r.grupos, feito: 0, total: ev.processos || 0, etapa: 'lendo' });
       else if (ev.tipo === 'processo') Object.assign(r, { grupo: ev.grupo, grupos: ev.grupos || r.grupos, feito: ev.feito, total: ev.total, gasto: ev.gasto, etapa: 'lendo' });
-      else if (ev.tipo === 'grupo_fim') r.etapa = 'salvando';
-      else if (ev.tipo === 'execucao_fim') { r.fim = { resultado: ev.resultado, planilhas: ev.planilhas || 0, falhas: ev.falhas || 0, motivo: ev.motivo }; r.gasto = ev.gasto ?? r.gasto; }
+      const recente = ev.ts && Date.now() - new Date(ev.ts).getTime() < 30000;
+      if (ev.tipo === 'grupo_fim') { r.etapa = 'salvando'; if (recente) r.planilhasAte = Date.now() + 7000; }
+      else if (ev.tipo === 'execucao_fim') {
+        r.fim = { resultado: ev.resultado, planilhas: ev.planilhas || 0, falhas: ev.falhas || 0, motivo: ev.motivo }; r.gasto = ev.gasto ?? r.gasto;
+        if (recente && ev.resultado !== 'parou') r.planilhasAte = Date.now() + 9000;
+      }
       return { jrun: r };
     });
     setTimeout(() => this.jfalar(), 0);
@@ -104,7 +114,7 @@ troca("  patrol() {", r"""  jalvo() {
       txt = r.etapa === 'entrando' ? pre + 'Entrando no VIOS, só para ler…'
         : r.etapa === 'salvando' ? pre + 'Grupo ' + r.grupo + ' de ' + r.grupos + ' lido: salvando a planilha.'
         : pre + 'Grupo ' + r.grupo + ' de ' + r.grupos + ': processo ' + r.feito + ' de ' + r.total + ' · gasto ' + this.jdinheiro(r.gasto) + '.';
-    } else if (srv && srv.rodando) txt = 'Começando o relatório…';
+    } else if (srv && srv.rodando && !(r && r.fim)) txt = 'Começando o relatório…';
     else if (r && r.fim) {
       const f = r.fim, g = ' Gasto com a IA: ' + this.jdinheiro(r.gasto) + '.';
       txt = f.resultado === 'concluido' ? (r.teste ? 'Teste concluído (2 processos por grupo): ' + f.planilhas + ' planilha(s) na pasta teste.' : 'Pronto! ' + f.planilhas + ' planilha(s) do mês gerada(s). Baixe em "Planilhas".') + g
@@ -147,7 +157,7 @@ DESENHO = {
         C: '#7fe3ff', W: '#ffffff', F: chama ? '#ffd23f' : '#ff7a1a', Q: chama ? '#ff7a1a' : null };
       Component.JSPR.forEach((row, y) => row.split('').forEach((ch, x) => { if (ch !== '.' && JP[ch]) R(j.x + x, j.y + jb + y - 2, 1, 1, JP[ch]); }));""",
     # núcleo de IA: esfera em espiral girando, dois anéis tracejados e o centro pulsando
-    "nucleo": r"""      const cx = j.x + 8, cy = j.y + jb + 4, rot = f * 0.025, rr = 6.5 + 0.4 * Math.sin(f * 0.06), ct = Math.cos(0.42), sn = Math.sin(0.42);
+    "nucleo": r"""      const cx = j.x + 8, cy = j.y + jb + 4, rot = ff * 0.025, rr = 6.5 + 0.4 * Math.sin(ff * 0.06), ct = Math.cos(0.42), sn = Math.sin(0.42);
       const halo = c.createRadialGradient(cx, cy, 0, cx, cy, rr * 1.9);
       halo.addColorStop(0, 'rgba(120,200,255,.35)'); halo.addColorStop(1, 'rgba(30,90,160,0)');
       c.fillStyle = halo; c.fillRect(cx - rr * 2, cy - rr * 2, rr * 4, rr * 4);
@@ -155,28 +165,61 @@ DESENHO = {
         const t0 = i / 69, ph = Math.acos(1 - 2 * t0), th = t0 * 10 * Math.PI * 2;
         const x = rr * Math.sin(ph) * Math.cos(th), y = rr * Math.cos(ph), z = rr * Math.sin(ph) * Math.sin(th);
         const x1 = x * Math.cos(rot) - z * Math.sin(rot), z1 = x * Math.sin(rot) + z * Math.cos(rot), y2 = y * ct - z1 * sn, z2 = y * sn + z1 * ct;
-        R(cx + x1, cy + y2, 1, 1, z2 < 0 ? ((i + (f >> 3)) % 7 ? '#5ab4ff' : '#e6fbff') : '#1f4f86');
+        R(cx + x1, cy + y2, 1, 1, z2 < 0 ? ((i + (ff >> 3)) % 7 ? '#5ab4ff' : '#e6fbff') : '#1f4f86');
       }
       [[1.45, 0.32, 0.03, '#7fc8ff'], [1.2, -0.5, -0.045, '#cfeaff']].forEach(([k, inc, vel, cor]) => {
         for (let s = 0; s < 40; s++) {
           if ((s >> 2) % 2) continue;
-          const a = s / 40 * Math.PI * 2 + f * vel, x = rr * k * Math.cos(a), z = rr * k * Math.sin(a);
+          const a = s / 40 * Math.PI * 2 + ff * vel, x = rr * k * Math.cos(a), z = rr * k * Math.sin(a);
           R(cx + x, cy + z * inc, 1, 1, z < 0 ? cor : '#2f6fae');
         }
       });
-      const p = 0.85 + 0.15 * Math.sin(f * 0.06);
+      const p = 0.85 + 0.15 * Math.sin(ff * 0.06) + (fase ? 0.15 : 0);
       const nucleo = c.createRadialGradient(cx, cy, 0, cx, cy, 4 * p);
       nucleo.addColorStop(0, 'rgba(255,255,255,1)'); nucleo.addColorStop(0.35, 'rgba(170,235,255,.85)'); nucleo.addColorStop(1, 'rgba(60,150,255,0)');
       c.fillStyle = nucleo; c.fillRect(cx - 5, cy - 5, 10, 10);
       R(cx - 1, cy - 1, 2, 2, '#ffffff');""",
 }
 MASCOTE = sys.argv[2] if len(sys.argv) > 2 else "nucleo"
+JCENAS = r"""
+      const ox = j.x + 8, oy = j.y + jb + 4, run = this.state.jrun || {};
+      if (fase === 'torre') {
+        // Torre VIOS: entrando no VIOS. Sinais sobem do núcleo até o topo da torre e ondas saem dela
+        const topo = [960 + TX + 16, TY + 1];
+        for (let i = 0; i < 3; i++) { const k = ((ff + i * 14) % 42) / 42; R(ox + (topo[0] - ox) * k, oy + (topo[1] - oy) * k - Math.sin(k * Math.PI) * 6, 2, 2, i % 2 ? '#e6fbff' : '#7fe3ff'); }
+        for (let w = 0; w < 2; w++) {
+          const raio = ((ff + w * 24) % 48) / 48 * 14;
+          for (let a = 0; a < 12; a++) { const ang = Math.PI * (1.1 + a / 11 * 0.8); R(topo[0] + Math.cos(ang) * raio, topo[1] + Math.sin(ang) * raio, 1, 1, raio < 9 ? '#7fe3ff' : '#2f6fae'); }
+        }
+      } else if (fase === 'leitura') {
+        // Leitura dos processos: a porta acende e as folhas de cada processo saem girando para dentro do núcleo
+        const px = 960 + 9 * 16, py = 16 + 48 - 16;
+        R(px + 3, py, 10, 15, (ff >> 3) % 2 ? 'rgba(127,227,255,.35)' : 'rgba(127,227,255,.2)');
+        for (let i = 0; i < 4; i++) {
+          const k = ((ff + i * 11) % 44) / 44, ang = k * Math.PI * 3, raio = (1 - k) * 5;
+          const x = px + 6 + (ox - px - 6) * k + Math.cos(ang) * raio, y = py + 4 + (oy - py - 4) * k + Math.sin(ang) * raio;
+          R(x - 2, y - 2, 4, k > 0.8 ? 3 : 5, '#f6f1e6');  // a folha encolhe ao entrar no núcleo
+          if (k < 0.8) { R(x - 1, y - 1, 2, 1, '#9aa0a8'); R(x - 1, y + 1, 2, 1, '#9aa0a8'); }
+        }
+        if (run.total) { const prog = Math.min(1, (run.feito || 0) / run.total); R(ox - 9, oy - 14, 18, 4, '#201f1d'); R(ox - 8, oy - 13, 16, 2, '#1a4f5c'); R(ox - 8, oy - 13, Math.round(16 * prog), 2, '#7fe3ff'); }
+      } else if (fase === 'planilhas') {
+        // Planilhas: o núcleo manda os dados para a tela e a planilha vai sendo preenchida, célula por célula
+        const tx = 960 + 14 * 16 + 35, ty = 16 + 19, pronto = !!run.fim;
+        R(tx, ty, 26, 14, '#0d1a26');
+        for (let col = 0; col < 3; col++) R(tx + 1 + col * 8, ty + 1, 7, 2, '#c99a3a');
+        const n = pronto ? 12 : Math.floor(ff / 6) % 13;
+        for (let c2 = 0; c2 < 12; c2++) { const lin = Math.floor(c2 / 3), col = c2 % 3; R(tx + 1 + col * 8, ty + 4 + lin * 2.5, 7, 2, c2 < n ? (c2 === n - 1 && !pronto ? '#e6fbff' : '#3fb8c8') : '#1f2d3a'); }
+        if (pronto) { const vx = tx + 9, vy = ty + 5; [[0, 2], [1, 3], [2, 4], [3, 3], [4, 2], [5, 1], [6, 0]].forEach(([dx, dy]) => R(vx + dx, vy + dy, 2, 2, '#3fd17a')); }
+        else for (let i = 0; i < 3; i++) { const k = ((ff + i * 12) % 36) / 36; R(ox + (tx + 13 - ox) * k, oy + (ty + 14 - oy) * k - Math.sin(k * Math.PI) * 5, 2, 2, '#7fe3ff'); }
+      }"""
 assert MASCOTE in DESENHO, f"mascote '{MASCOTE}' não existe: {', '.join(DESENHO)}"
 troca("    const eyes = {", r"""    { const j = this.j, voando = j.path.length > 0 && j.wait <= 0, jb = voando ? -2 : (f >> 4) % 2 ? -3 : -2;
+      const alvo = this.jalvo(), fase = alvo && !j.path.length && Math.round(j.x / 16) === alvo[0] && Math.round(j.y / 16) === alvo[1] ? this.jfase() : null;
+      const ff = this.jff = (this.jff || 0) + (fase ? 3 : 1);  // relógio do Jarvis: 3x mais rápido trabalhando
       R(960 + 63, 4, 3, 3, (f >> 5) % 2 ? '#7fe3ff' : '#1a4f5c');
-      R(960 + TX + 15, TY, 2, 2, (f >> 5) % 2 ? '#7fe3ff' : '#1a4f5c');
+      R(960 + TX + 15, TY, 2, 2, fase === 'torre' ? ((f >> 2) % 2 ? '#e6fbff' : '#7fe3ff') : (f >> 5) % 2 ? '#7fe3ff' : '#1a4f5c');
       c.fillStyle = 'rgba(0,0,0,.22)'; c.fillRect(Math.round(j.x + 4), Math.round(j.y + 15), 8, 2);
-""" + DESENHO[MASCOTE] + """ }
+""" + DESENHO[MASCOTE] + JCENAS + """ }
     const eyes = {""")
 
 # 4) painel da Vila 04

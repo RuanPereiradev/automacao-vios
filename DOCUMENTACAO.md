@@ -616,8 +616,15 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `/jarvis/planilha/<mês>/<arquivo>` (só arquivos listados; nada fora da pasta).
 - O Jarvis roda em segundo plano, com ambiente limpo (nenhuma variável do Ultron chega a ele),
   e manda o andamento por `POST /eventos` (bot `jarvis`, só contagens: grupo N de M, processo X
-  de Y, gasto). A vila mostra na caixa de fala e leva o Jarvis à Leitura dos processos e às
-  Planilhas. Instalação no Mac: `RELATORIO_PROCESSOS.md`, seção 5.
+  de Y, gasto). A vila mostra na caixa de fala e o Jarvis vai a cada lugar com uma animação:
+  - **Torre VIOS** (entrando no VIOS): sinais sobem do núcleo até o topo da torre, ondas saem
+    dela e a luz da torre pisca rápido;
+  - **Leitura dos processos** (lendo cada processo): a porta acende, as folhas saem girando para
+    dentro do núcleo e uma barra em cima dele mostra processo X de Y;
+  - **Planilhas** (salvando cada grupo e no fim): a tela do prédio vira uma planilha que vai
+    sendo preenchida célula por célula; no fim, fica cheia com um visto verde. O Jarvis fica uns
+    segundos lá (salvar é rápido demais para ver) e depois volta à ronda.
+  Trabalhando, o núcleo gira 3 vezes mais rápido. Instalação no Mac: `RELATORIO_PROCESSOS.md`, seção 5.
 - Se a vila for baixada de novo do site: rodar `ligar_zangao.py` e depois
   `python3 doc/vila/ligar_jarvis.py bot/vila/vila.html` (no fim, `propulsor` troca o
   núcleo pelo mascote com propulsores).

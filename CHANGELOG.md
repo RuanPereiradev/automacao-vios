@@ -12,6 +12,18 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Jarvis: uma animação em cada lugar da Vila 04 (04/11/2026)
+- Torre VIOS (entrando no VIOS): sinais do núcleo até o topo da torre, ondas e luz piscando rápido.
+- Leitura dos processos (lendo): a porta acende, folhas entram girando no núcleo e uma barra
+  mostra processo X de Y.
+- Planilhas (salvando cada grupo e no fim): a tela do prédio vira uma planilha sendo preenchida;
+  no fim, cheia e com um visto verde. O Jarvis fica uns segundos lá antes de voltar à ronda.
+- O núcleo gira 3 vezes mais rápido enquanto trabalha.
+
+### Corrigido — Jarvis: fala "Começando o relatório…" no fim (04/11/2026)
+- Quando o último processo, o fim do grupo e o fim da execução chegavam juntos, a fala mostrava
+  "Começando o relatório…" por um instante antes do resultado.
+
 ### Alterado — Jarvis: a pessoa escolhe os grupos do relatório (04/11/2026)
 - A página `/jarvis` mostra os grupos do `PROCESSOS_GRUPOS` com caixas de marcar ("Marcar todos"
   marca e desmarca); "Gerar relatório do mês" (com confirmação) e "Testar (2 processos por grupo)"
