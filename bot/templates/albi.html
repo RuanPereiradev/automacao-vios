@@ -196,7 +196,7 @@ EMPRESA: Empresa B
 
 {% elif tela == "resumo" %}
   <div class="cartao">
-    <div class="topo-hist"><h2>Resumo para a empresa</h2>
+    <div class="topo-hist"><h2>Mensagens prontas</h2>
       <a class="botao secundario" href="{{ url_for('albi_execucao', execucao_id=envio_id) }}">Voltar</a></div>
     <p class="suave">Mensagem montada com os dados do relatório: dá para editar aqui antes de copiar. Mande junto o
       relatório em PDF (o detalhe de cada processo vai nele). O CPF vai mascarado (***.456.789-**).</p>
@@ -206,6 +206,27 @@ EMPRESA: Empresa B
       <a class="botao secundario" href="{{ url_for('albi_arquivo', envio_id=envio_id, nome='mensagem.txt') }}">mensagem.txt</a>
     </p>
   </div>
+  {% if cac.mensagens %}
+  <div class="cartao">
+    <div class="topo-hist"><h2>Mensagens da CAC · uma por pessoa com processos</h2></div>
+    <p class="suave">No padrão da Central de Atendimento ao Cliente, pronta para o WhatsApp (o negrito é com *asteriscos*).
+      Traz só o que está nos registros do Sonar (número, data, vara, partes e o papel de cada uma, ação, assunto, valor e situação)
+      e termina com a ressalva de que os autos não foram consultados. Sem "Sr./Sra.": acrescente ao revisar, se quiser.</p>
+    <p class="acoes" id="atendentes"><span class="suave">Atendente:</span>
+      {% for a in cac.atendentes %}<button type="button" class="{{ 'primario' if loop.first else 'secundario' }}" data-atendente="{{ a }}">{{ a }}</button> {% endfor %}
+      <a class="botao secundario" href="{{ url_for('albi_arquivo', envio_id=envio_id, nome='mensagens_cac.txt') }}">mensagens_cac.txt</a>
+    </p>
+  </div>
+  {% for m in cac.mensagens %}
+  <div class="cartao">
+    <div class="topo-hist"><h3 class="empresa-a">{{ m.nome }} <span class="suave">· {{ m.empresa }} · pedido S{{ m.pedido }} · {{ m.processos }} processo(s)</span></h3>
+      <button class="primario copiar" type="button" data-alvo="cac-{{ loop.index }}">Copiar mensagem</button></div>
+    <textarea class="mensagem cac" id="cac-{{ loop.index }}" rows="{{ [m.texto.count('\n') + 2, 40] | min }}">{{ m.texto }}</textarea>
+  </div>
+  {% endfor %}
+  <div class="cartao"><h2>Resumo para a empresa</h2>
+    <p class="suave">Uma mensagem por empresa, com todas as pessoas (quem tem e quem não tem processos).</p></div>
+  {% endif %}
   {% for m in mensagens %}
   <div class="cartao">
     <div class="topo-hist"><h3 class="empresa-a">{{ m.empresa or "Mensagem" }}</h3>
@@ -298,6 +319,11 @@ EMPRESA: Empresa B
   }
 
   {% if tela == "resumo" %}
+  // atendente: troca o "*Nome:*" do começo de cada mensagem da CAC (mantém o que já foi editado no resto)
+  document.querySelectorAll('#atendentes button[data-atendente]').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#atendentes button[data-atendente]').forEach(x => x.className = x === b ? 'primario' : 'secundario');
+    document.querySelectorAll('textarea.cac').forEach(t => { t.value = t.value.replace(/^\*[^*\n]+:\*/, '*' + b.dataset.atendente + ':*'); });
+  }));
   // copiar: a página é http (rede local), onde navigator.clipboard não existe; execCommand funciona
   document.querySelectorAll('button.copiar').forEach(b => b.addEventListener('click', () => {
     const t = $(b.dataset.alvo), txt = b.textContent;

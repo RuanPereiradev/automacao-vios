@@ -29,6 +29,9 @@ a planilha) e escreve o `resultado.txt`.
    do que já foi baixado (sem Sonar): `.venv/bin/python relatorio.py <pasta do resultado>`.
    Escreve também o `mensagem.txt`, com o resumo pronto para mandar a cada empresa (CPF mascarado). Na
    página, é o botão "Capturar resumo".
+   E `mensagens_cac.txt`/`.json` (`mensagem_cac.py`): uma mensagem por pessoa com processos, no padrão da CAC
+   ("*Beatriz Vasconcelos:* Informamos que…", "*1️⃣ Autor x Réu*", "Trata-se de…", situação e ressalva), só
+   com o que está nos registros do Sonar.
 7. Não compra duas vezes: o registro `saida/pedidos_confirmados.json` é anotado antes de cada
    clique em Confirmar; CPF já pesquisado para a mesma empresa nos últimos 30 dias usa o pedido
    anterior. Erro depois do clique vira "Conferir no Sonar" (nunca clica de novo); 3 seguidos param.

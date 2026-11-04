@@ -509,7 +509,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         """"Capturar resumo": a mensagem para a empresa (do relatório; gera antes, se ainda não tiver)."""
         envio_id = _id_albi(envio_id)
         if request.method == "POST":
-            if albi.mensagens(pasta_saida, envio_id) is None:
+            if albi.mensagens(pasta_saida, envio_id) is None or albi.mensagens_cac(pasta_saida, envio_id) is None:
                 try:
                     albi.gerar_relatorio(pasta_albi, pasta_saida, envio_id)
                 except albi.AlbiErro as e:
@@ -519,6 +519,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         if msgs is None:
             return redirect(url_for("albi_pagina", erro="esta execução ainda não tem o resumo: clique em \"Capturar resumo\""))
         return render_template("albi.html", tela="resumo", envio_id=envio_id, mensagens=msgs, textos=albi.TEXTOS,
+                               cac=albi.mensagens_cac(pasta_saida, envio_id) or {"atendentes": [], "mensagens": []},
                                arquivos=albi.arquivos(pasta_saida, envio_id))
 
     @app.route("/albi/ver/<envio_id>")

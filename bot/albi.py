@@ -293,6 +293,15 @@ def mensagens(pasta_saida, envio_id):
     return out
 
 
+def mensagens_cac(pasta_saida, envio_id):
+    """mensagens_cac.json (escrito pelo albi/mensagem_cac.py): {"atendentes", "mensagens"}; None se não existe."""
+    arq = pasta_resultado(pasta_saida, envio_id) / "mensagens_cac.json"
+    try:
+        return json.loads(arq.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
 def arquivos(pasta_saida, envio_id):
     """resultado.txt e planilhas desta execução (caminhos relativos à pasta do resultado)."""
     base = pasta_resultado(pasta_saida, envio_id)

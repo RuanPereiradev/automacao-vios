@@ -12,6 +12,36 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Albi: mensagem no padrão da CAC para cada pessoa com processos (04/11/2026)
+- Novo `albi/mensagem_cac.py` (chamado pelo `relatorio.py`). Escreve `mensagens_cac.txt` e
+  `mensagens_cac.json`, com **uma mensagem por pessoa com processos**, no modelo da Central de
+  Atendimento ao Cliente:
+  - abertura com a atendente: "*Beatriz Vasconcelos:* Informamos que, após consulta aos sistemas
+    do Poder Judiciário, foram localizados *dois processos* relacionados a *Nome.*";
+  - um bloco por processo: "*1️⃣ Autor x Réu*", depois "Trata-se de um processo de *classe* (área),
+    nº, iniciado em, perante a vara, na comarca/UF (tribunal), *na qual Nome figura como papel
+    (explicação) e Outra parte como parte autora/ré.*";
+  - em cada processo também: assunto cadastrado, valor da causa (com a ressalva do modelo, de
+    que não é valor reconhecido), segredo de justiça, aviso de que processo criminal não é
+    condenação, e situação atual (em tramitação, arquivado definitivamente, baixado, extinto,
+    suspenso);
+  - com mais de um processo, um parágrafo de conclusão (áreas, posição da pessoa, quantos em
+    andamento e quantos encerrados);
+  - no fim, a ressalva de que os autos não foram consultados.
+- **Não inventa nada.** O Sonar só entrega o cadastro de cada processo, e o "Detalhes do Pedido"
+  também não traz mais nada (conferido): não há fatos, movimentações nem decisões. Por isso a
+  mensagem não descreve fatos nem diz que houve condenação, pagamento ou resultado. Usa
+  "relacionados a *Nome*", sem "Sr./Sra.", porque o gênero não está nos dados. Devolve o acento
+  às palavras comuns que o Sonar manda sem acento ("EXECUCAO FISCAL" → "Execução fiscal") e
+  acerta a caixa ("4ª Vara de Execuções Fiscais", "S/A", "LTDA").
+- Página `/albi/resumo/<id>` ("Capturar resumo"): as mensagens da CAC vêm primeiro, com os botões
+  **Beatriz Vasconcelos / Renara Kathleem** (trocam o nome no começo de cada mensagem), "Copiar
+  mensagem" e o `mensagens_cac.txt`. Depois vem o resumo por empresa. Numa execução antiga, o
+  botão gera tudo de novo com o que já foi baixado.
+- Testado com planilha sintética (4 processos: trabalhista, cível, criminal em segredo de
+  justiça, execução fiscal arquivada) e pela página. O negrito do WhatsApp foi conferido (pares de
+  `*`).
+
 ### Alterado — Zangão vira Bumblebee, o robô que se transforma em carro (04/11/2026)
 - Novo mascote (desenho do usuário em `doc/mascote/zangao-transforma.html`): robô amarelo 24×26
   de frente e carro 30×12 de lado. **Ao se movimentar ele vira carro**: as 8 peças (cabeça,

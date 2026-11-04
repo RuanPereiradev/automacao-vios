@@ -644,6 +644,13 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   andamento com número e vara) e quem não tem, com a assinatura do escritório e o CPF
   mascarado. Dá para editar no campo, clicar em "Copiar mensagem" e mandar junto o
   relatório PDF.
+- **Mensagens da CAC** (na mesma tela do "Capturar resumo"): uma mensagem por pessoa com
+  processos, no padrão da Central de Atendimento ao Cliente (abertura com a atendente,
+  "*1️⃣ Autor x Réu*", "Trata-se de…", assunto, valor, situação atual, conclusão e ressalva).
+  Escolha a atendente (Beatriz Vasconcelos ou Renara Kathleem), revise e clique em "Copiar
+  mensagem". Ela usa só os registros do Sonar (cadastro do processo): fatos, movimentações e
+  decisões não vêm do Sonar, então não aparecem. Arquivos: `mensagens_cac.txt` e `.json`
+  (`albi/mensagem_cac.py`).
 - **Baixar de novo** (não compra): na execução já confirmada, o botão "Baixar de novo
   os resultados de cada um" (ou `./rodar.sh --arquivo X --baixar`) pega o número de
   cada pedido no registro e baixa de novo o PDF e a planilha, sem abrir a Nova

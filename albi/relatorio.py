@@ -9,6 +9,7 @@ o arquivo vem como .xls, mas é .xlsx por dentro) e escreve, na mesma pasta:
   processos.csv    um processo por linha, para abrir no Excel
   mensagem.txt     uma mensagem resumida por empresa, pronta para mandar (WhatsApp/e-mail) à
                    empresa que pediu a pesquisa (CPF mascarado; o detalhe vai no relatorio.pdf)
+  mensagens_cac.*  uma mensagem por pessoa com processos, no padrão da CAC (mensagem_cac.py)
 
 Só biblioteca padrão (o PDF usa o Selenium que o Albi já tem). Não entra no Sonar.
 
@@ -508,6 +509,8 @@ def gerar(pasta, driver=None, pdf=True, assinatura=ASSINATURA):
     escrever_html(pasta / "relatorio.html", titulo, pessoas)
     escrever_csv(pasta / "processos.csv", pessoas)
     escrever_mensagem(pasta / "mensagem.txt", titulo, pessoas, assinatura or ASSINATURA)
+    import mensagem_cac  # aqui dentro: o mensagem_cac usa as funções deste arquivo
+    mensagem_cac.gerar(pasta, pessoas)
     info = {"pessoas": len(pessoas), "com_processos": sum(1 for p in pessoas if p["processos"]),
             "processos": sum(len(p["processos"]) for p in pessoas), "avisos": [p["aviso"] for p in pessoas if p["aviso"]],
             "pdf": False}
