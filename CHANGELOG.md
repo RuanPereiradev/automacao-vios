@@ -12,6 +12,13 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Albi: links do resultado.txt e das planilhas (04/11/2026)
+- Na página `/albi`, "resultado.txt" e "baixar planilha" davam "Not Found" no Mac. Com
+  `SAIDA_PASTA` relativa (`saida`), o Flask procurava a pasta a partir de `bot/`. Agora a rota
+  `/albi/arquivo/...` usa o caminho completo. O "Baixar tudo (.zip)" já funcionava.
+- Testado com `SAIDA_PASTA=saida`: resultado.txt, planilha com acento/espaço no nome e .zip
+  respondem 200; caminho para fora da pasta continua 404.
+
 ### Adicionado — Albi confirma os pedidos, espera e baixa os resultados (04/11/2026)
 - Para cada pessoa, uma por vez: Nova Pesquisa com **Identificador Projeto = nome da empresa**
   (antes "Empresa · Nome"), CPF/CNPJ, Continuar, **Sacado = o escritório** (`SONAR_SACADO` no

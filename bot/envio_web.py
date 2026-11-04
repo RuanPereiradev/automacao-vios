@@ -491,7 +491,8 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     @app.route("/albi/arquivo/<envio_id>/<path:nome>")
     def albi_arquivo(envio_id, nome):
         """resultado.txt ou uma planilha baixada do Sonar."""
-        return send_from_directory(albi.pasta_resultado(pasta_saida, _id_albi(envio_id)), nome, as_attachment=True)
+        # caminho completo: com SAIDA_PASTA relativa (ex.: "saida"), o Flask procuraria dentro de bot/
+        return send_from_directory(albi.pasta_resultado(pasta_saida, _id_albi(envio_id)).resolve(), nome, as_attachment=True)
 
     @app.route("/albi/zip/<envio_id>")
     def albi_zip(envio_id):
