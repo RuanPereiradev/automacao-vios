@@ -7,6 +7,8 @@ o arquivo vem como .xls, mas é .xlsx por dentro) e escreve, na mesma pasta:
                    outra parte, valor, status e link)
   relatorio.pdf    o mesmo, em PDF (precisa do Chrome; sem ele, fica só o HTML)
   processos.csv    um processo por linha, para abrir no Excel
+  mensagem.txt     uma mensagem resumida por empresa, pronta para mandar (WhatsApp/e-mail) à
+                   empresa que pediu a pesquisa (CPF mascarado; o detalhe vai no relatorio.pdf)
 
 Só biblioteca padrão (o PDF usa o Selenium que o Albi já tem). Não entra no Sonar.
 
@@ -36,6 +38,9 @@ COLUNAS = {"doc": "CPF/CNPJ", "nome": "Nome/Razão Social", "base": "Online /  H
 VAZIO = {"", "N/A", "NA", "-", "—", "NO-URL"}
 ENCERRADO = ("ARQUIV", "BAIXA", "EXTIN", "ENCERR", "TRANSITAD")
 DESTAQUE = ("TRABALH", "CRIMIN", "PENAL")
+ASSINATURA = "RONEELY FEITOSA & SOCIEDADE DE ADVOGADOS"  # o escritório (o mesmo Sacado padrão do Albi)
+SEPARADOR = "=" * 48  # entre as mensagens de empresas diferentes no mensagem.txt
+MAX_ANDAMENTO = 5  # processos em andamento listados por pessoa na mensagem (o resto: "e mais N")
 
 
 class RelatorioErro(Exception):
@@ -398,12 +403,111 @@ def escrever_pdf(html_caminho, pdf_caminho, driver=None):
             driver.quit()
 
 
-def gerar(pasta, driver=None, pdf=True):
-    """Gera relatorio.html, processos.csv e (com pdf=True) relatorio.pdf. Devolve um resumo."""
+def mascarar_doc(doc):
+    """CPF no padrão de mascaramento (LGPD): ***.456.789-**. CNPJ fica inteiro (é de empresa)."""
+    d = so_digitos(doc)
+    return f"***.{d[3:6]}.{d[6:9]}-**" if len(d) == 11 else formatar_doc(doc)
+
+
+def _frase(texto):
+    """"EXECUCAO FISCAL" -> "Execucao fiscal" (o Sonar manda tudo em maiúsculas)."""
+    t = _limpo(texto)
+    return t[:1].upper() + t[1:].lower() if t == t.upper() else t  # "2ª VARA" também (ª não é maiúscula)
+
+
+def _qtd(n, um, varios):
+    return f"{n} {um if n == 1 else varios}"
+
+
+def _data_titulo(titulo):
+    m = re.search(r"(\d{2}/\d{2}/\d{4})", titulo or "")
+    return m.group(1) if m else datetime.now().strftime("%d/%m/%Y")
+
+
+def mensagens(titulo, pessoas, assinatura=ASSINATURA):
+    """Uma mensagem por empresa: [(empresa, texto)]. Só o que já está no relatório, resumido."""
+    empresas = []
+    for p in pessoas:
+        if not empresas or empresas[-1][0] != p["empresa"]:
+            empresas.append((p["empresa"], []))
+        empresas[-1][1].append(p)
+    out = []
+    for emp, ps in empresas:
+        com = [p for p in ps if p["processos"]]
+        nada = [p for p in ps if not p["processos"] and "NAO CONSTA" in _sem_acento(p["situacao"])]
+        outros = [p for p in ps if p not in com and p not in nada]
+        l = [f"Olá, equipe {emp}!" if emp else "Olá!", "",
+             f"Segue o resultado da pesquisa de processos judiciais solicitada, concluída em {_data_titulo(titulo)} "
+             f"(consulta no Sonar · Leme Forense, nos tribunais do Brasil).", "",
+             f"Pessoas pesquisadas: {len(ps)}",
+             f"• Sem processos encontrados: {len(nada)}",
+             f"• Com processos encontrados: {len(com)}"]
+        if outros:
+            l.append(f"• Sem resultado ainda / a conferir: {len(outros)}")
+        if com:
+            l += ["", "COM PROCESSOS"]
+            for i, p in enumerate(com, 1):
+                ps_ = p["processos"]
+                and_ = [x for x in ps_ if not x["encerrado"]]
+                enc = len(ps_) - len(and_)
+                reu = sum(1 for x in ps_ if x["polo"] == "Polo passivo")
+                l += ["", f"{i}. {p['nome']} (CPF {mascarar_doc(p['doc'])})",
+                      f"   {_qtd(len(ps_), 'processo', 'processos')}: {len(and_)} em andamento e {enc} "
+                      f"{'encerrado' if enc == 1 else 'encerrados'}. É ré/parte passiva em {reu}."]
+                r = _resumo(p)
+                if r["destaques"]:
+                    l.append(f"   Atenção: há processo(s) de {', '.join(d.lower() for d in r['destaques'])}.")
+                if and_:
+                    l.append("   Em andamento:")
+                    for x in and_[:MAX_ANDAMENTO]:
+                        onde = " · ".join(v for v in (_limpo(x.get("tribunal")), _frase(x.get("orgao"))) if v)
+                        quem = x["papel"] or x["polo"]
+                        l.append(f"   – {_frase(x.get('acao')) or _frase(x.get('ramo')) or 'Processo'}"
+                                 f"{' (' + _frase(x.get('ramo')) + ')' if _limpo(x.get('ramo')) and _limpo(x.get('acao')) else ''}"
+                                 f" · {onde} · nº {cnj(x.get('numero', ''))}"
+                                 f"{' · como ' + quem.lower() if quem and quem != 'Não identificado' else ''}"
+                                 f"{' · desde ' + data(x.get('distribuicao')) if data(x.get('distribuicao')) else ''}"
+                                 f"{' · valor ' + valor(x.get('valor'), x.get('moeda')) if valor(x.get('valor'), x.get('moeda')) else ''}")
+                    if len(and_) > MAX_ANDAMENTO:
+                        l.append(f"   – e mais {len(and_) - MAX_ANDAMENTO} em andamento (no relatório).")
+                if enc:
+                    ramos = sorted({_frase(x.get("ramo")).lower() for x in ps_ if x["encerrado"] and _limpo(x.get("ramo"))})
+                    l.append(f"   Encerrados: {enc}{' (' + ', '.join(ramos) + ')' if ramos else ''}.")
+                if p["aviso"]:
+                    l.append(f"   Obs.: {p['aviso']}.")
+        if nada:
+            l += ["", "SEM PROCESSOS ENCONTRADOS", ", ".join(p["nome"] or mascarar_doc(p["doc"]) for p in nada) + "."]
+        if outros:
+            l += ["", "SEM RESULTADO AINDA / A CONFERIR"]
+            # para a empresa, sem texto interno do Albi: só se ainda está processando ou em conferência
+            l += [f"• {p['nome'] or mascarar_doc(p['doc'])}: " + ("resultado ainda em processamento"
+                  if "SEM RESULTADO" in _sem_acento(p["situacao"]) else "em conferência") for p in outros]
+        fim = []
+        if com:
+            fim.append("O relatório completo, com todos os processos (número, vara, partes, valor e status), segue em anexo.")
+        elif not outros:
+            fim.append("Nenhum processo foi encontrado para as pessoas pesquisadas.")
+        if outros:
+            fim.append("Assim que os resultados pendentes saírem, enviamos a atualização.")
+        l += [""] + fim + [
+              "Os dados são os das bases dos tribunais consultadas pelo Sonar.", "",
+              "Qualquer dúvida, estamos à disposição.", "", "Atenciosamente,", assinatura]
+        out.append((emp, "\n".join(l)))
+    return out
+
+
+def escrever_mensagem(caminho, titulo, pessoas, assinatura=ASSINATURA):
+    textos = [t for _, t in mensagens(titulo, pessoas, assinatura)]
+    Path(caminho).write_text(f"\n\n{SEPARADOR}\n\n".join(textos) + "\n", encoding="utf-8")
+
+
+def gerar(pasta, driver=None, pdf=True, assinatura=ASSINATURA):
+    """Gera relatorio.html, processos.csv, mensagem.txt e (com pdf=True) relatorio.pdf. Devolve um resumo."""
     pasta = Path(pasta)
     titulo, pessoas = montar(pasta)
     escrever_html(pasta / "relatorio.html", titulo, pessoas)
     escrever_csv(pasta / "processos.csv", pessoas)
+    escrever_mensagem(pasta / "mensagem.txt", titulo, pessoas, assinatura or ASSINATURA)
     info = {"pessoas": len(pessoas), "com_processos": sum(1 for p in pessoas if p["processos"]),
             "processos": sum(len(p["processos"]) for p in pessoas), "avisos": [p["aviso"] for p in pessoas if p["aviso"]],
             "pdf": False}

@@ -35,6 +35,7 @@
   .pedido-a .detalhe { font-size: 13px; color: var(--suave); margin-top: 4px; }
   .pedido-a code { font-size: 13px; }
   .empresa-a { font-size: 16px; margin: 18px 0 6px; }
+  textarea.mensagem { font-size: 14px; line-height: 1.5; min-height: 320px; }
 </style>
 </head>
 <body>
@@ -193,6 +194,26 @@ EMPRESA: Empresa B
     {% endif %}
   </div>
 
+{% elif tela == "resumo" %}
+  <div class="cartao">
+    <div class="topo-hist"><h2>Resumo para a empresa</h2>
+      <a class="botao secundario" href="{{ url_for('albi_execucao', execucao_id=envio_id) }}">Voltar</a></div>
+    <p class="suave">Mensagem montada com os dados do relatório: dá para editar aqui antes de copiar. Mande junto o
+      relatório em PDF (o detalhe de cada processo vai nele). O CPF vai mascarado (***.456.789-**).</p>
+    <p class="acoes">
+      {% if "relatorio.pdf" in arquivos %}<a class="botao primario" href="{{ url_for('albi_arquivo', envio_id=envio_id, nome='relatorio.pdf') }}">Baixar o relatório PDF (para anexar)</a>{% endif %}
+      {% if "relatorio.html" in arquivos %}<a class="botao secundario" href="{{ url_for('albi_ver', envio_id=envio_id) }}" target="_blank" rel="noopener">Ver relatório</a>{% endif %}
+      <a class="botao secundario" href="{{ url_for('albi_arquivo', envio_id=envio_id, nome='mensagem.txt') }}">mensagem.txt</a>
+    </p>
+  </div>
+  {% for m in mensagens %}
+  <div class="cartao">
+    <div class="topo-hist"><h3 class="empresa-a">{{ m.empresa or "Mensagem" }}</h3>
+      <button class="primario copiar" type="button" data-alvo="msg-{{ loop.index }}">Copiar mensagem</button></div>
+    <textarea class="mensagem" id="msg-{{ loop.index }}" rows="{{ [m.texto.count('\n') + 2, 40] | min }}">{{ m.texto }}</textarea>
+  </div>
+  {% endfor %}
+
 {% elif tela == "execucao" %}
   <div class="cartao" id="execucao"></div>
   <p><a class="botao secundario" href="{{ url_for('albi_historico') }}">Voltar ao histórico</a></p>
@@ -209,7 +230,7 @@ EMPRESA: Empresa B
   const FINAIS = ['pronto', 'erro', 'ja_pesquisado', 'encontrados', 'nao_consta', 'sem_resultado', 'conferir', 'sem_pedido'];
   const ARQ = '{{ url_for("albi_arquivo", envio_id="ID", nome="NOME") }}', ZIP = '{{ url_for("albi_zip", envio_id="ID") }}';
   const RODAR = '{{ url_for("albi_rodar", envio_id="ID") }}', VER = '{{ url_for("albi_ver", envio_id="ID") }}';
-  const RELATORIO = '{{ url_for("albi_relatorio", envio_id="ID") }}';
+  const RELATORIO = '{{ url_for("albi_relatorio", envio_id="ID") }}', RESUMO = '{{ url_for("albi_resumo", envio_id="ID") }}';
   const link = (id, nome) => ARQ.replace('ID', encodeURIComponent(id)).replace('NOME', nome.split('/').map(encodeURIComponent).join('/'));
 
   function cartao(e) {
@@ -236,6 +257,10 @@ EMPRESA: Empresa B
     else if (compra && !rodando && arqs.includes('resultado.txt'))
       h += `<form method="post" action="${RELATORIO.replace('ID', encodeURIComponent(e.id))}" class="acoes">` +
            '<button class="primario">Gerar relatório dos processos</button></form>';
+    // mensagem resumida para a empresa que pediu (gera o relatório antes, se faltar)
+    if (compra && !rodando && arqs.includes('resultado.txt'))
+      h += `<form method="post" action="${RESUMO.replace('ID', encodeURIComponent(e.id))}" class="acoes">` +
+           '<button class="primario">Capturar resumo (mensagem para a empresa)</button></form>';
     // pesquisa já comprada e terminada: baixar de novo o PDF e a planilha de cada pedido (não compra nada)
     if (compra && !rodando && e.pedidos.some(p => p.pedido))
       h += `<form method="post" action="${RODAR.replace('ID', encodeURIComponent(e.id))}" class="acoes">` +
@@ -272,7 +297,15 @@ EMPRESA: Empresa B
     }).join('') + '</ul>';
   }
 
-  {% if tela == "execucao" %}
+  {% if tela == "resumo" %}
+  // copiar: a página é http (rede local), onde navigator.clipboard não existe; execCommand funciona
+  document.querySelectorAll('button.copiar').forEach(b => b.addEventListener('click', () => {
+    const t = $(b.dataset.alvo), txt = b.textContent;
+    const ok = () => { b.textContent = 'Copiado!'; setTimeout(() => { b.textContent = txt; }, 2000); };
+    if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(t.value).then(ok); return; }
+    t.focus(); t.select(); try { document.execCommand('copy'); ok(); } catch (_) { b.textContent = 'Selecione e copie (Ctrl+C)'; }
+  }));
+  {% elif tela == "execucao" %}
   $('execucao').innerHTML = cartao({{ e | tojson }});
   {% elif tela == "inicio" %}
   const form = $('form-arquivo'), caixa = $('soltar'), campo = $('arquivo');

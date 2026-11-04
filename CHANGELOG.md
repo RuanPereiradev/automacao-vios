@@ -12,6 +12,23 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Albi: "Capturar resumo", a mensagem para a empresa (04/11/2026)
+- O `albi/relatorio.py` escreve também o **mensagem.txt**, com uma mensagem por empresa, pronta
+  para WhatsApp ou e-mail. Ela é montada direto dos dados do relatório, sem IA, e tem:
+  saudação; data; quantas pessoas foram pesquisadas, quantas sem processo e quantas com; para
+  cada pessoa com processos, quantos estão em andamento e quantos encerrados, em quantos ela é
+  ré, alerta de trabalhista ou criminal, e os em andamento (ação, ramo, tribunal e vara, número
+  CNJ, papel da pessoa, data e valor; até 5, o resto "no relatório"); a lista de quem não tem
+  processo; e a assinatura do escritório. **O CPF vai mascarado (`***.456.789-**`).** Quem ainda
+  não tem resultado aparece como "em processamento" ou "em conferência", sem texto interno do
+  Albi.
+- Página `/albi`: botão **"Capturar resumo (mensagem para a empresa)"** na execução confirmada
+  (`POST /albi/resumo/<id>`; se o resumo ainda não existir, gera o relatório antes, sem Sonar).
+  Abre `/albi/resumo/<id>` com a mensagem de cada empresa num campo editável, os botões
+  **"Copiar mensagem"** (funciona também em http na rede local) e "Baixar o relatório PDF (para
+  anexar)", e o `mensagem.txt`.
+- Testado com uma planilha sintética (dados inventados) e duas empresas, pela página.
+
 ### Adicionado — Albi: relatório dos processos, sem ninguém abrir as planilhas (04/11/2026)
 - Novo `albi/relatorio.py` (só biblioteca padrão; nada a instalar). Lê o `resultado.txt` e as
   planilhas do Sonar. O arquivo vem como `.xls`, mas é `.xlsx` por dentro, com o cabeçalho na

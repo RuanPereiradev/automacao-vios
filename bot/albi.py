@@ -276,6 +276,23 @@ def gerar_relatorio(p, pasta_saida, envio_id):
     return r.stdout.strip()
 
 
+SEPARADOR = "=" * 48  # o mesmo do albi/relatorio.py, entre as mensagens de empresas diferentes
+
+
+def mensagens(pasta_saida, envio_id):
+    """mensagem.txt (escrito pelo relatorio.py) -> [{"empresa", "texto"}], uma por empresa; None se não existe."""
+    arq = pasta_resultado(pasta_saida, envio_id) / "mensagem.txt"
+    if not arq.is_file():
+        return None
+    out = []
+    for bloco in arq.read_text(encoding="utf-8").split(f"\n{SEPARADOR}\n"):
+        texto = bloco.strip()
+        if texto:
+            m = re.match(r"Olá, equipe (.+?)!", texto)
+            out.append({"empresa": m.group(1) if m else "", "texto": texto})
+    return out
+
+
 def arquivos(pasta_saida, envio_id):
     """resultado.txt e planilhas desta execução (caminhos relativos à pasta do resultado)."""
     base = pasta_resultado(pasta_saida, envio_id)

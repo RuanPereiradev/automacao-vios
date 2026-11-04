@@ -27,6 +27,8 @@ a planilha) e escreve o `resultado.txt`.
    por empresa, o resumo de todos e cada processo de quem tem processos (número, tribunal, vara,
    ação, assunto, data, papel da pessoa, outra parte, valor e status). Para gerar de novo a partir
    do que já foi baixado (sem Sonar): `.venv/bin/python relatorio.py <pasta do resultado>`.
+   Escreve também o `mensagem.txt`, com o resumo pronto para mandar a cada empresa (CPF mascarado). Na
+   página, é o botão "Capturar resumo".
 7. Não compra duas vezes: o registro `saida/pedidos_confirmados.json` é anotado antes de cada
    clique em Confirmar; CPF já pesquisado para a mesma empresa nos últimos 30 dias usa o pedido
    anterior. Erro depois do clique vira "Conferir no Sonar" (nunca clica de novo); 3 seguidos param.

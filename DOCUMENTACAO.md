@@ -638,6 +638,12 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   "processos.csv (Excel)". Numa execução antiga, use "Gerar relatório dos processos", que
   usa o que já foi baixado e não entra no Sonar. Pelo terminal: `cd albi &&
   .venv/bin/python relatorio.py <pasta>`.
+- **Capturar resumo**: o botão "Capturar resumo (mensagem para a empresa)" abre a mensagem
+  pronta para cada empresa (também em `mensagem.txt`): quantas pessoas foram pesquisadas,
+  quem tem processos (em andamento, encerrados, como ré, trabalhista/criminal e os em
+  andamento com número e vara) e quem não tem, com a assinatura do escritório e o CPF
+  mascarado. Dá para editar no campo, clicar em "Copiar mensagem" e mandar junto o
+  relatório PDF.
 - **Baixar de novo** (não compra): na execução já confirmada, o botão "Baixar de novo
   os resultados de cada um" (ou `./rodar.sh --arquivo X --baixar`) pega o número de
   cada pedido no registro e baixa de novo o PDF e a planilha, sem abrir a Nova

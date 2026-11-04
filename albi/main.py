@@ -739,7 +739,7 @@ def baixar_de_novo(driver, cfg, pedidos, saida, nome_txt):
 def gerar_relatorio(driver, saida):
     """relatorio.html / .pdf e processos.csv a partir do resultado.txt e das planilhas (nunca derruba a execução)."""
     try:
-        info = relatorio.gerar(saida, driver=driver)
+        info = relatorio.gerar(saida, driver=driver, assinatura=SACADO_PADRAO)
     except Exception as e:
         log.error("O relatório não foi gerado: %s", mensagem(e))
         return
