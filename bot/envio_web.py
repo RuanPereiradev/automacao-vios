@@ -492,15 +492,17 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
 
     @app.route("/jarvis/rodar", methods=["POST"])
     def jarvis_rodar():
-        """Roda o Jarvis em segundo plano: {"modo": "mes"} (todos os grupos) ou {"modo": "teste"} (2 por grupo)."""
+        """Roda o Jarvis em segundo plano com os grupos escolhidos na página /jarvis:
+        {"modo": "mes" | "teste", "grupos": ["CASA DO CELULAR", ...]}."""
         if not _mesma_origem():
             return jsonify(erro="pedido recusado"), 403
-        modo = (request.get_json(silent=True) or {}).get("modo")
+        pedido = request.get_json(silent=True) or {}
+        modo, escolhidos = pedido.get("modo"), pedido.get("grupos")
         try:
-            info = jarvis.rodar(pasta_jarvis, modo)
+            info = jarvis.rodar(pasta_jarvis, modo, escolhidos)
         except jarvis.JarvisErro as e:
             return jsonify(erro=str(e), **jarvis.status(pasta_jarvis)), 409
-        log.info("Jarvis disparado pela vila (%s) por %s", modo, request.remote_addr)
+        log.info("Jarvis disparado (%s, %d grupo(s)) por %s", modo, len(escolhidos), request.remote_addr)
         return jsonify(info)
 
     @app.route("/vila")

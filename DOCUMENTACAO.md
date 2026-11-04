@@ -609,9 +609,10 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   pulsando) faz a ronda e se apresenta no diálogo. `/vila?vila=4` abre direto nela.
 - **Rodar pela vila** (como o Zangão): com `JARVIS_PASTA` no `.env` do Ultron (pasta com
   `.venv`, `relatorio_processos.py` e `.env.usuario2` do Jarvis, branch `relatorio-processos`),
-  a caixa de fala da Vila 04 ganha "Gerar relatório do mês" (com confirmação: segundo clique em
-  até 6 s), "Testar (2 por grupo)" (salva em `AAAA-MM/teste/`) e "Planilhas" (página `/jarvis`,
-  com as planilhas para baixar). Rotas: `/jarvis`, `/jarvis/status`, `POST /jarvis/rodar`,
+  a caixa de fala da Vila 04 ganha "Escolher grupos e gerar" e "Planilhas", que abrem a página
+  `/jarvis`: lá a pessoa **marca os grupos** (do `PROCESSOS_GRUPOS` do Jarvis; nunca todos sem
+  escolher) e clica em "Gerar relatório do mês" (com confirmação: segundo clique em até 6 s) ou
+  "Testar (2 processos por grupo)" (salva em `AAAA-MM/teste/`); embaixo, as planilhas para baixar. Rotas: `/jarvis`, `/jarvis/status`, `POST /jarvis/rodar`,
   `/jarvis/planilha/<mês>/<arquivo>` (só arquivos listados; nada fora da pasta).
 - O Jarvis roda em segundo plano, com ambiente limpo (nenhuma variável do Ultron chega a ele),
   e manda o andamento por `POST /eventos` (bot `jarvis`, só contagens: grupo N de M, processo X

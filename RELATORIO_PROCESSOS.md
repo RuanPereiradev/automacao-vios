@@ -160,15 +160,20 @@ Campo vazio no VIOS fica vazio na planilha. Erro na IA aparece como
 ### Pela plataforma (vila do Ultron, no Mac)
 
 O robô se chama **Jarvis** e fica na **Vila 04** da vila do Ultron
-(`http://<IP do Mac>:5001/vila?vila=4`, com a senha da página do Ultron):
+(`http://<IP do Mac>:5001/vila?vila=4`, com a senha da página do Ultron). Na caixa de fala,
+**Escolher grupos e gerar** e **Planilhas** abrem a página do Jarvis (`/jarvis`, também pelo
+botão "Jarvis" no topo da página do Ultron):
 
-| Botão | O que faz |
-| --- | --- |
-| **Gerar relatório do mês** | Lê todos os processos dos grupos de `PROCESSOS_GRUPOS` e gera as planilhas do mês. Pede confirmação (segundo clique em até 6 s), porque gasta IA (~US$ 0,02 por processo) |
-| **Testar (2 por grupo)** | Só os 2 primeiros processos de cada grupo; salva em `AAAA-MM/teste/` e não substitui a planilha do mês (~US$ 0,06) |
-| **Planilhas** | Abre a página `/jarvis`: situação e a lista das planilhas para **baixar** |
+1. **Marcar os grupos** que vão ter relatório (a lista é o `PROCESSOS_GRUPOS` do `.env.usuario2`
+   do Jarvis; "Marcar todos" marca e desmarca todos). Nada roda sem escolher: sem grupo marcado,
+   os botões ficam desligados, e o servidor recusa grupo fora da lista.
+2. **Gerar relatório do mês**: lê todos os processos só dos grupos marcados e gera uma planilha
+   por grupo. Pede confirmação (segundo clique em até 6 s), porque gasta IA (~US$ 0,02 por processo).
+3. **Testar (2 processos por grupo)**: só os 2 primeiros processos de cada grupo marcado; salva em
+   `AAAA-MM/teste/` e não substitui a planilha do mês.
+4. Embaixo, a lista das planilhas com o botão **Baixar** (as de teste com o selo "teste").
 
-Enquanto roda, os botões de gerar somem e a caixa de fala mostra o andamento
+Enquanto roda, a página mostra os grupos escolhidos e se atualiza sozinha, e a caixa de fala da Vila 04 mostra o andamento
 ("Grupo 1 de 2: processo 37 de 101 · gasto US$ 0,70"); o Jarvis vai até a Leitura dos
 processos e, ao salvar cada planilha, até Planilhas. No fim: "Pronto! N planilha(s) do mês
 gerada(s)". A vila só recebe contagens: nunca nome de grupo, cliente ou número de processo.
@@ -235,7 +240,7 @@ e a chave da IA e **não vai para o GitHub**.
 | `SISTEMA_URL` | Página de login | `https://roneely.vios.com.br/entrar.php?` |
 | `SISTEMA_USUARIO` / `SISTEMA_SENHA` | Login do segundo usuário | (no `.env.usuario2`) |
 | `NAVEGACAO_URL_FINAL` | Tela aberta depois do login | `.../?pag=sys/relatorios/relatorios.php` |
-| `PROCESSOS_GRUPOS` | Grupos, separados por `\|`, ou `todos` | `CASA DO CELULAR\|CASA DO CELULAR MG/SP` |
+| `PROCESSOS_GRUPOS` | Grupos que podem ser escolhidos na página `/jarvis`, separados por `\|` (no terminal, sem `--grupo`, roda todos eles) | os 6: Plasfran Itapipoca, Camocim e Maranhão, LD Urbanismo, Casa do Celular e Casa do Celular MG/SP |
 | `RELATORIO_PASTA` | Pasta das planilhas (vazio = `<SAIDA_PASTA>/relatorios`) | vazio |
 | `LLM_PROVEDOR` | `anthropic` ou `openai` | `anthropic` |
 | `ANTHROPIC_API_KEY` | Chave da IA | (no `.env.usuario2`) |

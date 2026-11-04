@@ -1,8 +1,8 @@
 """Põe o Jarvis (relatório mensal de processos, segundo usuário do VIOS) na Vila 04:
 - a vila passa de 3 para 4 vilas; a Vila 04 acende (cores, placas e torre) e ganha o nome Jarvis;
 - o Jarvis (núcleo de IA: esfera azul em espiral, com anéis e o centro pulsando; ou o mascote carmesim com propulsores) faz a ronda na Vila 04 e se apresenta no diálogo;
-- no servidor (/vila): botões "Gerar relatório do mês" (com confirmação), "Testar (2 por grupo)" e "Planilhas"
-  (/jarvis/status, /jarvis/rodar e /jarvis do Ultron); os eventos do bot "jarvis" mostram o andamento
+- no servidor (/vila): botões "Escolher grupos e gerar" e "Planilhas", que abrem a página /jarvis do Ultron
+  (lá a pessoa marca os grupos e gera); /jarvis/status a cada 4 s; os eventos do bot "jarvis" mostram o andamento
   (grupo, processo X de Y e gasto) e o Jarvis vai à Leitura dos processos e às Planilhas enquanto trabalha.
 uso: python3 doc/vila/ligar_jarvis.py bot/vila/vila.html [nucleo|propulsor]  (edita no lugar; rodar de novo não muda nada)"""
 import json
@@ -46,7 +46,7 @@ troca("  static ZSPR = (() => {", r"""  static JIDLE = 'Sou o Jarvis. Uma vez po
 troca("    this.zseq = []; this.zcur = null; this.zevq = [];\n",
       "    this.zseq = []; this.zcur = null; this.zevq = [];\n"
       "    this.j = { x: 63 * 16, y: 64, dir: 'down', path: [], step: 0, wait: 90, i: 0 };\n"
-      "    this.setState({ jtext: Component.JIDLE, jtyped: 0, jsrv: null, jrun: null, jconf: 0, jpedido: false });\n")
+      "    this.setState({ jtext: Component.JIDLE, jtyped: 0, jsrv: null, jrun: null });\n")
 troca("  update() {\n", "  update() {\n    this.jpatrol();\n"
       "    if ((this.state.jtyped || 0) < (this.state.jtext || '').length) this.setState(s => ({ jtyped: (s.jtyped || 0) + 1 }));\n")
 # eventos do Jarvis: só montam o estado (sem fila de animação); status do servidor a cada 4 s
@@ -97,7 +97,6 @@ troca("  patrol() {", r"""  jalvo() {
   }
   jfalar() {
     const s = this.state, r = s.jrun, srv = s.jsrv;
-    if (s.jconf > Date.now()) return;  // não apaga o pedido de confirmação
     let txt = Component.JIDLE;
     if (srv && !srv.configurado) txt += ' Ainda não estou instalado neste servidor (falta JARVIS_PASTA).';
     else if (r && !r.fim && srv && srv.rodando) {
@@ -120,33 +119,12 @@ troca("  patrol() {", r"""  jalvo() {
       if (r.ok) { this.setState({ jsrv: await r.json() }); setTimeout(() => this.jfalar(), 0); }
     } catch (e) { /* sem conexão: o topo já mostra pelo /eventos */ }
   }
-  async jrodar(modo) {
-    if (this.state.jpedido) return;
-    clearTimeout(this.jconfT);
-    this.setState({ jpedido: true, jconf: 0 });
-    try {
-      const r = await fetch('/jarvis/rodar', { method: 'POST', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modo }) });
-      const j = await r.json().catch(() => ({}));
-      if (j && 'rodando' in j) this.setState({ jsrv: j });
-      this.setState({ jtext: r.ok ? (modo === 'mes' ? 'Pedido recebido! Vou ler os processos de todos os grupos e montar as planilhas do mês.'
-        : 'Pedido recebido! Teste com 2 processos por grupo.') : 'Não deu para rodar: ' + (j.erro || 'HTTP ' + r.status) + '.', jtyped: 0 });
-    } catch (e) { this.setState({ jtext: 'Sem conexão com o servidor. Tente de novo.', jtyped: 0 }); }
-    this.setState({ jpedido: false });
-  }
   jbotoes() {
-    const s = this.state, srv = s.jsrv, out = { a: null, b: null, p: null };
+    const srv = this.state.jsrv, out = { a: null, p: null };
     if (this.fonte() !== 'servidor' || !srv || !srv.configurado) return out;
-    out.p = { label: 'Planilhas', fn: () => window.open('/jarvis', '_blank') };
-    if (srv.rodando || s.jpedido) return out;
-    const conf = s.jconf > Date.now();
-    out.a = { label: conf ? 'Confirmar: gerar o relatório' : 'Gerar relatório do mês', bg: conf ? '#1f6fd1' : '#3a2f1f',
-      fn: () => {
-        if (this.state.jconf > Date.now()) return this.jrodar('mes');
-        this.setState({ jconf: Date.now() + 6000, jtext: 'Vou ler todos os processos dos ' + srv.grupos + ' grupo(s), só leitura no VIOS. Leva uns 15 minutos para cada 100 processos e custa cerca de US$ 0,02 por processo com a IA. Para confirmar, clique em "Confirmar: gerar o relatório" em até 6 segundos.', jtyped: 0 });
-        clearTimeout(this.jconfT); this.jconfT = setTimeout(() => { this.setState({ jconf: 0 }); setTimeout(() => this.jfalar(), 0); }, 6000);
-      } };
-    out.b = { label: 'Testar (2 por grupo)', bg: '#3a2f1f', fn: () => this.jrodar('teste') };
+    const abrir = () => window.open('/jarvis', '_blank');  // escolher os grupos e baixar as planilhas
+    out.p = { label: 'Planilhas', fn: abrir };
+    if (!srv.rodando) out.a = { label: 'Escolher grupos e gerar', fn: abrir };
     return out;
   }
   jVals() {
@@ -157,7 +135,7 @@ troca("  patrol() {", r"""  jalvo() {
       dialogShown: txt.slice(0, s.jtyped || 0), moreOpacity: (s.jtyped || 0) >= txt.length ? 1 : 0 };
     if (this.fonte() === 'servidor') Object.assign(out, {
       showAction: !!B.a, actionLabel: B.a ? B.a.label : '',
-      showAction2: !!B.b, actionLabel2: B.b ? B.b.label : '', action2: () => B.b && B.b.fn(), action2Bg: B.b ? B.b.bg : '#3a2f1f',
+      showAction2: false,
       showPainel: !!B.p, painelLabel: B.p ? B.p.label : '', painel: () => B.p && B.p.fn() });
     return out;
   }

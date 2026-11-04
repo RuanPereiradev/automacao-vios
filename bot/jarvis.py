@@ -5,8 +5,10 @@ dele) no mesmo computador do Ultron. A vila pede para rodar (POST /jarvis/rodar)
 `relatorio_processos.py` em segundo plano, como processo separado. O andamento chega à vila pelos
 eventos que o próprio Jarvis manda (POST /eventos, bot "jarvis").
 
-- mes: todos os grupos do PROCESSOS_GRUPOS do .env do Jarvis -> as planilhas do mês;
-- teste: só os 2 primeiros processos de cada grupo (--limite 2), salvos em AAAA-MM/teste/;
+A pessoa escolhe os grupos na página /jarvis, entre os do PROCESSOS_GRUPOS do .env do Jarvis
+(nunca todos de uma vez sem escolher):
+- mes: os grupos escolhidos -> as planilhas do mês;
+- teste: só os 2 primeiros processos de cada grupo escolhido (--limite 2), salvos em AAAA-MM/teste/;
 - só leitura no VIOS; uma execução por vez. As planilhas ficam na pasta do Jarvis e a página
   /jarvis lista e baixa cada uma.
 """
@@ -76,15 +78,22 @@ def _ler(pasta):
         return None
 
 
+def grupos(pasta):
+    """Grupos que a pessoa pode escolher: PROCESSOS_GRUPOS do .env do Jarvis, na ordem de lá."""
+    texto = dotenv_values(Path(pasta) / ENV).get("PROCESSOS_GRUPOS") or ""
+    return [g.strip() for g in texto.split("|") if g.strip() and g.strip().upper() != "TODOS"]
+
+
 def status(pasta):
-    """{"configurado", "rodando", "modo", "inicio", "grupos"}."""
-    info = {"configurado": configurado(pasta), "rodando": False, "modo": None, "inicio": None, "grupos": 0}
+    """{"configurado", "rodando", "modo", "inicio", "escolhidos", "lista"}."""
+    info = {"configurado": configurado(pasta), "rodando": False, "modo": None, "inicio": None,
+            "escolhidos": [], "lista": []}
     if info["configurado"]:
-        grupos = dotenv_values(Path(pasta) / ENV).get("PROCESSOS_GRUPOS") or ""
-        info["grupos"] = len([g for g in grupos.split("|") if g.strip()])
+        info["lista"] = grupos(pasta)
         atual = _ler(pasta)
         if atual and _vivo(int(atual.get("pid", 0))):
-            info.update(rodando=True, modo=atual.get("modo"), inicio=atual.get("inicio"))
+            info.update(rodando=True, modo=atual.get("modo"), inicio=atual.get("inicio"),
+                        escolhidos=atual.get("grupos") or [])
     return info
 
 
@@ -122,12 +131,19 @@ def planilha(pasta, mes, nome, teste=False):
     return None
 
 
-def rodar(pasta, modo):
-    """Abre o Jarvis em segundo plano. Devolve o status; levanta JarvisErro se não pode rodar."""
+def rodar(pasta, modo, escolhidos):
+    """Abre o Jarvis em segundo plano só com os grupos escolhidos. Devolve o status; levanta
+    JarvisErro se não pode rodar."""
     if modo not in MODOS:
         raise JarvisErro("modo inválido")
     if not configurado(pasta):
         raise JarvisErro("o Jarvis não está instalado neste servidor (JARVIS_PASTA)")
+    lista = grupos(pasta)
+    if not isinstance(escolhidos, list) or not escolhidos:
+        raise JarvisErro("escolha pelo menos um grupo")
+    if any(g not in lista for g in escolhidos):
+        raise JarvisErro("grupo fora da lista do PROCESSOS_GRUPOS")
+    escolhidos = [g for g in lista if g in escolhidos]  # na ordem da lista, sem repetir
     with _trava:
         if status(pasta)["rodando"]:
             raise JarvisErro("o Jarvis já está rodando")
@@ -137,15 +153,17 @@ def rodar(pasta, modo):
         ambiente["PYTHONUTF8"] = "1"
         inicio = datetime.now().isoformat(timespec="seconds")
         saida = open(pasta / "logs" / LOG, "a", encoding="utf-8")
-        saida.write(f"\n===== {inicio} · modo {modo} (pela vila) =====\n")
+        saida.write(f"\n===== {inicio} · modo {modo} · {len(escolhidos)} grupo(s) (pela página) =====\n")
         saida.flush()
         extra = {"start_new_session": True} if os.name != "nt" else {}  # sobrevive a um reinício da página
-        proc = subprocess.Popen([str(_python(pasta)), SCRIPT, ENV, *MODOS[modo]], cwd=pasta, env=ambiente,
-                                stdin=subprocess.DEVNULL, stdout=saida, stderr=subprocess.STDOUT, **extra)
+        comando = [str(_python(pasta)), SCRIPT, ENV, "--grupo", "|".join(escolhidos), *MODOS[modo]]
+        proc = subprocess.Popen(comando, cwd=pasta, env=ambiente, stdin=subprocess.DEVNULL, stdout=saida,
+                                stderr=subprocess.STDOUT, **extra)
         saida.close()
         arquivo = pasta / "logs" / ARQUIVO
-        arquivo.write_text(json.dumps({"pid": proc.pid, "modo": modo, "inicio": inicio}), encoding="utf-8")
-        log.info("Jarvis iniciado pela vila: modo %s, pid %d", modo, proc.pid)
+        arquivo.write_text(json.dumps({"pid": proc.pid, "modo": modo, "inicio": inicio, "grupos": escolhidos},
+                                      ensure_ascii=False), encoding="utf-8")
+        log.info("Jarvis iniciado: modo %s, %d grupo(s), pid %d", modo, len(escolhidos), proc.pid)
 
         def esperar():
             codigo = proc.wait()  # recolhe o processo (sem isso ele ficaria "zumbi" e pareceria vivo)

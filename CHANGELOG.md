@@ -12,6 +12,18 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Jarvis: a pessoa escolhe os grupos do relatório (04/11/2026)
+- A página `/jarvis` mostra os grupos do `PROCESSOS_GRUPOS` com caixas de marcar ("Marcar todos"
+  marca e desmarca); "Gerar relatório do mês" (com confirmação) e "Testar (2 processos por grupo)"
+  rodam só os grupos marcados. Sem grupo marcado, os botões ficam desligados.
+- `POST /jarvis/rodar` recebe `{"modo", "grupos"}` e recusa lista vazia ou grupo fora do
+  `PROCESSOS_GRUPOS`; o Jarvis roda com `--grupo "A|B"`. Enquanto roda, a página mostra os grupos
+  escolhidos e se atualiza sozinha.
+- Vila 04: os botões passam a ser "Escolher grupos e gerar" e "Planilhas" (abrem a página /jarvis).
+- `PROCESSOS_GRUPOS` com os 6 grupos do escritório (Plasfran Itapipoca, Camocim e Maranhão, LD
+  Urbanismo, Casa do Celular e Casa do Celular MG/SP).
+- Testado no PC: marcando só a Plasfran Itapipoca, rodou só ela (teste, US$ 0,05).
+
 ### Adicionado — Jarvis pela plataforma: gerar e baixar o relatório pela Vila 04 (04/11/2026)
 - Vila 04: botões "Gerar relatório do mês" (com confirmação), "Testar (2 por grupo)" e
   "Planilhas"; a caixa de fala mostra o andamento real (grupo, processo X de Y, gasto) e o
