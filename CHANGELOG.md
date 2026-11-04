@@ -12,6 +12,21 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Albi: sessão em conflito e tela de novo pedido (04/11/2026)
+- Se o login cair em `/login-conflito` (sessão aberta em outro lugar), o Albi clica em "Encerrar
+  a outra sessão"; se o Sonar voltar para a tela de login, entra de novo. Botão configurável em
+  `CONFLITO_BOTAO` (vazio = padrão).
+- Depois do login vai direto para `/modulos/pesquisa-processos/novo-pedido` (a tela do botão
+  "Iniciar Pesquisa") e confirma que ela abriu. Testado no Sonar real, passando pela tela de
+  conflito.
+
+### Corrigido — Albi: login no Sonar (04/11/2026)
+- Os seletores dos campos (`css:#loginform #input-cpf-cnpj` etc.) eram cortados no `.env`: sem
+  aspas, tudo depois de " #" vira comentário, e o seletor virava só `#loginform`. O Albi tentava
+  digitar no formulário inteiro e parava com "invalid element state". Agora são escritos sem
+  " #" (`css:#loginform input[id=input-cpf-cnpj]`, `css:#loginform [id=btn-login]`, ...) em
+  `albi/main.py` e `albi/.env.example`. Testado com as credenciais reais: "Login OK".
+
 ### Segurança — Revisão de chaves e rotas (03/11/2026)
 - Conferido: nenhuma chave nem senha no repositório nem em todo o histórico do git (os 3 ramos):
   as chaves da OpenAI e da Anthropic, o usuário e a senha do VIOS e a senha da página não aparecem
@@ -25,15 +40,16 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 - Retirado do `CHANGELOG.md` o número de um processo real usado como exemplo (continua no
   histórico do git, no commit `b1bb149`).
 
-### Adicionado — Jarvis, bot do Sonar (pasta `jarvis/`)
-- Novo bot, separado do Ultron e do Zangão: tudo em `jarvis/` (`.venv`, `.env`, `logs/`,
+### Adicionado — Albi, bot do Sonar (pasta `albi/`)
+- Começou com o nome Jarvis (pasta `jarvis/`); renomeado para Albi em 04/11/2026.
+- Novo bot, separado do Ultron e do Zangão: tudo em `albi/` (`.venv`, `.env`, `logs/`,
   `saida/` próprios; não importa nada do `bot/`). Entra em https://sonar.lemeforense.com.br/login
   com CPF/CNPJ, e-mail e senha e confirma o login. As próximas etapas ainda vão ser definidas.
-- `jarvis/.env.example` explica como pôr as credenciais (`SONAR_CPF_CNPJ`, `SONAR_EMAIL`,
+- `albi/.env.example` explica como pôr as credenciais (`SONAR_CPF_CNPJ`, `SONAR_EMAIL`,
   `SONAR_SENHA`; senha com espaço ou " #" entre aspas simples). Campos da tela conferidos na
   página real e presos ao formulário `#loginform` (a página tem outro formulário, o de
   recuperar senha, com campos de mesmo nome).
-- `jarvis/instalar.sh`, `jarvis/rodar.sh`, `jarvis/requirements.txt` e `jarvis/README.md`.
+- `albi/instalar.sh`, `albi/rodar.sh`, `albi/requirements.txt` e `albi/README.md`.
   O log nunca mostra a senha nem o CPF/CNPJ inteiro.
 
 ### Alterado — Vila dos bots no topo da página do Ultron

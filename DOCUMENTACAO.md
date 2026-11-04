@@ -609,15 +609,20 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - A senha vai pela rede local sem criptografia (http): usar só na rede do
   escritório, nunca abrir a porta 5001 para a internet.
 
-### Passo 26 — Jarvis, bot do Sonar (pasta `jarvis/`)
+### Passo 26 — Albi, bot do Sonar (pasta `albi/`)
 - Terceiro bot, que funciona de forma totalmente diferente do Ultron e do
-  Zangão: fica em `jarvis/`, com `.venv`, `.env`, `logs/` e `saida/` próprios, e
-  não usa nada do `bot/`. Detalhes em `jarvis/README.md`.
-- Entra em https://sonar.lemeforense.com.br/login (CPF/CNPJ, e-mail e senha) e
-  confirma o login. As próximas etapas ainda vão ser definidas.
-- Instalar: `cd jarvis && ./instalar.sh`; preencher `jarvis/.env`
+  Zangão: fica em `albi/`, com `.venv`, `.env`, `logs/` e `saida/` próprios, e
+  não usa nada do `bot/`. Detalhes em `albi/README.md`.
+- Entra em https://sonar.lemeforense.com.br/login (CPF/CNPJ, e-mail e senha). Se
+  cair na tela de conflito (`/login-conflito`: sessão aberta em outro lugar), clica
+  em "Encerrar a outra sessão" e, se voltar para o login, entra de novo.
+- Depois vai direto para Pesquisa de Processos > Nova Pesquisa
+  (`/modulos/pesquisa-processos/novo-pedido`, a tela do botão "Iniciar Pesquisa").
+  As próximas etapas ainda vão ser definidas.
+- Instalar: `cd albi && ./instalar.sh`; preencher `albi/.env`
   (`SONAR_CPF_CNPJ`, `SONAR_EMAIL`, `SONAR_SENHA`; modelo comentado em
-  `jarvis/.env.example`); testar: `./rodar.sh` (diz "Login OK" ou o motivo).
+  `albi/.env.example`); testar: `./rodar.sh` (diz "Login OK" e "Tela de novo
+  pedido aberta", ou o motivo).
 
 ### Passo 25 — Vila dos bots no topo da página do Ultron
 - Na página do Ultron (`http://<IP do Mac>:5001/`), o topo é a vila dos bots
@@ -683,7 +688,7 @@ selenium/
 ├── enviar.py            # página de envio: sobe o .txt ajustado e lança no VIOS (sem IA)
 ├── rodar_envio.sh       # atalho para enviar.py
 ├── instalar.sh          # prepara um computador novo (Mac ou Linux): .venv + dependências
-├── jarvis/              # Jarvis, bot do Sonar (separado: .venv, .env, logs/ e saida/ próprios)
+├── albi/              # Albi, bot do Sonar (separado: .venv, .env, logs/ e saida/ próprios)
 ├── servidor_mac.sh      # Mac: página de envio como serviço (launchd) — instalar/parar/status/log
 ├── bot/
 │   ├── config.py        # lê e valida o .env; converte seletores
