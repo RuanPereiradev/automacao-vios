@@ -11,3 +11,8 @@ doc/*.jpeg
 autobots/
 # resultado do Albi tem CPF e nome de clientes (ex.: um copiado para cá do Mac)
 resultado*.txt
+# Orelha: senha, relatórios (têm nomes da equipe e de clientes), log e ambiente próprios
+orelha/.env
+orelha/saida/
+orelha/logs/
+orelha/.venv/

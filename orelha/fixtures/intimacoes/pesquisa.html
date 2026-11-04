@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<!-- Resultado FICTÍCIO da tela "Pesquisa intimações" (index.php?pag=sys/publicacoes/int-pesquisa.php),
+     com "Com Tarefa Lançada = Não". Repo público: CI, números, clientes e advogados inventados.
+     As datas {{HOJE-N}} são trocadas pela data da execução (nucleo/simulado.py).
+     Casos: ontem e hoje (fora), antes do período (fora), CI repetida, linha apagada, linha sem
+     número CNJ e sem link, exatamente 5 dias (atenção) e mais de 5 dias (urgente). -->
+<html lang="pt-br"><head><meta charset="utf-8"><title>Pesquisa intimações (fictício)</title></head>
+<body>
+<form id="pesquisa" action="index.php?pag=sys/publicacoes/int-pesquisa.php" method="post">
+  <input name="pesq[idata]" value=""><input name="pesq[fdata]" value=""><input name="pesq[limit]" value="500">
+  <button type="submit">Pesquisar</button>
+</form>
+<table class="layout"><tr><td>
+<table id="intpesq" class="geratabela">
+  <thead><tr><th>Ações</th><th>Sinal</th><th>CI</th><th>Datas</th><th>Números</th><th>Cliente</th>
+    <th>Advogado</th><th>Cidade</th><th>Fornecedor</th><th>Texto</th></tr></thead>
+  <tbody>
+    <tr id="intpesq_linha_0" class="impar">
+      <td data-id="intpesq_linha_0_acoes"><a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;imp_pub_id=900001" title="Lançar Intimação">Lançar</a> <a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;act=del&amp;imp_pub_id=900001" title="Excluir">x</a></td>
+      <td data-id="intpesq_linha_0_d_sinal"><span class="sinal" title="Sem tarefa lançada"></span></td>
+      <td data-id="intpesq_linha_0_imp_pub_id">900001</td>
+      <td data-id="intpesq_linha_0_sdata">Disponibilização: {{HOJE-1}}<br>Publicação: {{HOJE-1}}</td>
+      <td data-id="intpesq_linha_0_intimacao_numeros"><a href="index.php?pag=sys/processos/processos-vis.php&amp;processos_id=700000">0000111-11.2026.8.06.0001</a></td>
+      <td data-id="intpesq_linha_0_pr_clientes_nome">Empresa Fictícia Alfa Ltda</td>
+      <td data-id="intpesq_linha_0_advogado_nome">Advogada Exemplo A</td>
+      <td data-id="intpesq_linha_0_cidade_e_uf_do_processo">Fortaleza/CE</td>
+      <td data-id="intpesq_linha_0_fornecedor">DJEN</td>
+      <td data-id="intpesq_linha_0_texto"><span class="vj-badge">Manifestação</span> Intimação de ontem: o Ultron ainda vai tratar. comunicacao_id: 9000010</td>
+    </tr>
+    <tr id="intpesq_linha_1" class="par">
+      <td data-id="intpesq_linha_1_acoes"><a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;imp_pub_id=900002" title="Lançar Intimação">Lançar</a> <a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;act=del&amp;imp_pub_id=900002" title="Excluir">x</a></td>
+      <td data-id="intpesq_linha_1_d_sinal"><span class="sinal" title="Sem tarefa lançada"></span></td>
+      <td data-id="intpesq_linha_1_imp_pub_id">900002</td>
+      <td data-id="intpesq_linha_1_sdata">Disponibilização: {{HOJE}}<br>Publicação: {{HOJE}}</td>
+      <td data-id="intpesq_linha_1_intimacao_numeros"><a href="index.php?pag=sys/processos/processos-vis.php&amp;processos_id=700001">0000112-12.2026.8.06.0001</a></td>
+      <td data-id="intpesq_linha_1_pr_clientes_nome">Empresa Fictícia Alfa Ltda</td>
+      <td data-id="intpesq_linha_1_advogado_nome">Advogada Exemplo A</td>
+      <td data-id="intpesq_linha_1_cidade_e_uf_do_processo">Fortaleza/CE</td>
+      <td data-id="intpesq_linha_1_fornecedor">DJEN</td>
+      <td data-id="intpesq_linha_1_texto"><span class="vj-badge">Manifestação</span> Intimação de hoje: fica de fora. comunicacao_id: 9000020</td>
+    </tr>
+    <tr id="intpesq_linha_2" class="impar">
+      <td data-id="intpesq_linha_2_acoes"><a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;imp_pub_id=900003" title="Lançar Intimação">Lançar</a> <a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;act=del&amp;imp_pub_id=900003" title="Excluir">x</a></td>
+      <td data-id="intpesq_linha_2_d_sinal"><span class="sinal" title="Sem tarefa lançada"></span></td>
+      <td data-id="intpesq_linha_2_imp_pub_id">900003</td>
+      <td data-id="intpesq_linha_2_sdata">Disponibilização: {{HOJE-3}}<br>Publicação: {{HOJE-3}}</td>
+      <td data-id="intpesq_linha_2_intimacao_numeros"><a href="index.php?pag=sys/processos/processos-vis.php&amp;processos_id=700002">0000101-11.2026.8.06.0001</a></td>
+      <td data-id="intpesq_linha_2_pr_clientes_nome">Cliente Exemplo Beta</td>
+      <td data-id="intpesq_linha_2_advogado_nome">Advogado Exemplo B</td>
+      <td data-id="intpesq_linha_2_cidade_e_uf_do_processo">Sobral/CE</td>
+      <td data-id="intpesq_linha_2_fornecedor">DJEN</td>
+      <td data-id="intpesq_linha_2_texto"><span class="vj-badge">Manifestação</span> Fica intimada a parte para manifestação (texto fictício). comunicacao_id: 9000030</td>
+    </tr>
+    <tr id="intpesq_linha_3" class="par">
+      <td data-id="intpesq_linha_3_acoes"><a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;imp_pub_id=900004" title="Lançar Intimação">Lançar</a> <a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;act=del&amp;imp_pub_id=900004" title="Excluir">x</a></td>
+      <td data-id="intpesq_linha_3_d_sinal"><span class="sinal" title="Sem tarefa lançada"></span></td>
+      <td data-id="intpesq_linha_3_imp_pub_id">900004</td>
+      <td data-id="intpesq_linha_3_sdata">Disponibilização: {{HOJE-6}}<br>Publicação: {{HOJE-6}}</td>
+      <td data-id="intpesq_linha_3_intimacao_numeros"><a href="index.php?pag=sys/processos/processos-vis.php&amp;processos_id=700003">0000202-22.2026.5.07.0003</a></td>
+      <td data-id="intpesq_linha_3_pr_clientes_nome">Empresa Fictícia Gama S.A.</td>
+      <td data-id="intpesq_linha_3_advogado_nome">Advogada Exemplo A</td>
+      <td data-id="intpesq_linha_3_cidade_e_uf_do_processo">Fortaleza/CE</td>
+      <td data-id="intpesq_linha_3_fornecedor">DEJT</td>
+      <td data-id="intpesq_linha_3_texto"><span class="vj-badge">Manifestação</span> Audiência designada (texto fictício). comunicacao_id: 9000040</td>
+    </tr>
+    <tr id="intpesq_linha_4" class="impar">
+      <td data-id="intpesq_linha_4_acoes"><a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;imp_pub_id=900005" title="Lançar Intimação">Lançar</a> <a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;act=del&amp;imp_pub_id=900005" title="Excluir">x</a></td>
+      <td data-id="intpesq_linha_4_d_sinal"><span class="sinal" title="Sem tarefa lançada"></span></td>
+      <td data-id="intpesq_linha_4_imp_pub_id">900005</td>
+      <td data-id="intpesq_linha_4_sdata">Disponibilização: {{HOJE-10}}<br>Publicação: {{HOJE-10}}</td>
+      <td data-id="intpesq_linha_4_intimacao_numeros">Processo administrativo 12/2026</td>
+      <td data-id="intpesq_linha_4_pr_clientes_nome">Cliente Exemplo Delta</td>
+      <td data-id="intpesq_linha_4_advogado_nome">Advogado Exemplo B</td>
+      <td data-id="intpesq_linha_4_cidade_e_uf_do_processo">Caucaia/CE</td>
+      <td data-id="intpesq_linha_4_fornecedor">Diário Fictício TRF5</td>
+      <td data-id="intpesq_linha_4_texto"><span class="vj-badge">Manifestação</span> Comunicação sem número CNJ (texto fictício). comunicacao_id: 9000050</td>
+    </tr>
+    <tr id="intpesq_linha_5" class="par">
+      <td data-id="intpesq_linha_5_acoes"><a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;imp_pub_id=900003" title="Lançar Intimação">Lançar</a> <a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;act=del&amp;imp_pub_id=900003" title="Excluir">x</a></td>
+      <td data-id="intpesq_linha_5_d_sinal"><span class="sinal" title="Sem tarefa lançada"></span></td>
+      <td data-id="intpesq_linha_5_imp_pub_id">900003</td>
+      <td data-id="intpesq_linha_5_sdata">Disponibilização: {{HOJE-3}}<br>Publicação: {{HOJE-3}}</td>
+      <td data-id="intpesq_linha_5_intimacao_numeros"><a href="index.php?pag=sys/processos/processos-vis.php&amp;processos_id=700005">0000101-11.2026.8.06.0001</a></td>
+      <td data-id="intpesq_linha_5_pr_clientes_nome">Cliente Exemplo Beta</td>
+      <td data-id="intpesq_linha_5_advogado_nome">Advogado Exemplo B</td>
+      <td data-id="intpesq_linha_5_cidade_e_uf_do_processo">Sobral/CE</td>
+      <td data-id="intpesq_linha_5_fornecedor">DJEN</td>
+      <td data-id="intpesq_linha_5_texto"><span class="vj-badge">Manifestação</span> Linha repetida da mesma CI (texto fictício). comunicacao_id: 9000030</td>
+    </tr>
+    <tr id="intpesq_linha_6" class="impar">
+      <td data-id="intpesq_linha_6_acoes"><a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;imp_pub_id=900006" title="Lançar Intimação">Lançar</a> <a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;act=del&amp;imp_pub_id=900006" title="Excluir">x</a></td>
+      <td data-id="intpesq_linha_6_d_sinal"><span class="sinal" title="Sem tarefa lançada"></span></td>
+      <td data-id="intpesq_linha_6_imp_pub_id">900006</td>
+      <td data-id="intpesq_linha_6_sdata">Disponibilização: {{HOJE-20}}<br>Publicação: {{HOJE-20}}</td>
+      <td data-id="intpesq_linha_6_intimacao_numeros"><a href="index.php?pag=sys/processos/processos-vis.php&amp;processos_id=700006">0000404-44.2026.8.06.0001</a></td>
+      <td data-id="intpesq_linha_6_pr_clientes_nome">Cliente Exemplo Beta</td>
+      <td data-id="intpesq_linha_6_advogado_nome">Advogado Exemplo B</td>
+      <td data-id="intpesq_linha_6_cidade_e_uf_do_processo">Sobral/CE</td>
+      <td data-id="intpesq_linha_6_fornecedor">DJEN</td>
+      <td data-id="intpesq_linha_6_texto"><span class="vj-badge">Manifestação</span> Antes do período: fica de fora. comunicacao_id: 9000060</td>
+    </tr>
+    <tr id="intpesq_linha_7" class="par">
+      <td data-id="intpesq_linha_7_acoes"><a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;imp_pub_id=900007" title="Lançar Intimação">Lançar</a> <a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;act=del&amp;imp_pub_id=900007" title="Excluir">x</a></td>
+      <td data-id="intpesq_linha_7_d_sinal"><span class="sinal" title="Sem tarefa lançada"></span></td>
+      <td data-id="intpesq_linha_7_imp_pub_id">900007</td>
+      <td data-id="intpesq_linha_7_sdata">Disponibilização: {{HOJE-5}}<br>Publicação: {{HOJE-5}}</td>
+      <td data-id="intpesq_linha_7_intimacao_numeros"><a href="index.php?pag=sys/processos/processos-vis.php&amp;processos_id=700007">0000505-55.2026.8.06.0001</a></td>
+      <td data-id="intpesq_linha_7_pr_clientes_nome">Empresa Fictícia Alfa Ltda</td>
+      <td data-id="intpesq_linha_7_advogado_nome">Advogada Exemplo A</td>
+      <td data-id="intpesq_linha_7_cidade_e_uf_do_processo">Fortaleza/CE</td>
+      <td data-id="intpesq_linha_7_fornecedor">DJEN</td>
+      <td data-id="intpesq_linha_7_texto"><span class="vj-badge">Manifestação</span> Exatamente no limite de dias: atenção, não urgente. comunicacao_id: 9000070</td>
+    </tr>
+    <tr id="intpesq_linha_8" class="impar">
+      <td data-id="intpesq_linha_8_acoes"><a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;imp_pub_id=900008" title="Lançar Intimação">Lançar</a> <a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;act=del&amp;imp_pub_id=900008" title="Excluir">x</a></td>
+      <td data-id="intpesq_linha_8_d_sinal"><span title="Apagada"></span></td>
+      <td data-id="intpesq_linha_8_imp_pub_id">900008</td>
+      <td data-id="intpesq_linha_8_sdata">Disponibilização: {{HOJE-4}}<br>Publicação: {{HOJE-4}}</td>
+      <td data-id="intpesq_linha_8_intimacao_numeros"><a href="index.php?pag=sys/processos/processos-vis.php&amp;processos_id=700008">0000606-66.2026.8.06.0001</a></td>
+      <td data-id="intpesq_linha_8_pr_clientes_nome">Empresa Fictícia Alfa Ltda</td>
+      <td data-id="intpesq_linha_8_advogado_nome">Advogada Exemplo A</td>
+      <td data-id="intpesq_linha_8_cidade_e_uf_do_processo">Fortaleza/CE</td>
+      <td data-id="intpesq_linha_8_fornecedor">DJEN</td>
+      <td data-id="intpesq_linha_8_texto"><span class="vj-badge">Manifestação</span> Linha apagada: fica de fora. comunicacao_id: 9000080</td>
+    </tr>
+    <tr id="intpesq_linha_9" class="par">
+      <td data-id="intpesq_linha_9_acoes"><a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;imp_pub_id=900009" title="Lançar Intimação">Lançar</a> <a href="index.php?pag=sys/publicacoes/int-lanca.php&amp;act=del&amp;imp_pub_id=900009" title="Excluir">x</a></td>
+      <td data-id="intpesq_linha_9_d_sinal"><span class="sinal" title="Sem tarefa lançada"></span></td>
+      <td data-id="intpesq_linha_9_imp_pub_id">900009</td>
+      <td data-id="intpesq_linha_9_sdata">Disponibilização: {{HOJE-12}}<br>Publicação: {{HOJE-12}}</td>
+      <td data-id="intpesq_linha_9_intimacao_numeros"><a href="index.php?pag=sys/processos/processos-vis.php&amp;processos_id=700009">0000303-33.2026.4.05.8100</a></td>
+      <td data-id="intpesq_linha_9_pr_clientes_nome">Cliente Exemplo Épsilon</td>
+      <td data-id="intpesq_linha_9_advogado_nome">Advogada Exemplo A</td>
+      <td data-id="intpesq_linha_9_cidade_e_uf_do_processo">Fortaleza/CE</td>
+      <td data-id="intpesq_linha_9_fornecedor">DJEN</td>
+      <td data-id="intpesq_linha_9_texto"><span class="vj-badge">Manifestação</span> Sentença publicada (texto fictício). comunicacao_id: 9000090</td>
+    </tr>
+  </tbody>
+</table>
+<div class="geratabela_total">Total: <span class="geratabela_total_quantidade_original">10</span></div>
+</td></tr></table>
+</body></html>

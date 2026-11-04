@@ -1,0 +1,456 @@
+<title>Robô da Vila 05</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: ficha de personagem. Herói grande à esquerda e ficha à direita; embaixo, as cenas de cada estado em grade; depois a turma na escala da vila. Tema único escuro, igual à vila. */
+:root{
+  --bg:#151412;
+  --panel:#1d1c19;
+  --stage:#24221e;
+  --line:#34312b;
+  --fg:#ece6da;
+  --muted:#a39c8f;
+  --accent:#d39a5c;      /* o caramelo do Orelha */
+  --new:#f0a64b;         /* âmbar: processo novo */
+  --ok:#5fc48a;          /* verde: já está no VIOS */
+  --display:"Pixelify Sans", "Courier New", monospace;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.55}
+.wrap{max-width:1040px;margin:0 auto;padding-block:40px 64px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:52px}
+h1,h2,h3{font-family:var(--display);font-weight:700;text-wrap:balance;margin:0;font-variant-ligatures:none}
+h1{font-size:clamp(2.4rem,6vw,3.6rem);line-height:1}
+h2{font-size:1.5rem}
+h3{font-size:1.15rem}
+p{margin:0}
+code{font-family:var(--mono);font-size:.85em}
+.eyebrow{font-family:var(--mono);font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+section{display:flex;flex-direction:column;gap:18px}
+.sec-head{display:flex;flex-direction:column;gap:6px}
+
+.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:28px;align-items:center}
+.hero-stage{background:var(--stage);border-radius:8px;height:320px;display:flex;align-items:center;justify-content:center;position:relative}
+.now{position:absolute;top:12px;left:14px;font-family:var(--mono);font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.hero-text{display:flex;flex-direction:column;gap:16px;min-width:0}
+.tag{font-family:var(--mono);font-size:.85rem;color:var(--accent)}
+.lead{font-size:1.08rem;max-width:58ch}
+dl{margin:0;display:grid;grid-template-columns:7rem minmax(0,1fr);gap:8px 14px}
+dt{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding-top:3px}
+dd{margin:0;font-size:.95rem}
+.quote{font-family:var(--display);font-size:1.1rem;color:var(--accent)}
+
+canvas.px{image-rendering:pixelated;display:block;max-width:100%;height:auto;position:relative;z-index:1}
+
+.controls{display:flex;gap:10px;flex-wrap:wrap}
+button.tog{font-family:var(--mono);font-size:.8rem;background:transparent;color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:8px 12px;cursor:pointer}
+button.tog[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+button.tog:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.states{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.state{background:var(--panel);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.state .scene{background:var(--stage);display:flex;justify-content:center;align-items:center;padding:10px}
+.state .txt{padding:14px 16px 18px;display:flex;flex-direction:column;gap:6px}
+.state .txt p{font-size:.92rem;color:var(--muted)}
+.chip{align-self:flex-start;font-family:var(--mono);font-size:.72rem;padding:2px 8px;border-radius:3px;border:1px solid currentColor}
+.chip.ok{color:var(--ok)} .chip.new{color:var(--new)} .chip.neu{color:var(--muted)}
+
+.pal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.sw{display:flex;gap:10px;align-items:center;min-width:0}
+.sw i{width:28px;height:28px;border-radius:3px;flex:none;border:1px solid var(--line)}
+.sw span{display:flex;flex-direction:column;font-size:.85rem;min-width:0}
+.sw code{color:var(--muted);font-size:.75rem}
+
+.work-stage{background:var(--stage);border-radius:8px;padding:14px 10px 8px;display:flex;justify-content:center}
+.steps{margin:0;padding-left:1.4em;columns:2;column-gap:40px;color:var(--muted);font-size:.95rem}
+.steps li{margin-bottom:6px;break-inside:avoid}
+.steps li{transition:color .2s}
+.steps li::marker{font-family:var(--mono)}
+.steps li.on{color:var(--fg)}
+.steps li.on::marker{color:var(--accent)}
+@media (max-width:520px){.steps{columns:1}}
+.lineup{background:var(--stage);border-radius:8px;padding:24px 16px 18px;display:flex;justify-content:center;overflow-x:auto}
+
+.next ol{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px;max-width:72ch}
+.next ol li::marker{font-family:var(--mono);color:var(--accent)}
+
+@media (max-width:820px){
+  .hero{grid-template-columns:minmax(0,1fr)}
+  .states{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:520px){
+  .states{grid-template-columns:minmax(0,1fr)}
+  dl{grid-template-columns:minmax(0,1fr);gap:2px}
+  dd{margin-bottom:8px}
+  .hero-stage{height:260px}
+}
+</style>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="hero-stage"><span class="now" id="now">parado</span><canvas class="px" id="hero" aria-label="Orelha passando pelas animações de espera"></canvas></div>
+    <div class="hero-text">
+      <span class="eyebrow">automacao-vios · bot novo · Vila 05</span>
+      <h1>Orelha</h1>
+      <span class="tag">o cão leitor da Praia Brava</span>
+      <p class="lead">Um cão leitor, em homenagem ao Orelha, o cão comunitário da Praia Brava. Ele lê as planilhas do Sonar que o Albi traz e confere no VIOS se cada processo já está cadastrado. Do Zoião ficou o monóculo, que lê linha por linha.</p>
+      <dl>
+        <dt>Corpo</dt><dd>Vira-lata preto e caramelo, como o Orelha: dorso e cabeça pretos, peito, bochechas e patas caramelo.</dd>
+        <dt>Olho</dt><dd>Uma lente grande. A pupila desce a página enquanto ele lê, e um feixe marca a linha da vez.</dd>
+        <dt>Rabo</dt><dd>Pra cima, preto com a ponta caramelo. Abana quando o processo já está no VIOS.</dd>
+        <dt>Chapéu</dt><dd>Fedora marrom de detetive, como o do Perry, o Ornitorrinco. Quando ele cochila, o chapéu escorrega sobre o olho.</dd>
+        <dt>Jeito</dt><dd>Atento e leal: não larga uma planilha antes de terminar.</dd>
+      </dl>
+      <p class="quote">"Esse eu já li. Esse aqui é novo!"</p>
+    </div>
+  </div>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">trabalhando</span>
+      <h2>Uma planilha do começo ao fim</h2>
+      <p class="muted">O ciclo que ele repete para cada planilha que o Albi baixou do Sonar.</p>
+    </div>
+    <div class="work-stage"><canvas class="px" id="work" aria-label="Orelha pegando, lendo, conferindo no VIOS e separando uma planilha"></canvas></div>
+    <ol class="steps" id="steps">
+      <li>Pega uma planilha da pilha do Albi</li>
+      <li>Leva na boca até o canto de leitura</li>
+      <li>Lê linha por linha com o feixe da lente</li>
+      <li>Vai ao prédio do VIOS e confere cada processo</li>
+      <li>Já tem: a folha vai para a caixa verde</li>
+      <li>Novo: late e joga a folha na caixa âmbar</li>
+      <li>Volta para buscar a próxima</li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">ocioso</span>
+      <h2>Enquanto espera</h2>
+      <p class="muted">Sem planilha para ler, o Orelha sorteia uma destas a cada poucos segundos. O quadro grande lá em cima passa por todas.</p>
+    </div>
+    <div class="controls"><button class="tog" id="t-anim" aria-pressed="true">Animação</button></div>
+    <div class="states">
+      <div class="state"><div class="scene"><canvas class="px" data-idle="lingua"></canvas></div><div class="txt"><h3>Língua de fora</h3><p>Abre a boca e ofega com a língua para fora, balançando o rabo devagar.</p></div></div>
+      <div class="state"><div class="scene"><canvas class="px" data-idle="duaspatas"></canvas></div><div class="txt"><h3>Em duas patas</h3><p>Fica de pé nas patas de trás, com as da frente dobradas, e dá pulinhos.</p></div></div>
+      <div class="state"><div class="scene"><canvas class="px" data-idle="rabo"></canvas></div><div class="txt"><h3>Balançando o rabo</h3><p>O rabo vai de um lado para o outro rápido, como o Orelha fazia para quem chegava perto.</p></div></div>
+      <div class="state"><div class="scene"><canvas class="px" data-idle="latir"></canvas></div><div class="txt"><h3>Latindo</h3><p>Abre a boca duas vezes e o balão de fala escreve "AU", depois "AU AU".</p></div></div>
+      <div class="state"><div class="scene"><canvas class="px" data-idle="rodar"></canvas></div><div class="txt"><h3>Atrás do rabo</h3><p>Vira de um lado para o outro tentando pegar o próprio rabo.</p></div></div>
+      <div class="state"><div class="scene"><canvas class="px" data-idle="cochilar"></canvas></div><div class="txt"><h3>Cochilando</h3><p>Deita, fecha o olho e solta uns "Z". Bom para quando a vila passa muito tempo parada.</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">estados</span>
+      <h2>O que ele faz na vila</h2>
+      <p class="muted">Cada cena corresponde a um evento que o bot vai mandar para <code>POST /eventos</code>, como o Albi e o Zangão fazem.</p>
+    </div>
+    <div class="states">
+      <div class="state"><div class="scene"><canvas class="px" data-scene="parado"></canvas></div><div class="txt"><h3>Parado</h3><span class="chip neu">esperando</span><p>Pisca de vez em quando, a luz do rabo pulsa e o rabo mexe devagar.</p></div></div>
+      <div class="state"><div class="scene"><canvas class="px" data-scene="andando"></canvas></div><div class="txt"><h3>Andando</h3><span class="chip neu">indo buscar</span><p>Atravessa a vila até a pilha de planilhas que o Albi deixou.</p></div></div>
+      <div class="state"><div class="scene"><canvas class="px" data-scene="lendo"></canvas></div><div class="txt"><h3>Lendo</h3><span class="chip neu">conferindo</span><p>Olha para a planilha no chão. O feixe desce de linha em linha, um processo por vez.</p></div></div>
+      <div class="state"><div class="scene"><canvas class="px" data-scene="jatem"></canvas></div><div class="txt"><h3>Já tem</h3><span class="chip ok">já está no VIOS</span><p>Balão com o visto verde, rabo abanando rápido, e a folha vai para a caixa verde.</p></div></div>
+      <div class="state"><div class="scene"><canvas class="px" data-scene="novo"></canvas></div><div class="txt"><h3>Novo</h3><span class="chip new">falta cadastrar</span><p>Late com o balão "!" e joga a folha na caixa âmbar.</p></div></div>
+      <div class="state"><div class="scene"><canvas class="px" data-scene="erro"></canvas></div><div class="txt"><h3>Não achou</h3><span class="chip neu">conferir à mão</span><p>Planilha que ele não conseguiu ler ou VIOS fora do ar: senta, abaixa a orelha e mostra o balão "?".</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">paleta</span>
+      <h2>Cores do Orelha</h2>
+      <p class="muted">Nenhuma repete as do Ultron (cinza e vermelho), do Zangão (amarelo e preto) ou do Albi (rosa e roxo).</p>
+    </div>
+    <div class="pal" id="pal"></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">na escala da vila</span>
+      <h2>Ao lado da turma</h2>
+    </div>
+    <div class="lineup"><canvas class="px" id="lineup" aria-label="Ultron, Albi e Orelha lado a lado"></canvas></div>
+  </section>
+
+  <section class="next">
+    <span class="eyebrow">depois do design</span>
+    <h2>Próximos passos</h2>
+    <ol>
+      <li>Você aprova o desenho ou pede ajustes (cor, olho, tamanho).</li>
+      <li>Gero o mascote no padrão dos outros: <code>mascote.html</code>, <code>.svg</code> e <code>.png</code>.</li>
+      <li>Com uma planilha do Sonar de exemplo (pode ser com os dados trocados), começo o bot de verdade e a Vila 05.</li>
+    </ol>
+  </section>
+</div>
+
+<script>
+/* ---------- Orelha: 20×14, olhando para a direita ---------- */
+const BASE = [
+  "............PP......",
+  "..........SLLLLS....",
+  "c.........SOOOPCc...",
+  "P.........SOKOCWWN..",
+  ".P........SOOOCWWd..",
+  ".P.........dCCCCd...",
+  "..P.LLLLLLLCCCCd....",
+  "..PPPPPPPPPPCCCd....",
+  "..PPPPPPPPPPCCd.....",
+  "..PPPPPPPPPCCCd.....",
+  "..dddddddddddd......",
+  "...Cd......Cd.......",
+  "...Cd......Cd.......",
+  "..ddd.....ddd......."
+];
+const PATCH = {
+  legsB: {11:"...Cd......Cd.......",12:"....Cd....Cd........",13:"...ddd...ddd........"},
+  tailB: {2:"..c.......SOOOPCc...",3:"..P.......SOKOCWWN..",4:"..P.......SOOOCWWd..",5:"..P........dCCCCd...",6:"...PLLLLLLLCCCCd...."},
+  look: {3:"P.........SOOOCWWN..",4:".P........SOOKCWWd.."},
+  bark: {4:".P........SOOOCWW...",5:".P.........dCCCCdd.."},
+  tongue: {5:".P.........dCCCTT...",6:"..P.LLLLLLLCCCCdT..."},
+  tongue2: {5:".P.........dCCCTT..."},
+  sleep: {11:"....................",12:"....................",13:"...................."},
+  sad: {0:"....................",11:"..ddd......Cd.......",12:"..ddd......Cd.......",13:"..ddd.....ddd......."}
+};
+/* Orelha em pé nas patas de trás: 14×19 */
+const STAND = [
+  ".......PP.....",
+  ".....SLLLLS...",
+  ".....SOOOPCc..",
+  ".....SOKOCWWN.",
+  ".....SOOOCWWd.",
+  "......dCCCCd..",
+  ".....LLCCCd...",
+  "....PPPCCCdCCC",
+  "....PPPCCCd.cd",
+  "....PPPCCCd...",
+  "....PPPCCCd...",
+  "....PPPPCCd...",
+  "c...PPPPPPd...",
+  "P...PPPPPPd...",
+  ".P..dPPPPdd...",
+  "..PPdddddd....",
+  "....Cd..Cd....",
+  "....Cd..Cd....",
+  "...ddd.ddd...."
+];
+const SPATCH = {  tailB: {12:"..c.PPPPPPd...",13:"..P.PPPPPPd...",14:"..P.dPPPPdd...",15:"...Pdddddd...."}};
+const PAL = {P:"#40362f",S:"#251f1b",C:"#c98a4b",c:"#e2ad72",d:"#8f5a2c",W:"#bdb6aa",O:"#e6f9ff",K:"#0f1f1d",N:"#0d0c0b",T:"#ff7a9a",t:"#d9506f",M:"#40362f",L:"#66584c",D:"#251f1b",A:"#40362f",G:"#40362f"};
+const NAMES = [["P", "Pelo preto"], ["S", "Sombra"], ["C", "Caramelo"], ["c", "Caramelo claro"], ["d", "Caramelo escuro"], ["W", "Focinho grisalho"], ["O", "Monóculo"], ["K", "Pupila"], ["N", "Nariz"], ["T", "Língua"], ["B", "Feixe de leitura"]];
+const BEAM = "rgba(127,231,255,.5)";
+
+function merge(base,set,patches){
+  return base.map((row,y)=>{
+    let r=[...row];
+    patches.forEach(p=>{ const pr=set[p]&&set[p][y]; if(!pr) return; [...pr].forEach((ch,x)=>{ if(ch!==row[x]) r[x]=ch; }); });
+    return r;
+  });
+}
+function px(ctx,x,y,sc,col,glow){ ctx.shadowBlur=glow?sc*1.4:0; ctx.shadowColor=col; ctx.fillStyle=col; ctx.fillRect(x*sc,y*sc,sc,sc); ctx.shadowBlur=0; }
+function rect(ctx,x,y,w,h,sc,col){ ctx.fillStyle=col; ctx.fillRect(x*sc,y*sc,w*sc,h*sc); }
+function drawRows(ctx,rows,ox,oy,sc,blink,glowOn,flip){
+  const w=rows[0].length;
+  rows.forEach((r,y)=>r.forEach((ch,x)=>{
+    let col=PAL[ch]; if(!col) return;
+    if(blink && (ch==="O"||ch==="K")) col=PAL.M;
+    px(ctx,ox+(flip?w-1-x:x),oy+y,sc,col,ch==="G"&&glowOn);
+  }));
+}
+/* chapéu de detetive marrom (fedora), 9×4: copa, fita e aba */
+const HAT = ["..hHHHH..",".hHHHHHH.",".bbbbbbb.","BBBBBBBBB"];
+const HATPAL = {H:"#8b5a2b",h:"#6e4420",b:"#3b2614",B:"#a0693a"};
+function hat(ctx,ox,oy,sc,hx,hy,w,flip){
+  HAT.forEach((r,y)=>[...r].forEach((ch,x)=>{ const col=HATPAL[ch]; if(!col) return; const cx=hx+x; px(ctx,ox+(flip?w-1-cx:cx),oy+hy+y,sc,col,false); }));
+}
+function dog(ctx,ox,oy,sc,patches,blink,glowOn,flip,hatY=-3){
+  drawRows(ctx,merge(BASE,PATCH,patches),ox,oy,sc,blink,glowOn,flip);
+  hat(ctx,ox,oy,sc,10,hatY,20,flip);
+}
+
+/* letras 3×5 para o balão de fala */
+const GLYPH={V:["X.X","X.X","X.X","X.X",".X."],I:["XXX",".X.",".X.",".X.","XXX"],O:["XXX","X.X","X.X","X.X","XXX"],S:["XXX","X..","XXX","..X","XXX"],A:[".X.","X.X","XXX","X.X","X.X"],U:["X.X","X.X","X.X","X.X","XXX"],Z:["XXXX","..X.",".X..","XXXX"]};
+const textW = s => [...s].reduce((w,ch)=>w+(ch===" "?2:GLYPH[ch][0].length+1),-1);
+function text(ctx,x,y,sc,s,col){
+  [...s].forEach(ch=>{ if(ch===" "){x+=2;return;} const g=GLYPH[ch]; g.forEach((r,j)=>[...r].forEach((c,i)=>{ if(c==="X") rect(ctx,x+i,y+j,1,1,sc,col); })); x+=g[0].length+1; });
+}
+function speech(ctx,x,y,sc,s){
+  const w=textW(s)+4;
+  rect(ctx,x,y,w,9,sc,"#201f1d"); rect(ctx,x+1,y+1,w-2,7,sc,"#ffffff");
+  rect(ctx,x-1,y+5,1,1,sc,"#201f1d"); rect(ctx,x-2,y+6,1,1,sc,"#201f1d");
+  text(ctx,x+2,y+2,sc,s,"#201f1d");
+}
+function line(ctx,x0,y0,x1,y1,sc,col){ // Bresenham, pixel a pixel
+  let dx=Math.abs(x1-x0),sx=x0<x1?1:-1,dy=-Math.abs(y1-y0),sy=y0<y1?1:-1,e=dx+dy;
+  for(;;){ rect(ctx,x0,y0,1,1,sc,col); if(x0===x1&&y0===y1)break; const e2=2*e; if(e2>=dy){e+=dy;x0+=sx;} if(e2<=dx){e+=dx;y0+=sy;} }
+}
+function paper(ctx,x,y,sc,hi){
+  rect(ctx,x,y,9,11,sc,"#f4ead2"); rect(ctx,x,y,9,1,sc,"#2f7d4f");
+  for(let i=0;i<4;i++){ rect(ctx,x+1,y+3+i*2,7,1,sc, i===hi ? "#7fe7ff" : "#b9ae96"); }
+}
+function sheet(ctx,x,y,sc){ rect(ctx,x,y,4,5,sc,"#f4ead2"); rect(ctx,x,y,4,1,sc,"#2f7d4f"); rect(ctx,x+1,y+2,2,1,sc,"#b9ae96"); }
+function box(ctx,x,y,sc,col,dark){ rect(ctx,x,y,10,7,sc,dark); rect(ctx,x+1,y+1,8,5,sc,col); rect(ctx,x+1,y+3,8,1,sc,dark); }
+function balloon(ctx,x,y,sc,kind){
+  rect(ctx,x,y,7,8,sc,"#201f1d"); rect(ctx,x+1,y+1,5,6,sc,"#ffffff"); rect(ctx,x+1,y+8,1,1,sc,"#201f1d");
+  if(kind==="!"){ rect(ctx,x+3,y+2,1,3,sc,"#c81e14"); rect(ctx,x+3,y+6,1,1,sc,"#c81e14"); }
+  if(kind==="ok"){ [[1,4],[2,5],[3,4],[4,3],[5,2]].forEach(([a,b])=>rect(ctx,x+a,y+b,1,1,sc,"#2e9b5a")); }
+  if(kind==="?"){ [[2,2],[3,2],[4,2],[4,3],[3,4],[3,6]].forEach(([a,b])=>rect(ctx,x+a,y+b,1,1,sc,"#6d6a63")); }
+}
+
+/* cenas: grade 48×24 */
+const SW=48, SH=26, GROUND=24, DY=GROUND-14;
+function scene(ctx,name,t,sc){
+  ctx.clearRect(0,0,SW*sc,SH*sc);
+  rect(ctx,0,GROUND,SW,1,sc,"#34312b");
+  const blink = (t%40)<2, glow = Math.floor(t/4)%2===0;
+  if(name==="parado"){
+    dog(ctx,14,DY,sc,Math.floor(t/8)%2?["tailB"]:[],blink,glow);
+  }
+  if(name==="andando"){
+    const x=(t%70)-20, p=[];
+    if(Math.floor(t/2)%2) p.push("legsB"); if(Math.floor(t/3)%2) p.push("tailB");
+    sheet(ctx,40,GROUND-5,sc); sheet(ctx,41,GROUND-7,sc);
+    dog(ctx,x,DY,sc,p,false,glow);
+  }
+  if(name==="lendo"){
+    const hi=Math.floor(t/5)%4;
+    paper(ctx,30,GROUND-11,sc,hi);
+    dog(ctx,6,DY,sc,["look"].concat(Math.floor(t/10)%2?["tailB"]:[]),(t%60)<2,glow);
+    line(ctx,6+14,DY+5,30,GROUND-11+3+hi*2,sc,BEAM);
+  }
+  if(name==="jatem"){
+    box(ctx,36,GROUND-7,sc,"#5fc48a","#2e7a4f");
+    sheet(ctx,39,GROUND-10,sc);
+    dog(ctx,8,DY,sc,t%2?["tailB"]:[],blink,true);
+    balloon(ctx,8+17,DY-8,sc,"ok");
+  }
+  if(name==="novo"){
+    box(ctx,36,GROUND-7,sc,"#f0a64b","#9a5f1c");
+    const k=(t%16)/16, fx=Math.round(6+17+k*(38-23)), fy=Math.round(DY+4-Math.sin(k*Math.PI)*8+k*3);
+    sheet(ctx,fx,fy,sc);
+    dog(ctx,4,DY,sc,Math.floor(t/3)%2?["bark"]:[],false,glow);
+    if(Math.floor(t/3)%2) balloon(ctx,4+17,DY-8,sc,"!");
+  }
+  if(name==="erro"){
+    paper(ctx,32,GROUND-11,sc,-1);
+    rect(ctx,33,GROUND-8,7,1,sc,"#c9a9a0"); rect(ctx,34,GROUND-6,5,1,sc,"#c9a9a0");
+    dog(ctx,10,DY,sc,["sad"],(t%30)<3,false);
+    balloon(ctx,10+17,DY-8,sc,"?");
+  }
+}
+
+/* animações de espera, mesma grade 48×24 */
+function idle(ctx,name,t,sc){
+  ctx.clearRect(0,0,SW*sc,SH*sc);
+  rect(ctx,0,GROUND,SW,1,sc,"#34312b");
+  const blink=(t%40)<2, glow=Math.floor(t/4)%2===0;
+  if(name==="parado") return scene(ctx,"parado",t,sc);
+  if(name==="lingua"){
+    dog(ctx,14,DY,sc,[Math.floor(t/3)%2?"tongue":"tongue2"].concat(Math.floor(t/8)%2?["tailB"]:[]),blink,glow);
+  }
+  if(name==="rabo"){
+    dog(ctx,14,DY,sc,Math.floor(t/2)%2?["tailB"]:[],false,true);
+  }
+  if(name==="duaspatas"){
+    const hop=Math.floor(t/4)%2;
+    drawRows(ctx,merge(STAND,SPATCH,Math.floor(t/3)%2?["tailB"]:[]),17,GROUND-19-hop,sc,blink,glow,false);
+    hat(ctx,17,GROUND-19-hop,sc,5,-3,14,false);
+  }
+  if(name==="latir"){
+    const c=t%24, bark=c<4||(c>=8&&c<12);
+    dog(ctx,3,DY,sc,bark?["bark"]:[],false,glow);
+    if(c<20) speech(ctx,22,DY-1,sc,c<8?"AU":"AU AU");
+  }
+  if(name==="rodar"){
+    const f=Math.floor(t/3)%2;
+    dog(ctx,14+f,DY-f,sc,f?["legsB"]:["tailB"],false,glow,f===1);
+  }
+  if(name==="cochilar"){
+    drawRows(ctx,merge(BASE,PATCH,["sleep"]),14,DY+3,sc,true,false,false);
+    hat(ctx,14,DY+3,sc,10,-1,20,false); /* chapéu caído sobre o olho */
+    [0,1,2].forEach(i=>{ const k=((t+i*8)%24)/24; text(ctx,35+Math.round(k*8),DY+2-Math.round(k*12),sc,"Z",`rgba(200,239,233,${(1-k).toFixed(2)})`); });
+  }
+}
+const IDLE=[["parado","parado"],["lingua","língua de fora"],["rabo","balançando o rabo"],["duaspatas","em duas patas"],["latir","latindo"],["rodar","atrás do rabo"],["cochilar","cochilando"]];
+
+/* ciclo de trabalho: grade 100×30 */
+const WW=100, WH=30, WG=27, WDY=WG-14, WT=203;
+const PH=[[0,12,0,"pega"],[12,29,1,"leva"],[29,69,2,"le"],[69,83,3,"vai"],[83,107,3,"confere"],[107,131,4,"anda"],[131,145,4,"jatem"],[145,156,5,"anda"],[156,170,5,"novo"],[170,203,6,"volta"]];
+const lerp=(a,b,k)=>Math.round(a+(b-a)*k);
+let curStep=-1;
+function work(ctx,t,sc){
+  const u=t%WT, loop=Math.floor(t/WT), ph=PH.find(p=>u>=p[0]&&u<p[1]), k=(u-ph[0])/(ph[1]-ph[0]), kind=ph[3];
+  ctx.clearRect(0,0,WW*sc,WH*sc);
+  /* prédio do VIOS */
+  const bx=56, by=8, bw=19;
+  rect(ctx,bx,by,bw,WG-by,sc,"#2b2f38"); rect(ctx,bx,by,bw,1,sc,"#454b58");
+  rect(ctx,bx+1,by+1,bw-2,7,sc,"#1f222a"); text(ctx,bx+2,by+2,sc,"VIOS","#c8efe9");
+  const lit = kind==="confere" ? Math.floor(k*7) : 0;
+  [0,1].forEach(r=>[0,1,2].forEach(c=>{ const i=r*3+c; rect(ctx,bx+2+c*6,by+9+r*4,3,2,sc, i<lit ? "#7fe7ff" : "#3a4150"); }));
+  rect(ctx,bx+8,WG-4,3,4,sc,"#1a1c22");
+  rect(ctx,0,WG,WW,1,sc,"#34312b");
+  /* pilha do Albi e caixas */
+  sheet(ctx,0,WG-5,sc); sheet(ctx,4,WG-5,sc); sheet(ctx,2,WG-10,sc);
+  box(ctx,78,WG-7,sc,"#5fc48a","#2e7a4f"); box(ctx,89,WG-7,sc,"#f0a64b","#9a5f1c");
+  if(loop>0||u>=142) rect(ctx,81,WG-8,4,1,sc,"#f4ead2");
+  if(loop>0||u>=167) rect(ctx,92,WG-8,4,1,sc,"#f4ead2");
+  /* Orelha */
+  let x=5, flip=false, carry=false, p=[], bal=null, slip=null, walk=false;
+  if(kind==="pega"){ flip=true; carry=k>0.5; }
+  if(kind==="leva"){ x=lerp(5,22,k); carry=true; walk=true; }
+  if(kind==="le"){ x=22; const hi=Math.min(3,Math.floor(k*4)); paper(ctx,44,WG-11,sc,hi); p.push("look"); line(ctx,x+14,WDY+5,44,WG-11+3+hi*2,sc,BEAM); }
+  if(kind==="vai"){ x=lerp(22,36,k); carry=true; walk=true; }
+  if(kind==="confere"){ x=36; carry=true; if(Math.floor(t/3)%2) p.push("tailB"); }
+  if(kind==="anda"){ x= ph[2]===4 ? lerp(36,60,k) : lerp(60,71,k); carry=true; walk=true; }
+  if(kind==="jatem"){ x=60; carry=true; bal="ok"; if(t%2) p.push("tailB"); if(k>0.2&&k<0.8) slip=[x+18,WDY+4,82,WG-9,(k-0.2)/0.6]; }
+  if(kind==="novo"){ x=71; carry=k<0.2; const b=Math.floor(t/3)%2; if(b){ p.push("bark"); bal="!"; } if(k>0.2&&k<0.8) slip=[x+18,WDY+4,93,WG-9,(k-0.2)/0.6]; }
+  if(kind==="volta"){ x=lerp(71,5,k); flip=true; walk=true; }
+  if(walk && Math.floor(t/2)%2) p.push("legsB");
+  dog(ctx,x,WDY,sc,p,(t%40)<2,Math.floor(t/4)%2===0,flip);
+  if(carry) sheet(ctx, flip ? x-1 : x+17, WDY+3, sc);
+  if(slip){ const [ax,ay,bx2,by2,s]=slip; rect(ctx,lerp(ax,bx2,s),Math.round(ay+(by2-ay)*s-Math.sin(s*Math.PI)*6),3,3,sc,"#f4ead2"); }
+  if(bal) balloon(ctx,x+17,WDY-9,sc,bal);
+  if(ph[2]!==curStep){ curStep=ph[2]; document.querySelectorAll("#steps li").forEach((li,i)=>li.classList.toggle("on",i===curStep)); }
+}
+
+/* turma na escala da vila */
+const ULTRON={rows:[".......LD.......","...D...LD...D...","..LLLLLLLLLLLL..","..LMMMMMMMMMMD..","..MRMMMMMMMMRD..","..MRORMMMMRORD..","LLMMMMMMMMMMMMDD","DDMMMMMMMMMMMMDD","..MMMDKKKKDMMD..","..DDDDDDDDDDDD..","...M.M....M.M...","...D.D....D.D..."],
+  pal:{L:"#d4d8de",M:"#9aa0a8",D:"#5a5f67",K:"#1d1e21",R:"#c81e14",O:"#ff5a3c"}};
+const ALBI={rows:["........HHHHHH........","......HHPPPPPPSS......",".....HPPPPPPPPPPS.....","....HPPKKPPPPKKPPS....","....PPPKKPPPPKKPPS....","...HPCCPPPPPPPPCCPS...","..HPPPPPPKPPKPPPPPPS..",".HPPPPPPPPKKPPPPPPPPS.","LMPPPPPPPPPPPPPPPPPPML","LMSPPPPPPPPPPPPPPPPSML",".DGGGGGGGGOOGGGGGGGGD.","..UUVVUUUUUUUUUUVVUUU.",".UUVVUUUUUUUUUUUUVVUUU",".UUUUUUUUUUUUUUUUUUUUU","..UUUUUUUUUUUUUUUUUUU.","...UUUUUU....UUUUUU...","...LLLLMM....LLLLMM...","..LLMMMMD....LMMMMDD..","..DDDDDDD....DDDDDDD.."],
+  pal:{P:"#f29bbf",H:"#ffc9de",S:"#c96a93",K:"#1d1e21",C:"#ff6f9a",G:"#b68235",O:"#d9a54e",U:"#5b3a63",V:"#7d5687",L:"#d4d8de",M:"#9aa0a8",D:"#5a5f67"}};
+function simple(ctx,sp,ox,oy,sc){ sp.rows.forEach((r,y)=>[...r].forEach((ch,x)=>{ const c=sp.pal[ch]; if(c) px(ctx,ox+x,oy+y,sc,c,false); })); }
+
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let animOn=!reduce, t=12;
+const hero=document.getElementById("hero"), HS=9, now=document.getElementById("now");
+hero.width=SW*HS; hero.height=SH*HS;
+const scenes=[...document.querySelectorAll("canvas[data-scene]")], SS=6;
+const idles=[...document.querySelectorAll("canvas[data-idle]")];
+scenes.concat(idles).forEach(c=>{c.width=SW*SS;c.height=SH*SS;});
+const wk=document.getElementById("work"), WS=9; wk.width=WW*WS; wk.height=WH*WS;
+const lu=document.getElementById("lineup"), LS=5, LW=16+4+22+4+20, LH=19;
+lu.width=LW*LS; lu.height=LH*LS;
+
+function frame(){
+  const [hn,hl]=IDLE[Math.floor(t/36)%IDLE.length];
+  idle(hero.getContext("2d"),hn,t,HS);
+  if(now.textContent!==hl) now.textContent=hl;
+  idles.forEach(c=>idle(c.getContext("2d"),c.dataset.idle,t,SS));
+  work(wk.getContext("2d"),t,WS);
+  scenes.forEach(c=>scene(c.getContext("2d"),c.dataset.scene,t,SS));
+  const l=lu.getContext("2d"); l.clearRect(0,0,lu.width,lu.height);
+  simple(l,ULTRON,0,LH-12,LS); simple(l,ALBI,20,0,LS); dog(l,46,LH-14,LS,[],false,true);
+}
+frame();
+setInterval(()=>{ if(animOn){t++;frame();} },120);
+const ta=document.getElementById("t-anim");
+if(reduce) ta.setAttribute("aria-pressed","false");
+ta.onclick=()=>{animOn=!animOn;ta.setAttribute("aria-pressed",animOn);if(!animOn){t=12;frame();}};
+
+const pal=document.getElementById("pal");
+NAMES.push(["hat","Chapéu"],["band","Fita do chapéu"]);
+NAMES.forEach(([k,n])=>{ const col=k==="B"?"#7fe7ff":k==="hat"?HATPAL.H:k==="band"?HATPAL.b:PAL[k]; pal.insertAdjacentHTML("beforeend",`<div class="sw"><i style="background:${col}"></i><span>${n}<code>${col}</code></span></div>`); });
+</script>
