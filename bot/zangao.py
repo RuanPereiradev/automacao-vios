@@ -1,4 +1,4 @@
-"""Zangão (bot de comprovantes previdenciários, branch bot-edita-vios) disparado pelo Ultron.
+"""Bumblebee, antes "Zangão" (bot de comprovantes previdenciários, branch bot-edita-vios) disparado pelo Ultron.
 
 O Zangão fica instalado numa pasta própria (ZANGAO_PASTA, com .venv e .env dele) no mesmo
 computador do Ultron. A vila pede para rodar (POST /zangao/rodar) e o Ultron abre o Zangão em
@@ -108,7 +108,7 @@ MOTIVOS = {
     "releitura_falhou": "Não consegui reler a tela", "outra_janela": "Abriu outra janela", "sem_id_do_processo": "Sem id do processo",
     "bloqueio_inativo": "Bloqueio de envios inativo", "preenchimento_divergente": "A tela não mostra o que foi preenchido",
     "elemento_nao_unico": "Elemento da tela não é único", "elemento_nao_apareceu": "Elemento da tela não apareceu",
-    "excecao": "Erro inesperado (ver logs/bot.log do Zangão)", "config_invalida": "Configuração inválida (.env do Zangão)",
+    "excecao": "Erro inesperado (ver logs/bot.log do Bumblebee)", "config_invalida": "Configuração inválida (.env do Bumblebee)",
     "navegador_falhou": "O navegador não abriu", "tarefa_nao_encontrada": "A tarefa do --tarefa não está no calendário",
     "login_falhou": "Login no VIOS falhou",
 }
@@ -214,13 +214,13 @@ def rodar(pasta, modo):
     if modo not in MODOS:
         raise ZangaoErro("modo inválido")
     if not configurado(pasta):
-        raise ZangaoErro("o Zangão não está instalado neste servidor (ZANGAO_PASTA)")
+        raise ZangaoErro("o Bumblebee não está instalado neste servidor (ZANGAO_PASTA)")
     if modo == "gravar" and not janela():
         raise ZangaoErro("gravar só nos 3 últimos dias do mês (a partir de "
                          f"{proxima_janela():%d/%m/%Y}); fora disso, use o teste")
     with _trava:
         if status(pasta)["rodando"]:
-            raise ZangaoErro("o Zangão já está rodando")
+            raise ZangaoErro("o Bumblebee já está rodando")
         pasta = Path(pasta)
         (pasta / "logs").mkdir(exist_ok=True)
         (pasta / "saida").mkdir(exist_ok=True)

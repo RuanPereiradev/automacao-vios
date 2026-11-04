@@ -671,7 +671,21 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - O Ultron acha o Albi em `albi/` deste repositório; noutra pasta, `ALBI_PASTA`
   no `.env` do Ultron.
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py
-  bot/vila/vila.html` e depois `python3 doc/vila/ligar_albi.py bot/vila/vila.html`.
+  bot/vila/vila.html`, depois `python3 doc/vila/ligar_albi.py bot/vila/vila.html` e por
+  último `python3 doc/vila/ligar_bumblebee.py bot/vila/vila.html`.
+
+### Passo 29 — Zangão vira Bumblebee (robô que se transforma em carro)
+- O bot de comprovantes previdenciários passa a se chamar **Bumblebee** no que aparece na tela:
+  página (`/zangao`), links do topo, Vila 02 (placa, abas, fala e registro) e mensagens de erro.
+  O código interno não muda: rotas `/zangao`, `ZANGAO_PASTA`, eventos `bot: "zangao"`.
+- Mascote novo (desenho em `doc/mascote/zangao-transforma.html`): robô amarelo 24×26. **Para
+  andar, ele se transforma em carro**: as peças voam e encaixam no chassi; só depois ele sai
+  rodando (farol, rodas girando e poeira). Ao chegar, desfaz e volta a robô.
+  - Vila 02: `doc/vila/ligar_bumblebee.py` (rodar depois do `ligar_zangao.py` e do
+    `ligar_albi.py`; não repete se rodar de novo).
+  - Página `/zangao`: o robô no topo (SVG) e, na cena, um canvas com a mesma transformação
+    (`bot/templates/_zangao.html`: `zangao_cena()` e `bumblebee_script()`). Com "reduzir
+    movimento" ligado no sistema, a troca é direta, sem animação.
 
 ### Passo 27 — Segurança das rotas
 - Com `ENVIO_REDE=true`, toda rota (GET e POST) pede a senha (`ENVIO_SENHA`).

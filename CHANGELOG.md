@@ -12,6 +12,26 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Zangão vira Bumblebee, o robô que se transforma em carro (04/11/2026)
+- Novo mascote (desenho do usuário em `doc/mascote/zangao-transforma.html`): robô amarelo 24×26
+  de frente e carro 30×12 de lado. **Ao se movimentar ele vira carro**: as 8 peças (cabeça,
+  peito, asas-porta, braços e pernas) voam em arco, giram de 90 em 90° e encaixam no chassi. Só
+  então ele anda, com farol, rodas girando e poeira. Ao chegar, desfaz e volta a robô, que pisca e
+  mexe as asas-porta.
+- **Vila 02**: `doc/vila/ligar_bumblebee.py`, já aplicado em `bot/vila/vila.html`, troca o sprite
+  antigo (16×12) pelo robô e pelo carro, com a mesma transformação. Ele espera virar carro antes de
+  andar, tanto nos passos da execução quanto no passeio, e transforma mais rápido quando há fila
+  grande de eventos.
+- **Página `/zangao`**: o robô novo no topo e no ícone da aba. Na cena, um canvas
+  (`zangao_cena()` + `bumblebee_script()` em `bot/templates/_zangao.html`): vira carro, anda até o
+  posto e volta a robô. Com "reduzir movimento" no sistema, a troca é direta.
+- **Nome: Bumblebee** no que aparece na tela: título e marca da página, links "Bumblebee" nas
+  páginas do Ultron e do Albi, placa "DOCA 01 · BUMBLEBEE", abas e falas da vila, e mensagens de
+  erro ("o Bumblebee não está instalado…"). Rotas, `ZANGAO_PASTA` e `bot: "zangao"` dos eventos
+  continuam iguais, então o bot em si não precisa mudar.
+- Testado em Chrome sem janela: na vila, as fases robô → transformação → carro → robô, sem erro
+  no console; na página, a cena, o topo e os links.
+
 ### Adicionado — Albi: "Capturar resumo", a mensagem para a empresa (04/11/2026)
 - O `albi/relatorio.py` escreve também o **mensagem.txt**, com uma mensagem por empresa, pronta
   para WhatsApp ou e-mail. Ela é montada direto dos dados do relatório, sem IA, e tem:

@@ -119,6 +119,9 @@ Diferenças e detalhes que a vila precisa saber:
 
 ## Zangão (Bumblebee) na Vila 02 (03/11/2026)
 
+> 04/11/2026: na tela ele se chama **Bumblebee** e é um robô que vira carro para andar
+> (`doc/vila/ligar_bumblebee.py`, depois do `ligar_albi.py`). Os eventos continuam `bot: "zangao"`.
+
 O Zangão (bot de comprovantes previdenciários, branch `bot-edita-vios`) manda os eventos dele
 por **`POST /eventos`** ao Ultron, que guarda no mesmo `saida/eventos.jsonl`. O que ele manda
 está em `doc/vila/prompt-zangao.md` e no `bot/vila.py` daquela branch.

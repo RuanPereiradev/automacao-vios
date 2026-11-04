@@ -1,8 +1,9 @@
-{# Página do Zangão (bot de comprovantes previdenciários), como a do Ultron: cena no estilo da vila
-   com o Zangão andando conforme o andamento real, botões para rodar e o histórico das execuções.
-   Os dados vêm dos eventos que o próprio Zangão manda (bot/zangao.py monta as execuções). #}
+{# Página do Bumblebee (antes "Bumblebee"; bot de comprovantes previdenciários), como a do Ultron: cena
+   no estilo da vila com o Bumblebee indo de um posto a outro (vira carro para andar e volta a robô
+   ao chegar) conforme o andamento real, botões para rodar e o histórico das execuções.
+   Os dados vêm dos eventos que o próprio bot manda (bot/zangao.py monta as execuções). #}
 {% from "_ultron.html" import ultron_script %}
-{% from "_zangao.html" import zangao, zangao_icone %}
+{% from "_zangao.html" import zangao, zangao_icone, zangao_cena, bumblebee_script %}
 {% from "_cena.html" import predio %}
 {% set RES = textos.resultados %}{% set MODOS = textos.modos %}
 <!doctype html>
@@ -10,13 +11,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Zangão — comprovantes previdenciários</title>
+<title>Bumblebee — comprovantes previdenciários</title>
 {{ zangao_icone() }}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
 {% include "_estilo.html" %}
 <style>
-  /* cores do Zangão por cima do estilo do Ultron */
+  /* cores do Bumblebee por cima do estilo do Ultron */
   :root { --red: #f2c230; --red-escuro: #a8780a; }
   body { background: radial-gradient(ellipse at top, #19140a 0%, var(--fundo) 55%) fixed, var(--fundo); }
   .marca b { text-shadow: 0 0 12px rgba(242, 194, 48, .6); }
@@ -44,12 +45,16 @@
   .tarefa-z .detalhe { font-size: 13px; color: var(--suave); margin-top: 4px; white-space: pre-line; }
   .ignoradas { margin-top: 12px; }
   .ignoradas li { font-size: 13px; color: var(--suave); }
+  /* na cena: canvas 52×34 a 2,5 unidades da cena por pixel (o robô fica da largura do mascote antigo) */
+  .cena-ultron.bee { width: 13.54%; top: 36.6%; }
+  .cena-ultron.bee .ultron { display: block; }
+  .cena-ultron.bee canvas { width: 100%; display: block; image-rendering: pixelated; }
 </style>
 </head>
 <body>
 <header>
   <a href="{{ url_for('zangao_pagina') }}">{{ zangao("parado", 48, "zangao-topo") }}
-    <span><span class="marca"><b>Z</b>ANGÃO</span><br><span class="sub">comprovantes previdenciários no VIOS</span></span></a>
+    <span><span class="marca"><b>B</b>UMBLEBEE</span><br><span class="sub">comprovantes previdenciários no VIOS</span></span></a>
   <span class="acoes" style="margin-left: auto">
     <a class="botao secundario" href="{{ url_for('inicio') }}">Ultron</a>
     {% if albi_ligado %}<a class="botao secundario" href="{{ url_for('albi_pagina') }}">Albi</a>{% endif %}
@@ -64,7 +69,7 @@
       <li>03<span>Processar tarefas</span></li><li>04<span>Resumo</span></li>
     </ol>
     <div class="cena-topo">
-      <span class="cena-chip" id="cena-chip"><i></i>ZANGÃO · …</span>
+      <span class="cena-chip" id="cena-chip"><i></i>BUMBLEBEE · …</span>
       <span class="cena-chip" id="cena-etapa"></span>
       <span class="cena-chip cena-teste" id="cena-modo" hidden></span>
     </div>
@@ -82,7 +87,7 @@
         <rect width="960" height="340" fill="url(#cena-piso)"/>
         <rect width="960" height="20" fill="#1c1f23"/>
         {% for i in range(12) %}<rect x="{{ 34 + i * 80 }}" y="8" width="6" height="5" fill="{{ '#f2c230' if i % 3 == 0 else '#3a3f46' }}"/>{% endfor %}
-        {{ predio(40, "DOCA 01 · ZANGÃO", antena=True) }}
+        {{ predio(40, "DOCA 01 · BUMBLEBEE", antena=True, placa=176) }}
         {{ predio(290, "FILTRO PREVIDENCIÁRIO", placa=190) }}
         {{ predio(540, "CAPTURA DE DADOS", tela=True, placa=160) }}
         <rect x="60" y="206" width="830" height="5" fill="#b6782e"/><rect x="60" y="206" width="830" height="1" fill="#d99c4a"/>
@@ -109,17 +114,17 @@
           </g>
         </g>
       </svg>
-      <div class="cena-ultron" id="cena-ultron">
+      <div class="cena-ultron bee" id="cena-ultron">
         <div class="cena-papel" aria-hidden="true"><i></i><i></i><i></i></div>
-        {{ zangao("parado", 60, "cena-mascote") }}
+        {{ zangao_cena("cena-mascote") }}
       </div>
       </div>
-      <div class="cena-fala"><span class="cena-quem">ZANGÃO</span><span id="cena-texto">…</span><b class="cena-seta">▼</b></div>
+      <div class="cena-fala"><span class="cena-quem">BUMBLEBEE</span><span id="cena-texto">…</span><b class="cena-seta">▼</b></div>
     </div>
   </div>
 
   <div class="cartao">
-    <h2>Pôr o Zangão para trabalhar</h2>
+    <h2>Pôr o Bumblebee para trabalhar</h2>
     <div class="acoes">
       <button class="secundario" id="btn-testar" disabled>Testar sem gravar</button>
       <button class="primario" id="btn-gravar" disabled>Rodar e gravar no VIOS</button>
@@ -132,7 +137,7 @@
 
 {% elif tela == "historico" %}
   <div class="cartao">
-    <div class="topo-hist"><h2>Execuções do Zangão</h2>
+    <div class="topo-hist"><h2>Execuções do Bumblebee</h2>
       <a class="botao secundario" href="{{ url_for('zangao_pagina') }}">Voltar</a></div>
     {% if not execucoes %}<p class="suave">Nenhuma execução ainda.</p>{% else %}
     <div class="rolar"><table class="hist">
@@ -162,6 +167,7 @@
 {% endif %}
 </main>
 {{ ultron_script() }}
+{{ bumblebee_script() }}
 <script>
 (() => {
   const T = {{ textos | tojson }};
@@ -190,7 +196,7 @@
     return partes.join('\n');
   }
   function cartao(e, info) {
-    if (!e) return '<h2>Nenhuma execução ainda</h2><p class="suave">Clique em "Testar sem gravar" para ver o Zangão trabalhando sem gravar nada.</p>';
+    if (!e) return '<h2>Nenhuma execução ainda</h2><p class="suave">Clique em "Testar sem gravar" para ver o Bumblebee trabalhando sem gravar nada.</p>';
     const rodando = !e.fim && !e.interrompida;
     const res = rodando ? T.resultados.rodando : e.fim ? (T.resultados[e.fim.resultado] || ['s-ja', e.fim.resultado]) : T.resultados.interrompida;
     const titulo = rodando ? (e.modo === 'gravar' ? 'Rodando e gravando no VIOS' : e.modo === 'leitura' ? 'Rodando em somente leitura' : 'Rodando o teste (não grava)')
@@ -202,7 +208,7 @@
          `${e.fora_da_janela ? ' · fora dos 3 últimos dias' : ''}${e.tarefa_unica ? ' · uma tarefa só' : ''}` +
          `${e.fim && e.fim.ts ? ' · fim ' + esc(e.fim.ts.slice(11, 16)) : ''}</p>`;
     if (e.fim && e.fim.motivo) h += `<p class="erro">${esc(motivo(e.fim.motivo))}</p>`;
-    if (e.interrompida) h += '<p class="aviso">Não chegou o fim desta execução (o Zangão foi fechado no meio ou rodou em outro computador).</p>';
+    if (e.interrompida) h += '<p class="aviso">Não chegou o fim desta execução (o Bumblebee foi fechado no meio ou rodou em outro computador).</p>';
     if (e.alvo) h += `<div class="barra${rodando ? ' ativa' : ''}"><i style="width:${Math.round(100 * e.feitas / e.alvo)}%"></i></div>` +
                      `<p class="suave" style="margin-top:0">${e.feitas} de ${e.alvo} tarefas processadas</p>`;
     const conta = s => e.tarefas.filter(t => t.situacao === s).length;
@@ -224,7 +230,7 @@
     } else if (e.calendario) h += '<p class="suave">Nenhuma tarefa previdenciária "Editar os dados da ação protocolada" no calendário.</p>';
     const outras = e.tarefas.filter(t => !principais.includes(t));
     if (outras.length) {
-      h += `<details class="ignoradas"><summary>${plural(outras.length, 'tarefa ignorada', 'tarefas ignoradas')} (não são do Zangão)</summary><ul>` +
+      h += `<details class="ignoradas"><summary>${plural(outras.length, 'tarefa ignorada', 'tarefas ignoradas')} (não são do Bumblebee)</summary><ul>` +
            outras.map(t => `<li>${t.id ? 'Tarefa ' + esc(t.id) : 'Item do calendário sem id'} — ${esc(t.situacao === 'registrada' ? 'já resolvida antes' : motivo(t.motivo) || 'ignorada')}</li>`).join('') +
            '</ul></details>';
     }
@@ -234,10 +240,10 @@
   {% if tela == "execucao" %}
   $('execucao').innerHTML = cartao({{ e | tojson }});
   {% elif tela == "inicio" %}
-  // ---- cena: o Zangão anda conforme a execução mais recente ----
+  // ---- cena: o Bumblebee anda conforme a execução mais recente ----
   const cena = $('cena'), u = $('cena-ultron'), m = $('cena-mascote');
   const X = { doca: 135, filtro: 385, captura: 635, torre: 860 };
-  const pct = x => ((x - 30) / 960 * 100) + '%';
+  const pct = x => ((x - 65) / 960 * 100) + '%';  // 65 = metade da largura do canvas na cena
   const espera = ms => new Promise(r => setTimeout(r, ms));
   let onde = null, andando = false, primeiro = true, viuRodar = false;
   function por(l) { u.style.transition = 'none'; u.style.left = pct(X[l]); onde = l; void u.offsetWidth; u.style.transition = ''; }
@@ -245,15 +251,19 @@
     if (onde === l || andando) return;
     andando = true;
     const dur = Math.max(.6, Math.abs(X[l] - X[onde]) / 230);
-    u.classList.toggle('virado', X[l] < X[onde]); u.classList.toggle('carregando', l === 'filtro');
+    u.classList.toggle('carregando', l === 'filtro');
+    await Bumblebee.carro(m, X[l] < X[onde] ? -1 : 1);  // primeiro vira carro…
+    Bumblebee.movendo(m, true);
     u.style.transitionDuration = dur + 's'; m.classList.add('andando'); u.style.left = pct(X[l]); onde = l;
     await espera(dur * 1000);
-    m.classList.remove('andando'); u.classList.remove('virado', 'carregando'); andando = false;
+    Bumblebee.movendo(m, false); m.classList.remove('andando');
+    await Bumblebee.robo(m);  // …e ao chegar volta a robô
+    u.classList.remove('carregando'); andando = false;
   }
   function mover(l) { if (primeiro) { por(l); primeiro = false; } else if (onde !== l) ir(l); }
   const falar = t => { const el = $('cena-texto'); if (el.textContent !== t) el.textContent = t; };
   const humor = h => { if (!m.classList.contains(h)) { m.classList.remove('parado', 'trabalhando', 'feliz', 'erro'); m.classList.add(h); } };
-  const chip = (t, ativo) => { const c = $('cena-chip'); c.lastChild.textContent = 'ZANGÃO · ' + t; c.classList.toggle('ativo', !!ativo); };
+  const chip = (t, ativo) => { const c = $('cena-chip'); c.lastChild.textContent = 'BUMBLEBEE · ' + t; c.classList.toggle('ativo', !!ativo); };
   function etapa(atual, feitas) {
     [...document.querySelectorAll('#cena-etapas li')].forEach((li, i) => {
       li.classList.toggle('feita', i < feitas); li.classList.toggle('atual', i === atual - 1 && i >= feitas);
@@ -273,7 +283,7 @@
     $('cena-modo').hidden = true;
     if (!info.configurado) {
       mover('doca'); humor('parado'); chip('NÃO INSTALADO'); etapa(1, 0);
-      falar('O Zangão não está instalado neste servidor. Falta a pasta dele (ZANGAO_PASTA no .env do Ultron).'); return;
+      falar('O Bumblebee não está instalado neste servidor. Falta a pasta dele (ZANGAO_PASTA no .env do Ultron).'); return;
     }
     // acabou de ser disparado e ainda não mandou o 1º evento desta execução
     const nova = e && info.inicio && e.inicio && e.inicio >= info.inicio;
@@ -326,7 +336,7 @@
         : r === 'testado' ? `Teste concluído, nada foi gravado${det ? ': ' + det : ''}.`
         : r === 'lido' ? `Leitura concluída, nada foi preenchido${det ? ': ' + det : ''}.`
         : r === 'fora_do_dia' ? 'Hoje não é dia de gravar: só trabalho nos 3 últimos dias do mês. O teste roda em qualquer dia.'
-        : r === 'parou' ? `Parei: ${motivo(e.fim.motivo) || 'erro'}. Veja o log do Zangão.`
+        : r === 'parou' ? `Parei: ${motivo(e.fim.motivo) || 'erro'}. Veja o log do Bumblebee.`
         : 'A última execução não terminou aqui (foi fechada no meio ou rodou em outro computador).');
     } else {
       mover('doca'); humor('parado'); chip('OCIOSO'); etapa(1, 0);
@@ -342,7 +352,7 @@
     bt.disabled = !pode; bg.disabled = !(pode && info.janela);
     const conf = confirmarAte > Date.now() && !bg.disabled;
     bg.classList.toggle('confirmar', conf); bg.textContent = conf ? 'Confirmar: gravar no VIOS' : 'Rodar e gravar no VIOS';
-    $('rodar-dica').textContent = !info.configurado ? 'O Zangão não está instalado neste servidor (ZANGAO_PASTA no .env do Ultron).'
+    $('rodar-dica').textContent = !info.configurado ? 'O Bumblebee não está instalado neste servidor (ZANGAO_PASTA no .env do Ultron).'
       : info.rodando ? `Rodando ${info.modo === 'gravar' ? 'e gravando no VIOS' : 'o teste (não grava)'} desde ${(info.inicio || '').slice(11, 16)}. Uma execução por vez: espere terminar.`
       : conf ? 'Isto grava no VIOS de verdade. Clique em "Confirmar: gravar no VIOS" em até 6 segundos.'
       : info.janela ? 'Hoje é dia de rodar. "Testar sem gravar" preenche a tela de edição e não grava; "Rodar e gravar" grava no VIOS.'
