@@ -614,20 +614,32 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   EMPRESA: Empresa B
   111.444.777-35 ; Ana Lima
   ```
-- No Sonar, o "Identificador Projeto" de cada pesquisa fica `Empresa · Nome`.
+- No Sonar, o "Identificador Projeto" (coluna "Projeto") fica o nome da empresa.
 - Uma pessoa por vez, na ordem do arquivo. Se a sessão do Sonar cair no meio,
   entra de novo e tenta a mesma pessoa mais uma vez; erro numa não para as outras.
 - Antes de entrar no Sonar ele confere cada linha (11 ou 14 números, dígito
   verificador, repetidos); linha inválida fica de fora e aparece na página.
-- Para cada linha válida: Nova Pesquisa → Tipo **CPF/CNPJ** → documento →
-  "Continuar" → passo 2 ("Pedido"), onde confere o documento mostrado e lê o
-  valor (hoje R$ 15,70). **Ele para ali: nunca clica em "Confirmar Pedido"**.
+- Para cada pessoa, uma por vez: Nova Pesquisa → **Identificador Projeto = nome
+  da empresa** → Tipo **CPF/CNPJ** → documento → "Continuar" → passo 2 ("Pedido"):
+  confere o documento, escolhe o **Sacado** (o escritório; `SONAR_SACADO` no
+  `albi/.env`) e clica em **"Confirmar Pedido"** (R$ 15,70 cada). Guarda o número
+  do pedido.
+- Depois espera o Sonar terminar cada pedido (até `SONAR_ESPERA_MIN`, padrão 120
+  min), baixa a planilha ("Baixar Resultados") de quem tem processos encontrados
+  e escreve o `resultado.txt` (por empresa: CPF ; nome ; pedido ; resultado ;
+  planilha). Tudo em `saida/albi/<id>/` do Ultron, para baixar na página.
+- Não compra duas vezes: CPF já pesquisado para a mesma empresa nos últimos 30
+  dias usa o pedido anterior (registro `albi/saida/pedidos_confirmados.json`).
 - Pela página: `http://<IP do Mac>:5001/albi` (link "Albi" no topo do Ultron).
-  Soltar o `.txt` na caixa; o Albi roda em segundo plano (um por vez, até 500
-  linhas) e a página mostra cada pessoa ao vivo, agrupada por empresa. Histórico em `/albi/historico`.
+  Soltar o `.txt` na caixa: o Albi **só confere** e mostra quem vai ser
+  pesquisado e o **total em R$**. "Só testar" faz tudo menos confirmar;
+  "Confirmar e pesquisar" (dois cliques) compra. Roda em segundo plano (um por
+  vez, até 500 linhas); a página mostra cada pessoa ao vivo, agrupada por
+  empresa, com o pedido, o resultado e os links das planilhas e do .zip. Histórico em `/albi/historico`.
   O arquivo fica em `saida/albi/<id>.txt`; o log do Albi em
   `albi/logs/execucoes_ultron.log`.
-- Pelo terminal: `cd albi && ./rodar.sh --arquivo pedidos.txt`.
+- Pelo terminal: `cd albi && ./rodar.sh --arquivo pedidos.txt` (teste) ou
+  `... --confirmar` (compra; resultado em `albi/saida/<data_hora>/`).
 - A **Vila 03** acendeu: é a vila do Albi (Doca 01 · Albi, Receptor TXT,
   Conferência, Torre Sonar), com o mascote dele (`albi/mascote/`). Os eventos
   levam só o número da linha, o número da empresa e o final do documento

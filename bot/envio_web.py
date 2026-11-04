@@ -1,17 +1,20 @@
 """Página de envio: a pessoa sobe o .txt com as tarefas já ajustadas (análise feita no chat),
 confere o que vai ser gravado e o robô lança no VIOS. Não usa a IA (sem gasto de tokens)."""
 import hmac
+import io
 import json
 import logging
 import os
 import re
 import threading
 import uuid
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from flask import Flask, Response, abort, jsonify, redirect, render_template, request, url_for
+from flask import (Flask, Response, abort, jsonify, redirect, render_template, request, send_from_directory,
+                   url_for)
 
 from bot import albi, config, duplicidade, envio_txt, eventos, skill, zangao
 from bot.lancamento import REGISTRO, lancar, ler_intimacao
@@ -455,11 +458,52 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         except UnicodeDecodeError:
             texto = bruto.decode("cp1252")  # salvo pelo Bloco de Notas antigo
         try:
-            albi.rodar(pasta_albi, pasta_saida, texto, Path(arquivo.filename).name)
+            envio_id = albi.receber(pasta_albi, pasta_saida, texto, Path(arquivo.filename).name)
         except albi.AlbiErro as e:
             return redirect(url_for("albi_pagina", erro=str(e)))
-        log.info("Albi disparado pela página (%s) por %s", arquivo.filename, request.remote_addr)
+        return redirect(url_for("albi_conferir", envio_id=envio_id))
+
+    def _id_albi(envio_id):
+        if not re.fullmatch(r"[\w-]{1,64}", envio_id):
+            abort(404)
+        return envio_id
+
+    @app.route("/albi/conferir/<envio_id>")
+    def albi_conferir(envio_id):
+        """Antes de comprar: quem vai ser pesquisado, quem fica de fora e o total em R$."""
+        meta = albi.conferencia(pasta_saida, _id_albi(envio_id)) or abort(404)
+        return render_template("albi.html", tela="conferir", envio_id=envio_id, meta=meta, textos=albi.TEXTOS,
+                               ocupado=albi.status(pasta_albi)["rodando"])
+
+    @app.route("/albi/rodar/<envio_id>", methods=["POST"])
+    def albi_rodar(envio_id):
+        """Roda o Albi: modo "teste" (preenche e não compra) ou "confirmar" (compra)."""
+        modo = request.form.get("modo")
+        if modo == "confirmar" and request.form.get("certeza") != "sim":
+            return redirect(url_for("albi_conferir", envio_id=envio_id))
+        try:
+            albi.iniciar(pasta_albi, pasta_saida, _id_albi(envio_id), modo)
+        except albi.AlbiErro as e:
+            return redirect(url_for("albi_pagina", erro=str(e)))
+        log.info("Albi disparado pela página (%s, modo %s) por %s", envio_id, modo, request.remote_addr)
         return redirect(url_for("albi_pagina"))
+
+    @app.route("/albi/arquivo/<envio_id>/<path:nome>")
+    def albi_arquivo(envio_id, nome):
+        """resultado.txt ou uma planilha baixada do Sonar."""
+        return send_from_directory(albi.pasta_resultado(pasta_saida, _id_albi(envio_id)), nome, as_attachment=True)
+
+    @app.route("/albi/zip/<envio_id>")
+    def albi_zip(envio_id):
+        """Tudo desta execução num .zip (resultado.txt e as planilhas, por empresa)."""
+        base = albi.pasta_resultado(pasta_saida, _id_albi(envio_id))
+        nomes = albi.arquivos(pasta_saida, envio_id) or abort(404)
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+            for nome in nomes:
+                z.write(base / nome, nome)
+        return Response(buf.getvalue(), 200, {"Content-Type": "application/zip",
+                        "Content-Disposition": f'attachment; filename="albi_{envio_id}.zip"'})
 
     @app.route("/albi/modelo")
     def albi_modelo():

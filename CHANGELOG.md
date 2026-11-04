@@ -12,6 +12,35 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Albi confirma os pedidos, espera e baixa os resultados (04/11/2026)
+- Para cada pessoa, uma por vez: Nova Pesquisa com **Identificador Projeto = nome da empresa**
+  (antes "Empresa · Nome"), CPF/CNPJ, Continuar, **Sacado = o escritório** (`SONAR_SACADO` no
+  `albi/.env`, vazio = RONEELY FEITOSA & SOCIEDADE DE ADVOGADOS) e, com `--confirmar`,
+  **"Confirmar Pedido"** (R$ 15,70 cada). O número do pedido vem da tela ou, se não aparecer, da
+  tabela "Pedidos Recentes" da página inicial (Projeto = empresa).
+- Depois espera o Sonar terminar cada pedido (página `/modulos/pesquisa-processos/pedido/<n>`,
+  até `SONAR_ESPERA_MIN`, padrão 120 min), baixa a planilha ("Baixar Resultados") de quem tem
+  processos encontrados em `<saída>/<empresa>/S<pedido> - <nome>.xls` e escreve
+  `resultado.txt` por empresa: `CPF ; nome ; pedido ; resultado ; planilha`.
+- Para não comprar duas vezes: registro `albi/saida/pedidos_confirmados.json` (anotado ANTES de
+  clicar em Confirmar); CPF já pesquisado para a mesma empresa nos últimos 30 dias não é
+  comprado de novo (usa o pedido anterior). Nada é repetido depois do clique em Confirmar; erro
+  ali vira "Conferir no Sonar", e 3 seguidos param tudo. A repetição no .txt agora é conferida
+  por empresa (o mesmo CPF em duas empresas é pesquisado nas duas).
+- Página `/albi`: soltar o .txt só **confere** (`main.py --conferir`, sem navegador) e abre
+  "Conferir antes de pesquisar" com quem vai ser pesquisado, quem já foi, quem fica de fora e o
+  **total em R$**. Botões "Só testar (não compra)" e "Confirmar e pesquisar · R$ X" (dois cliques
+  em até 8 s; o servidor também exige a confirmação). No andamento: número do pedido, resultado,
+  "baixar planilha", `resultado.txt` e "Baixar tudo (.zip)". Rotas `/albi/conferir/<id>`,
+  `/albi/rodar/<id>`, `/albi/arquivo/<id>/<arquivo>` e `/albi/zip/<id>`.
+- Vila 03 (`ligar_albi.py`, etapa 3): etapas confirmado, já pesquisado, processos encontrados,
+  não consta, conferir e sem resultado.
+- Testado sem comprar: Sacado escolhido e "Confirmar Pedido" liberado (sem clicar), leitura de
+  pedidos já existentes ("PROCESSOS ENCONTRADOS · 14 Processos" e "NÃO CONSTA PROCESSO"),
+  download e renomeação da planilha, tabela da página inicial, conferência e "Só testar" pela
+  página, travas da compra; a tela de resultados com uma execução de mentira. **O clique em
+  "Confirmar Pedido" em si ainda não foi testado** (custa dinheiro): o primeiro uso real é o teste.
+
 ### Alterado — Albi: .txt organizado por empresa (04/11/2026)
 - Formato padrão (modelo em `albi/modelo_pedidos.txt`, para baixar em `/albi/modelo`): um bloco
   por empresa (`EMPRESA: Empresa A`) e uma pessoa por linha (`CPF ; nome`); `---` separa as

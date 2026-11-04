@@ -1,15 +1,14 @@
 """Albi (bot do Sonar, pasta albi/) disparado pela página /albi do Ultron.
 
-A pessoa solta o .txt (um CPF/CNPJ por linha) na página; o Ultron guarda o arquivo em
-<saída>/albi/<id>.txt e abre o Albi como processo separado, com o .venv e o .env dele:
-`main.py --arquivo <txt> --eventos`. O Albi escreve cada evento numa linha "@evento {json}" na
-saída padrão; o Ultron lê e grava em <saída>/eventos.jsonl com bot "albi" (a Vila 03 anima).
-
-O .txt vem organizado por empresa ("EMPRESA: ..." e, embaixo, "CPF ; nome", uma pessoa por
-linha; modelo em albi/modelo_pedidos.txt). Por enquanto o Albi só PREENCHE a Nova Pesquisa até o passo 2 ("Pedido", com o valor) e nunca
-clica em "Confirmar Pedido". Uma execução por vez (duas derrubariam a sessão uma da outra).
-Nos eventos vai só o tipo e o final do documento ("CNPJ final 77"); o .txt inteiro fica em
-<saída>/albi/ e aparece só na página /albi (que tem a mesma senha da página do Ultron).
+1.º passo (soltou o .txt): o Ultron guarda o arquivo em <saída>/albi/<id>.txt e roda
+`main.py --conferir` (sem navegador): quem é válido, quem já foi pesquisado e o total em R$.
+2.º passo (clicou em "Só testar" ou confirmou duas vezes): abre o Albi como processo separado,
+com o .venv e o .env dele: `main.py --arquivo <txt> --eventos --saida <saída>/albi/<id>/`
+(+ `--confirmar` para comprar). O Albi escreve cada evento numa linha "@evento {json}" na saída
+padrão; o Ultron grava em <saída>/eventos.jsonl com bot "albi" (a Vila 03 anima). resultado.txt
+e as planilhas ficam em <saída>/albi/<id>/ (a página oferece para baixar, ou tudo em .zip).
+Uma execução por vez (duas derrubariam a sessão uma da outra). Nos eventos vai só o tipo e o
+final do documento ("CPF final 06") e o número da empresa, nunca nomes.
 """
 import json
 import logging
@@ -35,11 +34,15 @@ AMBIENTE = ("PATH", "HOME", "USER", "LOGNAME", "SHELL", "TMPDIR", "LANG", "LC_AL
 _trava = threading.Lock()
 
 ETAPAS = {"fila": ["s-ja", "Na fila"], "preenchendo": ["s-andamento", "Preenchendo…"],
-          "pronto": ["s-ok", "Pronto no passo 2 (não confirmado)"], "erro": ["s-erro", "Erro"],
-          "invalido": ["s-erro", "Linha inválida"]}
+          "pronto": ["s-ok", "Teste: pronto no passo 2 (não comprado)"], "erro": ["s-erro", "Erro (não comprado)"],
+          "invalido": ["s-erro", "Linha inválida"], "confirmado": ["s-andamento", "Confirmado · aguardando o Sonar"],
+          "ja_pesquisado": ["s-ja", "Já pesquisado (não comprou de novo)"],
+          "encontrados": ["s-aviso", "Processos encontrados"], "nao_consta": ["s-ok", "Não consta processo"],
+          "sem_resultado": ["s-erro", "Sem resultado ainda"], "conferir": ["s-erro", "Conferir no Sonar"]}
+MODOS = {"teste": "Teste (não compra)", "confirmar": "Confirmado (compra)", "preencher": "Teste (não compra)"}
 RESULTADOS = {"concluido": ["s-ok", "Concluído"], "parou": ["s-erro", "Parou"],
               "rodando": ["s-andamento", "Rodando…"], "interrompida": ["s-erro", "Interrompida"]}
-TEXTOS = {"etapas": ETAPAS, "resultados": RESULTADOS}
+TEXTOS = {"etapas": ETAPAS, "resultados": RESULTADOS, "modos": MODOS}
 
 
 class AlbiErro(Exception):
@@ -117,9 +120,19 @@ def _meta(pasta_saida, envio_id):
         return {}
 
 
-def rodar(p, pasta_saida, texto, nome_arquivo):
-    """Guarda o .txt e abre o Albi em segundo plano. Devolve o id da execução.
-    Levanta AlbiErro se não pode rodar."""
+def _pasta_envio(pasta_saida):
+    return Path(pasta_saida) / PASTA_ENVIOS
+
+
+def _ambiente():
+    ambiente = {k: os.environ[k] for k in AMBIENTE if k in os.environ}
+    ambiente["PYTHONUTF8"] = "1"
+    return ambiente
+
+
+def receber(p, pasta_saida, texto, nome_arquivo):
+    """1.º passo (soltou o .txt): guarda o arquivo e pede ao Albi a conferência (sem navegador):
+    quem é válido, quem já foi pesquisado e quantos vão ser comprados. Devolve o id."""
     p = Path(p)
     if not configurado(p):
         raise AlbiErro(f"o Albi não está instalado em {p} (falta .venv, main.py ou .env; veja albi/README.md)")
@@ -128,31 +141,70 @@ def rodar(p, pasta_saida, texto, nome_arquivo):
         raise AlbiErro("o arquivo não tem nenhuma linha com CPF/CNPJ (veja o modelo)")
     if len(uteis) > MAX_LINHAS:
         raise AlbiErro(f"o arquivo tem {len(uteis)} linhas; o máximo por vez é {MAX_LINHAS}")
+    envio_id = f"{datetime.now():%Y-%m-%d_%H%M%S}_{uuid.uuid4().hex[:4]}"
+    pasta = _pasta_envio(pasta_saida)
+    pasta.mkdir(parents=True, exist_ok=True)
+    txt = pasta / f"{envio_id}.txt"
+    txt.write_text(texto, encoding="utf-8")
+    try:
+        r = subprocess.run([str(_python(p)), "main.py", "--arquivo", str(txt.resolve()), "--conferir"], cwd=p,
+                           env=_ambiente(), capture_output=True, text=True, encoding="utf-8", timeout=60)
+        conferencia = json.loads(r.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError) as e:
+        raise AlbiErro(f"o Albi não conseguiu conferir o arquivo: {e}")
+    if conferencia.get("erro"):
+        raise AlbiErro(conferencia["erro"])
+    meta = {"arquivo": nome_arquivo, "criado": datetime.now().isoformat(timespec="seconds"),
+            # linha do arquivo -> texto e empresa (a página mostra como foi digitado, agrupado por empresa)
+            "linhas": {str(n): l for n, (_, l) in uteis.items()}, "empresas": {str(n): e for n, (e, _) in uteis.items()},
+            "conferencia": conferencia, "iniciado": None}
+    (pasta / f"{envio_id}.json").write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+    return envio_id
+
+
+def conferencia(pasta_saida, envio_id):
+    """O que foi guardado no 1.º passo ({} se o id não existe)."""
+    return _meta(pasta_saida, envio_id)
+
+
+def pasta_resultado(pasta_saida, envio_id):
+    """Onde o Albi escreve resultado.txt e as planilhas desta execução."""
+    return _pasta_envio(pasta_saida) / envio_id
+
+
+def iniciar(p, pasta_saida, envio_id, modo):
+    """2.º passo: roda o Albi em segundo plano. modo "teste" (preenche e não compra) ou
+    "confirmar" (COMPRA as pesquisas, espera e baixa os resultados). Levanta AlbiErro."""
+    p = Path(p)
+    if modo not in ("teste", "confirmar"):
+        raise AlbiErro("modo inválido")
+    meta = _meta(pasta_saida, envio_id)
+    txt = _pasta_envio(pasta_saida) / f"{envio_id}.txt"
+    if not meta or not txt.exists():
+        raise AlbiErro("arquivo não encontrado: solte o .txt de novo")
+    if modo == "confirmar" and meta.get("iniciado") == "confirmar":
+        raise AlbiErro("este arquivo já foi confirmado; para pesquisar de novo, solte o .txt outra vez")
+    if not configurado(p):
+        raise AlbiErro(f"o Albi não está instalado em {p}")
     with _trava:
         if status(p)["rodando"]:
             raise AlbiErro("o Albi já está rodando; espere terminar")
-        envio_id = f"{datetime.now():%Y-%m-%d_%H%M%S}_{uuid.uuid4().hex[:4]}"
-        pasta_envios = Path(pasta_saida) / PASTA_ENVIOS
-        pasta_envios.mkdir(parents=True, exist_ok=True)
-        txt = pasta_envios / f"{envio_id}.txt"
-        txt.write_text(texto, encoding="utf-8")
+        meta["iniciado"] = modo
+        (_pasta_envio(pasta_saida) / f"{envio_id}.json").write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+        nome_arquivo, uteis = meta.get("arquivo"), meta.get("linhas") or {}
         inicio = datetime.now().isoformat(timespec="seconds")
-        # linha do arquivo -> texto e empresa (a página mostra como foi digitado, agrupado por empresa)
-        (pasta_envios / f"{envio_id}.json").write_text(json.dumps({
-            "arquivo": nome_arquivo, "criado": inicio, "linhas": {str(n): l for n, (_, l) in uteis.items()},
-            "empresas": {str(n): e for n, (e, _) in uteis.items()}}, ensure_ascii=False), encoding="utf-8")
-        eventos.emitir(pasta_saida, envio_id, "arquivo_subido", bot="albi", arquivo=nome_arquivo, linhas=len(uteis))
-
+        eventos.emitir(pasta_saida, envio_id, "arquivo_subido", bot="albi", arquivo=nome_arquivo, linhas=len(uteis), modo=modo)
         (p / "logs").mkdir(exist_ok=True)
         (p / "saida").mkdir(exist_ok=True)
-        ambiente = {k: os.environ[k] for k in AMBIENTE if k in os.environ}
-        ambiente["PYTHONUTF8"] = "1"
         saida_log = open(p / "logs" / LOG, "a", encoding="utf-8")
-        saida_log.write(f"\n===== {inicio} · {nome_arquivo} ({len(uteis)} linha(s)) · id {envio_id} =====\n")
+        saida_log.write(f"\n===== {inicio} · {nome_arquivo} ({len(uteis)} linha(s)) · {modo} · id {envio_id} =====\n")
         saida_log.flush()
+        cmd = [str(_python(p)), "main.py", "--arquivo", str(txt.resolve()), "--eventos",
+               "--saida", str(pasta_resultado(pasta_saida, envio_id).resolve())]
+        if modo == "confirmar":
+            cmd.append("--confirmar")
         try:
-            proc = subprocess.Popen([str(_python(p)), "main.py", "--arquivo", str(txt.resolve()), "--eventos"],
-                                    cwd=p, env=ambiente, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            proc = subprocess.Popen(cmd, cwd=p, env=_ambiente(), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                     stderr=saida_log, text=True, encoding="utf-8", errors="replace",
                                     start_new_session=True)
         except OSError as e:
@@ -162,8 +214,8 @@ def rodar(p, pasta_saida, texto, nome_arquivo):
             raise AlbiErro(f"não consegui abrir o Albi: {e}")
         saida_log.close()
         arquivo = p / "saida" / ARQUIVO
-        arquivo.write_text(json.dumps({"pid": proc.pid, "id": envio_id, "inicio": inicio}), encoding="utf-8")
-        log.info("Albi iniciado pela página: %s (%d linha(s)), pid %d", nome_arquivo, len(uteis), proc.pid)
+        arquivo.write_text(json.dumps({"pid": proc.pid, "id": envio_id, "inicio": inicio, "modo": modo}), encoding="utf-8")
+        log.info("Albi iniciado pela página: %s (%d linha(s)), modo %s, pid %d", nome_arquivo, len(uteis), modo, proc.pid)
 
         def acompanhar():
             fim = False
@@ -177,9 +229,8 @@ def rodar(p, pasta_saida, texto, nome_arquivo):
                     except (ValueError, KeyError, AttributeError):
                         log.warning("Evento ilegível do Albi: %r", linha[:200])
                         continue
-                    ev.pop("n", None)
-                    ev.pop("bot", None)
-                    ev.pop("envio", None)
+                    for k in ("n", "bot", "envio"):
+                        ev.pop(k, None)
                     fim = fim or tipo == "execucao_fim"
                     eventos.emitir(pasta_saida, envio_id, tipo, bot="albi", **ev)
             finally:
@@ -198,9 +249,18 @@ def rodar(p, pasta_saida, texto, nome_arquivo):
     return envio_id
 
 
+def arquivos(pasta_saida, envio_id):
+    """resultado.txt e planilhas desta execução (caminhos relativos à pasta do resultado)."""
+    base = pasta_resultado(pasta_saida, envio_id)
+    if not base.is_dir():
+        return []
+    return sorted(str(f.relative_to(base)) for f in base.rglob("*") if f.is_file() and not any(
+        parte.startswith(".") for parte in f.relative_to(base).parts))
+
+
 # --- execuções, montadas dos eventos (bot: "albi" em saida/eventos.jsonl) ---
 def _execucao(evs, meta):
-    e = {"id": None, "inicio": None, "arquivo": meta.get("arquivo"), "total": None, "validos": None,
+    e = {"id": None, "inicio": None, "modo": None, "arquivo": meta.get("arquivo"), "total": None, "validos": None,
          "empresas": None, "fase": None, "pedidos": [], "fim": None}
     linhas = meta.get("linhas") or {}
     empresas = meta.get("empresas") or {}
@@ -209,7 +269,8 @@ def _execucao(evs, meta):
     def pedido(n):
         if n not in por_linha:
             por_linha[n] = {"linha": n, "doc": None, "texto": linhas.get(str(n)), "empresa": empresas.get(str(n), ""),
-                            "grupo": None, "etapa": "fila", "valor": None, "motivo": None}
+                            "grupo": None, "etapa": "fila", "valor": None, "motivo": None, "pedido": None,
+                            "resultado": None, "baixado": False}
             e["pedidos"].append(por_linha[n])
         return por_linha[n]
 
@@ -219,8 +280,11 @@ def _execucao(evs, meta):
         tipo = ev.get("tipo")
         if tipo == "arquivo_subido":
             e["arquivo"] = e["arquivo"] or ev.get("arquivo")
+            e["modo"] = ev.get("modo") or e.get("modo")
         elif tipo == "execucao_iniciada":
             e.update(total=ev.get("total"), validos=ev.get("validos"), empresas=ev.get("empresas"))
+            if ev.get("modo"):
+                e["modo"] = "confirmar" if ev["modo"] == "confirmar" else "teste"
         elif tipo == "fase":
             e["fase"] = ev.get("fase")
         elif tipo == "pedido" and isinstance(ev.get("linha"), int):
@@ -230,6 +294,11 @@ def _execucao(evs, meta):
                 p["valor"] = ev["valor"]
             if ev.get("motivo"):
                 p["motivo"] = ev["motivo"]
+            for k in ("pedido", "resultado"):
+                if ev.get(k):
+                    p[k] = ev[k]
+            if ev.get("baixado"):
+                p["baixado"] = True
         elif tipo == "execucao_fim":
             e["fim"] = {"resultado": ev.get("resultado"), "motivo": ev.get("motivo"),
                         "contagens": ev.get("contagens") or {}, "ts": ev.get("ts")}
@@ -239,7 +308,8 @@ def _execucao(evs, meta):
     e["pedidos"].sort(key=lambda p: p["linha"])
     alvo = [p for p in e["pedidos"] if p["etapa"] != "invalido"]
     e["alvo"] = len(alvo)
-    e["feitos"] = sum(1 for p in alvo if p["etapa"] in ("pronto", "erro"))
+    finais = ("pronto", "erro", "ja_pesquisado", "encontrados", "nao_consta", "sem_resultado", "conferir")
+    e["feitos"] = sum(1 for p in alvo if p["etapa"] in finais)
     return e
 
 
@@ -249,7 +319,11 @@ def execucoes(pasta_saida):
     for ev in eventos.ler(pasta_saida, 0, limite=10 ** 9)["eventos"]:
         if ev.get("bot") == "albi" and ev.get("envio"):
             grupos.setdefault(ev["envio"], []).append(ev)
-    lista = [_execucao(evs, _meta(pasta_saida, envio_id)) for envio_id, evs in grupos.items()]
+    lista = []
+    for envio_id, evs in grupos.items():
+        e = _execucao(evs, _meta(pasta_saida, envio_id))
+        e["arquivos"] = arquivos(pasta_saida, envio_id)
+        lista.append(e)
     return sorted(lista, key=lambda e: e["inicio"] or "", reverse=True)
 
 

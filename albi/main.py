@@ -1,34 +1,43 @@
 """Albi — bot do Sonar (Leme Forense). Separado do Ultron e do Zangão: tem .venv, .env, logs/ e
 saida/ próprios dentro de albi/ e não importa nada do bot/.
 
-Entra no Sonar (encerrando a outra sessão se cair em /login-conflito) e, para cada CPF/CNPJ do
-.txt, preenche Pesquisa de Processos > Nova Pesquisa até o passo 2 ("Pedido", com o valor).
-NUNCA clica em "Confirmar Pedido": por enquanto ele só preenche.
+Entra no Sonar (encerrando a outra sessão se cair em /login-conflito) e, para cada pessoa do .txt,
+faz uma Pesquisa de Processos, uma por vez:
+  1. Nova Pesquisa: Identificador Projeto = nome da EMPRESA, tipo CPF/CNPJ, documento, Continuar;
+  2. passo 2 ("Pedido"): confere o documento, escolhe o Sacado (SONAR_SACADO, padrão o escritório)
+     e, só com --confirmar, clica em "Confirmar Pedido" (R$ 15,70 cada) e guarda o número do pedido;
+  3. espera o Sonar terminar cada pedido, baixa a planilha ("Baixar Resultados") dos que têm
+     processos encontrados e escreve resultado.txt (empresa, CPF, nome, pedido e o que achou).
+Sem --confirmar ele faz o 1 e o 2 e NÃO compra nada (teste). CPF já pesquisado para a mesma
+empresa nos últimos 30 dias não é comprado de novo: usa o pedido anterior
+(registro em saida/pedidos_confirmados.json).
 
-.txt (modelo em modelo_pedidos.txt): um bloco por empresa e uma pessoa por linha, CPF/CNPJ e
-nome separados por ";". O Identificador Projeto do Sonar fica "Empresa · Nome".
+.txt (modelo em modelo_pedidos.txt): um bloco por empresa e uma pessoa por linha, "CPF ; nome".
     EMPRESA: Empresa A
     123.456.789-09 ; Maria da Silva
-    987.654.321-00 ; João Souza
     ---
     EMPRESA: Empresa B
     111.444.777-35 ; Ana Lima
 Linha vazia, começando com # ou só com --- é ignorada. Sem EMPRESA:, vale tudo como uma lista só.
 
 uso (dentro de albi/):
-  ./rodar.sh                               só entra e abre a tela de novo pedido (confere o .env)
-  ./rodar.sh --arquivo pedidos.txt         preenche um pedido por linha (sem confirmar)
-  ./rodar.sh --arquivo pedidos.txt --eventos   idem, e escreve os eventos da vila na saída padrão
-                                           (é assim que o Ultron roda o Albi pela página /albi)
-  ./rodar.sh [caminho/do/.env] ...         outro .env
+  ./rodar.sh                                  só entra e abre a tela de novo pedido (confere o .env)
+  ./rodar.sh --arquivo pedidos.txt            teste: preenche até o passo 2 e não compra
+  ./rodar.sh --arquivo pedidos.txt --confirmar   COMPRA as pesquisas, espera e baixa os resultados
+  ./rodar.sh --arquivo pedidos.txt --conferir    só lê o .txt e mostra (JSON) o que seria feito
+  --saida PASTA   onde ficam resultado.txt e as planilhas (padrão: saida/<data_hora>/)
+  --eventos       escreve os eventos da vila na saída padrão (assim o Ultron roda o Albi pela /albi)
+  ./rodar.sh [caminho/do/.env] ...            outro .env
 """
 import json
 import logging
 import os
 import re
+import shutil
 import sys
 import time
-from datetime import datetime
+import unicodedata
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
@@ -54,6 +63,11 @@ CAMINHO_NOVO_PEDIDO = "/modulos/pesquisa-processos/novo-pedido"
 # passo 2: "Documento da pesquisa" e, embaixo, o número (a barra de passos também tem
 # "Documento da Pesquisa", mas seguido do "2" do próximo passo)
 DOC_PASSO2 = re.compile(r"Documento da pesquisa\s*\n\s*(\d[\d./-]{10,}\d)", re.I)
+PEDIDO_URL = re.compile(r"/pesquisa-processos/pedido/(\d+)")
+SACADO_PADRAO = "RONEELY FEITOSA & SOCIEDADE DE ADVOGADOS"
+REGISTRO = PASTA / "saida" / "pedidos_confirmados.json"  # empresa|CPF -> pedido (não comprar 2 vezes)
+DIAS_REPETIDO = 30
+PRECO = "R$ 15,70"  # valor por pesquisa visto no passo 2 em 04/11/2026 (o Albi lê o valor real lá)
 EVENTOS = False  # --eventos: cada evento vira uma linha "@evento {json}" na saída padrão
 
 
@@ -93,6 +107,9 @@ def carregar(caminho_env):
         **{k.lower(): seletor(os.getenv(k, "").strip() or v) for k, v in PADROES.items()},
         "headless": os.getenv("HEADLESS", "false").strip().lower() in ("true", "1", "sim"),
         "timeout": int(os.getenv("TIMEOUT", "20").strip() or 20),
+        "sacado": os.getenv("SONAR_SACADO", "").strip() or SACADO_PADRAO,
+        # quanto tempo esperar o Sonar terminar os pedidos antes de desistir (minutos)
+        "espera_min": int(os.getenv("SONAR_ESPERA_MIN", "120").strip() or 120),
     }
 
 
@@ -211,7 +228,7 @@ def ler_pedidos(texto):
         numeros = re.sub(r"\D", "", texto_doc)
         grupo = grupos.setdefault(empresa, len(grupos) + 1)
         p = {"linha": n, "empresa": empresa, "grupo": grupo, "doc": numeros, "nome": nome,
-             "identificador": " · ".join(x for x in (empresa, nome) if x), "problema": None}
+             "identificador": empresa, "problema": None}
         if not docs:
             p["doc"] = re.sub(r"\D", "", linha)
             p["problema"] = ('o CPF/CNPJ está misturado com letras (separe o nome com ";")' if p["doc"]
@@ -220,10 +237,10 @@ def ler_pedidos(texto):
             p["problema"] = f"tem {len(numeros)} números (CPF tem 11 e CNPJ tem 14)"
         elif not documento_valido(numeros):
             p["problema"] = f"{tipo_doc(numeros)} inválido (dígito verificador não confere)"
-        elif numeros in vistos:
-            p["problema"] = f"repetido (já está na linha {vistos[numeros]})"
+        elif (normalizar(empresa), numeros) in vistos:
+            p["problema"] = f"repetido nesta empresa (já está na linha {vistos[(normalizar(empresa), numeros)]})"
         else:
-            vistos[numeros] = n
+            vistos[(normalizar(empresa), numeros)] = n
         pedidos.append(p)
     return pedidos
 
@@ -251,6 +268,247 @@ def mensagem(e):
     """Primeira linha do erro, sem o stacktrace do Selenium."""
     texto = getattr(e, "msg", None) or str(e) or e.__class__.__name__
     return texto.strip().splitlines()[0][:200]
+
+
+# ---------------- registro dos pedidos confirmados (não comprar 2 vezes) ----------------
+def normalizar(texto):
+    """Sem acento, maiúsculo e com um espaço só (para comparar nomes de empresa e do Sacado)."""
+    t = unicodedata.normalize("NFKD", texto or "")
+    return " ".join("".join(c for c in t if not unicodedata.combining(c)).upper().split())
+
+
+def formatar(doc):
+    if len(doc) == 11:
+        return f"{doc[:3]}.{doc[3:6]}.{doc[6:9]}-{doc[9:]}"
+    if len(doc) == 14:
+        return f"{doc[:2]}.{doc[2:5]}.{doc[5:8]}/{doc[8:12]}-{doc[12:]}"
+    return doc
+
+
+def ler_registro():
+    try:
+        return json.loads(REGISTRO.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def gravar_registro(reg):
+    REGISTRO.parent.mkdir(parents=True, exist_ok=True)
+    tmp = REGISTRO.with_suffix(".tmp")
+    tmp.write_text(json.dumps(reg, ensure_ascii=False, indent=1), encoding="utf-8")
+    tmp.replace(REGISTRO)
+
+
+def chave(p):
+    return f"{normalizar(p['empresa'])}|{p['doc']}"
+
+
+def ja_pesquisado(reg, p, agora=None):
+    """Registro de um pedido desta empresa + CPF nos últimos 30 dias (ou None)."""
+    r = reg.get(chave(p))
+    if not r:
+        return None
+    try:
+        quando = datetime.fromisoformat(r["quando"])
+    except (KeyError, ValueError):
+        return r
+    return r if (agora or datetime.now()) - quando <= timedelta(days=DIAS_REPETIDO) else None
+
+
+def conferir_arquivo(pedidos):
+    """--conferir: o que seria feito, sem abrir o navegador (a página /albi mostra antes de comprar)."""
+    reg = ler_registro()
+    out = []
+    for p in pedidos:
+        j = None if p["problema"] else ja_pesquisado(reg, p)
+        out.append({"linha": p["linha"], "empresa": p["empresa"], "nome": p["nome"], "doc": formatar(p["doc"]),
+                    "problema": p["problema"], "ja": ({"pedido": j.get("pedido"), "quando": j.get("quando")} if j else None)})
+    return {"pedidos": out, "preco": PRECO, "comprar": sum(1 for x in out if not x["problema"] and not x["ja"])}
+
+
+# ---------------- passo 2: Sacado, confirmar e o número do pedido ----------------
+def dropdown(driver, id_input):
+    return driver.find_element(By.XPATH, f"//input[@id='{id_input}']/ancestor::div[contains(@class,'p-dropdown')][1]")
+
+
+def escolher_sacado(driver, cfg):
+    """Escolhe o Sacado (quem é cobrado) no passo 2. Sem ele o "Confirmar Pedido" fica desligado."""
+    espera = WebDriverWait(driver, cfg["timeout"])
+    dd = espera.until(lambda d: dropdown(d, "sacado"))
+    alvo = normalizar(cfg["sacado"])
+    if normalizar(dd.find_element(By.CSS_SELECTOR, ".p-dropdown-label").text) == alvo:
+        return
+    dd.find_element(By.CSS_SELECTOR, ".p-dropdown-trigger").click()
+    itens = espera.until(lambda d: [e for e in d.find_elements(By.CSS_SELECTOR, ".p-dropdown-item") if e.is_displayed()] or False)
+    item = next((e for e in itens if normalizar(e.text) == alvo), None)
+    if not item:
+        raise AlbiErro(f'o Sacado "{cfg["sacado"]}" não está na lista do Sonar (SONAR_SACADO no albi/.env)')
+    item.click()
+    espera.until(lambda d: normalizar(dropdown(d, "sacado").find_element(By.CSS_SELECTOR, ".p-dropdown-label").text) == alvo)
+
+
+def botao_confirmar(driver):
+    return next((b for b in driver.find_elements(By.TAG_NAME, "button")
+                 if b.is_displayed() and b.text.strip() == "Confirmar Pedido"), None)
+
+
+def numero_na_tela(driver):
+    m = PEDIDO_URL.search(driver.current_url)
+    if m:
+        return m.group(1)
+    m = re.search(r"\bPedido\s*(?:n[º°o.]*\s*)?S?(\d{6,})\b", driver.find_element(By.TAG_NAME, "body").text)
+    return m.group(1) if m else None
+
+
+def linhas_da_home(driver, cfg):
+    """Linhas da tabela "Pedidos Recentes" da página inicial: [(número, projeto)] de todas as abas."""
+    driver.get(urljoin(cfg["url"], "/"))
+    espera = WebDriverWait(driver, cfg["timeout"] * 2)
+    espera.until(lambda d: d.find_elements(By.CSS_SELECTOR, ".p-tabview-nav li"))
+
+    def ler_tabela():
+        try:
+            espera.until(lambda d: d.find_elements(By.CSS_SELECTOR, "table tbody tr td"))
+        except TimeoutException:
+            return []
+        time.sleep(1)
+        out = []
+        for tr in driver.find_elements(By.CSS_SELECTOR, "table tbody tr"):
+            tds = tr.find_elements(By.TAG_NAME, "td")
+            if len(tds) >= 3:
+                m = re.search(r"S?(\d{6,})", tds[0].text)
+                if m:
+                    out.append((m.group(1), tds[2].text.strip()))
+        return out
+
+    vistas = ler_tabela()  # a aba aberta
+    for i in range(len(driver.find_elements(By.CSS_SELECTOR, ".p-tabview-nav li"))):
+        aba = driver.find_elements(By.CSS_SELECTOR, ".p-tabview-nav li")[i]
+        classe = aba.get_attribute("class") or ""
+        if "p-disabled" in classe or "p-tabview-selected" in classe or not aba.text.strip():
+            continue
+        try:
+            aba.find_element(By.TAG_NAME, "a").click()
+        except Exception:
+            continue
+        vistas += ler_tabela()
+    return vistas
+
+
+def confirmar_pedido(driver, cfg, empresa, conhecidos):
+    """Clica em "Confirmar Pedido" (COMPRA a pesquisa) e devolve o número do pedido.
+    Depois do clique nada aqui é repetido: se der erro, levanta Confirmado (talvez comprado)."""
+    espera = WebDriverWait(driver, cfg["timeout"])
+    botao = espera.until(lambda d: (lambda b: b if b is not None and b.is_enabled() else False)(botao_confirmar(d)))
+    botao.click()
+    try:
+        # algum aviso de "deseja confirmar?" depois do clique: confirma nele
+        time.sleep(1.5)
+        for dlg in driver.find_elements(By.CSS_SELECTOR, ".p-dialog, .p-confirm-dialog, [role=dialog], [role=alertdialog]"):
+            if not dlg.is_displayed():
+                continue
+            ok = [b for b in dlg.find_elements(By.TAG_NAME, "button") if b.is_displayed()
+                  and normalizar(b.text) in ("CONFIRMAR", "CONFIRMAR PEDIDO", "SIM", "OK")]
+            if ok:
+                log.info("Aviso depois de confirmar: %s", dlg.text.strip()[:120].replace("\n", " "))
+                ok[0].click()
+        WebDriverWait(driver, max(60, cfg["timeout"] * 3)).until(
+            lambda d: "step=carrinho" not in d.current_url or numero_na_tela(d) or botao_confirmar(d) is None)
+        numero = numero_na_tela(driver)
+        if not numero:
+            # não apareceu na tela: procura na página inicial o pedido novo com o Projeto = empresa
+            for _ in range(6):
+                novos = [n for n, proj in linhas_da_home(driver, cfg)
+                         if normalizar(proj) == normalizar(empresa) and n not in conhecidos]
+                if novos:
+                    numero = max(novos, key=int)
+                    break
+                time.sleep(5)
+        if not numero:
+            raise AlbiErro("confirmei, mas não achei o número do pedido")
+        return numero
+    except Exception as e:
+        raise Confirmado(mensagem(e))
+
+
+class Confirmado(Exception):
+    """Erro depois de clicar em "Confirmar Pedido": o pedido pode ter sido comprado."""
+
+
+# ---------------- resultado de cada pedido ----------------
+def ler_pedido(driver, cfg, numero):
+    """Página do pedido: {"status", "resultado", "concluido", "pode_baixar"}."""
+    url = urljoin(cfg["url"], f"/modulos/pesquisa-processos/pedido/{numero}")
+    for tentativa in (1, 2):
+        driver.get(url)
+        try:
+            WebDriverWait(driver, cfg["timeout"] * 2).until(
+                lambda d: re.search(rf"Pedido {numero}\s*\n(?:\s*Pedido {numero}\s*\n)?\s*\S", d.find_element(By.TAG_NAME, "body").text))
+            break
+        except TimeoutException:
+            if tentativa == 2:
+                raise AlbiErro(f"a página do pedido S{numero} não carregou")
+    time.sleep(1)
+    texto = driver.find_element(By.TAG_NAME, "body").text
+    m = re.search(rf"Pedido {numero}\s*\n(?:\s*Pedido {numero}\s*\n)?\s*([^\n]+)\n", texto)
+    status = m.group(1).strip() if m else ""
+    res = re.search(r"\nResultado\s*\n\s*([^\n]+)", texto)
+    fim = re.search(r"Data de Conclus[aã]o\s*\n\s*([^\n]+)", texto)
+    baixar = [b for b in driver.find_elements(By.TAG_NAME, "button") if b.text.strip() == "Baixar Resultados"]
+    st = normalizar(status)
+    return {"status": status, "resultado": res.group(1).strip() if res else "",
+            "concluido": bool(fim and re.search(r"\d", fim.group(1))) or "ENCONTRAD" in st or "NAO CONSTA" in st,
+            "encontrados": "ENCONTRAD" in st and "NAO" not in st, "pode_baixar": bool(baixar and baixar[0].is_enabled())}
+
+
+def baixar_resultado(driver, cfg, pasta_downloads, destino):
+    """Clica em "Baixar Resultados" (na página do pedido aberta) e move a planilha para `destino`
+    (sem extensão: fica a do arquivo baixado). Devolve o caminho final."""
+    antes = set(os.listdir(pasta_downloads))
+    botao = next(b for b in driver.find_elements(By.TAG_NAME, "button") if b.text.strip() == "Baixar Resultados")
+    botao.click()
+    fim = time.time() + max(60, cfg["timeout"] * 3)
+    arquivo = None
+    while time.time() < fim:
+        novos = [f for f in set(os.listdir(pasta_downloads)) - antes if not f.endswith((".crdownload", ".tmp"))]
+        if novos:
+            arquivo = pasta_downloads / novos[0]
+            tam = -1
+            while arquivo.stat().st_size != tam:  # espera terminar de escrever
+                tam = arquivo.stat().st_size
+                time.sleep(1)
+            break
+        time.sleep(1)
+    if not arquivo:
+        raise AlbiErro("a planilha não baixou")
+    final = destino.with_suffix(arquivo.suffix or ".xls")
+    final.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(arquivo), str(final))
+    return final
+
+
+def nome_arquivo(texto):
+    """Nome seguro para arquivo/pasta (mantém acentos; tira / \\ : * ? " < > |)."""
+    return re.sub(r'[\\/:*?"<>|]+', "-", texto).strip(" .")[:80] or "sem nome"
+
+
+def escrever_resultado(saida, pedidos, nome_txt):
+    """resultado.txt: por empresa, uma linha por pessoa: CPF ; nome ; pedido ; resultado ; planilha."""
+    linhas = [f"# Resultado do Albi · {nome_txt} · {datetime.now():%d/%m/%Y %H:%M}",
+              "# CPF ; nome ; pedido ; resultado ; planilha", ""]
+    empresa = None
+    for p in pedidos:
+        if p["empresa"] != empresa:
+            if empresa is not None:
+                linhas += ["---", ""]
+            empresa = p["empresa"]
+            linhas.append(f"EMPRESA: {empresa or '(sem empresa)'}")
+        r = p.get("situacao") or ""
+        partes = [formatar(p["doc"]), p["nome"] or "", f"S{p['pedido']}" if p.get("pedido") else "—", r,
+                  p.get("planilha") or ""]
+        linhas.append(" ; ".join(partes).rstrip(" ;"))
+    Path(saida).mkdir(parents=True, exist_ok=True)
+    (Path(saida) / "resultado.txt").write_text("\n".join(linhas) + "\n", encoding="utf-8")
 
 
 # ---------------- Nova Pesquisa ----------------
@@ -301,74 +559,223 @@ def preencher_pedido(driver, cfg, doc, identificador=""):
             "itens": [f"{a.strip()} {b}" for a, b in itens if a.strip() and "RESUMO" not in a.upper()]}
 
 
-def rodar_pedidos(driver, cfg, pedidos):
-    """Entra no Sonar e preenche cada pedido válido, um por vez. Se a sessão cair no meio (outra
-    pessoa entrou com o mesmo login, ou o Sonar deslogou), entra de novo e tenta a linha mais uma
-    vez; erro numa linha não para as outras. Devolve as contagens."""
+def preencher_com_retentativa(driver, cfg, p):
+    """Passo 1 e 2 (sem confirmar). Se a sessão cair ou der erro, entra de novo e tenta mais uma vez."""
+    for tentativa in (1, 2):
+        try:
+            r = preencher_pedido(driver, cfg, p["doc"], p["identificador"])
+            escolher_sacado(driver, cfg)
+            return r
+        except Exception as e:
+            if tentativa == 2:
+                raise
+            if pagina(driver).startswith("/login"):
+                log.warning("Linha %d: a sessão do Sonar caiu; entrando de novo", p["linha"])
+                entrar(driver, cfg)
+            else:
+                log.warning("Linha %d: %s; tentando de novo", p["linha"], mensagem(e))
+
+
+def print_erro(driver, p):
+    print_ = LOGS / f"erro_{datetime.now():%Y-%m-%d_%H%M%S}_linha{p['linha']}.png"
+    try:
+        driver.save_screenshot(str(print_))
+    except Exception:
+        pass
+    return print_
+
+
+def rodar_pedidos(driver, cfg, pedidos, confirmar=False, saida=None, nome_txt="pedidos.txt"):
+    """Faz cada pessoa válida, uma por vez. Sem confirmar: só preenche até o passo 2 (teste).
+    Confirmando: compra, guarda o número, espera os resultados e baixa as planilhas."""
     validos = [p for p in pedidos if not p["problema"]]
-    k = {"prontos": 0, "erros": 0, "invalidos": len(pedidos) - len(validos)}
+    if not confirmar:
+        k = {"prontos": 0, "erros": 0, "invalidos": len(pedidos) - len(validos)}
+    else:
+        k = {"confirmados": 0, "ja_pesquisados": 0, "encontrados": 0, "nao_consta": 0, "baixados": 0,
+             "sem_resultado": 0, "conferir": 0, "erros": 0, "invalidos": len(pedidos) - len(validos)}
     for p in pedidos:
+        p["situacao"] = "linha inválida: " + p["problema"] if p["problema"] else ""
         if p["problema"]:
             log.warning("Linha %d (%s): %s", p["linha"], mascarar(p["doc"]), p["problema"])
             evento("pedido", linha=p["linha"], grupo=p["grupo"], doc=mascarar(p["doc"]), etapa="invalido",
                    motivo=p["problema"])
+    escrever = (lambda: escrever_resultado(saida, pedidos, nome_txt)) if (confirmar and saida) else (lambda: None)
+    escrever()
     evento("fase", fase="entrando_sonar")
     entrar(driver, cfg)
     log.info("Login OK: %s", driver.current_url)
-    evento("fase", fase="preenchendo")
+    evento("fase", fase="confirmando" if confirmar else "preenchendo")
+    reg = ler_registro() if confirmar else {}
+    conhecidos = {r.get("pedido") for r in reg.values() if r.get("pedido")}
+    seguidos = 0  # erros seguidos depois de clicar em Confirmar: 3 = para tudo (algo mudou no Sonar)
     for i, p in enumerate(validos, 1):
         doc = mascarar(p["doc"])
-        log.info("Pedido %d de %d (linha %d, empresa %d, %s): preenchendo", i, len(validos), p["linha"], p["grupo"], doc)
-        evento("pedido", linha=p["linha"], grupo=p["grupo"], doc=doc, etapa="preenchendo", i=i, de=len(validos))
-        erro = None
-        for tentativa in (1, 2):
-            try:
-                r = preencher_pedido(driver, cfg, p["doc"], p["identificador"])
-                erro = None
-                break
-            except Exception as e:
-                erro = e
-                if tentativa == 2:
-                    break
-                try:
-                    if pagina(driver).startswith("/login"):
-                        log.warning("Linha %d: a sessão do Sonar caiu; entrando de novo", p["linha"])
-                        entrar(driver, cfg)
-                    else:
-                        log.warning("Linha %d: %s; tentando de novo", p["linha"], mensagem(e))
-                except Exception as e2:
-                    erro = e2
-                    break
-        if erro is not None:
+        ev = dict(linha=p["linha"], grupo=p["grupo"], doc=doc)
+        if confirmar:
+            j = ja_pesquisado(reg, p)
+            if j:
+                k["ja_pesquisados"] += 1
+                p["pedido"] = j.get("pedido")
+                p["situacao"] = "já pesquisado em " + j.get("quando", "")[:10] + (" (sem número: conferir no Sonar)" if not p["pedido"] else "")
+                log.info("Linha %d (%s): já pesquisado para esta empresa (pedido %s): não compra de novo", p["linha"], doc, p["pedido"])
+                evento("pedido", etapa="ja_pesquisado", pedido=p["pedido"], **ev)
+                escrever()
+                continue
+        log.info("Pessoa %d de %d (linha %d, empresa %d, %s): preenchendo", i, len(validos), p["linha"], p["grupo"], doc)
+        evento("pedido", etapa="preenchendo", i=i, de=len(validos), **ev)
+        try:
+            r = preencher_com_retentativa(driver, cfg, p)
+        except Exception as e:
             k["erros"] += 1
-            print_ = LOGS / f"erro_{datetime.now():%Y-%m-%d_%H%M%S}_linha{p['linha']}.png"
-            try:
-                driver.save_screenshot(str(print_))
-            except Exception:
-                pass
-            log.error("Linha %d (%s): %s (print em %s)", p["linha"], doc, mensagem(erro), print_)
-            evento("pedido", linha=p["linha"], grupo=p["grupo"], doc=doc, etapa="erro", motivo=mensagem(erro))
+            p["situacao"] = "erro (não comprado): " + mensagem(e)
+            log.error("Linha %d (%s): %s (print em %s)", p["linha"], doc, mensagem(e), print_erro(driver, p))
+            evento("pedido", etapa="erro", motivo=mensagem(e), **ev)
+            escrever()
             continue
-        k["prontos"] += 1
-        log.info("Linha %d (%s): pronto no passo 2, sem confirmar · %s · resumo: %s", p["linha"], doc,
-                 r["valor"] or "valor não lido", "; ".join(r["itens"]) or "—")
-        evento("pedido", linha=p["linha"], grupo=p["grupo"], doc=doc, etapa="pronto", valor=r["valor"],
-               itens=len(r["itens"]))
+        if not confirmar:
+            b = botao_confirmar(driver)
+            if not (b and b.is_enabled()):
+                k["erros"] += 1
+                log.error("Linha %d (%s): escolhi o Sacado, mas o Confirmar Pedido não ligou", p["linha"], doc)
+                evento("pedido", etapa="erro", motivo="escolhi o Sacado, mas o Confirmar Pedido não ligou", **ev)
+                continue
+            k["prontos"] += 1
+            log.info("Linha %d (%s): pronto no passo 2 com o Sacado e o Confirmar liberado (NÃO cliquei) · %s",
+                     p["linha"], doc, r["valor"] or "valor não lido")
+            evento("pedido", etapa="pronto", valor=r["valor"], itens=len(r["itens"]), **ev)
+            continue
+        # daqui em diante compra: anota ANTES de clicar (se cair no meio, não compra de novo)
+        reg[chave(p)] = {"pedido": None, "quando": datetime.now().isoformat(timespec="seconds"),
+                         "empresa": p["empresa"], "nome": p["nome"]}
+        gravar_registro(reg)
+        try:
+            numero = confirmar_pedido(driver, cfg, p["empresa"], conhecidos)
+        except Confirmado as e:
+            seguidos += 1
+            k["conferir"] += 1
+            p["situacao"] = "CONFERIR NO SONAR: cliquei em Confirmar e deu erro (" + str(e) + ")"
+            log.error("Linha %d (%s): depois de confirmar: %s (print em %s)", p["linha"], doc, e, print_erro(driver, p))
+            evento("pedido", etapa="conferir", motivo="pode ter sido comprado: " + str(e), **ev)
+            escrever()
+            if seguidos >= 3:
+                raise AlbiErro("3 erros seguidos depois de confirmar: parei para não comprar errado (confira no Sonar)")
+            continue
+        except Exception as e:  # antes do clique (botão não ligou): nada foi comprado
+            reg.pop(chave(p), None)
+            gravar_registro(reg)
+            k["erros"] += 1
+            p["situacao"] = "erro (não comprado): " + mensagem(e)
+            log.error("Linha %d (%s): %s (print em %s)", p["linha"], doc, mensagem(e), print_erro(driver, p))
+            evento("pedido", etapa="erro", motivo=mensagem(e), **ev)
+            escrever()
+            continue
+        seguidos = 0
+        conhecidos.add(numero)
+        reg[chave(p)]["pedido"] = numero
+        gravar_registro(reg)
+        k["confirmados"] += 1
+        p["pedido"] = numero
+        p["situacao"] = "confirmado, aguardando o Sonar"
+        log.info("Linha %d (%s): CONFIRMADO · pedido S%s · %s", p["linha"], doc, numero, r["valor"] or PRECO)
+        evento("pedido", etapa="confirmado", pedido=numero, valor=r["valor"], **ev)
+        escrever()
+    if confirmar:
+        aguardar_e_baixar(driver, cfg, [p for p in validos if p.get("pedido")], saida, k, escrever)
     return k
+
+
+def aguardar_e_baixar(driver, cfg, pedidos, saida, k, escrever):
+    """Espera cada pedido terminar no Sonar e baixa a planilha dos que têm processos encontrados."""
+    if not pedidos:
+        return
+    evento("fase", fase="aguardando_resultados")
+    downloads = Path(saida) / ".downloads"
+    downloads.mkdir(parents=True, exist_ok=True)
+    driver.execute_cdp_cmd("Page.setDownloadBehavior", {"behavior": "allow", "downloadPath": str(downloads)})
+    pendentes = list(pedidos)
+    limite = time.time() + cfg["espera_min"] * 60
+    while pendentes:
+        for p in list(pendentes):
+            ev = dict(linha=p["linha"], grupo=p["grupo"], doc=mascarar(p["doc"]), pedido=p["pedido"])
+            try:
+                info = ler_pedido(driver, cfg, p["pedido"])
+            except Exception as e:
+                if pagina(driver).startswith("/login"):
+                    entrar(driver, cfg)
+                log.warning("Pedido S%s: não consegui ler (%s); tento de novo depois", p["pedido"], mensagem(e))
+                continue
+            if not info["concluido"]:
+                continue
+            pendentes.remove(p)
+            p["situacao"] = info["status"] + (" · " + info["resultado"] if info["resultado"] else "")
+            if info["encontrados"]:
+                k["encontrados"] += 1
+                etapa = "encontrados"
+                if info["pode_baixar"]:
+                    try:
+                        destino = Path(saida) / nome_arquivo(p["empresa"] or "sem empresa") / nome_arquivo(f"S{p['pedido']} - {p['nome'] or formatar(p['doc'])}")
+                        final = baixar_resultado(driver, cfg, downloads, destino)
+                        p["planilha"] = str(final.relative_to(saida))
+                        k["baixados"] += 1
+                    except Exception as e:
+                        p["situacao"] += " · planilha não baixou: " + mensagem(e)
+                        log.error("Pedido S%s: a planilha não baixou: %s", p["pedido"], mensagem(e))
+            else:
+                k["nao_consta"] += 1
+                etapa = "nao_consta"
+            log.info("Pedido S%s (linha %d): %s%s", p["pedido"], p["linha"], p["situacao"],
+                     " · planilha " + p["planilha"] if p.get("planilha") else "")
+            evento("pedido", etapa=etapa, resultado=info["resultado"], baixado=bool(p.get("planilha")), **ev)
+            escrever()
+        if not pendentes:
+            break
+        if time.time() > limite:
+            for p in pendentes:
+                k["sem_resultado"] += 1
+                p["situacao"] = f"ainda sem resultado depois de {cfg['espera_min']} min: veja no Sonar (pedido S{p['pedido']})"
+                evento("pedido", etapa="sem_resultado", linha=p["linha"], grupo=p["grupo"], doc=mascarar(p["doc"]), pedido=p["pedido"])
+            escrever()
+            break
+        log.info("Aguardando o Sonar: %d pedido(s) ainda sem resultado", len(pendentes))
+        time.sleep(60)
+    try:
+        downloads.rmdir()
+    except OSError:
+        pass
+
+
+def tirar(args, nome, valor=False):
+    """Tira a opção `nome` de args; com valor=True, devolve o valor dela (ou None)."""
+    if nome not in args:
+        return None if valor else False
+    i = args.index(nome)
+    if not valor:
+        del args[i]
+        return True
+    v = args[i + 1] if i + 1 < len(args) else ""
+    del args[i:i + 2]
+    return v
 
 
 def main(*args):
     global EVENTOS
-    configurar_log()
     args = list(args)
-    arquivo = None
-    if "--arquivo" in args:
-        i = args.index("--arquivo")
-        arquivo = args[i + 1] if i + 1 < len(args) else ""
-        del args[i:i + 2]
-    EVENTOS = "--eventos" in args
-    args = [a for a in args if a != "--eventos"]
+    arquivo = tirar(args, "--arquivo", True)
+    saida = tirar(args, "--saida", True)
+    confirmar = tirar(args, "--confirmar")
+    so_conferir = tirar(args, "--conferir")
+    EVENTOS = tirar(args, "--eventos")
     caminho_env = args[0] if args else str(PASTA / ".env")
+    if so_conferir:  # sem log na tela nem navegador: só o JSON (o Ultron lê)
+        try:
+            pedidos = ler_pedidos(ler_arquivo(arquivo))
+        except (OSError, TypeError) as e:
+            print(json.dumps({"erro": f"não consegui ler o arquivo: {e}"}, ensure_ascii=False))
+            return 2
+        print(json.dumps(conferir_arquivo(pedidos), ensure_ascii=False))
+        return 0
+    configurar_log()
     pedidos = None
     try:
         cfg = carregar(caminho_env)
@@ -378,22 +785,27 @@ def main(*args):
             pedidos = ler_pedidos(ler_arquivo(arquivo))
             if not pedidos:
                 raise AlbiErro("o arquivo não tem nenhuma linha com CPF/CNPJ")
+        elif confirmar:
+            raise AlbiErro("--confirmar precisa de --arquivo")
     except AlbiErro as e:
         log.error("Configuração: %s", e)
         evento("execucao_fim", resultado="parou", motivo=str(e))
         return 2
     if pedidos is not None:
+        saida = Path(saida) if saida else PASTA / "saida" / f"{datetime.now():%Y-%m-%d_%H%M%S}"
         validos = sum(1 for p in pedidos if not p["problema"])
         empresas = len({p["grupo"] for p in pedidos})
-        log.info("Arquivo %s: %d linha(s) em %d empresa(s), %d válida(s). Só preenche: NÃO confirma nenhum pedido.",
-                 Path(arquivo).name, len(pedidos), empresas, validos)
-        evento("execucao_iniciada", modo="preencher", total=len(pedidos), validos=validos, empresas=empresas)
+        log.info("Arquivo %s: %d linha(s) em %d empresa(s), %d válida(s). %s", Path(arquivo).name, len(pedidos),
+                 empresas, validos, f"CONFIRMANDO (compra, {PRECO} cada; Sacado: {cfg['sacado']}); resultado em {saida}"
+                 if confirmar else "Teste: preenche até o passo 2 e NÃO confirma nenhum pedido.")
+        evento("execucao_iniciada", modo="confirmar" if confirmar else "preencher", total=len(pedidos),
+               validos=validos, empresas=empresas)
         if not validos:
             for p in pedidos:
                 evento("pedido", linha=p["linha"], grupo=p["grupo"], doc=mascarar(p["doc"]), etapa="invalido",
                        motivo=p["problema"])
             evento("execucao_fim", resultado="parou", motivo="nenhuma linha com CPF/CNPJ válido",
-                   contagens={"prontos": 0, "erros": 0, "invalidos": len(pedidos)})
+                   contagens={"erros": 0, "invalidos": len(pedidos)})
             log.error("Nenhuma linha com CPF/CNPJ válido: nada a fazer")
             return 2
     log.info("Entrando no Sonar com CPF/CNPJ final %s e e-mail %s", cfg["cpf"][-2:], cfg["email"])
@@ -401,6 +813,8 @@ def main(*args):
     if cfg["headless"]:
         opcoes.add_argument("--headless=new")
     opcoes.add_argument("--window-size=1600,1000")
+    opcoes.add_experimental_option("prefs", {"download.prompt_for_download": False,
+                                             "plugins.always_open_pdf_externally": True})
     try:
         driver = webdriver.Chrome(options=opcoes)
     except Exception as e:
@@ -409,11 +823,12 @@ def main(*args):
         return 1
     try:
         if pedidos is not None:
-            k = rodar_pedidos(driver, cfg, pedidos)
-            log.info("Fim: %d pronto(s) no passo 2 (sem confirmar), %d com erro, %d linha(s) inválida(s)",
-                     k["prontos"], k["erros"], k["invalidos"])
+            k = rodar_pedidos(driver, cfg, pedidos, confirmar=confirmar, saida=saida, nome_txt=Path(arquivo).name)
+            log.info("Fim: %s", ", ".join(f"{v} {c}" for c, v in k.items() if v) or "nada")
+            if confirmar:
+                log.info("Resultado em %s", Path(saida) / "resultado.txt")
             evento("execucao_fim", resultado="concluido", contagens=k)
-            return 0 if not k["erros"] else 1
+            return 0 if not (k.get("erros") or k.get("conferir")) else 1
         entrar(driver, cfg)
         log.info("Login OK: %s", driver.current_url)
         abrir_novo_pedido(driver, cfg)
@@ -427,6 +842,11 @@ def main(*args):
             pass
         log.error("Falhou: %s (print em %s)", mensagem(e), print_)
         evento("execucao_fim", resultado="parou", motivo=mensagem(e))
+        if pedidos is not None and confirmar:
+            try:
+                escrever_resultado(saida, pedidos, Path(arquivo).name)
+            except Exception:
+                pass
         return 1
     finally:
         driver.quit()

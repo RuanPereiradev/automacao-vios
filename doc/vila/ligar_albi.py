@@ -6,6 +6,10 @@ arquivo_subido (Receptor TXT) → execucao_iniciada (Conferência das linhas) �
 O painel "Pesquisa de processos" mostra cada linha só pelo número da linha e o final do
 documento ("CNPJ final 77"). No modo simulado (site publicado), o Albi só passeia pela vila.
 
+Etapa 3 (04/11/2026): o Albi confirma os pedidos (compra), espera o Sonar e baixa as planilhas:
+etapas confirmado, ja_pesquisado, encontrados, nao_consta, conferir e sem_resultado; fases
+confirmando e aguardando_resultados.
+
 Etapa 2 (04/11/2026): o .txt vem por empresa; o painel mostra "Empresa 1 · CPF final 06"
 (só o número da empresa na ordem do arquivo, nunca o nome dela nem o da pessoa) e a fala diz
 "pessoa 5 de 27".
@@ -21,7 +25,8 @@ IDX = next(i for i, l in enumerate(linhas) if l.startswith('"<!DOCTYPE html>'))
 t = json.loads(linhas[IDX])
 ETAPA1 = "ahandle(ev)" not in t  # Vila 03 acesa, mascote, eventos e painel do Albi
 ETAPA2 = "p.grupo" not in t  # empresas (grupo) no painel e na fala
-if not (ETAPA1 or ETAPA2):
+ETAPA3 = "ja_pesquisado" not in t  # confirmar pedidos, aguardar e baixar os resultados
+if not (ETAPA1 or ETAPA2 or ETAPA3):
     sys.exit("a vila já está com tudo do Albi")
 if "zhandle(ev)" not in t or "get('vila')" not in t:
     sys.exit("rode antes o doc/vila/ligar_zangao.py (o Albi usa o que ele acrescenta)")
@@ -29,7 +34,7 @@ if "zhandle(ev)" not in t or "get('vila')" not in t:
 
 def troca(velho, novo, etapa=1):
     global t
-    if not {1: ETAPA1, 2: ETAPA2}[etapa]:
+    if not {1: ETAPA1, 2: ETAPA2, 3: ETAPA3}[etapa]:
         return
     assert t.count(velho) == 1, ("trecho não encontrado (ou repetido)", velho[:90])
     t = t.replace(velho, novo)
@@ -322,6 +327,54 @@ troca("this.asay(lin + ': preenchendo a Nova Pesquisa (CPF/CNPJ) e indo ao passo
 troca("this.asay(ev.etapa === 'pronto' ? lin + ': pronto no passo Pedido'",
       "const Lin = lin.charAt(0).toUpperCase() + lin.slice(1);\n        this.asay(ev.etapa === 'pronto' ? Lin + ': pronto no passo Pedido'", 2)
 troca("'. Não confirmei.' : lin + ' deu erro: '", "'. Não confirmei.' : Lin + ' deu erro: '", 2)
+
+# ---------------- etapa 3: confirmar, aguardar e baixar ----------------
+troca("Por enquanto não confirmo nenhum pedido.';", "Depois espero o resultado e baixo a planilha de quem tem processos.';", 3)
+troca("até o passo Pedido. Não confirmo nada.';", "e, quando você confirma, compro uma pesquisa por pessoa, espero o resultado e baixo as planilhas.';", 3)
+troca("if (ev.tipo === 'fase') return { aphase: ev.fase === 'preenchendo' ? 'preenchendo' : 'entrando' };",
+      "if (ev.tipo === 'fase') return { aphase: ev.fase === 'entrando_sonar' ? 'entrando' : 'preenchendo', afase: ev.fase };", 3)
+troca("      else S.push({ type: 'call', fn: () => { this.areduce(ev); this.ast('No Sonar'); this.asay('Dentro do Sonar. Vou preencher a Nova Pesquisa de uma linha por vez, sem confirmar.'); } });",
+      "      else S.push({ type: 'call', fn: () => { this.areduce(ev); this.ast(ev.fase === 'aguardando_resultados' ? 'Aguardando o Sonar' : 'No Sonar');\n"
+      "        this.asay({ confirmando: 'Dentro do Sonar. Vou pesquisar uma pessoa por vez: preencho, escolho o Sacado e confirmo o pedido.',\n"
+      "          aguardando_resultados: 'Pedidos feitos. Agora espero o Sonar terminar cada um e baixo a planilha de quem tem processos.' }[ev.fase]\n"
+      "          || 'Dentro do Sonar. Vou preencher a Nova Pesquisa de uma linha por vez, sem confirmar.'); } });", 3)
+troca("        this.asay(ev.etapa === 'pronto' ? Lin + ': pronto no passo Pedido' + (ev.valor ? ' · ' + ev.valor : '') + '. Não confirmei.' : Lin + ' deu erro: ' + (ev.motivo || 'sem detalhe') + '.'); } },\n"
+      "        { type: 'wait', n: N(ev.etapa === 'erro' ? 50 : 25) });",
+      "        const ped = ev.pedido ? 'pedido S' + ev.pedido : '';\n"
+      "        this.asay({ pronto: Lin + ': pronto no passo Pedido' + (ev.valor ? ' · ' + ev.valor : '') + '. Teste: não confirmei.',\n"
+      "          confirmado: Lin + ': confirmado · ' + ped + '. Próxima pessoa…', ja_pesquisado: Lin + ': já pesquisada antes (' + (ped || 'sem número') + '). Não comprei de novo.',\n"
+      "          encontrados: Lin + ': ' + ped + ' com processos encontrados' + (ev.resultado ? ' (' + ev.resultado + ')' : '') + (ev.baixado ? '. Planilha baixada.' : '.'),\n"
+      "          nao_consta: Lin + ': ' + ped + ' · não consta processo.', sem_resultado: Lin + ': ' + ped + ' ainda sem resultado no Sonar.',\n"
+      "          conferir: Lin + ': CONFERIR NO SONAR · ' + (ev.motivo || '') + '.' }[ev.etapa] || Lin + ' deu erro: ' + (ev.motivo || 'sem detalhe') + '.');\n"
+      "        a.bubble = ['erro', 'conferir', 'sem_resultado'].includes(ev.etapa) ? '!' : null; } },\n"
+      "        { type: 'wait', n: N(['erro', 'conferir'].includes(ev.etapa) ? 50 : 25) });", 3)
+troca("    const TAG = { preenchendo: ['Preenchendo…', '#e3c08a'], pronto: ['Pronto · não confirmado', '#9cc98a'], erro: ['Erro', '#ff7a66'], invalido: ['Linha inválida', '#ff7a66'] };",
+      "    const TAG = { preenchendo: ['Preenchendo…', '#e3c08a'], pronto: ['Teste · não comprado', '#9cc98a'], erro: ['Erro · não comprado', '#ff7a66'], invalido: ['Linha inválida', '#ff7a66'],\n"
+      "      confirmado: ['Confirmado · aguardando', '#e3c08a'], ja_pesquisado: ['Já pesquisado', '#a9a49b'], encontrados: ['Processos encontrados', '#f0c46a'],\n"
+      "      nao_consta: ['Não consta processo', '#9cc98a'], sem_resultado: ['Sem resultado ainda', '#ff7a66'], conferir: ['Conferir no Sonar', '#ff7a66'] };", 3)
+troca("return { n: String(p.linha).padStart(2, '0'), proc: 'Linha ' + p.linha, task: (p.grupo ? 'Empresa ' + p.grupo + ' · ' : '') + (p.doc || ''), meta: p.valor ? 'Valor no Sonar: ' + p.valor : '',",
+      "return { n: String(p.linha).padStart(2, '0'), proc: 'Linha ' + p.linha, task: (p.grupo ? 'Empresa ' + p.grupo + ' · ' : '') + (p.doc || ''),\n"
+      "        meta: [p.pedido ? 'Pedido S' + p.pedido : '', p.resultado && p.resultado !== '—' ? p.resultado : '', p.etapa === 'pronto' && p.valor ? 'Valor no Sonar: ' + p.valor : ''].filter(Boolean).join(' · '),", 3)
+troca("valor: ev.valor || (i >= 0 ? P[i].valor : null), grupo:",
+      "valor: ev.valor || (i >= 0 ? P[i].valor : null), pedido: ev.pedido || (i >= 0 ? P[i].pedido : null),\n"
+      "          resultado: ev.resultado || (i >= 0 ? P[i].resultado : null), grupo:", 3)
+troca("    const validos = P.filter(p => p.etapa !== 'invalido').length, fin = P.filter(p => p.etapa === 'pronto' || p.etapa === 'erro').length;",
+      "    const FINS = ['pronto', 'erro', 'ja_pesquisado', 'encontrados', 'nao_consta', 'sem_resultado', 'conferir'];\n"
+      "    const validos = P.filter(p => p.etapa !== 'invalido').length, fin = P.filter(p => FINS.includes(p.etapa)).length;", 3)
+troca("    [['prontos', 'pronto(s) no passo Pedido'], ['erros', 'com erro'], ['invalidos', 'linha(s) inválida(s)']].forEach(",
+      "    [['confirmados', 'pesquisa(s) feita(s)'], ['ja_pesquisados', 'já pesquisada(s)'], ['encontrados', 'com processos'], ['nao_consta', 'não consta'],\n"
+      "     ['baixados', 'planilha(s)'], ['prontos', 'testada(s)'], ['conferir', 'a conferir no Sonar'], ['sem_resultado', 'sem resultado'],\n"
+      "     ['erros', 'com erro'], ['invalidos', 'linha(s) inválida(s)']].forEach(", 3)
+troca("(ev.resultado === 'parou' ? 'parou' + (ev.motivo ? ': ' + ev.motivo : '') : 'preencheu no Sonar, sem confirmar')",
+      "(ev.resultado === 'parou' ? 'parou' + (ev.motivo ? ': ' + ev.motivo : '') : (ev.contagens && 'confirmados' in ev.contagens ? 'pesquisou no Sonar' : 'teste no Sonar, sem comprar'))", 3)
+troca("this.asay(ev.resultado === 'parou' ? 'Parei: ' + (ev.motivo || 'erro') + '.' : 'Pronto! Preenchi tudo no Sonar e não confirmei nenhum pedido.' + (det ? ' ' + det + '.' : ''));",
+      "this.asay(ev.resultado === 'parou' ? 'Parei: ' + (ev.motivo || 'erro') + '.' : ((ev.contagens && 'confirmados' in ev.contagens) ? 'Pronto! Pesquisas feitas; o resultado.txt e as planilhas estão na página do Albi.' : 'Teste pronto: preenchi tudo e não comprei nada.') + (det ? ' ' + det + '.' : ''));", 3)
+troca("this.asay(r.resultado === 'parou' ? 'Última execução parou: ' + (r.motivo || 'erro') + '.' : 'Última execução: preenchi no Sonar e não confirmei' + (det ? ' · ' + det : '') + '.');",
+      "this.asay(r.resultado === 'parou' ? 'Última execução parou: ' + (r.motivo || 'erro') + '.' : 'Última execução' + (det ? ': ' + det : ' concluída') + '.');", 3)
+troca("      sendHint: 'O Albi só preenche até o passo Pedido: não confirma nenhum pedido.',",
+      "      sendHint: 'A compra só começa depois de confirmar o total na página do Albi.',", 3)
+troca("const names = ['Arquivo subido', 'Conferir linhas', 'Entrar no Sonar', 'Preencher pedidos'];",
+      "const names = ['Arquivo subido', 'Conferir linhas', 'Entrar no Sonar', 'Pesquisar e baixar'];", 3)
 
 linhas[IDX] = json.dumps(t, ensure_ascii=False).replace("</", "<\\u002F")
 open(caminho, "w", encoding="utf-8").write("\n".join(linhas))
