@@ -12,6 +12,26 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Vila 03 vira a arena do Albi (04/11/2026)
+- Fundo da Vila 03 trocado pela arena que o usuário fez (`albi/mascote/fundo-arena-albi.html`),
+  adaptada ao tamanho da vila (320×224):
+  - parte fixa: céu em faixas, montanhas, mesas de pedra, campo, estrada até o horizonte e lago;
+  - parte animada: nuvens e pássaros passando, o lago brilhando, o brilho que corre pelo piso, a
+    grama balançando e as pontas das quatro torres piscando.
+- O Albi **transita pela plataforma**: só pode andar em cima dela, e parado passeia entre seis
+  pontos. Os postos ficaram nas torres:
+  - **Doca 01 · Albi:** frente à esquerda;
+  - **Receptor TXT:** fundo à esquerda, onde ele lê o .txt;
+  - **Conferência:** painel atrás da plataforma, com as linhas e a luz verde ou vermelha;
+  - **Torre Sonar:** torre alta da frente à direita, cuja luz pisca quando ele entra no Sonar ou
+    pesquisa.
+- As placas da Vila 03 ficam nas torres, e as "docas livres" saíram, porque não existem na arena.
+  Eventos, falas e painel do Albi não mudaram.
+- `doc/vila/ligar_vila03_arena.py`, já aplicado em `bot/vila/vila.html`, roda depois do
+  `ligar_vila01_campo.py`. A aplicação do zero de todos os patches dá o mesmo arquivo.
+- Testado em Chrome sem janela: a arena parada (com o passeio) e uma execução inteira por eventos
+  (arquivo → receptor → conferência → Torre Sonar → doca), sem erro no console.
+
 ### Alterado — O Ultron agora se chama Sam (04/11/2026)
 - Na tela, o bot de envio ao VIOS passa a se chamar **Sam**: título e marca da página, links
   "Sam" nas páginas do Albi e do Bumblebee, textos da página de envio ("o Sam confere…"), cena da

@@ -177,5 +177,6 @@ A Vila 03 foi ligada por `doc/vila/ligar_albi.py` (rodar depois do `ligar_zangao
 > 04/11/2026: a Vila 01 passou para o campo, com o mascote novo do Ultron (na tela, agora **Sam**; os eventos
 > continuam `bot: "ultron"`)
 > (`doc/vila/ligar_vila01_campo.py`, depois do `ligar_bumblebee.py`). Os eventos não mudaram.
+> A Vila 03 virou a arena do Albi (`doc/vila/ligar_vila03_arena.py`, por último); os eventos `bot: "albi"` são os mesmos.
 O "baixar de novo" (`modo: "baixar"`) usa o mesmo `envio` da execução confirmada: a página trata
 como a mesma execução (a contagem recomeça) e não troca o modo dela.

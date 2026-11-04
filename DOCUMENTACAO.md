@@ -681,8 +681,21 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   no `.env` do Ultron.
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py
   bot/vila/vila.html`, depois `python3 doc/vila/ligar_albi.py bot/vila/vila.html`,
-  `python3 doc/vila/ligar_bumblebee.py bot/vila/vila.html` e por último
-  `python3 doc/vila/ligar_vila01_campo.py bot/vila/vila.html`.
+  `python3 doc/vila/ligar_bumblebee.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_vila01_campo.py bot/vila/vila.html` e por último
+  `python3 doc/vila/ligar_vila03_arena.py bot/vila/vila.html`.
+
+### Passo 31 — Vila 03: a arena do Albi
+- A Vila 03 virou a arena de `albi/mascote/fundo-arena-albi.html`, adaptada à vila: céu com
+  nuvens e pássaros, montanhas, mesas de pedra, campo, estrada, lago e a plataforma em
+  perspectiva com o brilho no piso e as quatro torres com as pontas piscando.
+- O Albi transita só em cima da plataforma e passeia por ela quando está parado. Os postos:
+  - **Doca 01 · Albi:** torre da frente à esquerda;
+  - **Receptor TXT:** torre do fundo à esquerda;
+  - **Conferência:** painel atrás da plataforma, onde ele confere as linhas;
+  - **Torre Sonar:** torre alta da frente à direita, cuja ponta pisca quando ele entra no Sonar
+    ou pesquisa.
+- Patch: `doc/vila/ligar_vila03_arena.py`. Os eventos e o painel do Albi não mudaram.
 
 ### Passo 30 — Mascote novo do Ultron (agora Sam) e Vila 01 no campo
 - **Nome:** na tela ele se chama **Sam**: página, links, cena e Vila 01. A marca "SAM" fica nas
