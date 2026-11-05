@@ -12,6 +12,19 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Vila quebrada depois do merge do Orelha (05/11/2026)
+- O merge do Orelha (PR #1) gravou `bot/vila/vila.html` com as marcas de um conflito sem resolver
+  (`<<<<<<<`, `=======`, `>>>>>>>`), com as duas versões da vila coladas. Por isso a vila não abria.
+- A vila foi refeita a partir da versão certa (a da arena do Albi) com o patch do Orelha aplicado
+  por cima. A vila tem agora 5 vilas: 01 Sam, 02 Bumblebee, 03 Albi, 04 vaga e 05 Orelha.
+- O `doc/vila/ligar_orelha.py` foi escrito com os nomes antigos ("Ultron", "Zangão") e não batia
+  com a vila atual. Agora ele troca "Sam"/"Bumblebee" pelos nomes antigos antes de aplicar e devolve
+  os novos no fim, inclusive no que o Orelha acrescenta. Ele roda por último na ordem dos patches.
+- Conferido: a aplicação do zero de todos os patches dá o mesmo arquivo; as 5 vilas e o "Simular
+  execução" do Orelha funcionam no Chrome sem erro; as páginas do servidor (`/`, `/vila`, `/albi`,
+  `/zangao`, `/eventos`) respondem 200; os 223 testes do `orelha/` passam no Python 3.12 (o do Mac).
+  No Python 3.8 do Linux eles não carregam, porque o código usa `list[str]`, que é do 3.9 em diante.
+
 <<<<<<< HEAD
 ### Alterado — Vila 03 vira a arena do Albi (04/11/2026)
 - Fundo da Vila 03 trocado pela arena que o usuário fez (`albi/mascote/fundo-arena-albi.html`),

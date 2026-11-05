@@ -16,8 +16,9 @@
   latir "AU AU", atrás do rabo, cochilar). No modo simulado (site publicado) o botão
   "Simular execução" mostra uma execução de exemplo, sem servidor.
 
-uso: python3 doc/vila/ligar_orelha.py bot/vila/vila.html  (edita no lugar; rodar DEPOIS do
-     ligar_zangao.py e do ligar_albi.py; rodar de novo não muda nada)"""
+uso: python3 doc/vila/ligar_orelha.py bot/vila/vila.html  (edita no lugar; rodar POR ÚLTIMO, depois de
+     ligar_zangao.py, ligar_albi.py, ligar_bumblebee.py, ligar_vila01_campo.py e ligar_vila03_arena.py;
+     rodar de novo não muda nada)"""
 import json
 import sys
 
@@ -33,6 +34,16 @@ if "ahandle(ev)" not in t or "sem_pedido" not in t:
     sys.exit("rode antes o doc/vila/ligar_albi.py (todas as etapas; o Orelha usa o que ele acrescenta)")
 if "static NV = 3;" not in t:
     sys.exit("esperava a vila com 3 vilas (Ultron, Zangão, Albi); com outra quantidade, ajuste este script")
+
+# Este patch foi escrito com os nomes antigos ("Ultron", "Zangão"). Depois dele a vila passou a mostrar
+# "Sam" e "Bumblebee" (ligar_vila01_campo.py e ligar_bumblebee.py). Volta aos nomes antigos para os
+# trechos baterem e, no fim, põe os novos de novo (inclusive no que o Orelha acrescenta).
+import re
+NOVOS = "Sam" in t or "Bumblebee" in t
+if NOVOS:
+    t = t.replace("página do Sam", "página Ultron")
+    t = re.sub(r"\bSam\b", "Ultron", t)
+    t = t.replace("Bumblebee", "Zangão")
 
 
 def troca(velho, novo, vezes=1):
@@ -514,6 +525,9 @@ FCODE = r"""
   }
   zVals() {"""
 troca("\n  zVals() {", FCODE)
+
+if NOVOS:
+    t = t.replace("página Ultron", "página do Sam").replace("Ultron", "Sam").replace("Zangão", "Bumblebee")
 
 linhas[IDX] = json.dumps(t, ensure_ascii=False).replace("</", "<\\u002F")
 open(caminho, "w", encoding="utf-8").write("\n".join(linhas))

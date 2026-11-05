@@ -700,8 +700,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py
   bot/vila/vila.html`, depois `python3 doc/vila/ligar_albi.py bot/vila/vila.html`,
   `python3 doc/vila/ligar_bumblebee.py bot/vila/vila.html`,
-  `python3 doc/vila/ligar_vila01_campo.py bot/vila/vila.html` e por último
-  `python3 doc/vila/ligar_vila03_arena.py bot/vila/vila.html`.
+  `python3 doc/vila/ligar_vila01_campo.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_vila03_arena.py bot/vila/vila.html` e por último
+  `python3 doc/vila/ligar_orelha.py bot/vila/vila.html`.
 
 ### Passo 31 — Vila 03: a arena do Albi
 - A Vila 03 virou a arena de `albi/mascote/fundo-arena-albi.html`, adaptada à vila: céu com
