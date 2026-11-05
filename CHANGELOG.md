@@ -39,6 +39,14 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   o servidor, `/`, `/orelha`, `/orelha/status`, `/vila` e os arquivos do relatório respondem, e a Vila 05
   fala o horário e o atraso.
 
+### Corrigido — Orelha: instalador recusa Python antigo (05/11/2026)
+- No Linux só havia Python 3.8; o `orelha/instalar.sh` aceitava e o Orelha quebrava ao rodar
+  (`TypeError: 'type' object is not subscriptable`). Agora o instalador para com aviso se o Python
+  for mais velho que 3.10 e diz como instalar um novo pelo `uv`
+  (`uv python install 3.12 && PYTHON=$(uv python find 3.12) ./instalar.sh`).
+- 1ª rodada do placar de prazos neste Linux (05/11/2026): 201 tarefas atrasadas (45 há mais de
+  7 dias), 26 responsáveis, 129 vencem hoje.
+
 ### Alterado — A entrada do sistema é a Vila dos Bots (05/11/2026)
 - Quem entra no sistema (`http://<IP do Mac>:5001/`) vê agora a **Vila dos Bots**, uma página neutra,
   sem nome nem mascote de nenhum bot no topo:

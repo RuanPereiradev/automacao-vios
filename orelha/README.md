@@ -46,6 +46,9 @@ cd orelha
                      # e copia .env.example para .env, se ainda não existir
 ```
 
+Precisa de **Python 3.10 ou mais novo** (o instalador recusa versão mais velha). No Linux que só
+tem Python 3.8: `uv python install 3.12 && PYTHON=$(uv python find 3.12) ./instalar.sh`.
+
 Também precisa do **Google Chrome**. O Selenium baixa sozinho o chromedriver compatível.
 
 ## Configurar (`orelha/.env`)

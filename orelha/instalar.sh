@@ -5,6 +5,11 @@ cd "$(dirname "$0")" || exit 1
 PYTHON=${PYTHON:-$(command -v python3.12 || command -v python3)}
 [ -n "$PYTHON" ] || { echo "Python não encontrado. No Mac: brew install python@3.12"; exit 1; }
 VERSAO=$("$PYTHON" -c 'import sys; print("%d.%d" % sys.version_info[:2])')
+if ! "$PYTHON" -c 'import sys; sys.exit(sys.version_info < (3, 10))'; then
+    echo "O Orelha precisa de Python 3.10 ou mais novo (achei o $VERSAO em $PYTHON)."
+    echo "Sem Python novo no Linux: uv python install 3.12 && PYTHON=\$(uv python find 3.12) ./instalar.sh"
+    exit 1
+fi
 if [ -d .venv ]; then
     VENV_VERSAO=$(sed -n 's/^version[_info]* *= *\([0-9]*\.[0-9]*\).*/\1/p' .venv/pyvenv.cfg 2>/dev/null | head -n 1)
     if [ "$VENV_VERSAO" != "$VERSAO" ] || ! .venv/bin/python -c 'import sys' 2>/dev/null; then
