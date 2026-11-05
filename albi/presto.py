@@ -101,7 +101,12 @@ def fechar_chrome():
         subprocess.run(["osascript", "-e", 'quit app "Google Chrome"'], capture_output=True)
     else:
         subprocess.run(["pkill", "-TERM", "-x", "chrome"], capture_output=True)
-    for _ in range(30):  # até 30 s para o Chrome terminar de fechar e salvar o perfil
+    for i in range(40):  # até 40 s para o Chrome terminar de fechar e salvar o perfil
+        if i == 10 and platform.system() == "Darwin":
+            # o "quit" pelo AppleScript depende de o macOS deixar o Terminal controlar o Chrome (a
+            # permissão aparece numa janela na primeira vez); sem ela, pede o fechamento pelo sistema,
+            # que também fecha o Chrome salvando o perfil
+            subprocess.run(["pkill", "-TERM", "-x", "Google Chrome"], capture_output=True)
         if not chrome_aberto():
             time.sleep(2)  # folga para soltar os arquivos do perfil
             print("Chrome fechado.")

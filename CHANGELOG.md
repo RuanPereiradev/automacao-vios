@@ -78,8 +78,10 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   - No primeiro uso no Mac, o `copiar` ficava repetindo "O Chrome está aberto. Feche-o…" sem dizer
     como (no Mac, fechar a janela não encerra o Chrome, e o Presto pode mantê-lo rodando). Agora ele
     explica e pergunta "Posso fechar o Chrome agora?"; com "sim", fecha o Chrome como o menu
-    Chrome > Sair (as abas voltam ao abrir de novo), espera até 30 s e copia. Com "não", para sem
-    copiar.
+    Chrome > Sair (as abas voltam ao abrir de novo), espera até 40 s e copia. Com "não", para sem
+    copiar. No Mac, se o "Sair" pelo AppleScript não fechar em 10 s (o macOS pede permissão para o
+    Terminal controlar o Chrome na primeira vez), pede o fechamento pelo sistema (SIGTERM), que também
+    fecha salvando o perfil.
   - Com essas capturas, o próximo passo é montar o caminho do bot: entrar no PJe pelo Presto,
     buscar o processo e baixar os autos.
 - Testado com perfil temporário e extensão simulada (o Presto não está instalado nesta máquina):
