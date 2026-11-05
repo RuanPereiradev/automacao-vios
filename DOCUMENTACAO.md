@@ -618,8 +618,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   (`bot/eventos.py`), e os eventos levam só fases e contagens (contrato em
   `doc/vila/contrato-eventos.md`). A vila agora tem 5 vilas, e a Vila 04 está vaga. Abrir direto:
   `/vila?vila=5`. Se a vila for baixada de novo do site: `ligar_zangao.py`, `ligar_albi.py`, depois
-  `python3 doc/vila/ligar_orelha.py bot/vila/vila.html`, `ligar_jarvis.py` e, por último,
-  `ligar_vila05_parque.py` (o parque, ver Passo 32).
+  `python3 doc/vila/ligar_orelha.py bot/vila/vila.html`, `ligar_jarvis.py`, `ligar_vila05_parque.py`
+  (o parque, ver Passo 32) e, por último, `ligar_orelha_agenda.py` (horário e Arquivo, ver Passo 35).
 
 ### Passo 28 — Albi: .txt de CPF/CNPJ, página `/albi` e Vila 03
 - O Albi recebe um `.txt` **organizado por empresa**: a linha `EMPRESA:` e,
@@ -704,8 +704,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `python3 doc/vila/ligar_vila01_campo.py bot/vila/vila.html`,
   `python3 doc/vila/ligar_vila03_arena.py bot/vila/vila.html`,
   `python3 doc/vila/ligar_orelha.py bot/vila/vila.html`,
-  `python3 doc/vila/ligar_jarvis.py bot/vila/vila.html` e por último
-  `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html`.
+  `python3 doc/vila/ligar_jarvis.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html` e por último
+  `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html`.
 
 ### Passo 32 — Vila 05: o parque do Orelha
 - A Vila 05 virou um parque dos cães cheio de brinquedos: cerca branca de madeira, grama com flores
@@ -720,8 +721,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   - **Torre VIOS:** torre de parquinho com escorregador e a luz na antena.
 - Também tem piscina de bolinhas, caixa de areia, barreira de agility, prateleira de brinquedos,
   hidrante e brinquedos pela grama. A bolinha quica, as bolinhas pulam na piscina e há borboletas.
-- Patch: `doc/vila/ligar_vila05_parque.py`, que roda por último (depois do `ligar_orelha.py` e do
-  `ligar_jarvis.py`). Os eventos, as
+- Patch: `doc/vila/ligar_vila05_parque.py`, que roda depois do `ligar_orelha.py` e do
+  `ligar_jarvis.py` (e antes do `ligar_orelha_agenda.py`, o último). Os eventos, as
   falas e o painel do Orelha não mudaram.
 
 ### Passo 31 — Vila 03: a arena do Albi
@@ -767,6 +768,27 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   - Página `/zangao`: o robô no topo (SVG) e, na cena, um canvas com a mesma transformação
     (`bot/templates/_zangao.html`: `zangao_cena()` e `bumblebee_script()`). Com "reduzir
     movimento" ligado no sistema, a troca é direta, sem animação.
+### Passo 35 — Orelha avisa quando o relatório roda e guarda os relatórios no Arquivo
+- **Horário**: `ORELHA_HORARIO` (padrão `seg-sex 07:30`) e `ORELHA_HORARIO_PARADOS` (padrão
+  `sab 08:00`) no `orelha/.env`. Formato `<dias> <HH:MM>`, com faixa (`seg-sex`) ou lista
+  (`seg,qua,sex`), e mais de um separado por `;`. Tem que ser **o mesmo do agendamento** (cron ou
+  launchd, `orelha/README.md`): quem roda o Orelha é o agendamento; o horário serve para avisar.
+- O Sam lê esse horário e os relatórios da pasta do Orelha (`bot/orelha.py`; `ORELHA_PASTA` só se ele
+  estiver noutra pasta). Não roda o Orelha nem importa nada de `orelha/`.
+- **Na Vila 05**, parado, o Orelha diz quando roda, quando sai o próximo relatório ("amanhã (sexta) às
+  7h30") e quantos estão guardados. Se o de hoje não saiu até 45 minutos depois da hora marcada, ele
+  avisa para conferirem o computador dele, e o topo mostra "Atrasado". No fim de cada
+  execução, leva a folha até o **Arquivo** (armário do parque), guarda na gaveta e diz quando sai o
+  próximo. A placa mostra quantos estão guardados ("Arquivo · 12").
+- **Página `/orelha`** (botão "Relatórios guardados" na Vila 05 e no cartão da Vila dos Bots): o
+  horário, o próximo relatório, o aviso de atraso e a lista de todos os relatórios já feitos, do mais
+  novo para o mais antigo, com graves e pontos de atenção e os botões **Abrir**, **PDF** e
+  **Planilhas (.csv)**. Os simulados ficam à parte. Os arquivos continuam em `orelha/saida/<data>/`.
+- `GET /orelha/status` (para a vila) leva só datas e contagens. O texto dos relatórios só aparece na
+  página e nos arquivos, atrás da senha das páginas (`ENVIO_SENHA`), como as do Albi.
+- Patch da vila: `doc/vila/ligar_orelha_agenda.py`, o último da lista. O `ligar_vila05_parque.py`
+  ganhou o armário do Arquivo (a barreira de agility desceu para a grama de baixo).
+
 ### Passo 34 — Entrada: a Vila dos Bots
 - `http://<IP do Mac>:5001/` abre a **Vila dos Bots**: a vila e um cartão por bot (Sam, Bumblebee,
   Albi, Jarvis, Orelha) com o botão para a página de cada um. Nenhum bot fica fixo no topo.
@@ -803,7 +825,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - Se a vila for baixada de novo do site: rodar os patches na ordem (zangão, albi, bumblebee,
   vila01_campo, vila03_arena, orelha), depois `python3 doc/vila/ligar_jarvis.py
   bot/vila/vila.html` (no fim, `propulsor` troca o núcleo pelo mascote com propulsores) e por último
-  `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html` (o parque do Orelha).
+  `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html` (o parque do Orelha) e
+  `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html` (horário e Arquivo do Orelha).
 
 ### Passo 27 — Segurança das rotas
 - Com `ENVIO_REDE=true`, toda rota (GET e POST) pede a senha (`ENVIO_SENHA`).
@@ -915,6 +938,7 @@ selenium/
 │   ├── zangao.py        # roda o Zangão em segundo plano pela vila (/zangao/status, /zangao/rodar)
 │   ├── albi.py          # página /albi: guarda o .txt, roda o Albi e repassa os eventos dele à vila
 │   ├── jarvis.py        # roda o Jarvis (pasta jarvis/) pela vila e lista as planilhas (/jarvis)
+│   ├── orelha.py        # horário do Orelha e arquivo dos relatórios do dia (/orelha, /orelha/status)
 │   ├── vila/            # vila.html (servido em /vila)
 │   ├── templates/       # HTML das páginas de revisão, de envio, do Zangão e do Albi (albi.html);
 │   │                    # _estilo.html = estilo comum; _ultron.html / _zangao.html / _albi.html = mascotes;
@@ -1036,6 +1060,7 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `ENVIO_SENHA` | com `ENVIO_REDE=true` | Senha pedida pela página de envio | (definir no `.env`) |
 | `ZANGAO_PASTA` | não | Pasta do Zangão neste computador (com `.venv` e `.env` dele); liga os botões da Vila 02 | `~/zangao` |
 | `ALBI_PASTA` | não | Pasta do Albi (com `.venv` e `.env` dele); vazio = `albi/` deste repositório | `~/albi` |
+| `ORELHA_PASTA` | não | Pasta do Orelha, de onde o Sam lê o horário e os relatórios (`/orelha`); vazio = `orelha/` deste repositório | `~/orelha` |
 
 ---
 

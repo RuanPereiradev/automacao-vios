@@ -228,6 +228,10 @@ Na vila (`bot/vila/vila.html`):
   `ligar_albi.py`; rodar de novo só avisa que já está aplicado).
 - Por último (depois do `ligar_jarvis.py`), `doc/vila/ligar_vila05_parque.py` troca o fundo da Vila 05 pelo parque do Orelha
   (casinha, brinquedos, caixa de correio, baú...). A placa "Doca 01 · Orelha" vira "Casinha do
-  Orelha"; os postos e os eventos `bot: "orelha"` são os mesmos. Na branch `relatorio-processos`
+  Orelha"; os postos e os eventos `bot: "orelha"` são os mesmos.
+- Por fim, `doc/vila/ligar_orelha_agenda.py`: a vila lê também `GET /orelha/status` do Sam a cada
+  30 s (não é evento): `horario_texto`, `proximo_texto`, `atrasado`/`atrasado_texto`, `total` de
+  relatórios guardados, `ultimo` (data e contagens) e `aviso` (a frase pronta). Nada de texto de
+  cliente. No fim de cada execução, o Orelha guarda a folha no Arquivo do parque. Na branch `relatorio-processos`
   a Vila 04 é do Jarvis (`ligar_jarvis.py`, que espera a vila com 3 vilas): ao juntar as duas,
   aplicar o Jarvis antes e ajustar este script (ele hoje exige `static NV = 3;`).

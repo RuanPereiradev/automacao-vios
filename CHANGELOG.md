@@ -12,6 +12,33 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Orelha avisa quando o relatório roda e guarda os relatórios no Arquivo (05/11/2026)
+- **Horário no `orelha/.env`**: `ORELHA_HORARIO` (padrão `seg-sex 07:30`) e `ORELHA_HORARIO_PARADOS`
+  (padrão `sab 08:00`), no formato `<dias> <HH:MM>`. Têm que ser o mesmo do cron/launchd (quem roda o
+  Orelha continua sendo o agendamento).
+- **Vila 05**: parado, o Orelha diz quando roda, quando sai o próximo relatório ("amanhã (sexta) às
+  7h30") e quantos estão guardados. Se o de hoje não saiu até 45 min depois da hora marcada, avisa
+  para conferirem o computador dele, e o topo mostra "Atrasado". No fim de cada execução,
+  leva a folha ao **Arquivo** (armário novo do parque, com gavetas e puxador de osso), guarda na
+  gaveta e diz quando sai o próximo. A placa mostra quantos estão guardados ("Arquivo · 12"), e as
+  gavetas ganham uma pastinha por relatório. Botão **"Relatórios guardados"** abre a página `/orelha`.
+  No simulado, ele fala o horário padrão e o arquivo começa com 3 relatórios de exemplo.
+- **Página `/orelha`** do Sam: o horário, o próximo relatório, o aviso de atraso e todos os relatórios
+  já feitos (do mais novo para o mais antigo), com graves, pontos de atenção e os botões Abrir, PDF e
+  Planilhas (.csv). Os simulados ficam à parte. Os arquivos continuam em `orelha/saida/<data>/`.
+  `GET /orelha/status` (para a vila) leva só datas e contagens. O cartão do Orelha na Vila dos Bots
+  mostra o horário, o próximo (ou o atraso) e o botão "Relatórios guardados (n)".
+- Código: `bot/orelha.py` (lê o horário e as pastas do Orelha, sem importar nada de `orelha/`),
+  `bot/templates/orelha.html`, rotas em `bot/envio_web.py` e `ORELHA_PASTA` no `.env` do Sam (só se o
+  Orelha estiver noutra pasta). A rota dos arquivos só entrega `relatorio.html`, `relatorio.pdf` e a
+  planilha `.csv` de uma pasta de dia (`.env`, `../` e `historico/` dão 404).
+- Vila: `doc/vila/ligar_orelha_agenda.py` (novo, o último dos patches). O `ligar_vila05_parque.py`
+  ganhou o armário do Arquivo; a barreira de agility desceu para a grama de baixo e a argola mudou
+  de lugar. A aplicação do zero de todos os patches dá o mesmo arquivo.
+- Testado: no Chrome sem janela, o simulado inteiro (até guardar no Arquivo, "Arquivo · 3" → "· 4"); com
+  o servidor, `/`, `/orelha`, `/orelha/status`, `/vila` e os arquivos do relatório respondem, e a Vila 05
+  fala o horário e o atraso.
+
 ### Alterado — A entrada do sistema é a Vila dos Bots (05/11/2026)
 - Quem entra no sistema (`http://<IP do Mac>:5001/`) vê agora a **Vila dos Bots**, uma página neutra,
   sem nome nem mascote de nenhum bot no topo:

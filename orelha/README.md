@@ -217,6 +217,11 @@ resposta não for a tela de Processos (sessão caída), o número fica "não deu
 O relatório diário roda de segunda a sexta de manhã. Os `parados` rodam à parte, uma vez por
 semana, porque são lentos. Use `HEADLESS=true` no `.env`.
 
+**Escreva o mesmo horário no `.env`**: `ORELHA_HORARIO` (padrão `seg-sex 07:30`) e
+`ORELHA_HORARIO_PARADOS` (padrão `sab 08:00`). Quem roda o Orelha é o agendamento abaixo; o horário
+do `.env` serve para a Vila 05 e a página `/orelha` avisarem quando sai o próximo relatório e se o de
+hoje atrasou. Se mudar um, mude o outro.
+
 ### Linux (cron)
 
 `crontab -e` e acrescente (troque o caminho):
@@ -284,6 +289,20 @@ vila for baixada de novo do site, rode `python3 doc/vila/ligar_orelha.py bot/vil
 `ligar_zangao.py` e do `ligar_albi.py` (e antes do `ligar_jarvis.py`), e por fim
 `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html` (o parque). A vila só assiste: se o Ultron estiver fora do ar, o Orelha
 segue trabalhando.
+
+Parado, o Orelha diz na vila quando roda e quando sai o próximo relatório, e avisa se o de hoje
+não saiu. No fim de cada execução, guarda a folha no **Arquivo** do parque. Depois do
+`ligar_vila05_parque.py`, rode `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html`.
+
+## Relatórios guardados (página `/orelha` do Sam)
+
+Cada relatório fica na pasta do dia (`saida/<AAAA-MM-DD>/`: `relatorio.html`, `relatorio.pdf`,
+`resumo.json` e a planilha `.csv` das planilhas do Albi). O Sam (`bot/orelha.py`) lê essas pastas
+e mostra todos na página `/orelha`, aberta pelo botão "Relatórios guardados" da Vila 05 ou pelo
+cartão do Orelha na Vila dos Bots: dia, hora, graves, pontos de atenção e os botões Abrir, PDF e
+Planilhas (.csv). Os do `--simulado` ficam à parte. A página fica atrás da senha das páginas do Sam,
+porque o relatório tem nomes de clientes e da equipe. Para a vila só vão datas e contagens
+(`/orelha/status`).
 
 ## O que ainda falta conferir na tela real
 

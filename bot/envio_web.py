@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 from flask import (Flask, Response, abort, jsonify, redirect, render_template, request, send_file,
                    send_from_directory, url_for)
 
-from bot import albi, config, duplicidade, envio_txt, eventos, jarvis, skill, zangao
+from bot import albi, config, duplicidade, envio_txt, eventos, jarvis, orelha, skill, zangao
 from bot.lancamento import REGISTRO, lancar, ler_intimacao
 from bot.login import fazer_login
 from bot.navegador import criar_driver
@@ -308,6 +308,8 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     pasta_albi = albi.pasta()  # Albi (bot do Sonar): ALBI_PASTA ou a pasta albi/ deste repositório
     # Jarvis (relatório mensal de processos): JARVIS_PASTA ou a pasta jarvis/ deste repositório
     pasta_jarvis = jarvis.pasta()
+    # Orelha (relatório do dia): ORELHA_PASTA ou a pasta orelha/ deste repositório; o Sam só lê o horário e os relatórios
+    pasta_orelha = orelha.pasta()
     arquivo_pessoas = pasta_saida / "responsaveis.json"
     envios = carregar_envios(pasta_saida)  # id -> {arquivo, cis, estado, confirmar, ...}
     trava = threading.Lock()  # um envio por vez (um navegador só)
@@ -328,7 +330,8 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     def vila_dos_bots():
         """Entrada do sistema: a Vila dos Bots (neutra, sem nenhum bot fixo) com um cartão para cada bot."""
         return render_template("vila_dos_bots.html", albi_pronto=albi.configurado(pasta_albi),
-                               jarvis_pronto=jarvis.configurado(pasta_jarvis), zangao_pronto=bool(pasta_zangao))
+                               jarvis_pronto=jarvis.configurado(pasta_jarvis), zangao_pronto=bool(pasta_zangao),
+                               orelha_info=orelha.status(pasta_orelha))
 
     @app.route("/sam")
     def inicio():
@@ -648,6 +651,28 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
             return jsonify(erro=str(e), **jarvis.status(pasta_jarvis)), 409
         log.info("Jarvis disparado (%s, %d grupo(s)) por %s", modo, len(escolhidos), request.remote_addr)
         return jsonify(info)
+
+    @app.route("/orelha")
+    def orelha_pagina():
+        """Arquivo do Orelha: quando o relatório roda e todos os relatórios do dia já feitos."""
+        todos = orelha.relatorios(pasta_orelha)
+        return render_template("orelha.html", info=orelha.status(pasta_orelha), pasta=pasta_orelha,
+                               reais=[r for r in todos if not r["simulado"]],
+                               simulados=[r for r in todos if r["simulado"]])
+
+    @app.route("/orelha/relatorio/<dia>/<nome>")
+    def orelha_relatorio(dia, nome):
+        """Abre o relatório guardado (HTML ou PDF) ou baixa a planilha .csv daquele dia."""
+        arquivo = orelha.arquivo(pasta_orelha, dia, nome) or abort(404)
+        if nome.endswith(".csv"):
+            return send_file(arquivo, as_attachment=True, download_name=nome)
+        return send_file(arquivo, mimetype=orelha.ARQUIVOS[nome])
+
+    @app.route("/orelha/status")
+    def orelha_status():
+        """Para a vila: horário, próximo relatório, se o de hoje atrasou e quantos estão guardados
+        (só datas e contagens)."""
+        return jsonify(orelha.status(pasta_orelha))
 
     @app.route("/vila")
     def vila():

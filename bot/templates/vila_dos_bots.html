@@ -64,8 +64,12 @@
     </div>
     <div class="cartao bot">
       <div class="topo-bot"><h2>Orelha</h2></div>
-      <p class="suave">Relatório do dia, só lendo o VIOS: agenda, prazos, intimações e processos parados. Roda pela pasta orelha/.</p>
-      <p class="acoes"><a class="botao secundario" href="{{ url_for('vila') }}?vila=5" target="_blank" rel="noopener">Ver na vila</a></p>
+      <p class="suave">Relatório do dia, só lendo o VIOS: agenda, prazos, intimações e processos parados.
+        {% if orelha_info.configurado %}Roda {{ orelha_info.horario_texto }}.{% endif %}</p>
+      {% if orelha_info.atrasado %}<p class="aviso">Atenção: {{ orelha_info.atrasado_texto }}.</p>
+      {% elif orelha_info.proximo_texto %}<p>Próximo: <b>{{ orelha_info.proximo_texto }}</b></p>{% endif %}
+      <p class="acoes">{% if orelha_info.configurado %}<a class="botao primario" href="{{ url_for('orelha_pagina') }}">Relatórios guardados{% if orelha_info.total %} ({{ orelha_info.total }}){% endif %}</a>{% endif %}
+        <a class="botao secundario" href="{{ url_for('vila') }}?vila=5" target="_blank" rel="noopener">Ver na vila</a></p>
     </div>
   </div>
 </main>

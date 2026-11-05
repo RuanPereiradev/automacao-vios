@@ -1,0 +1,104 @@
+{# Arquivo do Orelha (relatório do dia, só leitura): quando o relatório roda e todos os relatórios já feitos,
+   para abrir de novo. O Orelha roda sozinho pelo agendamento; os dados vêm de bot/orelha.py. #}
+{%- set dias = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"] -%}
+{%- macro linha(r) -%}
+  <tr>
+    <td><b>{{ r.data.strftime("%d/%m/%Y") }}</b> <span class="suave">{{ dias[r.data.weekday()] }}</span></td>
+    <td class="suave">{{ r.gerado_em[11:16] if r.gerado_em else "" }}</td>
+    <td>{% if r.graves %}<span class="selo s-erro">{{ r.graves }} grave(s)</span>{% else %}<span class="selo s-ok">nenhum grave</span>{% endif %}</td>
+    <td class="suave">{{ r.atencao or 0 }} de atenção{% if r.erros %} · <span class="aviso">erro em {{ r.erros | join(", ") }}</span>{% endif %}</td>
+    <td class="acoes">
+      <a class="botao primario" href="{{ url_for('orelha_relatorio', dia=r.pasta, nome='relatorio.html') }}" target="_blank" rel="noopener">Abrir</a>
+      {% if r.pdf %}<a class="botao secundario" href="{{ url_for('orelha_relatorio', dia=r.pasta, nome='relatorio.pdf') }}" target="_blank" rel="noopener">PDF</a>{% endif %}
+      {% if r.planilhas %}<a class="botao secundario" href="{{ url_for('orelha_relatorio', dia=r.pasta, nome=r.planilhas) }}">Planilhas (.csv)</a>{% endif %}
+    </td>
+  </tr>
+{%- endmacro -%}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orelha — arquivo dos relatórios</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect x='3' y='6' width='10' height='6' fill='%2340362f'/%3E%3Crect x='10' y='3' width='5' height='5' fill='%2340362f'/%3E%3Crect x='12' y='6' width='3' height='2' fill='%23c98a4b'/%3E%3Crect x='4' y='12' width='2' height='3' fill='%23c98a4b'/%3E%3Crect x='10' y='12' width='2' height='3' fill='%23c98a4b'/%3E%3Crect x='1' y='4' width='2' height='3' fill='%2340362f'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+{% include "_estilo.html" %}
+<style>
+  /* cores do Orelha (caramelo) por cima do estilo do Sam */
+  :root { --red: #d39a5c; --red-escuro: #8f5a2c; }
+  body { background: radial-gradient(ellipse at top, #1d150d 0%, var(--fundo) 55%) fixed, var(--fundo); }
+  .marca b { color: #d39a5c; text-shadow: 0 0 12px rgba(211, 154, 92, .55); }
+  .cao { width: 44px; height: 44px; flex: none; image-rendering: pixelated; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--borda); vertical-align: middle; }
+  th { color: var(--suave); font-weight: 600; font-size: 13px; }
+  td.acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+  .horario { font-size: 20px; margin: 4px 0 10px; }
+  .proximo { display: inline-block; padding: 8px 14px; border-radius: 10px; background: rgba(211, 154, 92, .12);
+             border: 1px solid rgba(211, 154, 92, .4); }
+  .atraso { padding: 10px 14px; border-radius: 10px; background: rgba(255, 123, 114, .1); border: 1px solid rgba(255, 123, 114, .4); color: #ffb3ad; }
+  .tabela { overflow-x: auto; }
+  details summary { cursor: pointer; color: var(--suave); }
+</style>
+</head>
+<body>
+<header>
+  <a href="{{ url_for('orelha_pagina') }}">
+    <svg class="cao" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="3" y="6" width="10" height="6" fill="#40362f"/><rect x="10" y="3" width="5" height="5" fill="#40362f"/><rect x="12" y="6" width="3" height="2" fill="#c98a4b"/><rect x="11" y="4" width="1" height="1" fill="#e6f9ff"/><rect x="4" y="12" width="2" height="3" fill="#c98a4b"/><rect x="10" y="12" width="2" height="3" fill="#c98a4b"/><rect x="1" y="4" width="2" height="3" fill="#40362f"/><rect x="9" y="1" width="7" height="2" fill="#8b5a2b"/></svg>
+    <span><span class="marca"><b>O</b>RELHA</span><br><span class="sub">relatório do dia · arquivo dos relatórios</span></span></a>
+  <span class="acoes" style="margin-left: auto">
+    <a class="botao secundario" href="{{ url_for('vila_dos_bots') }}">Vila dos Bots</a>
+    <a class="botao secundario" href="{{ url_for('vila') }}?vila=5">Vila 05</a>
+  </span>
+</header>
+<main>
+  {% if not info.configurado %}
+  <div class="cartao">
+    <h1>Orelha não encontrado</h1>
+    <p class="aviso">A pasta do Orelha não está neste servidor (procurei em <code>{{ pasta }}</code>). Ela fica em
+      <code>orelha/</code> deste repositório, ou aponte <code>ORELHA_PASTA</code> no <code>.env</code> do Sam.</p>
+  </div>
+  {% else %}
+  <div class="cartao">
+    <h1>Quando o relatório roda</h1>
+    <p class="horario">O Orelha roda <b>{{ info.horario_texto }}</b>{% if info.parados_texto %}, e os processos parados {{ info.parados_texto }}{% endif %}.</p>
+    {% if info.atrasado %}
+      <p class="atraso"><b>Atenção:</b> {{ info.atrasado_texto }}. Confira se o computador do Orelha estava ligado e
+        com o usuário logado, e veja o <code>orelha/logs/orelha.log</code>.</p>
+    {% elif info.proximo_texto %}
+      <p class="proximo">Próximo relatório: <b>{{ info.proximo_texto }}</b></p>
+    {% endif %}
+    {% if info.erro_horario %}<p class="aviso">{{ info.erro_horario }}. Usei o padrão.</p>{% endif %}
+    <p class="suave">O horário vem de <code>ORELHA_HORARIO</code> e <code>ORELHA_HORARIO_PARADOS</code> no
+      <code>orelha/.env</code> e tem que ser o mesmo do agendamento (cron ou launchd, ver <code>orelha/README.md</code>).
+      Quem roda o Orelha é o agendamento; esta página só avisa.</p>
+  </div>
+  <div class="cartao">
+    <h1>Relatórios guardados</h1>
+    {% if reais %}
+      <p class="suave">{{ reais | length }} relatório(s), do mais novo para o mais antigo. Ficam em
+        <code>orelha/saida/&lt;data&gt;/</code>, no computador do Orelha.</p>
+      <div class="tabela"><table>
+        <tr><th>Dia</th><th>Saiu às</th><th>Graves</th><th>Atenção</th><th></th></tr>
+        {% for r in reais %}{{ linha(r) }}{% endfor %}
+      </table></div>
+    {% else %}
+      <p class="suave">Nenhum relatório guardado ainda. O primeiro aparece aqui quando o Orelha rodar.</p>
+    {% endif %}
+  </div>
+  {% if simulados %}
+  <div class="cartao">
+    <details>
+      <summary>Relatórios simulados ({{ simulados | length }}), feitos com dados de exemplo (<code>--simulado</code>)</summary>
+      <div class="tabela"><table>
+        <tr><th>Dia</th><th>Saiu às</th><th>Graves</th><th>Atenção</th><th></th></tr>
+        {% for r in simulados %}{{ linha(r) }}{% endfor %}
+      </table></div>
+    </details>
+  </div>
+  {% endif %}
+  {% endif %}
+</main>
+</body>
+</html>

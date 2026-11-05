@@ -12,6 +12,7 @@ O fundo da vila genérica (prédios cinza, lotes e torre de metal) é trocado po
 - **Relatório**: toalha de piquenique xadrez com a cesta (a folha do relatório sai em cima dela);
 - **Planilhas**: baú de brinquedos com a pilha do Albi em cima e os baldes verde, âmbar e cinza;
 - **Torre VIOS**: torre de parquinho com escorregador e a luz na antena;
+- **Arquivo**: armário de madeira com três gavetas, onde ficam guardados os relatórios;
 - brinquedos espalhados: piscina de bolinhas, caixa de areia com osso enterrado, barreira de
   agility, prateleira de brinquedos, hidrante, pneu, frisbee, ossos, bolinhas de tênis, corda,
   argola e galinha de borracha;
@@ -21,8 +22,8 @@ Onde o Orelha anda e os postos (Calendário, Intimações, Torre VIOS, Planilhas
 mudam, então os eventos, as falas e o painel continuam iguais.
 
 uso: python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html
-(por último, depois de todos os outros, inclusive o ligar_orelha.py e o ligar_jarvis.py; rodar de novo
-não repete nada)
+(depois de todos os outros, inclusive o ligar_orelha.py e o ligar_jarvis.py, e antes do
+ligar_orelha_agenda.py; rodar de novo não repete nada)
 """
 import json
 import sys
@@ -78,13 +79,15 @@ troca("""      if (ffx === 'int') for (let i = 0; i < 5; i++) R(O5 + SX + 3, SY 
 # 4) placas no parque
 troca("""      if (v === 2) { // arena do Albi""", """      if (v === 4) { // parque do Orelha
         plaques.push(P(83.5, 1.55, 'Casinha do Orelha'), P(90, 1.25, 'Calendário'), P(95.6, 1.25, 'Intimações'),
-          P(85.5, 5.0, 'Relatório'), P(92.5, 5.0, 'Planilhas'), P(96, 8.65, 'Torre VIOS'));
+          P(85.5, 5.0, 'Relatório'), P(92.5, 5.0, 'Planilhas'), P(96, 4.6, 'Arquivo'), P(96, 8.65, 'Torre VIOS'));
         continue;
       }
       if (v === 2) { // arena do Albi""")
 
 # 5) ele volta para a casinha (antes: "à doca")
 troca("this.fst('Voltando à doca');", "this.fst('Voltando para a casinha');")
+troca("    this.W = W;\n", "    // Vila 05: o arquivo dos relatórios (colunas 15 e 16, linhas 5 e 6) não dá passagem\n"
+      "    for (const [x, y] of [[95, 5], [96, 5], [95, 6], [96, 6]]) this.blocked[y][x] = true;\n    this.W = W;\n")
 
 # 6) o fundo do parque (parte fixa) e a parte animada
 troca("""    this.paintArena(c);
@@ -232,11 +235,23 @@ troca("""    this.paintArena(c);
     R(24, 177, 7, 7, '#e8483c'); R(23, 176, 9, 1, '#b8352c'); R(25, 178, 1, 5, '#ff8a7a'); R(26, 173, 5, 1, '#3b2614');
     R(52, 152, 1, 8, '#7a4a22'); R(51, 159, 3, 4, '#f2c230');
 
-    // barreira de agility, galinha de borracha e o hidrante
-    R(228, 112, 36, 2, SOMBRA);
-    R(230, 94, 2, 18, '#f6f1e6'); R(258, 94, 2, 18, '#f6f1e6'); R(228, 111, 6, 2, '#d9d0bd'); R(256, 111, 6, 2, '#d9d0bd');
-    for (let y = 96; y < 110; y += 4) { R(230, y, 2, 2, '#e8483c'); R(258, y, 2, 2, '#e8483c'); }
-    for (let x = 232; x < 258; x += 4) R(x, 101, 4, 2, (x / 4) % 2 ? '#e8483c' : '#f6f1e6');
+    // Arquivo dos relatórios: armário de madeira com telhadinho, três gavetas e puxador de osso
+    R(238, 112, 36, 2, SOMBRA);
+    for (let i = 0; i <= 6; i++) { const hw = 5 + i * 2.4; R(256 - hw, 77 + i, hw * 2, 1, i % 3 === 2 ? '#a83a2d' : '#c94b3b'); }
+    R(240, 84, 32, 1, '#7d2a1f');
+    R(242, 85, 28, 26, '#6e4420'); R(243, 86, 26, 24, '#a8642e'); R(243, 86, 1, 24, '#c98a4b');
+    [87, 95, 103].forEach(y => {
+      R(245, y, 22, 7, '#c98a4b'); R(245, y + 6, 22, 1, '#8f5a2c'); R(245, y, 22, 1, '#e2ad72');
+      R(247, y + 2, 4, 3, '#f6f1e6'); R(248, y + 3, 2, 1, '#9aa0a8');
+      R(254, y + 3, 6, 1, '#f6f1e6'); R(253, y + 2, 1, 1, '#f6f1e6'); R(253, y + 4, 1, 1, '#f6f1e6'); R(260, y + 2, 1, 1, '#f6f1e6'); R(260, y + 4, 1, 1, '#f6f1e6');
+    });
+    R(243, 110, 3, 2, '#5a3a1c'); R(266, 110, 3, 2, '#5a3a1c');
+    pata(254, 79, '#f4e6c4');
+    // barreira de agility (na grama de baixo), galinha de borracha e o hidrante
+    R(186, 168, 36, 2, SOMBRA);
+    R(188, 150, 2, 18, '#f6f1e6'); R(216, 150, 2, 18, '#f6f1e6'); R(186, 167, 6, 2, '#d9d0bd'); R(214, 167, 6, 2, '#d9d0bd');
+    for (let y = 152; y < 166; y += 4) { R(188, y, 2, 2, '#e8483c'); R(216, y, 2, 2, '#e8483c'); }
+    for (let x = 190; x < 216; x += 4) R(x, 157, 4, 2, (x / 4) % 2 ? '#f6f1e6' : '#e8483c');
     R(244, 119, 8, 3, '#f2d23a'); R(250, 116, 3, 3, '#f2d23a'); R(251, 115, 2, 1, '#e8483c'); R(253, 117, 1, 1, '#f08a2a'); R(251, 117, 1, 1, '#2a1d16'); R(246, 122, 1, 2, '#f08a2a'); R(249, 122, 1, 2, '#f08a2a');
     R(285, 168, 18, 3, '#8fd0f5'); R(287, 167, 14, 1, '#bde6fb');
     R(289, 152, 10, 16, '#d23c3c'); R(288, 149, 12, 3, '#b8352c'); R(291, 147, 6, 2, '#d23c3c'); R(293, 146, 2, 1, '#b8352c');
@@ -259,7 +274,7 @@ troca("""    this.paintArena(c);
     R(198, 38, 12, 3, '#3d7fd1'); R(200, 37, 8, 1, '#3d7fd1'); R(200, 41, 8, 1, '#2f69b3'); R(201, 38, 6, 1, '#7fb3ea');
     osso(194, 23, '#f08ac0', '#c95f8a'); osso(116, 112, '#f6f1e6', '#d9d0bd'); osso(18, 100, '#f6f1e6', '#d9d0bd'); osso(160, 152, '#c98a4b', '#9a6234');
     bola(54, 104, '#3fb8e8', '#bde6fb'); bola(166, 96, '#e8483c', '#ff9a8a'); bola(296, 28, '#f2c230', '#fff1a8');
-    disco(207, 152, 4, '#f08ac0'); disco(207, 152, 1, GR);
+    disco(230, 187, 4, '#f08ac0'); disco(230, 187, 1, GR);
     disco(176, 178, 7, '#2b2b2b'); disco(176, 178, 5, '#444444'); disco(176, 178, 3, GR); R(170, 174, 2, 1, '#5a5a5a');
   }
   drawParque(c, f) {
