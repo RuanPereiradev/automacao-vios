@@ -604,9 +604,14 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - A vila tem 4 vilas: 01 · Ultron, 02 · Zangão, 03 · vaga e **04 · Jarvis**. O Jarvis é o
   robô do relatório mensal de processos por Grupo Cliente (`relatorio_processos.py`,
   segundo usuário do VIOS, só leitura; detalhes em `RELATORIO_PROCESSOS.md`).
-- A Vila 04 fica acesa, com as placas Doca 01 · Jarvis, Leitura dos processos, Planilhas e
-  Torre VIOS; o Jarvis (núcleo de IA: esfera azul em espiral, com anéis e o centro
-  pulsando) faz a ronda e se apresenta no diálogo. `/vila?vila=4` abre direto nela.
+- A Vila 04 é a **garagem do Homem de Ferro** (desenho do `fundo-oficina-jarvis.html`):
+  parede de concreto, túnel com luzes, janelas noturnas, telas, carros, duas armaduras em
+  exposição, braços robóticos soldando e uma máquina para cada estação (rack com antena,
+  scanner de documentos e terminal com impressora). No centro, o projetor do holograma é o **posto do
+  Jarvis**: quando ele está lá, o holograma acende em volta dele (o Jarvis é o núcleo). Placas:
+  Conexão VIOS, Leitura dos processos e Planilhas. O Jarvis (núcleo de IA: esfera azul em
+  espiral, com anéis e o centro pulsando) voa pela garagem e se apresenta no diálogo.
+  `/vila?vila=4` abre direto nela. A garagem só é desenhada com a Vila 03 ou 04 na tela.
 - **Rodar pela vila** (como o Zangão): com `JARVIS_PASTA` no `.env` do Ultron (pasta com
   `.venv`, `relatorio_processos.py` e `.env.usuario2` do Jarvis, branch `relatorio-processos`),
   a caixa de fala da Vila 04 ganha "Escolher grupos e gerar" e "Planilhas", que abrem a página
@@ -617,12 +622,13 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - O Jarvis roda em segundo plano, com ambiente limpo (nenhuma variável do Ultron chega a ele),
   e manda o andamento por `POST /eventos` (bot `jarvis`, só contagens: grupo N de M, processo X
   de Y, gasto). A vila mostra na caixa de fala e o Jarvis vai a cada lugar com uma animação:
-  - **Torre VIOS** (entrando no VIOS): sinais sobem do núcleo até o topo da torre, ondas saem
-    dela e a luz da torre pisca rápido;
-  - **Leitura dos processos** (lendo cada processo): a porta acende, as folhas saem girando para
-    dentro do núcleo e uma barra em cima dele mostra processo X de Y;
-  - **Planilhas** (salvando cada grupo e no fim): a tela do prédio vira uma planilha que vai
-    sendo preenchida célula por célula; no fim, fica cheia com um visto verde. O Jarvis fica uns
+  - **Conexão VIOS** (entrando no VIOS): o Jarvis vai ao rack com antena, os LEDs piscam rápido,
+    a antena emite sinal e ele manda sinais para ela;
+  - **Leitura dos processos** (lendo cada processo): ele para no projetor, o holograma acende e
+    gira mais rápido; ao lado, o scanner varre as páginas (feixe vermelho) e as folhas lidas vão
+    do scanner para o núcleo; uma barra em cima mostra processo X de Y;
+  - **Planilhas** (salvando cada grupo e no fim): ele vai ao terminal, que preenche a planilha
+    célula por célula e imprime; no fim, a planilha fica cheia e a folha impressa. O Jarvis fica uns
     segundos lá (salvar é rápido demais para ver) e depois volta à ronda.
   Trabalhando, o núcleo gira 3 vezes mais rápido. Instalação no Mac: `RELATORIO_PROCESSOS.md`, seção 5.
 - Se a vila for baixada de novo do site: rodar `ligar_zangao.py` e depois

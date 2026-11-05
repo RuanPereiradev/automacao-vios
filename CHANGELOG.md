@@ -12,6 +12,19 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Vila 04 vira a garagem do Homem de Ferro (05/11/2026)
+- O cenário da Vila 04 passa a ser a garagem do `fundo-oficina-jarvis.html` (parede, túnel com
+  luzes, janelas, telas, carros, armaduras em exposição, braços robóticos soldando e uma máquina
+  para cada estação: rack com antena, scanner de documentos e terminal com impressora); a parte
+  fixa vai para o fundo e a animada só é desenhada com a Vila 03 ou 04 na tela.
+- O holograma do centro é o posto do Jarvis: acende quando ele está lá, com o Jarvis como núcleo.
+- Os três lugares de trabalho são as máquinas, que trabalham quando o Jarvis está nelas: Conexão
+  VIOS (rack: LEDs e antena com sinal), Leitura dos processos (ele fica no holograma; o scanner ao
+  lado varre e as folhas lidas vão para o núcleo; barra de processo X de Y) e Planilhas (terminal
+  preenche a planilha e a impressora imprime). Placas novas.
+- O Jarvis voa em linha reta pela garagem (sem o mapa de ladrilhos).
+- Testado com eventos simulados na página de demonstração (sem VIOS e sem IA): as três paradas e o fim.
+
 ### Adicionado — Relatório de processos em PDF no timbrado (05/11/2026)
 - Cada grupo gera `<GRUPO>.pdf` junto com a planilha (`bot/relatorio_pdf.py`), no timbrado do
   escritório (cabeçalho, rodapé com os 5 escritórios e marca d'água, nas posições e margens do
