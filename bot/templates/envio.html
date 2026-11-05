@@ -36,6 +36,7 @@
   <a href="{{ url_for('inicio') }}">{{ ultron("parado", 48, "ultron-topo") }}
     <span><span class="marca marca-sam"><b>S</b>AM</span><br><span class="sub">envio de tarefas ao VIOS</span></span></a>
   <span class="acoes" style="margin-left: auto">
+    <a class="botao secundario" href="{{ url_for('vila_dos_bots') }}">Vila dos Bots</a>
     {% if zangao_ligado %}<a class="botao secundario" href="{{ url_for('zangao_pagina') }}">Bumblebee</a>{% endif %}
     {% if albi_ligado %}<a class="botao secundario" href="{{ url_for('albi_pagina') }}">Albi</a>{% endif %}
     {% if jarvis_ligado %}<a class="botao secundario" href="{{ url_for('jarvis_pagina') }}">Jarvis</a>{% endif %}

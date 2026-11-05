@@ -767,6 +767,12 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   - Página `/zangao`: o robô no topo (SVG) e, na cena, um canvas com a mesma transformação
     (`bot/templates/_zangao.html`: `zangao_cena()` e `bumblebee_script()`). Com "reduzir
     movimento" ligado no sistema, a troca é direta, sem animação.
+### Passo 34 — Entrada: a Vila dos Bots
+- `http://<IP do Mac>:5001/` abre a **Vila dos Bots**: a vila e um cartão por bot (Sam, Bumblebee,
+  Albi, Jarvis, Orelha) com o botão para a página de cada um. Nenhum bot fica fixo no topo.
+- A página de envio do Sam fica em `http://<IP do Mac>:5001/sam`. As páginas de bot têm o botão
+  "Vila dos Bots" para voltar à entrada.
+
 ### Passo 32 — Jarvis na Vila 04 (relatório mensal de processos)
 - A vila tem 5 vilas: 01 · Sam, 02 · Bumblebee, 03 · Albi, **04 · Jarvis** e 05 · Orelha. O Jarvis é o
   robô do relatório mensal de processos por Grupo Cliente (segundo usuário do VIOS, só leitura).

@@ -12,6 +12,19 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — A entrada do sistema é a Vila dos Bots (05/11/2026)
+- Quem entra no sistema (`http://<IP do Mac>:5001/`) vê agora a **Vila dos Bots**, uma página neutra,
+  sem nome nem mascote de nenhum bot no topo:
+  - marca "VILA DOS BOTS" com o ícone de uma casinha;
+  - a vila com os eventos reais;
+  - um cartão para cada bot (Sam, Bumblebee, Albi, Jarvis e Orelha), com o que ele faz e o botão
+    para a página dele. Quem não está instalado no servidor aparece como "Não instalado".
+- A página de envio do **Sam** foi para **`/sam`**, igual por dentro. Os links "Sam" das outras
+  páginas e os redirecionamentos do envio já apontam para lá. Toda página de bot ganhou o botão
+  "Vila dos Bots" no topo.
+- A janela de senha do navegador agora diz "Vila dos Bots" em vez de "Envio ao VIOS". Por isso o
+  navegador pode pedir a senha mais uma vez.
+- Arquivos: `bot/templates/vila_dos_bots.html` (novo) e as rotas `/` e `/sam` em `bot/envio_web.py`.
 ### Alterado — Vila 05 vira o parque do Orelha, cheio de brinquedos e com a casinha dele (05/11/2026)
 - O fundo cinza da Vila 05 (prédios, lotes e torre de metal) virou um **parque dos cães**: cerca
   branca de madeira em volta (com o portão para a Vila 04), grama com flores e caminhos de areia

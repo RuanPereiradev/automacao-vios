@@ -296,7 +296,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         auth = request.authorization
         if auth and hmac.compare_digest((auth.password or "").encode(), senha.encode()):
             return None
-        return Response("Senha necessária.", 401, {"WWW-Authenticate": 'Basic realm="Envio ao VIOS", charset="UTF-8"'})
+        return Response("Senha necessária.", 401, {"WWW-Authenticate": 'Basic realm="Vila dos Bots", charset="UTF-8"'})
 
     cfg = config.carregar(caminho_env)
     oficiais = skill.tarefas_oficiais(pasta_skill or "doc/analise-intimacoes-controladoria")
@@ -325,7 +325,14 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
                              duplicadas=_duplicadas(pasta_saida), processos=_processos_capturados(pasta_saida))
 
     @app.route("/")
+    def vila_dos_bots():
+        """Entrada do sistema: a Vila dos Bots (neutra, sem nenhum bot fixo) com um cartão para cada bot."""
+        return render_template("vila_dos_bots.html", albi_pronto=albi.configurado(pasta_albi),
+                               jarvis_pronto=jarvis.configurado(pasta_jarvis), zangao_pronto=bool(pasta_zangao))
+
+    @app.route("/sam")
     def inicio():
+        """Página do Sam (envio de tarefas ao VIOS)."""
         recentes = sorted(envios.items(), key=lambda e: e[1]["criado"], reverse=True)[:8]
         return render_template("envio.html", tela="inicio", recentes=recentes, resumo=resumo_envio,
                                total_envios=len(envios), total_lancadas=len(lancadas()), ocupado=trava.locked())
