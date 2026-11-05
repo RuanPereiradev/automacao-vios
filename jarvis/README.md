@@ -179,8 +179,10 @@ botão "Jarvis" no topo da página do Ultron):
 4. Embaixo, a lista das planilhas com o botão **Baixar** (as de teste com o selo "teste").
 
 Enquanto roda, a página mostra os grupos escolhidos e se atualiza sozinha, e a caixa de fala da Vila 04 mostra o andamento
-("Grupo 1 de 2: processo 37 de 101 · gasto US$ 0,70"); o Jarvis vai até a Leitura dos
-processos e, ao salvar cada planilha, até Planilhas. No fim: "Pronto! N planilha(s) do mês
+("Grupo 1 de 2: processo 37 de 101 · gasto US$ 0,70"). A Vila 04 é uma garagem com uma máquina
+por estação: entrando no VIOS, o Jarvis vai ao rack com antena (Conexão VIOS); lendo, fica no
+holograma do centro, com o scanner ao lado (Leitura dos processos); ao salvar cada planilha, vai
+ao terminal com impressora (Planilhas). No fim: "Pronto! N planilha(s) do mês
 gerada(s)". A vila só recebe contagens: nunca nome de grupo, cliente ou número de processo.
 
 Como funciona: o Sam (`bot/jarvis.py`, rotas `/jarvis/*` em `bot/envio_web.py`) abre o

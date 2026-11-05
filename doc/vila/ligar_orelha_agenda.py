@@ -13,7 +13,7 @@
   arquivo começa com 3 relatórios de exemplo.
 
 uso: python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html
-(por último, depois do ligar_vila05_parque.py; rodar de novo não repete nada)
+(depois do ligar_vila05_parque.py e antes do ligar_vila04_garagem.py; rodar de novo não repete nada)
 """
 import json
 import sys

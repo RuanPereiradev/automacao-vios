@@ -724,8 +724,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `python3 doc/vila/ligar_vila03_arena.py bot/vila/vila.html`,
   `python3 doc/vila/ligar_orelha.py bot/vila/vila.html`,
   `python3 doc/vila/ligar_jarvis.py bot/vila/vila.html`,
-  `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html` e por último
-  `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html`.
+  `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html` e por último
+  `python3 doc/vila/ligar_vila04_garagem.py bot/vila/vila.html`.
 
 ### Passo 32 — Vila 05: o parque do Orelha
 - A Vila 05 virou um parque dos cães cheio de brinquedos: cerca branca de madeira, grama com flores
@@ -854,9 +855,15 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   **Pasta própria `jarvis/`** (como o Albi e o Orelha): `.venv`, `.env`, `logs/`, `saida/` e cópias
   próprias do login, da configuração e da IA em `jarvis/nucleo/`; não importa nada de `bot/`.
   Detalhes em `jarvis/README.md`.
-- A Vila 04 fica acesa, com as placas Doca 01 · Jarvis, Leitura dos processos, Planilhas e
-  Torre VIOS; o Jarvis (núcleo de IA: esfera azul em espiral, com anéis e o centro
-  pulsando) faz a ronda e se apresenta no diálogo. `/vila?vila=4` abre direto nela.
+- A Vila 04 é a **garagem do Homem de Ferro** (desenho do `fundo-oficina-jarvis.html`, do Kaio):
+  parede de concreto, túnel com luzes, janelas noturnas, telas, carros, duas armaduras em
+  exposição, braços robóticos soldando e uma máquina para cada estação (rack com antena,
+  scanner de documentos e terminal com impressora). No centro, o projetor do holograma é o **posto do
+  Jarvis**: quando ele está lá, o holograma acende em volta dele (o Jarvis é o núcleo). Placas:
+  Conexão VIOS, Leitura dos processos e Planilhas. O Jarvis (núcleo de IA: esfera azul em
+  espiral, com anéis e o centro pulsando) voa pela garagem em linha reta e se apresenta no diálogo.
+  `/vila?vila=4` abre direto nela. A parte animada da garagem só é desenhada com a Vila 03, 04 ou 05
+  na tela. Patch: `doc/vila/ligar_vila04_garagem.py` (o último da lista).
 - **Rodar pela vila**: com o Jarvis instalado (`cd jarvis && ./instalar.sh` e o `jarvis/.env`
   preenchido; `JARVIS_PASTA` só se ele estiver noutra pasta),
   a caixa de fala da Vila 04 ganha "Escolher grupos e gerar" e "Planilhas", que abrem a página
@@ -867,19 +874,21 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - O Jarvis roda em segundo plano, com ambiente limpo (nenhuma variável do Ultron chega a ele),
   e manda o andamento por `POST /eventos` (bot `jarvis`, só contagens: grupo N de M, processo X
   de Y, gasto). A vila mostra na caixa de fala e o Jarvis vai a cada lugar com uma animação:
-  - **Torre VIOS** (entrando no VIOS): sinais sobem do núcleo até o topo da torre, ondas saem
-    dela e a luz da torre pisca rápido;
-  - **Leitura dos processos** (lendo cada processo): a porta acende, as folhas saem girando para
-    dentro do núcleo e uma barra em cima dele mostra processo X de Y;
-  - **Planilhas** (salvando cada grupo e no fim): a tela do prédio vira uma planilha que vai
-    sendo preenchida célula por célula; no fim, fica cheia com um visto verde. O Jarvis fica uns
+  - **Conexão VIOS** (entrando no VIOS): o Jarvis vai ao rack com antena, os LEDs piscam rápido,
+    a antena emite sinal e ele manda sinais para ela;
+  - **Leitura dos processos** (lendo cada processo): ele para no projetor, o holograma acende e
+    gira mais rápido; ao lado, o scanner varre as páginas (feixe vermelho) e as folhas lidas vão
+    do scanner para o núcleo; uma barra em cima mostra processo X de Y;
+  - **Planilhas** (salvando cada grupo e no fim): ele vai ao terminal, que preenche a planilha
+    célula por célula e imprime; no fim, a planilha fica cheia e a folha impressa. O Jarvis fica uns
     segundos lá (salvar é rápido demais para ver) e depois volta à ronda.
   Trabalhando, o núcleo gira 3 vezes mais rápido. Instalação no Mac: `jarvis/README.md`, seção 5.
 - Se a vila for baixada de novo do site: rodar os patches na ordem (zangão, albi, bumblebee,
   vila01_campo, vila03_arena, orelha), depois `python3 doc/vila/ligar_jarvis.py
-  bot/vila/vila.html` (no fim, `propulsor` troca o núcleo pelo mascote com propulsores) e por último
-  `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html` (o parque do Orelha) e
-  `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html` (horário e Arquivo do Orelha).
+  bot/vila/vila.html` (no fim, `propulsor` troca o núcleo pelo mascote com propulsores),
+  `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html` (o parque do Orelha),
+  `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html` (horário e Arquivo do Orelha) e por
+  último `python3 doc/vila/ligar_vila04_garagem.py bot/vila/vila.html` (a garagem do Jarvis).
 
 ### Passo 27 — Segurança das rotas
 - Com `ENVIO_REDE=true`, toda rota (GET e POST) pede a senha (`ENVIO_SENHA`).

@@ -12,6 +12,23 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Vila 04 vira a garagem do Homem de Ferro, com uma máquina por estação (05/11/2026)
+- Trabalho do Kaio (commit `17103ec` da branch `relatorio-processos`), trazido para a main. O commit
+  foi escrito para a vila antiga de 4 vilas e conflitava com a atual (5 vilas, com o Orelha); em vez
+  de juntar à mão, a garagem virou um patch próprio, `doc/vila/ligar_vila04_garagem.py` (o último da
+  lista, como a arena e o parque), com o código dele copiado sem mudança.
+- O cenário da Vila 04 passa a ser a garagem do `fundo-oficina-jarvis.html` (parede, túnel com
+  luzes, janelas, telas, carros, armaduras em exposição, braços robóticos soldando e uma máquina
+  para cada estação: rack com antena, scanner de documentos e terminal com impressora); a parte
+  fixa vai para o fundo e a animada só é desenhada com a Vila 03, 04 ou 05 na tela.
+- O holograma do centro é o posto do Jarvis: acende quando ele está lá, com o Jarvis como núcleo.
+- Os três lugares de trabalho são as máquinas: Conexão VIOS (rack: LEDs e antena com sinal),
+  Leitura dos processos (holograma + scanner; barra de processo X de Y) e Planilhas (terminal
+  preenche a planilha e a impressora imprime). Placas novas. O Jarvis voa em linha reta.
+- Testado: a vila regerada do zero com todos os patches na ordem fica igual à da main; com a
+  garagem, a Vila 04 abre e desenha tudo (print no Chrome sem janela); rodar o patch de novo não
+  repete nada.
+
 ### Adicionado — Orelha avisa quando o relatório roda e guarda os relatórios no Arquivo (05/11/2026)
 - **Horário no `orelha/.env`**: `ORELHA_HORARIO` (padrão `seg-sex 07:30`) e `ORELHA_HORARIO_PARADOS`
   (padrão `sab 08:00`), no formato `<dias> <HH:MM>`. Têm que ser o mesmo do cron/launchd (quem roda o
