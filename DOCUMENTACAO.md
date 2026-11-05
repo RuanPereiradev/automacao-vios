@@ -602,7 +602,7 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `saida/vila_pendentes.jsonl` dele).
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py bot/vila/vila.html`.
 
-### Passo 29 — Orelha, o relatório do dia que só lê o VIOS (pasta `orelha/`) e a Vila 05
+### Passo 33 — Orelha, o relatório do dia que só lê o VIOS (pasta `orelha/`) e a Vila 05
 - Quarto bot, separado como o Albi: fica em `orelha/`, com `.venv`, `.env`, `logs/` e `saida/`
   próprios, e não importa nada de `bot/` nem de `albi/`. **Detalhes em `orelha/README.md`**:
   instalar, configurar, rodar, `--simulado`, agendar (cron/launchd) e o que falta conferir na tela.
@@ -747,6 +747,34 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   - Página `/zangao`: o robô no topo (SVG) e, na cena, um canvas com a mesma transformação
     (`bot/templates/_zangao.html`: `zangao_cena()` e `bumblebee_script()`). Com "reduzir
     movimento" ligado no sistema, a troca é direta, sem animação.
+### Passo 32 — Jarvis na Vila 04 (relatório mensal de processos)
+- A vila tem 5 vilas: 01 · Sam, 02 · Bumblebee, 03 · Albi, **04 · Jarvis** e 05 · Orelha. O Jarvis é o
+  robô do relatório mensal de processos por Grupo Cliente (`relatorio_processos.py`,
+  segundo usuário do VIOS, só leitura; detalhes em `RELATORIO_PROCESSOS.md`).
+- A Vila 04 fica acesa, com as placas Doca 01 · Jarvis, Leitura dos processos, Planilhas e
+  Torre VIOS; o Jarvis (núcleo de IA: esfera azul em espiral, com anéis e o centro
+  pulsando) faz a ronda e se apresenta no diálogo. `/vila?vila=4` abre direto nela.
+- **Rodar pela vila** (como o Zangão): com `JARVIS_PASTA` no `.env` do Ultron (pasta com
+  `.venv`, `relatorio_processos.py` e `.env.usuario2` do Jarvis, branch `relatorio-processos`),
+  a caixa de fala da Vila 04 ganha "Escolher grupos e gerar" e "Planilhas", que abrem a página
+  `/jarvis`: lá a pessoa **marca os grupos** (do `PROCESSOS_GRUPOS` do Jarvis; nunca todos sem
+  escolher) e clica em "Gerar relatório do mês" (com confirmação: segundo clique em até 6 s) ou
+  "Testar (2 processos por grupo)" (salva em `AAAA-MM/teste/`); embaixo, as planilhas para baixar. Rotas: `/jarvis`, `/jarvis/status`, `POST /jarvis/rodar`,
+  `/jarvis/planilha/<mês>/<arquivo>` (só arquivos listados; nada fora da pasta).
+- O Jarvis roda em segundo plano, com ambiente limpo (nenhuma variável do Ultron chega a ele),
+  e manda o andamento por `POST /eventos` (bot `jarvis`, só contagens: grupo N de M, processo X
+  de Y, gasto). A vila mostra na caixa de fala e o Jarvis vai a cada lugar com uma animação:
+  - **Torre VIOS** (entrando no VIOS): sinais sobem do núcleo até o topo da torre, ondas saem
+    dela e a luz da torre pisca rápido;
+  - **Leitura dos processos** (lendo cada processo): a porta acende, as folhas saem girando para
+    dentro do núcleo e uma barra em cima dele mostra processo X de Y;
+  - **Planilhas** (salvando cada grupo e no fim): a tela do prédio vira uma planilha que vai
+    sendo preenchida célula por célula; no fim, fica cheia com um visto verde. O Jarvis fica uns
+    segundos lá (salvar é rápido demais para ver) e depois volta à ronda.
+  Trabalhando, o núcleo gira 3 vezes mais rápido. Instalação no Mac: `RELATORIO_PROCESSOS.md`, seção 5.
+- Se a vila for baixada de novo do site: rodar os patches na ordem (zangão, albi, bumblebee,
+  vila01_campo, vila03_arena, orelha) e por último `python3 doc/vila/ligar_jarvis.py
+  bot/vila/vila.html` (no fim, `propulsor` troca o núcleo pelo mascote com propulsores).
 
 ### Passo 27 — Segurança das rotas
 - Com `ENVIO_REDE=true`, toda rota (GET e POST) pede a senha (`ENVIO_SENHA`).
@@ -854,9 +882,11 @@ selenium/
 │   ├── web.py           # página de revisão (Flask)
 │   ├── envio_txt.py     # lê e confere o .txt da página de envio
 │   ├── envio_web.py     # página de envio do .txt (Flask)
-│   ├── eventos.py       # eventos para a vila (saida/eventos.jsonl, GET /eventos; POST /eventos do Zangão)
+│   ├── eventos.py       # eventos para a vila (saida/eventos.jsonl, GET /eventos; POST /eventos do Zangão e do Jarvis)
 │   ├── zangao.py        # roda o Zangão em segundo plano pela vila (/zangao/status, /zangao/rodar)
 │   ├── albi.py          # página /albi: guarda o .txt, roda o Albi e repassa os eventos dele à vila
+│   ├── jarvis.py        # roda o Jarvis (relatório de processos) pela vila e lista as planilhas (/jarvis)
+│   ├── vila_aviso.py    # o relatório de processos manda o andamento para a vila (bot "jarvis")
 │   ├── vila/            # vila.html (servido em /vila)
 │   ├── templates/       # HTML das páginas de revisão, de envio, do Zangão e do Albi (albi.html);
 │   │                    # _estilo.html = estilo comum; _ultron.html / _zangao.html / _albi.html = mascotes;
@@ -927,6 +957,11 @@ cp .env.example .env       # se não trouxe o .env de outro computador, e preenc
 ```
 
 O chromedriver é baixado automaticamente pelo Selenium Manager.
+
+### Segundo usuário do VIOS — Relatório de processos por Grupo Cliente
+
+Outro robô, com outro login do VIOS, que gera um `.txt` por grupo de clientes.
+Documentação própria em [RELATORIO_PROCESSOS.md](RELATORIO_PROCESSOS.md).
 
 ---
 

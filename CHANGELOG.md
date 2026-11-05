@@ -12,6 +12,33 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Jarvis entra no projeto (merge da branch `relatorio-processos`) e na Vila 04 (05/11/2026)
+- Merge da branch `relatorio-processos`. Ela traz o **Jarvis**, o relatório mensal de processos por
+  Grupo Cliente com o segundo usuário do VIOS, só leitura: `relatorio_processos.py`,
+  `bot/processos_grupo.py`, `bot/processos_detalhe.py`, `bot/relatorio_planilha.py` (planilha
+  .xlsx), `bot/jarvis.py`, `bot/vila_aviso.py`, a página `/jarvis`, `RELATORIO_PROCESSOS.md`,
+  `.env.usuario2.example` e `JARVIS_PASTA` no `.env`. Ele precisa de `openpyxl` (já no
+  `requirements.txt`).
+- Conflitos resolvidos mantendo os dois lados:
+  - `bot/eventos.py` aceita zangao, orelha e jarvis;
+  - `bot/envio_web.py` tem as rotas do Albi e do Jarvis;
+  - os links do topo mostram Bumblebee, Albi e Jarvis;
+  - `.env.example`, CHANGELOG e DOCUMENTACAO juntam os dois lados. O CHANGELOG ainda tinha marcas
+    de conflito sobrando do merge do Orelha, que também foram tiradas.
+- **Vila**: refeita pelos patches, e não juntando as duas versões. O Jarvis ocupa a **Vila 04**,
+  que estava vaga, com placas "Doca 01 · Jarvis", "Leitura dos processos", "Planilhas" e "Torre
+  VIOS", e o núcleo de IA. Agora são 01 Sam · 02 Bumblebee · 03 Albi · 04 Jarvis · 05 Orelha.
+  - O `doc/vila/ligar_jarvis.py` ganhou o caminho para a vila de 5 vilas, que acende a 04 em vez de
+    criar uma vila nova, e roda **por último**. O caminho antigo, de 3 vilas, continua.
+  - O `ligar_vila03_arena.py` ganhou a etapa 2, que recorta o desenho da arena na Vila 03: a
+    montanha e as nuvens passavam para a Vila 04.
+- Conferido:
+  - aplicação do zero de todos os patches = arquivo atual;
+  - as 5 vilas e a página `/jarvis` funcionam no Chrome sem erro;
+  - `/`, `/vila`, `/albi`, `/zangao`, `/jarvis`, `/jarvis/status` e `/eventos` respondem 200;
+  - o código do Jarvis compila.
+  O Jarvis não foi rodado no VIOS, porque precisa da pasta e do `.env.usuario2` dele.
+
 ### Corrigido — Vila quebrada depois do merge do Orelha (05/11/2026)
 - O merge do Orelha (PR #1) gravou `bot/vila/vila.html` com as marcas de um conflito sem resolver
   (`<<<<<<<`, `=======`, `>>>>>>>`), com as duas versões da vila coladas. Por isso a vila não abria.
@@ -25,7 +52,6 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   `/zangao`, `/eventos`) respondem 200; os 223 testes do `orelha/` passam no Python 3.12 (o do Mac).
   No Python 3.8 do Linux eles não carregam, porque o código usa `list[str]`, que é do 3.9 em diante.
 
-<<<<<<< HEAD
 ### Alterado — Vila 03 vira a arena do Albi (04/11/2026)
 - Fundo da Vila 03 trocado pela arena que o usuário fez (`albi/mascote/fundo-arena-albi.html`),
   adaptada ao tamanho da vila (320×224):
@@ -177,7 +203,6 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   continuam iguais, então o bot em si não precisa mudar.
 - Testado em Chrome sem janela: na vila, as fases robô → transformação → carro → robô, sem erro
   no console; na página, a cena, o topo e os links.
-=======
 ### Alterado — O bot Faro passou a se chamar Orelha, com o desenho do cão Orelha (04/11/2026)
 - Homenagem ao Orelha, o cão comunitário da Praia Brava (Florianópolis). Pasta `faro/` → `orelha/`;
   variáveis `FARO_*` → `ORELHA_*` (o `.env` desta máquina foi convertido: só os nomes das chaves);
@@ -311,7 +336,6 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   O texto sobre a limpeza do Ultron foi corrigido: a lista dele é menor, e a barreira para
   responsável, empresa e número é a do Orelha.
 - Ainda não rodou contra o VIOS real (não há credenciais aqui).
->>>>>>> ea66a7d (feat: add orelha bot)
 
 ### Adicionado — Albi: "Capturar resumo", a mensagem para a empresa (04/11/2026)
 - O `albi/relatorio.py` escreve também o **mensagem.txt**, com uma mensagem por empresa, pronta
@@ -446,6 +470,56 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 - Testado no Sonar real pela página (CNPJ do escritório + um CPF inválido): linha 1 pronta no
   passo 2 com R$ 15,70, linha 2 recusada antes; nada confirmado. O resumo do pedido mostrou 1
   item só (os testes anteriores não acumularam num carrinho).
+### Adicionado — Jarvis: uma animação em cada lugar da Vila 04 (04/11/2026)
+- Torre VIOS (entrando no VIOS): sinais do núcleo até o topo da torre, ondas e luz piscando rápido.
+- Leitura dos processos (lendo): a porta acende, folhas entram girando no núcleo e uma barra
+  mostra processo X de Y.
+- Planilhas (salvando cada grupo e no fim): a tela do prédio vira uma planilha sendo preenchida;
+  no fim, cheia e com um visto verde. O Jarvis fica uns segundos lá antes de voltar à ronda.
+- O núcleo gira 3 vezes mais rápido enquanto trabalha.
+
+### Corrigido — Jarvis: fala "Começando o relatório…" no fim (04/11/2026)
+- Quando o último processo, o fim do grupo e o fim da execução chegavam juntos, a fala mostrava
+  "Começando o relatório…" por um instante antes do resultado.
+
+### Alterado — Jarvis: a pessoa escolhe os grupos do relatório (04/11/2026)
+- A página `/jarvis` mostra os grupos do `PROCESSOS_GRUPOS` com caixas de marcar ("Marcar todos"
+  marca e desmarca); "Gerar relatório do mês" (com confirmação) e "Testar (2 processos por grupo)"
+  rodam só os grupos marcados. Sem grupo marcado, os botões ficam desligados.
+- `POST /jarvis/rodar` recebe `{"modo", "grupos"}` e recusa lista vazia ou grupo fora do
+  `PROCESSOS_GRUPOS`; o Jarvis roda com `--grupo "A|B"`. Enquanto roda, a página mostra os grupos
+  escolhidos e se atualiza sozinha.
+- Vila 04: os botões passam a ser "Escolher grupos e gerar" e "Planilhas" (abrem a página /jarvis).
+- `PROCESSOS_GRUPOS` com os 6 grupos do escritório (Plasfran Itapipoca, Camocim e Maranhão, LD
+  Urbanismo, Casa do Celular e Casa do Celular MG/SP).
+- Testado no PC: marcando só a Plasfran Itapipoca, rodou só ela (teste, US$ 0,05).
+
+### Adicionado — Jarvis pela plataforma: gerar e baixar o relatório pela Vila 04 (04/11/2026)
+- Vila 04: botões "Gerar relatório do mês" (com confirmação), "Testar (2 por grupo)" e
+  "Planilhas"; a caixa de fala mostra o andamento real (grupo, processo X de Y, gasto) e o
+  Jarvis vai à Leitura dos processos e às Planilhas enquanto trabalha.
+- `bot/jarvis.py` + rotas `/jarvis`, `/jarvis/status`, `POST /jarvis/rodar` e
+  `/jarvis/planilha/<mês>/<arquivo>`: o Ultron roda o Jarvis da pasta `JARVIS_PASTA` em segundo
+  plano (como o Zangão) e lista as planilhas para baixar. Botão "Jarvis" no topo da página do Ultron.
+- `bot/vila_aviso.py`: o relatório manda o andamento por `POST /eventos` (bot `jarvis`, só
+  contagens; `VILA_URL` e `VILA_SENHA` no `.env.usuario2`). `eventos.py` aceita o bot `jarvis`.
+- `--limite` (teste) salva em `AAAA-MM/teste/`, sem substituir a planilha do mês.
+- Se o navegador não abre, o relatório avisa a vila ("parou") em vez de sumir.
+- Testado no PC com a página de demonstração: clique em "Testar" na vila → 2 grupos, 4
+  processos, US$ 0,06, andamento ao vivo e as planilhas na página /jarvis.
+
+### Adicionado — Jarvis na Vila 04 (04/11/2026)
+- A vila passa de 3 para 4 vilas: a Vila 04 é do **Jarvis**, o robô do relatório mensal de
+  processos (segundo usuário do VIOS). Ela fica acesa, com placas próprias (Doca 01 · Jarvis,
+  Leitura dos processos, Planilhas, Torre VIOS), e o Jarvis faz a ronda com o mascote dele
+  (carmesim e dourado, com propulsores) e se apresenta no diálogo. A Vila 03 continua vaga.
+- `doc/vila/ligar_jarvis.py` aplica a mudança no `bot/vila/vila.html` (como o `ligar_zangao.py`).
+- Ainda sem eventos: o Jarvis aparece sempre como "Ocioso".
+
+### Alterado — Mascote do Jarvis: núcleo de IA (04/11/2026)
+- O Jarvis passa a ser um núcleo de IA em pixel: esfera azul em espiral girando, dois anéis
+  tracejados e o centro pulsando (versão em miniatura do `nucleo-ia.html`). O mascote com
+  propulsores continua no script: `ligar_jarvis.py bot/vila/vila.html propulsor`.
 
 ### Adicionado — Albi: sessão em conflito e tela de novo pedido (04/11/2026)
 - Se o login cair em `/login-conflito` (sessão aberta em outro lugar), o Albi clica em "Encerrar
@@ -867,6 +941,86 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 - Intimação do eproc que só diz "O ato refere-se ao seguinte evento: Evento N"
   (sem o teor) não é lançada: a tarefa depende de abrir o evento no sistema
   (caso da CI 42478, lançada como CIÊNCIA quando era embargos/contrarrazões).
+
+### Alterado — Planilha mensal: colunas revisadas pelo usuário
+- Removidas da aba Processos: **Fase**, **Valor provisionado**, **Última
+  movimentação** e **Pendência — responsável** (sigilo: tinha nomes da equipe).
+- **Justificativa da condenação** passa a ser preenchida pela IA: se houve
+  condenação, o motivo da decisão e o que o cliente tem que fazer; senão,
+  "Sem condenação (pedidos improcedentes)", "Acordo" ou "Sem decisão até o
+  momento". A aba Resumo ganha a contagem "Por resultado da decisão".
+- "Documentos faltando": a IA nunca indica funcionário do escritório como
+  quem entrega.
+- Instrução da IA: só fatos do processo; opiniões, avaliações e estratégias
+  internas registradas nas tarefas não vão para a planilha (o CI 28667 repetia
+  "a condenação já está acima da média").
+
+### Alterado — Relatório de processos vira planilha mensal (.xlsx) com a lupa de cada processo
+- O .txt por grupo foi descartado. Agora `relatorio_processos.py` gera **uma
+  planilha por grupo** em `saida_usuario2/relatorios/AAAA-MM/<GRUPO>.xlsx`, no
+  formato da planilha "Processos Casa do celular" do Drive (abas Processos,
+  Resumo, Cadastro incompleto e Metadados), + um `.json` com o que foi lido.
+- Novo `bot/processos_detalhe.py`: abre a lupa de cada processo
+  (`processos-vis.php`) e lê os Dados do Processo e as tarefas. O "Mostrar
+  mais" é resolvido tirando a classe `limite-texto` (sem clicar).
+- Novo `bot/relatorio_planilha.py`: última movimentação e pendências com
+  responsável por regra fixa (tarefa em aberto vencida = ATRASADA); resumo do
+  caso, motivação (lista fixa), financeira e documentos faltando pela IA
+  (Claude, `claude-sonnet-5-5`). CPF, links e senhas das tarefas são tirados
+  antes da IA e o texto das tarefas não vai para a planilha.
+- Colunas novas: Cliente, Polo do cliente, Fase, Motivação do processo,
+  Justificativa da condenação, Pendência — documentos faltando e Pendência —
+  responsável. "ID da extração" vira CI. Valor provisionado e justificativa
+  da condenação ficam vazios por enquanto.
+- `.env.usuario2`: `PROCESSOS_GRUPOS=CASA DO CELULAR|CASA DO CELULAR MG/SP`,
+  `LLM_PROVEDOR=anthropic`, `LLM_MODELO`, `LLM_LIMITE_US=5`, `MANTER_ABERTO=false`.
+  Opção `--limite N` para testar com poucos processos.
+- `bot/processos_grupo.py` perde a montagem do .txt (fica a pesquisa e a lista).
+- `requirements.txt`: `openpyxl==3.1.5` e `et_xmlfile==2.0.0`.
+- Teste 03/11/2026: 3 processos da CASA DO CELULAR, 0 erros, US$ 0,04. Rodada
+  completa: CASA DO CELULAR (101) + CASA DO CELULAR MG/SP (26), 0 erros,
+  16 min, US$ 2,13.
+
+### Adicionado — Segundo usuário do VIOS (função nova, em definição)
+- Branch `nova-funcao` para desenvolver a função nova sem afetar o robô de
+  intimações no `main`.
+- `.env.usuario2.example`: modelo do `.env` do segundo usuário (mesmo
+  escritório, outro login), com pasta de saída própria (`saida_usuario2`).
+- `rodar_usuario2.bat`: roda o bot com o `.env.usuario2` no Windows (dois
+  cliques ou `.\rodar_usuario2.bat`). Login testado em 28/10/2026.
+- Depois do login, o segundo usuário vai para a tela de **Relatórios**
+  (`?pag=sys/relatorios/relatorios.php`, em `NAVEGACAO_URL_FINAL`). Testado
+  em 28/10/2026: a tela abre com a lista de relatórios. O que fazer nela
+  ainda será definido.
+
+### Adicionado — Relatório de processos por Grupo Cliente
+- `relatorio_processos.py` + `bot/processos_grupo.py`: na tela Processos
+  (`processos-lista.php`), escolhe o **Grupo Cliente**, põe "Mostrar" em 500,
+  pesquisa e lê a tabela. Gera **um .txt por grupo** em
+  `saida_usuario2/relatorios/AAAA-MM-DD/<GRUPO>.txt`, com resumo (por empresa,
+  área e posição do cliente) e um bloco por processo em linguagem simples,
+  para outra IA escrever o relatório para o cliente.
+- Só lê: não usa Apagar/Editar nem "Processar" (ações em lote) da tela.
+- `.env.usuario2`: `PROCESSOS_GRUPOS` (grupos separados por `|`, ou `todos`)
+  e `RELATORIO_PASTA` (vazio = `saida_usuario2/relatorios`). Na linha de
+  comando: `--grupo "3A FRIOS"`; o nome do grupo não depende de acento nem de
+  maiúsculas.
+- `rodar_usuario2.bat` passa a gerar o relatório.
+- Teste 28/10/2026: 3A FRIOS, 17 processos, 0 erros, igual à tabela do VIOS.
+
+### Segurança
+- `imgs/` no `.gitignore`: prints de tela têm dados de clientes.
+
+### Alterado — Documentação do relatório de processos
+- Novo `RELATORIO_PROCESSOS.md` com a documentação completa do relatório por
+  Grupo Cliente (passo a passo, .txt gerado, como rodar, instalação no
+  Windows, configuração, segurança, pontos de atenção e testes). A seção em
+  `DOCUMENTACAO.md` virou um link para ele.
+- `CLAUDE.md`: mudança no relatório também atualiza o `RELATORIO_PROCESSOS.md`.
+
+### Segurança
+- `.gitignore` passa a ignorar qualquer `.env.*` (ex.: `.env.usuario2`) e as
+  pastas `saida_*/`; só os modelos `*.example` são versionados.
 
 ### Adicionado — Análise em lote no Claude
 - `bot/ia/anthropic_ia.py`: lote pela Message Batches API (metade do preço),

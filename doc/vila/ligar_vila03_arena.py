@@ -23,14 +23,18 @@ caminho = sys.argv[1]
 linhas = open(caminho, encoding="utf-8").read().split("\n")
 IDX = next(i for i, l in enumerate(linhas) if l.startswith('"<!DOCTYPE html>'))
 t = json.loads(linhas[IDX])
-if "drawArena(c, f)" in t:
+ETAPA1 = "drawArena(c, f)" not in t
+ETAPA2 = "arena: recorte" not in t  # o desenho da arena não passa da Vila 03 (a montanha da direita invadia a 04)
+if not (ETAPA1 or ETAPA2):
     sys.exit("a Vila 03 já é a arena")
 if "ahandle(ev)" not in t or "paintCampo(c)" not in t:
     sys.exit("rode antes o ligar_albi.py e o ligar_vila01_campo.py")
 
 
-def troca(velho, novo):
+def troca(velho, novo, etapa=1):
     global t
+    if not {1: ETAPA1, 2: ETAPA2}[etapa]:
+        return
     assert t.count(velho) == 1, ("trecho não encontrado (ou repetido)", velho[:90])
     t = t.replace(velho, novo)
 
@@ -165,6 +169,24 @@ troca("""    this.paintCampo(c);
       .forEach(([x, y]) => { R(x - 1, y, 3, 1, '#ffffff'); R(x, y - 1, 1, 3, '#ffffff'); });
   }
 """)
+
+# 6) etapa 2: recorta o desenho da arena na área da Vila 03 (x 640–959)
+troca("""    const A = Component.ARENA, O = A.O, HOR = A.HOR, W = 320, H = 224;
+""", """    const A = Component.ARENA, O = A.O, HOR = A.HOR, W = 320, H = 224;
+    c.save(); c.beginPath(); c.rect(O, 0, W, H); c.clip();  // arena: recorte
+""", 2)
+troca("""    torre(lx0 + 8, top + 2, 50); torre(rx0 - 8, top + 2, 50); torre(lx1 + 10, bot + 1, 78); torre(rx1 - 10, bot + 1, 78);
+  }""", """    torre(lx0 + 8, top + 2, 50); torre(rx0 - 8, top + 2, 50); torre(lx1 + 10, bot + 1, 78); torre(rx1 - 10, bot + 1, 78);
+    c.restore();
+  }""", 2)
+troca("""    const A = Component.ARENA, O = A.O, HOR = A.HOR, W = 320;
+""", """    const A = Component.ARENA, O = A.O, HOR = A.HOR, W = 320;
+    c.save(); c.beginPath(); c.rect(O, 0, W, 224); c.clip();  // nuvens e pássaros não saem da arena
+""", 2)
+troca("""      .forEach(([x, y]) => { R(x - 1, y, 3, 1, '#ffffff'); R(x, y - 1, 1, 3, '#ffffff'); });
+  }""", """      .forEach(([x, y]) => { R(x - 1, y, 3, 1, '#ffffff'); R(x, y - 1, 1, 3, '#ffffff'); });
+    c.restore();
+  }""", 2)
 
 linhas[IDX] = json.dumps(t, ensure_ascii=False).replace("</", "<\\u002F")
 open(caminho, "w", encoding="utf-8").write("\n".join(linhas))

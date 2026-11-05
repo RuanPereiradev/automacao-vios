@@ -1,0 +1,135 @@
+{# Página do Jarvis (relatório mensal de processos por Grupo Cliente): escolher os grupos e gerar,
+   situação e as planilhas para baixar. O andamento aparece na Vila 04; os dados vêm de bot/jarvis.py. #}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jarvis — relatório mensal de processos</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%237fc8ff'/%3E%3Ccircle cx='8' cy='8' r='2.5' fill='%23e6fbff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+{% include "_estilo.html" %}
+<style>
+  /* cores do Jarvis (núcleo azul) por cima do estilo do Ultron */
+  :root { --red: #5ab4ff; --red-escuro: #1f4f86; }
+  body { background: radial-gradient(ellipse at top, #0a1626 0%, var(--fundo) 55%) fixed, var(--fundo); }
+  .marca b { text-shadow: 0 0 12px rgba(90, 180, 255, .6); }
+  .nucleo { width: 44px; height: 44px; border-radius: 50%; flex: none;
+            background: radial-gradient(circle, #fff 0 12%, #aaebff 22%, rgba(60, 150, 255, .35) 50%, transparent 70%);
+            box-shadow: 0 0 0 1px rgba(90, 180, 255, .5) inset, 0 0 18px rgba(90, 180, 255, .45); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--borda); }
+  th { color: var(--suave); font-weight: 600; font-size: 13px; }
+  .grupos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; margin: 12px 0 16px; }
+  .grupos label { display: flex; gap: 10px; align-items: center; background: var(--cartao2); border: 1px solid var(--borda);
+                  border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+  .grupos label:has(input:checked) { border-color: var(--red); box-shadow: 0 0 12px rgba(90, 180, 255, .25); }
+  .grupos input { width: 18px; height: 18px; accent-color: var(--red); }
+  .primario.confirmar { background: linear-gradient(180deg, #ffb347, #c96a00); box-shadow: 0 0 22px rgba(255, 160, 40, .45); }
+</style>
+</head>
+<body>
+<header>
+  <a href="{{ url_for('jarvis_pagina') }}"><span class="nucleo"></span>
+    <span><span class="marca"><b>J</b>ARVIS</span><br><span class="sub">relatório mensal de processos por grupo cliente</span></span></a>
+  <span class="acoes" style="margin-left: auto">
+    <a class="botao secundario" href="{{ url_for('inicio') }}">Sam</a>
+    <a class="botao secundario" href="{{ url_for('vila') }}?vila=4">Vila 04</a>
+  </span>
+</header>
+<main>
+  <div class="cartao">
+    <h1>Situação</h1>
+    {% if not info.configurado %}
+      <p class="aviso">O Jarvis não está instalado neste servidor: falta a pasta em <code>JARVIS_PASTA</code>
+        (com <code>.venv</code>, <code>relatorio_processos.py</code> e <code>.env.usuario2</code>).</p>
+    {% elif info.rodando %}
+      <p><span class="selo s-andamento">Rodando</span>
+        {{ "Teste (2 processos por grupo)" if info.modo == "teste" else "Relatório do mês" }} desde {{ info.inicio[11:16] }}:
+        {{ info.escolhidos | join(", ") }}. Acompanhe na <a href="{{ url_for('vila') }}?vila=4">Vila 04</a>.</p>
+      <p class="suave">Esta página se atualiza sozinha até terminar.</p>
+      <script>setTimeout(() => location.reload(), 10000);</script>
+    {% else %}
+      <h2>Gerar relatório</h2>
+      <p class="suave">Marque os grupos. Só leitura no VIOS; a IA custa cerca de US$ 0,02 por processo
+        e leva uns 15 minutos para cada 100 processos.</p>
+      <div class="grupos">
+        {% for g in info.lista %}
+          <label><input type="checkbox" name="grupo" value="{{ g }}"> {{ g }}</label>
+        {% endfor %}
+      </div>
+      <p class="acoes">
+        <button class="primario" id="gerar" disabled>Gerar relatório do mês</button>
+        <button class="secundario" id="testar" disabled>Testar (2 processos por grupo)</button>
+        <button class="secundario" id="marcar">Marcar todos</button>
+      </p>
+      <p id="aviso" class="suave">Nenhum grupo marcado.</p>
+    {% endif %}
+  </div>
+  <div class="cartao">
+    <h1>Planilhas</h1>
+    {% if planilhas %}
+      <table>
+        <tr><th>Mês</th><th>Planilha</th><th>Gerada em</th><th></th></tr>
+        {% for p in planilhas %}
+          <tr>
+            <td>{{ p.mes }}</td>
+            <td>{{ p.arquivo }} {% if p.teste %}<span class="selo s-andamento">teste</span>{% endif %}</td>
+            <td class="suave">{{ p.gerada }}</td>
+            <td><a class="botao secundario" href="{{ url_for('jarvis_planilha', mes=p.mes, nome=p.arquivo) }}{{ '?teste=1' if p.teste }}">Baixar</a></td>
+          </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <p class="suave">Nenhuma planilha gerada ainda.</p>
+    {% endif %}
+  </div>
+</main>
+<script>
+(() => {
+  const gerar = document.getElementById('gerar');
+  if (!gerar) return;
+  const testar = document.getElementById('testar'), aviso = document.getElementById('aviso');
+  const caixas = [...document.querySelectorAll('input[name=grupo]')];
+  const escolhidos = () => caixas.filter(c => c.checked).map(c => c.value);
+  let confirmar = 0, relogio = null;
+  const atualizar = () => {
+    const n = escolhidos().length;
+    gerar.disabled = testar.disabled = !n;
+    if (!confirmar) aviso.textContent = n ? n + ' grupo(s) marcado(s).' : 'Nenhum grupo marcado.';
+  };
+  caixas.forEach(c => c.addEventListener('change', () => { confirmar = 0; gerar.textContent = 'Gerar relatório do mês'; gerar.classList.remove('confirmar'); atualizar(); }));
+  document.getElementById('marcar').addEventListener('click', () => {
+    const todos = caixas.every(c => c.checked);
+    caixas.forEach(c => { c.checked = !todos; });
+    atualizar();
+  });
+  const rodar = async modo => {
+    gerar.disabled = testar.disabled = true;
+    aviso.textContent = 'Enviando…';
+    try {
+      const r = await fetch('{{ url_for("jarvis_rodar") }}', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modo, grupos: escolhidos() }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) { location.reload(); return; }
+      aviso.textContent = 'Não deu para rodar: ' + (j.erro || 'HTTP ' + r.status) + '.';
+    } catch (e) { aviso.textContent = 'Sem conexão com o servidor. Tente de novo.'; }
+    atualizar();
+  };
+  // gerar o mês pede um segundo clique em até 6 s (gasta IA)
+  gerar.addEventListener('click', () => {
+    if (confirmar > Date.now()) return rodar('mes');
+    confirmar = Date.now() + 6000;
+    gerar.textContent = 'Confirmar: gerar ' + escolhidos().length + ' planilha(s)';
+    gerar.classList.add('confirmar');
+    aviso.textContent = 'Vou ler todos os processos de: ' + escolhidos().join(', ') + '. Clique de novo em até 6 segundos para confirmar.';
+    clearTimeout(relogio);
+    relogio = setTimeout(() => { confirmar = 0; gerar.textContent = 'Gerar relatório do mês'; gerar.classList.remove('confirmar'); atualizar(); }, 6000);
+  });
+  testar.addEventListener('click', () => rodar('teste'));
+  atualizar();
+})();
+</script>
+</body>
+</html>
