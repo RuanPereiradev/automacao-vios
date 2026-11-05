@@ -12,6 +12,37 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Vila 05 vira o parque do Orelha, cheio de brinquedos e com a casinha dele (05/11/2026)
+- O fundo cinza da Vila 05 (prédios, lotes e torre de metal) virou um **parque dos cães**: cerca
+  branca de madeira em volta (com o portão para a Vila 04), grama com flores e caminhos de areia
+  com marcas de pata.
+- Os postos continuam nos mesmos lugares, com cara nova:
+  - **Casinha do Orelha** (antes "Doca 01 · Orelha"): casinha azul de telhado vermelho com a
+    plaquinha "ORELHA", lanterna piscando, pote de ração e pote de água. Ao terminar, o status
+    agora diz "Voltando para a casinha";
+  - **Calendário:** mural de madeira com o calendário, bilhetes e a foto do Orelha. Enquanto ele
+    lê, um dia acende por vez;
+  - **Intimações:** caixa de correio vermelha. Enquanto ele lê, as cartas saem voando. No fim, a
+    bandeirinha sobe vermelha (achado grave) ou verde;
+  - **Relatório:** toalha de piquenique xadrez com a cesta, onde a folha do relatório aparece;
+  - **Planilhas:** baú de brinquedos com a pilha do Albi em cima e os baldes verde, âmbar e cinza;
+  - **Torre VIOS:** torre de parquinho com escorregador e a luz piscando na antena.
+- Brinquedos espalhados: piscina de bolinhas (no lugar da "Doca 04 · livre"), caixa de areia com
+  osso enterrado, barreira de agility, prateleira de brinquedos, hidrante, pneu, frisbee, ossos,
+  bolinhas de tênis, corda, argola e galinha de borracha. Animados: a bolinha quicando, bolinhas
+  pulando na piscina, duas borboletas, a água do pote e a gota do hidrante.
+- Onde o Orelha anda, os eventos, as falas e o painel não mudaram. Patch novo
+  `doc/vila/ligar_vila05_parque.py`, já aplicado em `bot/vila/vila.html`. Ele roda **por último**,
+  depois do `ligar_jarvis.py`.
+- Conferido:
+  - a aplicação do zero de todos os patches (com o parque no fim) dá o mesmo arquivo;
+  - no Chrome sem janela, o parque parado e o "Simular execução" inteiro (Torre VIOS → Calendário
+    → Intimações → Planilhas → Relatório → casinha). O único erro no console (`flivre` no primeiro
+    desenho) já aparecia antes desta mudança;
+  - o Orelha subiu inteiro para o GitHub: os arquivos de `orelha/` e `doc/vila/` são os mesmos no
+    disco e no repositório (só `.env`, `logs/` e `saida/` ficam fora, de propósito). Os 223 testes
+    passam e o `--simulado` roda até o fim.
+
 ### Corrigido — Vila 04: aviso de "Jarvis não instalado" (05/11/2026)
 - A fala da Vila 04 ainda pedia `JARVIS_PASTA`, mas desde a pasta `jarvis/` ele não é mais necessário.
   Agora diz o que fazer: "no Mac, rode cd jarvis && ./instalar.sh e preencha o jarvis/.env". O Sam

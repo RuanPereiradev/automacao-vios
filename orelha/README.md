@@ -277,10 +277,12 @@ dormindo na hora marcada, o launchd roda quando ele acordar.
 
 Com `VILA_URL` e `VILA_SENHA` no `.env`, o Orelha manda cada etapa por `POST /eventos` ao Ultron
 (`"orelha"` está em `BOTS_EXTERNOS` de `bot/eventos.py`). A Vila 05 (`/vila?vila=5`) mostra o Orelha
-andando entre Calendário, Intimações, Torre VIOS, Planilhas e Relatório. Ele late "!" quando há
-achado grave. O contrato dos eventos está em `doc/vila/contrato-eventos.md`, seção "Orelha". Se a
+andando pelo parque dele, cheio de brinquedos: sai da casinha e vai ao mural do Calendário, à caixa
+de correio das Intimações, à Torre VIOS (torre de parquinho), ao baú das Planilhas e à toalha do
+Relatório. Ele late "!" quando há achado grave. O contrato dos eventos está em `doc/vila/contrato-eventos.md`, seção "Orelha". Se a
 vila for baixada de novo do site, rode `python3 doc/vila/ligar_orelha.py bot/vila/vila.html` depois do
-`ligar_zangao.py` e do `ligar_albi.py`. A vila só assiste: se o Ultron estiver fora do ar, o Orelha
+`ligar_zangao.py` e do `ligar_albi.py` (e antes do `ligar_jarvis.py`), e por fim
+`python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html` (o parque). A vila só assiste: se o Ultron estiver fora do ar, o Orelha
 segue trabalhando.
 
 ## O que ainda falta conferir na tela real

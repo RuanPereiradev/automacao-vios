@@ -617,8 +617,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `POST /eventos` ao Ultron. O Ultron aceita porque `"orelha"` está em `BOTS_EXTERNOS`
   (`bot/eventos.py`), e os eventos levam só fases e contagens (contrato em
   `doc/vila/contrato-eventos.md`). A vila agora tem 5 vilas, e a Vila 04 está vaga. Abrir direto:
-  `/vila?vila=5`. Se a vila for baixada de novo do site: `ligar_zangao.py`, `ligar_albi.py` e depois
-  `python3 doc/vila/ligar_orelha.py bot/vila/vila.html`.
+  `/vila?vila=5`. Se a vila for baixada de novo do site: `ligar_zangao.py`, `ligar_albi.py`, depois
+  `python3 doc/vila/ligar_orelha.py bot/vila/vila.html`, `ligar_jarvis.py` e, por último,
+  `ligar_vila05_parque.py` (o parque, ver Passo 32).
 
 ### Passo 28 — Albi: .txt de CPF/CNPJ, página `/albi` e Vila 03
 - O Albi recebe um `.txt` **organizado por empresa**: a linha `EMPRESA:` e,
@@ -701,8 +702,27 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   bot/vila/vila.html`, depois `python3 doc/vila/ligar_albi.py bot/vila/vila.html`,
   `python3 doc/vila/ligar_bumblebee.py bot/vila/vila.html`,
   `python3 doc/vila/ligar_vila01_campo.py bot/vila/vila.html`,
-  `python3 doc/vila/ligar_vila03_arena.py bot/vila/vila.html` e por último
-  `python3 doc/vila/ligar_orelha.py bot/vila/vila.html`.
+  `python3 doc/vila/ligar_vila03_arena.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_orelha.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_jarvis.py bot/vila/vila.html` e por último
+  `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html`.
+
+### Passo 32 — Vila 05: o parque do Orelha
+- A Vila 05 virou um parque dos cães cheio de brinquedos: cerca branca de madeira, grama com flores
+  e caminhos de areia com marcas de pata. Os postos ficaram nos mesmos lugares:
+  - **Casinha do Orelha** (a doca dele): casinha azul de telhado vermelho, com a plaquinha
+    "ORELHA", lanterna, pote de ração e pote de água;
+  - **Calendário:** mural de madeira com o calendário (um dia acende por vez enquanto ele lê);
+  - **Intimações:** caixa de correio (as cartas voam enquanto ele lê; no fim, a bandeirinha sobe
+    vermelha se tiver achado grave e verde se não tiver);
+  - **Relatório:** toalha de piquenique, onde a folha do relatório aparece;
+  - **Planilhas:** baú de brinquedos com a pilha do Albi e os baldes verde, âmbar e cinza;
+  - **Torre VIOS:** torre de parquinho com escorregador e a luz na antena.
+- Também tem piscina de bolinhas, caixa de areia, barreira de agility, prateleira de brinquedos,
+  hidrante e brinquedos pela grama. A bolinha quica, as bolinhas pulam na piscina e há borboletas.
+- Patch: `doc/vila/ligar_vila05_parque.py`, que roda por último (depois do `ligar_orelha.py` e do
+  `ligar_jarvis.py`). Os eventos, as
+  falas e o painel do Orelha não mudaram.
 
 ### Passo 31 — Vila 03: a arena do Albi
 - A Vila 03 virou a arena de `albi/mascote/fundo-arena-albi.html`, adaptada à vila: céu com
@@ -775,8 +795,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
     segundos lá (salvar é rápido demais para ver) e depois volta à ronda.
   Trabalhando, o núcleo gira 3 vezes mais rápido. Instalação no Mac: `jarvis/README.md`, seção 5.
 - Se a vila for baixada de novo do site: rodar os patches na ordem (zangão, albi, bumblebee,
-  vila01_campo, vila03_arena, orelha) e por último `python3 doc/vila/ligar_jarvis.py
-  bot/vila/vila.html` (no fim, `propulsor` troca o núcleo pelo mascote com propulsores).
+  vila01_campo, vila03_arena, orelha), depois `python3 doc/vila/ligar_jarvis.py
+  bot/vila/vila.html` (no fim, `propulsor` troca o núcleo pelo mascote com propulsores) e por último
+  `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html` (o parque do Orelha).
 
 ### Passo 27 — Segurança das rotas
 - Com `ENVIO_REDE=true`, toda rota (GET e POST) pede a senha (`ENVIO_SENHA`).

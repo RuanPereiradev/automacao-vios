@@ -16,9 +16,9 @@
   latir "AU AU", atrás do rabo, cochilar). No modo simulado (site publicado) o botão
   "Simular execução" mostra uma execução de exemplo, sem servidor.
 
-uso: python3 doc/vila/ligar_orelha.py bot/vila/vila.html  (edita no lugar; rodar POR ÚLTIMO, depois de
-     ligar_zangao.py, ligar_albi.py, ligar_bumblebee.py, ligar_vila01_campo.py e ligar_vila03_arena.py;
-     rodar de novo não muda nada)"""
+uso: python3 doc/vila/ligar_orelha.py bot/vila/vila.html  (edita no lugar; rodar depois de
+     ligar_zangao.py, ligar_albi.py, ligar_bumblebee.py, ligar_vila01_campo.py e ligar_vila03_arena.py,
+     e antes do ligar_jarvis.py e do ligar_vila05_parque.py, que troca o fundo da Vila 05 pelo parque; rodar de novo não muda nada)"""
 import json
 import sys
 

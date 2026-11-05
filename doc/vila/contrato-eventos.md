@@ -225,6 +225,9 @@ Na vila (`bot/vila/vila.html`):
   do rabo, cochilar). No modo simulado (site publicado), "Simular execução" toca uma execução de
   exemplo, só com contagens.
 - A Vila 05 foi ligada por `doc/vila/ligar_orelha.py` (rodar depois do `ligar_zangao.py` e do
-  `ligar_albi.py`; rodar de novo só avisa que já está aplicado). Na branch `relatorio-processos`
+  `ligar_albi.py`; rodar de novo só avisa que já está aplicado).
+- Por último (depois do `ligar_jarvis.py`), `doc/vila/ligar_vila05_parque.py` troca o fundo da Vila 05 pelo parque do Orelha
+  (casinha, brinquedos, caixa de correio, baú...). A placa "Doca 01 · Orelha" vira "Casinha do
+  Orelha"; os postos e os eventos `bot: "orelha"` são os mesmos. Na branch `relatorio-processos`
   a Vila 04 é do Jarvis (`ligar_jarvis.py`, que espera a vila com 3 vilas): ao juntar as duas,
   aplicar o Jarvis antes e ajustar este script (ele hoje exige `static NV = 3;`).

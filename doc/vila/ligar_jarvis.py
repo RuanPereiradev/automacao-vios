@@ -6,8 +6,8 @@
   (grupo, processo X de Y e gasto) e o Jarvis vai à Leitura dos processos e às Planilhas enquanto trabalha.
 Na vila de 5 vilas (01 Sam, 02 Bumblebee, 03 Albi, 04 vaga, 05 Orelha), ele acende a Vila 04, que estava
 vaga, em vez de criar uma vila nova.
-uso: python3 doc/vila/ligar_jarvis.py bot/vila/vila.html [nucleo|propulsor]  (edita no lugar; rodar POR ÚLTIMO,
-     depois de todos os outros ligar_*.py; rodar de novo não muda nada)"""
+uso: python3 doc/vila/ligar_jarvis.py bot/vila/vila.html [nucleo|propulsor]  (edita no lugar; rodar depois de
+     todos os outros ligar_*.py, menos o ligar_vila05_parque.py, que vem depois dele; rodar de novo não muda nada)"""
 import json
 import sys
 
