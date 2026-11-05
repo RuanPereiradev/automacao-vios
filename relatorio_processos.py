@@ -2,7 +2,8 @@
 
 Para cada grupo: pesquisa a lista de processos, abre a tela de cada processo (a
 lupa), lê o cadastro e as tarefas, pede à IA as colunas de texto e salva
-<RELATORIO_PASTA>/AAAA-MM/<GRUPO>.xlsx (+ <GRUPO>.json com os dados lidos). Com --limite (teste),
+<RELATORIO_PASTA>/AAAA-MM/<GRUPO>.xlsx + <GRUPO>.pdf no timbrado (com o "Resumo do mês" da IA) e
+<GRUPO>.json com os dados lidos. Com --limite (teste),
 salva em AAAA-MM/teste/, sem tocar na planilha do mês. O andamento vai para a vila (bot/vila_aviso.py).
 """
 import json
@@ -20,6 +21,7 @@ from bot.navegador import criar_driver
 from bot.processos_detalhe import ler_processo
 from bot.processos_grupo import _normal, grupos_disponiveis, ler_processos, nome_arquivo, pesquisar_grupo
 from bot.vila_aviso import Vila
+from bot.relatorio_pdf import SCHEMA_MES, SISTEMA_MES, salvar_pdf, texto_mes
 from bot.relatorio_planilha import SEM_TAREFAS, SISTEMA, SCHEMA, montar_linha, salvar_xlsx, texto_para_ia
 from main import PASTA_LOGS, configurar_log
 
@@ -48,6 +50,19 @@ def analisar(agente, gasto, modelo, item, proc, log):
     except Exception as e:
         log.error("CI %s: erro na IA: %s", item["ci"], e)
         return {"erro": str(e)}
+
+
+def resumo_mes(agente, gasto, modelo, grupo, linhas, log):
+    """Página "Resumo do mês" do PDF: uma chamada à IA por grupo. Erro = PDF sem essa página."""
+    texto = texto_mes(grupo, linhas)
+    try:
+        gasto.conferir(gasto.estimar(modelo, SISTEMA_MES, texto), f"resumo do mês de {grupo}")
+        resposta = agente.responder(SISTEMA_MES, texto, SCHEMA_MES)
+        gasto.registrar(modelo, resposta.pop("_uso", {}))
+        return [p.strip() for p in resposta["paragrafos"] if p.strip()]
+    except Exception as e:
+        log.error("%s: resumo do mês pela IA falhou (o PDF sai sem essa página): %s", grupo, e)
+        return []
 
 
 def gerar_grupo(driver, cfg, grupo, valor, pasta, agente, gasto, modelo, limite, log, vila, ordem, grupos):
@@ -80,6 +95,12 @@ def gerar_grupo(driver, cfg, grupo, valor, pasta, agente, gasto, modelo, limite,
     salvar_xlsx(arquivo, grupo, linhas, {
         "gerado_em": datetime.now(), "modelo": modelo, "gasto": gasto.resumo(), "erros_ia": erros_ia})
     arquivo.with_suffix(".json").write_text(json.dumps(brutos, ensure_ascii=False, indent=1), encoding="utf-8")
+    paragrafos = resumo_mes(agente, gasto, modelo, grupo, linhas, log) if linhas else []
+    try:
+        salvar_pdf(arquivo.with_suffix(".pdf"), grupo, linhas, {"gerado_em": datetime.now()}, paragrafos)
+        log.info("%s: PDF -> %s", grupo, arquivo.with_suffix(".pdf"))
+    except Exception:
+        log.exception("%s: não consegui gerar o PDF (a planilha foi salva)", grupo)
     log.info("%s: %d processos, %d com erro na IA -> %s", grupo, len(linhas), erros_ia, arquivo)
     vila.emitir("grupo_fim", grupo=ordem, grupos=grupos, processos=len(linhas), erros_ia=erros_ia)
     return erros_ia

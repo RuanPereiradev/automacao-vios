@@ -12,6 +12,18 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Relatório de processos em PDF no timbrado (05/11/2026)
+- Cada grupo gera `<GRUPO>.pdf` junto com a planilha (`bot/relatorio_pdf.py`), no timbrado do
+  escritório (cabeçalho, rodapé com os 5 escritórios e marca d'água, nas posições e margens do
+  `Timbrado_RFeitosa_Advogados_COM_MARCADOR.docx`; imagens em `bot/timbrado/`), em Garamond.
+- Conteúdo: capa com os números do mês (total, soma dos valores e contagens), página "Resumo do
+  mês" escrita pela IA (uma chamada por grupo; US$ 0,04 num grupo de 26 processos) e uma ficha
+  por processo com os textos da planilha. Campos vazios e "ERRO NA IA" ficam de fora.
+- A página `/jarvis` lista o PDF para baixar. Falha no PDF não impede a planilha.
+- `requirements.txt`: reportlab 4.2.5, pillow 10.4.0 e chardet 5.2.0 (compatíveis com Python 3.8).
+- Testado: PDF da Casa do Celular MG/SP (26 processos, 21 páginas) e execução completa da
+  Plasfran Itapipoca (teste, 2 processos: planilha + PDF, US$ 0,06).
+
 ### Adicionado — Jarvis: uma animação em cada lugar da Vila 04 (04/11/2026)
 - Torre VIOS (entrando no VIOS): sinais do núcleo até o topo da torre, ondas e luz piscando rápido.
 - Leitura dos processos (lendo): a porta acende, folhas entram girando no núcleo e uma barra

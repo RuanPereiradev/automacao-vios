@@ -131,6 +131,27 @@ Campo vazio no VIOS fica vazio na planilha. Erro na IA aparece como
 
 ---
 
+### PDF no timbrado (sai junto com a planilha)
+
+Para cada grupo, `<GRUPO>.pdf` ao lado da `<GRUPO>.xlsx` (`bot/relatorio_pdf.py`), no timbrado do
+escritório: cabeçalho, rodapé com os 5 escritórios e marca d'água "RF" nas mesmas posições e
+margens do `Timbrado_RFeitosa_Advogados_COM_MARCADOR.docx` (imagens em `bot/timbrado/`), fonte
+Garamond (sem Garamond no computador, Times).
+
+1. **Capa e números do mês**: grupo, mês, data, total de processos, soma dos valores das ações
+   e as contagens por resultado da decisão, tipo, motivação e polo (as da aba Resumo).
+2. **Resumo do mês**: 2 a 4 parágrafos escritos pela IA para o cliente (uma chamada por grupo,
+   com as fichas do grupo; mesmas regras: só fatos, sem nomes de pessoas, CPF, número de
+   processo, equipe ou opiniões internas). Se a IA falhar, o PDF sai sem essa página.
+3. **Processos**: uma ficha por processo com o cadastro e os textos da planilha (campos vazios
+   e "ERRO NA IA" ficam de fora). Não traz a aba "Cadastro incompleto" (é para a equipe).
+
+O PDF não lê o VIOS de novo nem refaz a IA dos processos: usa as mesmas linhas da planilha.
+A página `/jarvis` lista o PDF para baixar junto com a planilha. Com `--limite` (teste), vai
+para `AAAA-MM/teste/` como a planilha. Falha no PDF não impede a planilha (fica no log).
+
+---
+
 ## 4. IA
 
 - Provedor e chave no `.env.usuario2` (`LLM_PROVEDOR=anthropic`,
@@ -149,6 +170,9 @@ Campo vazio no VIOS fica vazio na planilha. Erro na IA aparece como
   equipe registra nas tarefas não vão para a planilha. Motivo: no CI 28667 a
   justificativa repetiu um comentário interno ("a condenação já está acima da
   média", da tarefa sobre dispensar a sustentação oral por economia).
+- **Resumo do mês do PDF**: mais uma chamada por grupo, com as fichas do grupo (até 60.000
+  caracteres): US$ 0,04 na Casa do Celular MG/SP (26 processos, 05/11/2026); cerca de US$ 0,25
+  por mês para os 6 grupos.
 - **Custo**: ~US$ 0,013 por processo (teste de 03/11/2026). Teto por execução
   em `LLM_LIMITE_US` (no `.env.usuario2`: 5); passou do teto, os processos que
   faltam saem com erro na IA.
@@ -265,6 +289,8 @@ automacao-vios/
 ├── bot/processos_grupo.py      # filtro Grupo Cliente, pesquisa e leitura da lista
 ├── bot/processos_detalhe.py    # lupa: Dados do Processo + tarefas
 ├── bot/relatorio_planilha.py   # regras fixas, instruções da IA e gravação da .xlsx
+├── bot/relatorio_pdf.py        # PDF no timbrado + "Resumo do mês" pela IA
+├── bot/timbrado/               # cabeçalho, rodapé e marca d'água do timbrado (do .docx)
 ├── bot/vila_aviso.py           # andamento para a vila (POST /eventos, bot "jarvis")
 ├── bot/jarvis.py               # lado do Ultron: roda o Jarvis pela vila e lista as planilhas
 ├── bot/templates/jarvis.html   # página /jarvis (planilhas para baixar)
