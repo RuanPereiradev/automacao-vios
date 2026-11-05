@@ -94,6 +94,18 @@ etapa estiver pronta e testada, vira uma nova versão com data.
     menciona "Presto" (o "login via Presto" do tribunal), clica e captura de novo a aba e as abas
     novas. Testado simulando o AppleScript com o Selenium numa página com iframe e botão do Presto
     em shadow root (achou, clicou e capturou a aba nova). O AppleScript em si só roda no Mac.
+  - **Login pelo Presto funcionando no caminho do Chrome aberto.** O quadro "Credenciais
+    Disponíveis" do Presto é posto dentro da própria página do tribunal (`div.presto-dialog-root`,
+    `data-presto-el`), então o JavaScript da página alcança. Novo `presto.py entrar [tribunal|URL]`
+    (tjce1, tjce2, trt7, trt7-2, jfce, trf5, trf5-2; URLs tiradas da página Sites do console do
+    Presto): abre o login no Chrome aberto, espera o quadro, clica na credencial
+    (`PRESTO_CREDENCIAL`, padrão a primeira), preenche a senha/PIN se o quadro pedir
+    (`PRESTO_PIN` no `albi/.env`, do jeito que o Vue do Presto percebe) e confirma; diz se entrou
+    (saiu das telas de login) e salva as capturas de cada etapa. Testado com uma página que imita o
+    quadro: PIN certo entra, PIN errado avisa e termina com erro, sem PIN no `.env` avisa.
+  - Segurança: as capturas de botões/campos guardavam o que estava digitado nos campos, o que
+    incluiria o PIN; agora de `<input>`/`<textarea>`/`<select>` nunca sai o valor (só o rótulo de
+    botões). Conferido que o PIN não aparece em nenhuma captura.
   - Com essas capturas, o próximo passo é montar o caminho do bot: entrar no PJe pelo Presto,
     buscar o processo e baixar os autos.
 - Testado com perfil temporário e extensão simulada (o Presto não está instalado nesta máquina):

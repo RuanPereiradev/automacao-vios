@@ -827,6 +827,12 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   login do PJe do TRT7; ou passe as URLs). Ele abre abas novas, salva o que vê em
   `albi/logs/presto/<data_hora>/`, clica no botão de login via Presto e captura o resultado. As abas
   ficam abertas.
+- **Entrar no tribunal pelo Presto:** no `albi/.env` do Mac, `PRESTO_PIN=` (a senha/PIN que o quadro do
+  Presto pede depois de escolher a credencial) e, se houver mais de uma credencial,
+  `PRESTO_CREDENCIAL=` (parte do nome). Depois `.venv/bin/python presto.py entrar tjce1` (ou tjce2,
+  trt7, trt7-2, jfce, trf5, trf5-2, ou a URL de login). O bot abre o login no Chrome aberto, clica na
+  credencial no quadro "Credenciais Disponíveis" que o Presto põe na página, preenche o PIN, confirma e
+  diz se entrou. O PIN não aparece no Terminal nem nas capturas.
 - (Tentativa anterior, perfil separado) Copiar o perfil (uma vez, no computador onde o Albi roda): `cd albi && .venv/bin/python presto.py
   copiar`. Mostra os perfis do Chrome; escolha o que tem o Presto logado. Se o Chrome estiver
   aberto, ele pergunta se pode fechá-lo (responda Enter/"s"; as abas voltam ao abrir de novo); a cópia vai para `albi/perfil_presto/` (sem caches nem abas) e o Chrome pode ser

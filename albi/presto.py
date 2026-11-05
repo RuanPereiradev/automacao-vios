@@ -5,7 +5,14 @@ O plano do escritório (Padrão) não tem a API de robôs da Oystr; então o bot
 extensão, num perfil do Chrome só dele. Este script prepara esse perfil e "fotografa" o que a
 extensão mostra, para montar os passos do bot (entrar no PJe, buscar o processo, baixar os autos).
 
-  .venv/bin/python presto.py aberto [URL ...]          (Mac; o caminho atual)
+  .venv/bin/python presto.py entrar [tribunal ou URL]  (Mac; o caminho atual)
+      No Chrome já aberto, abre o login do tribunal (tjce1, tjce2, trt7, trt7-2, jfce, trf5,
+      trf5-2 ou uma URL; padrão tjce1), espera o quadro "Credenciais Disponíveis" que o Presto põe
+      na página, clica na credencial (PRESTO_CREDENCIAL no albi/.env, padrão a primeira) e, se o
+      quadro pedir senha/PIN, preenche com PRESTO_PIN do albi/.env e confirma. Salva o que viu em
+      cada etapa em albi/logs/presto/<data_hora>/ e diz se entrou. O PIN nunca é impresso nem salvo.
+
+  .venv/bin/python presto.py aberto [URL ...]          (Mac; exploração)
       Usa o Chrome QUE JÁ ESTÁ ABERTO (perfil do escritório, Presto logado), pelo AppleScript
       (chrome_mac.py): abre cada URL numa aba nova da janela da frente, salva HTML, texto, a lista
       de botões/campos/links e um print da tela; procura um botão/link que mencione "Presto" (o
@@ -51,6 +58,30 @@ PERFIL = AQUI / "perfil_presto"
 LOGS = AQUI / "logs" / "presto"
 CONSOLE = "https://console.presto.oystr.com.br/"
 TRT7 = "https://pje.trt7.jus.br/primeirograu/login.seam"
+# logins dos tribunais (da página Sites do console do Presto); "entrar" aceita a chave ou uma URL
+TRIBUNAIS = {
+    "tjce1": "https://pje.tjce.jus.br/pje1grau/login.seam",
+    "tjce2": "https://pje.tjce.jus.br/pje2grau/login.seam",
+    "trt7": "https://pje.trt7.jus.br/primeirograu/login.seam",
+    "trt7-2": "https://pje.trt7.jus.br/segundograu/login.seam",
+    "jfce": "https://pje.jfce.jus.br/pje/login.seam",
+    "trf5": "https://pje1g.trf5.jus.br/pje/",
+    "trf5-2": "https://pje2g.trf5.jus.br/pje/",
+}
+
+
+def config_presto():
+    """PRESTO_* do albi/.env (sem python-dotenv); o ambiente tem preferência."""
+    import os
+    cfg = {}
+    arq = AQUI / ".env"
+    if arq.exists():
+        for linha in arq.read_text(encoding="utf-8", errors="replace").splitlines():
+            m = re.match(r"\s*(PRESTO_\w+)\s*=\s*(.*?)\s*$", linha)
+            if m:
+                cfg[m.group(1)] = m.group(2).strip("'\"")
+    cfg.update({k: v for k, v in os.environ.items() if k.startswith("PRESTO_")})
+    return cfg
 QUAL = PERFIL / "perfil_bot.txt"  # nome da pasta do perfil copiado ("Default", "Profile 1"...)
 # o que não precisa ir na cópia: caches (grandes e refeitos sozinhos) e as abas da última sessão
 SEM_COPIAR = ("Cache", "Code Cache", "GPUCache", "DawnGraphiteCache", "DawnWebGPUCache", "GrShaderCache",
@@ -374,7 +405,81 @@ def aberto(urls, termo="presto"):
     return 0
 
 
+def _esperar(cond, maximo, passo=1.0):
+    """Repete cond() até dar algo verdadeiro (devolve) ou acabar o tempo (devolve o último valor)."""
+    fim, v = time.monotonic() + maximo, None
+    while time.monotonic() < fim:
+        try:
+            v = cond()
+            if v:
+                return v
+        except Exception:
+            pass
+        time.sleep(passo)
+    return v
+
+
+def entrar(alvo="tjce1"):
+    """Entra no tribunal pelo Presto no Chrome aberto (Mac): credencial do quadro + PIN do .env."""
+    import chrome_mac as CM
+    if not CM.disponivel():
+        print("O comando 'entrar' só funciona no Mac (usa o AppleScript do Chrome).")
+        return 2
+    cfg = config_presto()
+    url = TRIBUNAIS.get(alvo.lower(), alvo)
+    if not url.startswith("http"):
+        print(f"Tribunal desconhecido: {alvo}. Use {', '.join(TRIBUNAIS)} ou uma URL.")
+        return 2
+    destino = LOGS / datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    try:
+        print(f"Abrindo {url} no Chrome aberto...")
+        w, t = CM.abrir_aba(url)
+        CM.esperar(w, t)
+        quadro = _esperar(lambda: CM.presto(w, t).get("ok") and CM.presto(w, t), 30)
+        _salvar_captura(destino, "1_login", CM.capturar(w, t))
+        if not quadro:
+            print("O quadro do Presto não apareceu na página em 30 s. Confira se o Presto está ativo nessa "
+                  "janela e se a página é a de login do tribunal.")
+            return 1
+        (destino / "1_quadro.json").write_text(json.dumps(quadro, ensure_ascii=False, indent=1), encoding="utf-8")
+        print("Quadro do Presto:", ", ".join(quadro["creds"]) or "(sem credenciais)")
+        r = CM.presto_credencial(w, t, cfg.get("PRESTO_CREDENCIAL", ""))
+        if not r.get("ok"):
+            print("Não consegui escolher a credencial:", r.get("erro"))
+            return 1
+        print("Credencial escolhida:", r["nome"])
+        time.sleep(3)
+        quadro2 = CM.presto(w, t)
+        (destino / "2_quadro_depois.json").write_text(json.dumps(quadro2, ensure_ascii=False, indent=1),
+                                                       encoding="utf-8")
+        _salvar_captura(destino, "2_depois_credencial", CM.capturar(w, t))
+        if quadro2.get("ok") and any(i.get("visivel") for i in quadro2.get("inputs", [])):
+            pin = cfg.get("PRESTO_PIN", "")
+            if not pin:
+                print("O Presto pediu a senha/PIN, mas PRESTO_PIN não está no albi/.env. Preencha e rode de novo.")
+                return 1
+            r = CM.presto_pin(w, t, pin)
+            print("PIN preenchido; confirmei em:", r.get("botao") if r.get("ok") else r.get("erro"))
+        elif quadro2.get("ok"):
+            print("Depois da credencial o quadro continua sem campo de senha:", quadro2.get("texto", "")[:200])
+        # entrou quando a aba sai das telas de login (login.seam / sso / auth)
+        def logado():
+            u = CM.url(w, t)
+            return u if not re.search(r"login\.seam|/auth/|sso\.|/login", u) else ""
+        final = _esperar(logado, 60, passo=2)
+        CM.esperar(w, t, maximo=20, folga=2)
+        _salvar_captura(destino, "3_final", CM.capturar(w, t))
+        print(("Entrou: " + final) if final else "Continua na tela de login depois de 60 s (veja as capturas).")
+    except CM.ChromeMacErro as e:
+        print("Parou:", e)
+        return 1
+    print("Capturas em", destino)
+    return 0 if final else 1
+
+
 def main(*args):
+    if args and args[0] == "entrar":
+        return entrar(*(args[1:2] or ["tjce1"]))
     if not args or args[0] not in ("aberto", "copiar", "preparar", "explorar"):
         print(__doc__)
         return 2

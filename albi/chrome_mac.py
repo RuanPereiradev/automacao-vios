@@ -130,7 +130,10 @@ function _albiTodos(raiz, onde, out) {
 function _albiDescr(el, onde) {
   var r = el.getBoundingClientRect ? el.getBoundingClientRect() : {width: 0, height: 0};
   var cls = (typeof el.className === 'string') ? el.className : '';
-  var d = {onde: onde, tag: el.tagName.toLowerCase(), texto: ((el.innerText || el.value || '') + '').trim().slice(0, 80),
+  // nunca guarda o que foi digitado (senha/PIN): de <input> só o rótulo de botões
+  var valor = (el.tagName === 'INPUT' && !/^(button|submit|reset)$/i.test(el.type || '')) ? '' : (el.value || '');
+  if (el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') valor = '';
+  var d = {onde: onde, tag: el.tagName.toLowerCase(), texto: ((el.innerText || valor || '') + '').trim().slice(0, 80),
            id: el.id || '', name: el.getAttribute('name') || '', type: el.getAttribute('type') || '', classe: cls.slice(0, 80),
            href: el.getAttribute('href') || '', title: el.getAttribute('title') || '', alt: el.getAttribute('alt') || '',
            src: (el.getAttribute('src') || '').slice(0, 150), visivel: r.width > 0 && r.height > 0};
@@ -185,3 +188,73 @@ def print_tela(caminho):
         return r.returncode == 0
     except (OSError, subprocess.TimeoutExpired):
         return False
+
+
+# ---------------- quadro do Presto dentro da página do tribunal ----------------
+# o Presto põe na página um quadro "Credenciais Disponíveis" (div.presto-dialog-root, data-presto-el)
+_DIALOGO = "document.querySelector('.presto-dialog-root') || document.querySelector('[data-presto-el]')"
+
+JS_PRESTO = "(function(){var d=" + _DIALOGO + r""";
+  if (!d) return JSON.stringify({ok: false});
+  var creds = [].map.call(d.querySelectorAll('a.prs-text-presto-blue'), function(a) {
+    var box = a.parentElement && a.parentElement.parentElement;
+    return ((box ? box.innerText : a.innerText) || '').split('\n')[0].trim();
+  });
+  var inputs = [].map.call(d.querySelectorAll('input'), function(i) {
+    var r = i.getBoundingClientRect();
+    return {type: i.type, name: i.name || '', placeholder: i.placeholder || '', visivel: r.width > 0 && r.height > 0};
+  });
+  var botoes = [].map.call(d.querySelectorAll('button'), function(b) { return (b.innerText || '').trim(); });
+  return JSON.stringify({ok: true, texto: (d.innerText || '').slice(0, 3000), creds: creds, inputs: inputs, botoes: botoes});
+})()"""
+
+# clica na credencial cujo nome contém o termo (ou na primeira)
+JS_PRESTO_CREDENCIAL = "(function(termo){var d=" + _DIALOGO + r""";
+  if (!d) return JSON.stringify({ok: false, erro: 'quadro do Presto não está na página'});
+  var links = [].slice.call(d.querySelectorAll('a.prs-text-presto-blue'));
+  var alvo = links.filter(function(a) {
+    var box = a.parentElement && a.parentElement.parentElement;
+    return !termo || ((box ? box.innerText : '') || '').toLowerCase().indexOf(termo.toLowerCase()) >= 0;
+  })[0] || links[0];
+  if (!alvo) return JSON.stringify({ok: false, erro: 'nenhuma credencial no quadro do Presto'});
+  var box = alvo.parentElement && alvo.parentElement.parentElement;
+  var nome = ((box ? box.innerText : '') || '').split('\n')[0].trim();  // antes do clique: o quadro muda
+  alvo.click();
+  return JSON.stringify({ok: true, nome: nome});
+})"""
+
+# preenche o PIN/senha no quadro (do jeito que o Vue do Presto percebe) e confirma
+JS_PRESTO_PIN = "(function(pin){var d=" + _DIALOGO + r""";
+  if (!d) return JSON.stringify({ok: false, erro: 'quadro do Presto não está na página'});
+  var campos = [].slice.call(d.querySelectorAll('input')).filter(function(i) {
+    var r = i.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && i.type !== 'hidden' && i.type !== 'checkbox';
+  });
+  var campo = campos.filter(function(i) { return i.type === 'password'; })[0] || campos[0];
+  if (!campo) return JSON.stringify({ok: false, erro: 'o quadro não tem campo de senha/PIN'});
+  campo.focus();
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(campo, pin);
+  campo.dispatchEvent(new Event('input', {bubbles: true}));
+  campo.dispatchEvent(new Event('change', {bubbles: true}));
+  var botoes = [].slice.call(d.querySelectorAll('button')).filter(function(b) {
+    return !/fechar|cancelar|voltar/i.test(b.innerText || '') && !b.disabled;
+  });
+  var botao = botoes.filter(function(b) { return /entrar|confirmar|ok|acessar|login|continuar|assinar|enviar/i.test(b.innerText || ''); })[0] || botoes[0];
+  if (botao) { botao.click(); return JSON.stringify({ok: true, botao: (botao.innerText || '').trim()}); }
+  campo.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true}));
+  if (campo.form) campo.form.requestSubmit ? campo.form.requestSubmit() : campo.form.submit();
+  return JSON.stringify({ok: true, botao: '(Enter)'});
+})"""
+
+
+def presto(w, t):
+    """{"ok", "texto", "creds", "inputs", "botoes"} do quadro do Presto na aba (ok=False se não há quadro)."""
+    return json.loads(js(w, t, JS_PRESTO))
+
+
+def presto_credencial(w, t, termo=""):
+    return json.loads(js(w, t, f"{JS_PRESTO_CREDENCIAL}({json.dumps(termo)})"))
+
+
+def presto_pin(w, t, pin):
+    return json.loads(js(w, t, f"{JS_PRESTO_PIN}({json.dumps(pin)})"))
