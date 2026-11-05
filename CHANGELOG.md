@@ -12,6 +12,13 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Vila 04: aviso de "Jarvis não instalado" (05/11/2026)
+- A fala da Vila 04 ainda pedia `JARVIS_PASTA`, mas desde a pasta `jarvis/` ele não é mais necessário.
+  Agora diz o que fazer: "no Mac, rode cd jarvis && ./instalar.sh e preencha o jarvis/.env". O Sam
+  considera o Jarvis instalado quando a pasta tem `.venv`, `relatorio_processos.py` e `.env`. A
+  `.venv` e o `.env` são criados no próprio Mac e não vêm pelo `git pull`.
+- O `ligar_jarvis.py` também atualiza esse texto numa vila que já tem o Jarvis.
+
 ### Alterado — Jarvis com pasta própria `jarvis/` (05/11/2026)
 - O Jarvis saiu do meio do Sam (`relatorio_processos.py` na raiz e módulos em `bot/`) e foi para a
   pasta **`jarvis/`**, como o Albi e o Orelha:

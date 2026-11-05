@@ -15,8 +15,16 @@ caminho = sys.argv[1]
 linhas = open(caminho, encoding="utf-8").read().split("\n")
 IDX = next(i for i, l in enumerate(linhas) if l.startswith('"<!DOCTYPE html>'))
 t = json.loads(linhas[IDX])
+# texto do "não instalado" (antes pedia JARVIS_PASTA; desde a pasta jarvis/, é instalar.sh + jarvis/.env)
+TXT_VELHO = """' Ainda não estou instalado neste servidor (falta JARVIS_PASTA).'"""
+TXT_NOVO = """' Ainda não estou instalado neste servidor: no Mac, rode cd jarvis && ./instalar.sh e preencha o jarvis/.env.'"""
 if "jpatrol()" in t:
-    sys.exit("a vila já está com o Jarvis")
+    if TXT_VELHO not in t:
+        sys.exit("a vila já está com o Jarvis")
+    t = t.replace(TXT_VELHO, TXT_NOVO)
+    linhas[IDX] = json.dumps(t, ensure_ascii=False).replace("</", "<\\u002F")
+    open(caminho, "w", encoding="utf-8").write("\n".join(linhas))
+    sys.exit("Jarvis: texto do \"não instalado\" atualizado")
 
 
 def troca(velho, novo, vezes=1):
@@ -127,7 +135,7 @@ troca("  patrol() {", r"""  jfase() {
   jfalar() {
     const s = this.state, r = s.jrun, srv = s.jsrv;
     let txt = Component.JIDLE;
-    if (srv && !srv.configurado) txt += ' Ainda não estou instalado neste servidor (falta JARVIS_PASTA).';
+    if (srv && !srv.configurado) txt += ' Ainda não estou instalado neste servidor: no Mac, rode cd jarvis && ./instalar.sh e preencha o jarvis/.env.';
     else if (r && !r.fim && srv && srv.rodando) {
       const pre = r.teste ? 'Teste · ' : '';
       txt = r.etapa === 'entrando' ? pre + 'Entrando no VIOS, só para ler…'
