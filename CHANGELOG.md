@@ -12,6 +12,30 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Jarvis com pasta própria `jarvis/` (05/11/2026)
+- O Jarvis saiu do meio do Sam (`relatorio_processos.py` na raiz e módulos em `bot/`) e foi para a
+  pasta **`jarvis/`**, como o Albi e o Orelha:
+  - `relatorio_processos.py` (entrada), `instalar.sh` e `rodar.sh` (Mac/Linux), `rodar.bat`
+    (Windows), `requirements.txt` próprio (selenium, python-dotenv, anthropic, openai, openpyxl),
+    `.env.example` (antes `.env.usuario2.example`) e `README.md` (antes `RELATORIO_PROCESSOS.md`);
+  - `jarvis/nucleo/`: os módulos dele (processos_grupo, processos_detalhe, relatorio_planilha,
+    vila_aviso) e **cópias próprias** do que ele usava do Sam (config, custo, extracao, ia/, login,
+    navegacao, navegador e o log, antes do `main.py`). Ele não importa mais nada de `bot/`: mudança no
+    Sam não quebra o Jarvis, e vice-versa. Se o VIOS mudar a tela de login, corrigir nos dois;
+  - `.env`, `logs/` e `saida/` (planilhas em `saida/relatorios/AAAA-MM/`) ficam dentro de `jarvis/` e
+    fora do git.
+- Lado do Sam: `bot/jarvis.py` acha o Jarvis em `jarvis/` sozinho (`JARVIS_PASTA` só se ele estiver
+  noutra pasta) e lê o `jarvis/.env`. O link "Jarvis" do topo só aparece com ele instalado. O
+  `openpyxl` saiu do `requirements.txt` do Sam (só o Jarvis usa).
+- Instalar no Mac: `cd jarvis && ./instalar.sh` (Python 3.9+; o código usa `list[str]`) e preencher o
+  `jarvis/.env`. Quem já tinha um `.env.usuario2` pode copiar o conteúdo para `jarvis/.env`.
+- Testado no Python 3.12:
+  - o `relatorio_processos.py` carrega tudo e para com a mensagem certa sem login;
+  - a planilha .xlsx sai com as 4 abas (dados de mentira);
+  - pelo Sam, `/jarvis/status`, a página `/jarvis`, o link do topo e a recusa de grupo fora da lista
+    funcionam.
+  O Jarvis não foi rodado no VIOS (precisa do segundo usuário).
+
 ### Adicionado — Jarvis entra no projeto (merge da branch `relatorio-processos`) e na Vila 04 (05/11/2026)
 - Merge da branch `relatorio-processos`. Ela traz o **Jarvis**, o relatório mensal de processos por
   Grupo Cliente com o segundo usuário do VIOS, só leitura: `relatorio_processos.py`,

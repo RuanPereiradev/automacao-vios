@@ -306,8 +306,8 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     # Zangão instalado neste computador (pasta com .venv e .env dele); vazio = sem botões na vila
     pasta_zangao = os.path.expanduser(os.getenv("ZANGAO_PASTA", "").strip())
     pasta_albi = albi.pasta()  # Albi (bot do Sonar): ALBI_PASTA ou a pasta albi/ deste repositório
-    # Jarvis (relatório mensal de processos) instalado neste computador; vazio = sem botões na Vila 04
-    pasta_jarvis = os.path.expanduser(os.getenv("JARVIS_PASTA", "").strip())
+    # Jarvis (relatório mensal de processos): JARVIS_PASTA ou a pasta jarvis/ deste repositório
+    pasta_jarvis = jarvis.pasta()
     arquivo_pessoas = pasta_saida / "responsaveis.json"
     envios = carregar_envios(pasta_saida)  # id -> {arquivo, cis, estado, confirmar, ...}
     trava = threading.Lock()  # um envio por vez (um navegador só)
@@ -448,7 +448,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     @app.context_processor
     def menu():
         return {"zangao_ligado": bool(pasta_zangao), "albi_ligado": albi.configurado(pasta_albi),
-                "jarvis_ligado": bool(pasta_jarvis)}
+                "jarvis_ligado": jarvis.configurado(pasta_jarvis)}
 
     @app.route("/albi")
     def albi_pagina():

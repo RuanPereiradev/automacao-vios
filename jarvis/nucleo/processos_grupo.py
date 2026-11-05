@@ -13,7 +13,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from bot.extracao import _limpar
+from nucleo.extracao import _limpar
 
 log = logging.getLogger(__name__)
 

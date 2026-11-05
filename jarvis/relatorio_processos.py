@@ -12,16 +12,16 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from bot import config, ia
-from bot.custo import Gasto, LimiteGasto
-from bot.login import fazer_login
-from bot.navegacao import ir_ate_tabela
-from bot.navegador import criar_driver
-from bot.processos_detalhe import ler_processo
-from bot.processos_grupo import _normal, grupos_disponiveis, ler_processos, nome_arquivo, pesquisar_grupo
-from bot.vila_aviso import Vila
-from bot.relatorio_planilha import SEM_TAREFAS, SISTEMA, SCHEMA, montar_linha, salvar_xlsx, texto_para_ia
-from main import PASTA_LOGS, configurar_log
+from nucleo import config, ia
+from nucleo.custo import Gasto, LimiteGasto
+from nucleo.login import fazer_login
+from nucleo.navegacao import ir_ate_tabela
+from nucleo.navegador import criar_driver
+from nucleo.processos_detalhe import ler_processo
+from nucleo.processos_grupo import _normal, grupos_disponiveis, ler_processos, nome_arquivo, pesquisar_grupo
+from nucleo.vila_aviso import Vila
+from nucleo.relatorio_planilha import SEM_TAREFAS, SISTEMA, SCHEMA, montar_linha, salvar_xlsx, texto_para_ia
+from nucleo.registro import PASTA_LOGS, configurar_log
 
 MODELO_PADRAO = "claude-sonnet-5-5"
 

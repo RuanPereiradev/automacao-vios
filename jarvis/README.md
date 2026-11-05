@@ -9,8 +9,13 @@ planilha "Processos Casa do celular" do Google Drive. Roda **uma vez por mês**
 > **Status: em teste (03/11/2026).** Primeira versão da planilha com as duas
 > Casas do Celular. A versão anterior (um .txt por grupo, 28/10/2026) foi
 > descartada. Este arquivo é atualizado a cada alteração.
-> Histórico de mudanças: [CHANGELOG.md](CHANGELOG.md). Robô de intimações:
-> [DOCUMENTACAO.md](DOCUMENTACAO.md).
+> Histórico de mudanças: [CHANGELOG.md](../CHANGELOG.md). Robô de intimações (Sam):
+> [DOCUMENTACAO.md](../DOCUMENTACAO.md).
+>
+> **Desde 05/11/2026 o Jarvis tem pasta própria (`jarvis/`)**, como o Albi e o Orelha: `.venv`,
+> `.env`, `logs/` e `saida/` dele, e cópias próprias do login do VIOS, da configuração, da IA e do
+> teto de gasto em `jarvis/nucleo/`. Ele não importa nada de `bot/`: mexer no Sam não quebra o
+> Jarvis. Os comandos abaixo são rodados **dentro de `jarvis/`**.
 
 ---
 
@@ -18,7 +23,7 @@ planilha "Processos Casa do celular" do Google Drive. Roda **uma vez por mês**
 
 | Etapa | O que faz | Status |
 | --- | --- | --- |
-| 1. Login | Entra no VIOS com o usuário do `.env.usuario2` | ✅ Pronto |
+| 1. Login | Entra no VIOS com o usuário do `.env` | ✅ Pronto |
 | 2. Lista | Processos → filtro Grupo Cliente → Mostrar 500 → Pesquisar | ✅ Pronto |
 | 3. Lupa | Abre a tela de cada processo: Dados do Processo + tarefas | ✅ Pronto |
 | 4. IA | Resumo do caso, motivação, financeira, justificativa da condenação e documentos faltando | ✅ Em teste |
@@ -48,7 +53,7 @@ VIOS o cliente aparece como **RAV HOLDING LTDA**.
 
 ## 2. Passo a passo do que o robô faz
 
-1. **Login** com o usuário e a senha do `.env.usuario2`.
+1. **Login** com o usuário e a senha do `.env`.
 2. Abre **Relatórios** (`NAVEGACAO_URL_FINAL`) e depois a lista de **Processos**
    (`?pag=sys/processos/processos-lista.php&menu_lateral=true`).
 3. Para cada grupo: escolhe o grupo no filtro **Grupo Cliente**
@@ -82,8 +87,8 @@ abre a tela do processo e lê.
 
 ## 3. A planilha gerada
 
-Caminho: `saida_usuario2/relatorios/AAAA-MM/<GRUPO>.xlsx`
-(ex.: `saida_usuario2/relatorios/2026-11/CASA DO CELULAR.xlsx`). Rodar de novo
+Caminho: `saida/relatorios/AAAA-MM/<GRUPO>.xlsx`
+(ex.: `saida/relatorios/2026-11/CASA DO CELULAR.xlsx`). Rodar de novo
 no mesmo mês sobrescreve.
 
 ### Aba Processos (uma linha por processo)
@@ -112,7 +117,7 @@ movimentação e Pendência — responsável (sigilo: nomes da equipe).
 **Motivação — lista fixa** (para filtrar e contar): Financiamento / bloqueio do
 aparelho; Defeito do produto / garantia; Cobrança indevida / negativação;
 Oferta ou contrato descumprido; Atendimento / dano moral; Trabalhista; Outros.
-A lista fica em `MOTIVACOES` (`bot/relatorio_planilha.py`).
+A lista fica em `MOTIVACOES` (`nucleo/relatorio_planilha.py`).
 
 **Documentos faltando é dedução da IA**: ela compara o que a equipe pediu
 (ex.: no ANALISAR PROCESSO) com o que chegou (tarefas ANALISAR DOCUMENTOS,
@@ -133,10 +138,10 @@ Campo vazio no VIOS fica vazio na planilha. Erro na IA aparece como
 
 ## 4. IA
 
-- Provedor e chave no `.env.usuario2` (`LLM_PROVEDOR=anthropic`,
+- Provedor e chave no `.env` (`LLM_PROVEDOR=anthropic`,
   `ANTHROPIC_API_KEY`). Modelo padrão: `claude-sonnet-5-5` (`LLM_MODELO`).
 - Uma chamada por processo, com resposta em JSON validado (schema em
-  `bot/relatorio_planilha.py`). Processo sem tarefas não vai para a IA.
+  `nucleo/relatorio_planilha.py`). Processo sem tarefas não vai para a IA.
 - **O que é tirado antes de mandar**: tarefas canceladas, texto repetido
   depois de "[observação da conclusão]", texto padrão do tipo de tarefa,
   links (viram `[link]`), CPF (vira `[CPF]`) e linhas com senha/ID de acesso.
@@ -150,7 +155,7 @@ Campo vazio no VIOS fica vazio na planilha. Erro na IA aparece como
   justificativa repetiu um comentário interno ("a condenação já está acima da
   média", da tarefa sobre dispensar a sustentação oral por economia).
 - **Custo**: ~US$ 0,013 por processo (teste de 03/11/2026). Teto por execução
-  em `LLM_LIMITE_US` (no `.env.usuario2`: 5); passou do teto, os processos que
+  em `LLM_LIMITE_US` (no `.env`: 5); passou do teto, os processos que
   faltam saem com erro na IA.
 
 ---
@@ -164,7 +169,7 @@ O robô se chama **Jarvis** e fica na **Vila 04** da vila do Ultron
 **Escolher grupos e gerar** e **Planilhas** abrem a página do Jarvis (`/jarvis`, também pelo
 botão "Jarvis" no topo da página do Ultron):
 
-1. **Marcar os grupos** que vão ter relatório (a lista é o `PROCESSOS_GRUPOS` do `.env.usuario2`
+1. **Marcar os grupos** que vão ter relatório (a lista é o `PROCESSOS_GRUPOS` do `.env`
    do Jarvis; "Marcar todos" marca e desmarca todos). Nada roda sem escolher: sem grupo marcado,
    os botões ficam desligados, e o servidor recusa grupo fora da lista.
 2. **Gerar relatório do mês**: lê todos os processos só dos grupos marcados e gera uma planilha
@@ -178,40 +183,41 @@ Enquanto roda, a página mostra os grupos escolhidos e se atualiza sozinha, e a 
 processos e, ao salvar cada planilha, até Planilhas. No fim: "Pronto! N planilha(s) do mês
 gerada(s)". A vila só recebe contagens: nunca nome de grupo, cliente ou número de processo.
 
-Como funciona: o Ultron (`bot/jarvis.py`, rotas `/jarvis/*` em `bot/envio_web.py`) abre o
-`relatorio_processos.py` da pasta `JARVIS_PASTA` em segundo plano, como faz com o Zangão; o
-relatório manda o andamento por `POST /eventos` (`bot/vila_aviso.py`, `VILA_URL`/`VILA_SENHA`).
+Como funciona: o Sam (`bot/jarvis.py`, rotas `/jarvis/*` em `bot/envio_web.py`) abre o
+`relatorio_processos.py` da pasta `jarvis/` (ou de `JARVIS_PASTA`, se preenchido) em segundo plano; o
+relatório manda o andamento por `POST /eventos` (`nucleo/vila_aviso.py`, `VILA_URL`/`VILA_SENHA`).
 Saída de cada execução: `logs/execucoes_vila.log` na pasta do Jarvis.
 
 ### Instalar no Mac (uma vez)
 
+Na pasta do projeto que já roda o Sam (depois do `git pull`):
+
 ```bash
-git clone https://github.com/RuanPereiradev/automacao-vios.git ~/jarvis
-cd ~/jarvis && git checkout relatorio-processos
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-cp .env.usuario2.example .env.usuario2   # preencher login, ANTHROPIC_API_KEY,
-                                         # HEADLESS=true, VILA_URL=http://127.0.0.1:5001/eventos
-                                         # e VILA_SENHA = ENVIO_SENHA do Ultron
+cd jarvis && ./instalar.sh   # cria jarvis/.venv (Python 3.9+) e o jarvis/.env a partir do .env.example
+# preencher no jarvis/.env: SISTEMA_USUARIO e SISTEMA_SENHA (segundo usuário), ANTHROPIC_API_KEY,
+# PROCESSOS_GRUPOS, HEADLESS=true, VILA_URL=http://127.0.0.1:5001/eventos e VILA_SENHA = ENVIO_SENHA do Sam
 ```
 
-No `.env` **do Ultron**: `JARVIS_PASTA=~/jarvis`, e reiniciar a página do Ultron. O Ultron
-precisa ter o código da Vila 04 e das rotas `/jarvis` (hoje na branch `relatorio-processos`).
+Depois reiniciar a página do Sam (`./servidor_mac.sh parar && ./servidor_mac.sh instalar`). Não
+precisa de `JARVIS_PASTA`: o Sam acha o Jarvis em `jarvis/`. Ele só é usado se o Jarvis estiver
+noutra pasta.
 
 ### Pelo terminal
 
-No Windows, na pasta do projeto:
+No Mac/Linux: `./rodar.sh --grupo "CASA DO CELULAR" --limite 3` (mesmas opções do `.bat`).
+No Windows, na pasta `jarvis\`:
 
 ```powershell
-.\rodar_usuario2.bat                                  # grupos de PROCESSOS_GRUPOS
-.\rodar_usuario2.bat --limite 3                       # teste: só 3 processos por grupo
-.\rodar_usuario2.bat --grupo "casa do celular mg/sp"  # um grupo (acento e maiúsculas não importam)
-.\rodar_usuario2.bat --grupo todos                    # todos os grupos do filtro
+.\rodar.bat                                  # grupos de PROCESSOS_GRUPOS
+.\rodar.bat --limite 3                       # teste: só 3 processos por grupo
+.\rodar.bat --grupo "casa do celular mg/sp"  # um grupo (acento e maiúsculas não importam)
+.\rodar.bat --grupo todos                    # todos os grupos do filtro
 ```
 
 Sem o `.bat`:
 
 ```powershell
-.\.venv\Scripts\python.exe relatorio_processos.py .env.usuario2 --grupo "CASA DO CELULAR" --limite 3
+.\.venv\Scripts\python.exe relatorio_processos.py .env --grupo "CASA DO CELULAR" --limite 3
 ```
 
 Leva cerca de 10 s por processo (abrir a lupa + IA). O log mostra o andamento:
@@ -222,36 +228,36 @@ Leva cerca de 10 s por processo (abrir a lupa + IA). O log mostra o andamento:
 ## 6. Primeira instalação (Windows)
 
 ```powershell
-cd C:\Rfeitosa-projetos\automacao-vios
+cd C:\Rfeitosa-projetos\automacao-vios\jarvis
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-copy .env.usuario2.example .env.usuario2    # e preencher usuário, senha e ANTHROPIC_API_KEY
+copy .env.example .env    # e preencher usuário, senha e ANTHROPIC_API_KEY
 ```
 
 ---
 
-## 7. Configuração (`.env.usuario2`)
+## 7. Configuração (`.env`)
 
-Modelo versionado: `.env.usuario2.example`. O `.env.usuario2` real tem a senha
+Modelo versionado: `.env.example`. O `.env` real tem a senha
 e a chave da IA e **não vai para o GitHub**.
 
 | Variável | Uso | Valor atual |
 | --- | --- | --- |
 | `SISTEMA_URL` | Página de login | `https://roneely.vios.com.br/entrar.php?` |
-| `SISTEMA_USUARIO` / `SISTEMA_SENHA` | Login do segundo usuário | (no `.env.usuario2`) |
+| `SISTEMA_USUARIO` / `SISTEMA_SENHA` | Login do segundo usuário | (no `.env`) |
 | `NAVEGACAO_URL_FINAL` | Tela aberta depois do login | `.../?pag=sys/relatorios/relatorios.php` |
 | `PROCESSOS_GRUPOS` | Grupos que podem ser escolhidos na página `/jarvis`, separados por `\|` (no terminal, sem `--grupo`, roda todos eles) | os 6: Plasfran Itapipoca, Camocim e Maranhão, LD Urbanismo, Casa do Celular e Casa do Celular MG/SP |
 | `RELATORIO_PASTA` | Pasta das planilhas (vazio = `<SAIDA_PASTA>/relatorios`) | vazio |
 | `LLM_PROVEDOR` | `anthropic` ou `openai` | `anthropic` |
-| `ANTHROPIC_API_KEY` | Chave da IA | (no `.env.usuario2`) |
+| `ANTHROPIC_API_KEY` | Chave da IA | (no `.env`) |
 | `LLM_MODELO` | Modelo (vazio = `claude-sonnet-5-5`) | vazio |
 | `LLM_LIMITE_US` | Teto de gasto por execução (US$) | `5` |
-| `SAIDA_PASTA` | Pasta de saída deste usuário | `saida_usuario2` |
+| `SAIDA_PASTA` | Pasta de saída deste usuário | `saida` |
 | `HEADLESS` | Chrome sem janela | `false` |
 | `TIMEOUT` | Espera máxima (s) | `20` |
 | `MANTER_ABERTO` | Chrome continua aberto no fim | `false` |
 | `VILA_URL` | Eventos do Ultron para a Vila 04 (vazio = sem vila) | `http://127.0.0.1:5001/eventos` (no Mac) |
-| `VILA_SENHA` | Senha da página do Ultron (`ENVIO_SENHA`) | (no `.env.usuario2`) |
+| `VILA_SENHA` | Senha da página do Ultron (`ENVIO_SENHA`) | (no `.env`) |
 | `NAVEGADOR_RAPIDO` | Carregamento "eager" das páginas (do `main`) | padrão `true` |
 
 ---
@@ -260,24 +266,28 @@ e a chave da IA e **não vai para o GitHub**.
 
 ```
 automacao-vios/
-├── relatorio_processos.py      # entrada: login → grupos → lupa de cada processo → IA → .xlsx
-├── rodar_usuario2.bat          # atalho no Windows (aceita --grupo e --limite)
-├── bot/processos_grupo.py      # filtro Grupo Cliente, pesquisa e leitura da lista
-├── bot/processos_detalhe.py    # lupa: Dados do Processo + tarefas
-├── bot/relatorio_planilha.py   # regras fixas, instruções da IA e gravação da .xlsx
-├── bot/vila_aviso.py           # andamento para a vila (POST /eventos, bot "jarvis")
-├── bot/jarvis.py               # lado do Ultron: roda o Jarvis pela vila e lista as planilhas
-├── bot/templates/jarvis.html   # página /jarvis (planilhas para baixar)
-├── doc/vila/ligar_jarvis.py    # põe a Vila 04 · Jarvis (botões e andamento) no bot/vila/vila.html
-├── .env.usuario2.example       # modelo do .env do segundo usuário
-├── .env.usuario2               # configuração real (NÃO versionar — senha e chave)
-└── saida_usuario2/relatorios/  # planilhas e .json (NÃO versionar — dados de clientes)
+├── jarvis/                          # o Jarvis (pasta própria)
+│   ├── relatorio_processos.py       # entrada: login → grupos → lupa de cada processo → IA → .xlsx
+│   ├── instalar.sh / rodar.sh       # Mac/Linux: cria a .venv / roda (aceita --grupo e --limite)
+│   ├── rodar.bat                    # atalho no Windows (aceita --grupo e --limite)
+│   ├── requirements.txt             # selenium, python-dotenv, anthropic, openai, openpyxl
+│   ├── nucleo/processos_grupo.py    # filtro Grupo Cliente, pesquisa e leitura da lista
+│   ├── nucleo/processos_detalhe.py  # lupa: Dados do Processo + tarefas
+│   ├── nucleo/relatorio_planilha.py # regras fixas, instruções da IA e gravação da .xlsx
+│   ├── nucleo/vila_aviso.py         # andamento para a vila (POST /eventos, bot "jarvis")
+│   ├── nucleo/config.py, login.py, navegador.py, navegacao.py, extracao.py, custo.py, ia/,
+│   │   registro.py                  # cópias próprias (antes vinham de bot/ e do main.py do Sam)
+│   ├── .env.example                 # modelo do .env do segundo usuário
+│   ├── .env                         # configuração real (NÃO versionar — senha e chave)
+│   ├── logs/                        # bot.log, execucoes_vila.log e prints de erro (NÃO versionar)
+│   └── saida/relatorios/            # planilhas e .json (NÃO versionar — dados de clientes)
+├── bot/jarvis.py                    # lado do Sam: roda o Jarvis pela vila e lista as planilhas
+├── bot/templates/jarvis.html        # página /jarvis (planilhas para baixar)
+└── doc/vila/ligar_jarvis.py         # põe a Vila 04 · Jarvis (botões e andamento) no bot/vila/vila.html
 ```
 
-Reaproveita do robô de intimações: `bot/config.py`, `bot/login.py`,
-`bot/navegador.py`, `bot/navegacao.py`, `bot/ia/` (provedores de IA),
-`bot/custo.py` (teto de gasto) e o log em `logs/bot.log` (prints de erro em
-`logs/erro_*.png`).
+As cópias em `jarvis/nucleo/` são independentes: uma correção no login do Sam (`bot/login.py`) não
+chega sozinha ao Jarvis. Se o VIOS mudar a tela de login, corrigir nos dois.
 
 ---
 
@@ -285,13 +295,13 @@ Reaproveita do robô de intimações: `bot/config.py`, `bot/login.py`,
 
 - **Só leitura** no VIOS (seção 2).
 - **Um `.env` por usuário**; o log confirma o usuário em "Login OK como ...".
-- **Fora do GitHub** (`.gitignore`): `.env.*` (menos os `.example`),
-  `saida_*/`, `imgs/` e `logs/`. As planilhas e o `.json` têm dados de
+- **Fora do GitHub** (`.gitignore`): `.env` e `.env.*` (menos os `.example`),
+  `saida/`, `saida_*/`, `imgs/` e `logs/`. As planilhas e o `.json` têm dados de
   clientes e partes.
 - **Dados sensíveis das tarefas** (CPF, links e senhas de audiência, links de
   conversas) são tirados antes de ir para a IA e nunca vão para a planilha.
 - A senha do segundo usuário e a chave da IA foram passadas por chat na
-  configuração: trocar e atualizar o `.env.usuario2`.
+  configuração: trocar e atualizar o `.env`.
 
 ---
 

@@ -1,7 +1,7 @@
-"""Jarvis (relatório mensal de processos por Grupo Cliente, branch relatorio-processos) disparado pelo Ultron.
+"""Jarvis (relatório mensal de processos por Grupo Cliente) disparado pelo Sam (Ultron).
 
-Como o Zangão: o Jarvis fica instalado numa pasta própria (JARVIS_PASTA, com .venv e .env.usuario2
-dele) no mesmo computador do Ultron. A vila pede para rodar (POST /jarvis/rodar) e o Ultron abre o
+Como o Albi: o Jarvis fica na pasta jarvis/ deste repositório (ou em JARVIS_PASTA), com .venv, .env,
+logs/ e saida/ próprios, e não importa nada de bot/. A vila pede para rodar (POST /jarvis/rodar) e o Ultron abre o
 `relatorio_processos.py` em segundo plano, como processo separado. O andamento chega à vila pelos
 eventos que o próprio Jarvis manda (POST /eventos, bot "jarvis").
 
@@ -24,7 +24,8 @@ from dotenv import dotenv_values
 
 log = logging.getLogger(__name__)
 
-ENV = ".env.usuario2"
+ENV = ".env"
+PASTA_PADRAO = Path(__file__).resolve().parent.parent / "jarvis"
 SCRIPT = "relatorio_processos.py"
 MODOS = {"mes": [], "teste": ["--limite", "2"]}
 ARQUIVO = ".vila_execucao.json"  # na pasta logs/ do Jarvis: execução em andamento (pid, modo, início)
@@ -39,6 +40,12 @@ _trava = threading.Lock()
 
 class JarvisErro(Exception):
     pass
+
+
+def pasta(valor=None):
+    """Pasta do Jarvis: JARVIS_PASTA do .env do Sam ou a pasta jarvis/ deste repositório."""
+    valor = os.path.expanduser((valor if valor is not None else os.getenv("JARVIS_PASTA", "")).strip())
+    return Path(valor) if valor else PASTA_PADRAO
 
 
 def _python(pasta):

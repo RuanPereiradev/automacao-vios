@@ -749,13 +749,15 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
     movimento" ligado no sistema, a troca é direta, sem animação.
 ### Passo 32 — Jarvis na Vila 04 (relatório mensal de processos)
 - A vila tem 5 vilas: 01 · Sam, 02 · Bumblebee, 03 · Albi, **04 · Jarvis** e 05 · Orelha. O Jarvis é o
-  robô do relatório mensal de processos por Grupo Cliente (`relatorio_processos.py`,
-  segundo usuário do VIOS, só leitura; detalhes em `RELATORIO_PROCESSOS.md`).
+  robô do relatório mensal de processos por Grupo Cliente (segundo usuário do VIOS, só leitura).
+  **Pasta própria `jarvis/`** (como o Albi e o Orelha): `.venv`, `.env`, `logs/`, `saida/` e cópias
+  próprias do login, da configuração e da IA em `jarvis/nucleo/`; não importa nada de `bot/`.
+  Detalhes em `jarvis/README.md`.
 - A Vila 04 fica acesa, com as placas Doca 01 · Jarvis, Leitura dos processos, Planilhas e
   Torre VIOS; o Jarvis (núcleo de IA: esfera azul em espiral, com anéis e o centro
   pulsando) faz a ronda e se apresenta no diálogo. `/vila?vila=4` abre direto nela.
-- **Rodar pela vila** (como o Zangão): com `JARVIS_PASTA` no `.env` do Ultron (pasta com
-  `.venv`, `relatorio_processos.py` e `.env.usuario2` do Jarvis, branch `relatorio-processos`),
+- **Rodar pela vila**: com o Jarvis instalado (`cd jarvis && ./instalar.sh` e o `jarvis/.env`
+  preenchido; `JARVIS_PASTA` só se ele estiver noutra pasta),
   a caixa de fala da Vila 04 ganha "Escolher grupos e gerar" e "Planilhas", que abrem a página
   `/jarvis`: lá a pessoa **marca os grupos** (do `PROCESSOS_GRUPOS` do Jarvis; nunca todos sem
   escolher) e clica em "Gerar relatório do mês" (com confirmação: segundo clique em até 6 s) ou
@@ -771,7 +773,7 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   - **Planilhas** (salvando cada grupo e no fim): a tela do prédio vira uma planilha que vai
     sendo preenchida célula por célula; no fim, fica cheia com um visto verde. O Jarvis fica uns
     segundos lá (salvar é rápido demais para ver) e depois volta à ronda.
-  Trabalhando, o núcleo gira 3 vezes mais rápido. Instalação no Mac: `RELATORIO_PROCESSOS.md`, seção 5.
+  Trabalhando, o núcleo gira 3 vezes mais rápido. Instalação no Mac: `jarvis/README.md`, seção 5.
 - Se a vila for baixada de novo do site: rodar os patches na ordem (zangão, albi, bumblebee,
   vila01_campo, vila03_arena, orelha) e por último `python3 doc/vila/ligar_jarvis.py
   bot/vila/vila.html` (no fim, `propulsor` troca o núcleo pelo mascote com propulsores).
@@ -885,8 +887,7 @@ selenium/
 │   ├── eventos.py       # eventos para a vila (saida/eventos.jsonl, GET /eventos; POST /eventos do Zangão e do Jarvis)
 │   ├── zangao.py        # roda o Zangão em segundo plano pela vila (/zangao/status, /zangao/rodar)
 │   ├── albi.py          # página /albi: guarda o .txt, roda o Albi e repassa os eventos dele à vila
-│   ├── jarvis.py        # roda o Jarvis (relatório de processos) pela vila e lista as planilhas (/jarvis)
-│   ├── vila_aviso.py    # o relatório de processos manda o andamento para a vila (bot "jarvis")
+│   ├── jarvis.py        # roda o Jarvis (pasta jarvis/) pela vila e lista as planilhas (/jarvis)
 │   ├── vila/            # vila.html (servido em /vila)
 │   ├── templates/       # HTML das páginas de revisão, de envio, do Zangão e do Albi (albi.html);
 │   │                    # _estilo.html = estilo comum; _ultron.html / _zangao.html / _albi.html = mascotes;
@@ -960,8 +961,8 @@ O chromedriver é baixado automaticamente pelo Selenium Manager.
 
 ### Segundo usuário do VIOS — Relatório de processos por Grupo Cliente
 
-Outro robô, com outro login do VIOS, que gera um `.txt` por grupo de clientes.
-Documentação própria em [RELATORIO_PROCESSOS.md](RELATORIO_PROCESSOS.md).
+O Jarvis, com outro login do VIOS, gera uma planilha .xlsx por grupo de clientes. Fica na pasta
+própria `jarvis/`; documentação em [jarvis/README.md](jarvis/README.md).
 
 ---
 

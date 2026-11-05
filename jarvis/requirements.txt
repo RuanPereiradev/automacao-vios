@@ -1,0 +1,7 @@
+# Jarvis (relatório mensal de processos): Selenium no VIOS, IA nas colunas de texto, planilha .xlsx
+anthropic==0.72.0
+openai==2.2.0
+selenium==4.27.1
+python-dotenv==1.0.1
+openpyxl==3.1.5
+et_xmlfile==2.0.0

@@ -42,8 +42,9 @@
   <div class="cartao">
     <h1>Situação</h1>
     {% if not info.configurado %}
-      <p class="aviso">O Jarvis não está instalado neste servidor: falta a pasta em <code>JARVIS_PASTA</code>
-        (com <code>.venv</code>, <code>relatorio_processos.py</code> e <code>.env.usuario2</code>).</p>
+      <p class="aviso">O Jarvis não está instalado neste servidor: rode <code>cd jarvis &amp;&amp; ./instalar.sh</code> e
+        preencha o <code>jarvis/.env</code> (ou aponte <code>JARVIS_PASTA</code> para outra pasta com
+        <code>.venv</code>, <code>relatorio_processos.py</code> e <code>.env</code>).</p>
     {% elif info.rodando %}
       <p><span class="selo s-andamento">Rodando</span>
         {{ "Teste (2 processos por grupo)" if info.modo == "teste" else "Relatório do mês" }} desde {{ info.inicio[11:16] }}:
