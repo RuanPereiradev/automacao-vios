@@ -818,7 +818,16 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - Objetivo: o bot baixar os autos de cada processo do relatório do Leme, como a atendente fazia à
   mão, entrando no tribunal pela extensão do **Presto** (Oystr). O plano do escritório não tem a
   API de robôs da Oystr, então o bot usa a extensão num perfil do Chrome só dele.
-- Copiar o perfil (uma vez, no computador onde o Albi roda): `cd albi && .venv/bin/python presto.py
+- **Caminho atual (Mac): o Chrome que já está aberto.** No Chrome do bot, a conta Google do
+  escritório pede confirmação de identidade; por isso o Albi controla o Chrome aberto pelo
+  AppleScript (`albi/chrome_mac.py`). Uma vez: no Chrome, menu Visualizar > Desenvolvedor >
+  "Permitir JavaScript de Apple Events"; no macOS, quando aparecer "Terminal quer controlar Google
+  Chrome", Permitir (e "Gravação de Tela" para o Terminal, para os prints). Depois, com a janela do
+  perfil do escritório na frente: `cd albi && .venv/bin/python presto.py aberto` (console do Presto e
+  login do PJe do TRT7; ou passe as URLs). Ele abre abas novas, salva o que vê em
+  `albi/logs/presto/<data_hora>/`, clica no botão de login via Presto e captura o resultado. As abas
+  ficam abertas.
+- (Tentativa anterior, perfil separado) Copiar o perfil (uma vez, no computador onde o Albi roda): `cd albi && .venv/bin/python presto.py
   copiar`. Mostra os perfis do Chrome; escolha o que tem o Presto logado. Se o Chrome estiver
   aberto, ele pergunta se pode fechá-lo (responda Enter/"s"; as abas voltam ao abrir de novo); a cópia vai para `albi/perfil_presto/` (sem caches nem abas) e o Chrome pode ser
   aberto de novo. O bot não usa o perfil aberto direto porque o Chrome não deixa automação no perfil

@@ -5,6 +5,15 @@ O plano do escritório (Padrão) não tem a API de robôs da Oystr; então o bot
 extensão, num perfil do Chrome só dele. Este script prepara esse perfil e "fotografa" o que a
 extensão mostra, para montar os passos do bot (entrar no PJe, buscar o processo, baixar os autos).
 
+  .venv/bin/python presto.py aberto [URL ...]          (Mac; o caminho atual)
+      Usa o Chrome QUE JÁ ESTÁ ABERTO (perfil do escritório, Presto logado), pelo AppleScript
+      (chrome_mac.py): abre cada URL numa aba nova da janela da frente, salva HTML, texto, a lista
+      de botões/campos/links e um print da tela; procura um botão/link que mencione "Presto" (o
+      "login via Presto" do tribunal), clica e captura de novo a aba e as abas que se abrirem.
+      Sem URL: console do Presto e login do PJe do TRT7. Deixe a janela do perfil do escritório na
+      frente. Uma vez: no Chrome, Visualizar > Desenvolvedor > "Permitir JavaScript de Apple
+      Events"; no macOS, permitir o Terminal controlar o Google Chrome.
+
   .venv/bin/python presto.py copiar
       Copia o perfil do Chrome que você já usa (com o Presto instalado e logado) para o perfil do
       bot (albi/perfil_presto/). Mostra os perfis do Chrome para escolher. O Chrome precisa estar
@@ -41,6 +50,7 @@ AQUI = Path(__file__).resolve().parent
 PERFIL = AQUI / "perfil_presto"
 LOGS = AQUI / "logs" / "presto"
 CONSOLE = "https://console.presto.oystr.com.br/"
+TRT7 = "https://pje.trt7.jus.br/primeirograu/login.seam"
 QUAL = PERFIL / "perfil_bot.txt"  # nome da pasta do perfil copiado ("Default", "Profile 1"...)
 # o que não precisa ir na cópia: caches (grandes e refeitos sozinhos) e as abas da última sessão
 SEM_COPIAR = ("Cache", "Code Cache", "GPUCache", "DawnGraphiteCache", "DawnWebGPUCache", "GrShaderCache",
@@ -315,10 +325,61 @@ def explorar(urls):
     return 0
 
 
+def _salvar_captura(pasta, nome, cap):
+    pasta.mkdir(parents=True, exist_ok=True)
+    (pasta / f"{nome}.html").write_text(cap.get("html", ""), encoding="utf-8")
+    (pasta / f"{nome}.txt").write_text(cap.get("texto", ""), encoding="utf-8")
+    (pasta / f"{nome}_elementos.json").write_text(json.dumps(cap.get("elementos", []), ensure_ascii=False, indent=1),
+                                                  encoding="utf-8")
+    import chrome_mac as CM
+    foto = CM.print_tela(pasta / f"{nome}.png")
+    print(f"  {nome}: {cap.get('titulo', '')} · {cap.get('url', '')} · {len(cap.get('elementos', []))} elementos"
+          + ("" if foto else " (sem print: permita \"Gravação de Tela\" para o Terminal)"))
+
+
+def aberto(urls, termo="presto"):
+    """Explora pelo Chrome já aberto no Mac (AppleScript): abre, captura, acha o botão do Presto, clica, captura."""
+    import chrome_mac as CM
+    if not CM.disponivel():
+        print("O comando 'aberto' só funciona no Mac (usa o AppleScript do Chrome).")
+        return 2
+    destino = LOGS / datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    print("Usando o Chrome já aberto (janela da frente). Deixe na frente a janela do perfil do escritório.")
+    try:
+        for i, u in enumerate(urls or [CONSOLE, TRT7], 1):
+            w, t = CM.abrir_aba(u)
+            CM.esperar(w, t)
+            antes = {a[0] for a in CM.abas(w)}
+            _salvar_captura(destino, f"site{i}", CM.capturar(w, t))
+            r = CM.achar(w, t, termo)
+            (destino / f"site{i}_achados_{termo}.json").write_text(json.dumps(r, ensure_ascii=False, indent=1),
+                                                                   encoding="utf-8")
+            if not r["achados"]:
+                print(f"  nenhum botão/link com \"{termo}\" visível nesta página")
+                continue
+            a = r["achados"][0]
+            print(f"  achei: <{a['tag']}> \"{a.get('texto') or a.get('title') or a.get('alt') or a.get('id', '')}\" "
+                  f"({len(r['achados'])} candidato(s)); clicando...")
+            CM.achar(w, t, termo, clicar=True)
+            time.sleep(10)  # o Presto age: preenche o login, abre o pop-up ou outra aba
+            CM.esperar(w, t, maximo=30, folga=2)
+            _salvar_captura(destino, f"site{i}_depois", CM.capturar(w, t))
+            for j, (tid, tu, tt) in enumerate((a for a in CM.abas(w) if a[0] not in antes), 1):
+                CM.esperar(w, tid, maximo=30, folga=2)
+                _salvar_captura(destino, f"site{i}_nova{j}", CM.capturar(w, tid))
+    except CM.ChromeMacErro as e:
+        print("Parou:", e)
+        return 1
+    print("Capturas em", destino, "(as abas ficaram abertas no Chrome para você conferir)")
+    return 0
+
+
 def main(*args):
-    if not args or args[0] not in ("copiar", "preparar", "explorar"):
+    if not args or args[0] not in ("aberto", "copiar", "preparar", "explorar"):
         print(__doc__)
         return 2
+    if args[0] == "aberto":
+        return aberto(list(args[1:]))
     if args[0] == "copiar":
         return copiar()
     if args[0] == "preparar":

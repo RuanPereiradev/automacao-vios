@@ -82,6 +82,18 @@ etapa estiver pronta e testada, vira uma nova versão com data.
     copiar. No Mac, se o "Sair" pelo AppleScript não fechar em 10 s (o macOS pede permissão para o
     Terminal controlar o Chrome na primeira vez), pede o fechamento pelo sistema (SIGTERM), que também
     fecha salvando o perfil.
+  - **Mudança de caminho: usar o Chrome que já está aberto no Mac.** No Chrome do bot (perfil novo ou
+    copiado), a conta Google do escritório pede confirmação de identidade, que não dá para
+    automatizar. Novo `albi/chrome_mac.py`: controla o Chrome aberto pelo **AppleScript** (abre aba,
+    espera carregar, roda JavaScript para ler e clicar, lista abas), no perfil e com o Presto que já
+    estão lá. Precisa, uma vez: no Chrome, Visualizar > Desenvolvedor > "Permitir JavaScript de Apple
+    Events"; no macOS, permitir o Terminal controlar o Google Chrome.
+  - Novo `presto.py aberto [URL ...]`: na janela da frente do Chrome aberto, abre cada URL (sem URL:
+    console do Presto e login do PJe do TRT7), salva HTML, texto, botões/campos/links (inclusive em
+    iframes e em "shadow roots", onde extensões põem botões) e print da tela; procura o botão/link que
+    menciona "Presto" (o "login via Presto" do tribunal), clica e captura de novo a aba e as abas
+    novas. Testado simulando o AppleScript com o Selenium numa página com iframe e botão do Presto
+    em shadow root (achou, clicou e capturou a aba nova). O AppleScript em si só roda no Mac.
   - Com essas capturas, o próximo passo é montar o caminho do bot: entrar no PJe pelo Presto,
     buscar o processo e baixar os autos.
 - Testado com perfil temporário e extensão simulada (o Presto não está instalado nesta máquina):
