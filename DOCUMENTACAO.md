@@ -819,8 +819,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   mão, entrando no tribunal pela extensão do **Presto** (Oystr). O plano do escritório não tem a
   API de robôs da Oystr, então o bot usa a extensão num perfil do Chrome só dele.
 - Copiar o perfil (uma vez, no computador onde o Albi roda): `cd albi && .venv/bin/python presto.py
-  copiar`. Mostra os perfis do Chrome; escolha o que tem o Presto logado. Feche o Chrome (Cmd+Q)
-  quando ele pedir; a cópia vai para `albi/perfil_presto/` (sem caches nem abas) e o Chrome pode ser
+  copiar`. Mostra os perfis do Chrome; escolha o que tem o Presto logado. Se o Chrome estiver
+  aberto, ele pergunta se pode fechá-lo (responda Enter/"s"; as abas voltam ao abrir de novo); a cópia vai para `albi/perfil_presto/` (sem caches nem abas) e o Chrome pode ser
   aberto de novo. O bot não usa o perfil aberto direto porque o Chrome não deixa automação no perfil
   principal nem dois Chromes no mesmo perfil. Se o Presto sair da conta no bot, copiar de novo.
 - Alternativa (perfil novo, instalando o Presto nele): `cd albi && .venv/bin/python presto.py

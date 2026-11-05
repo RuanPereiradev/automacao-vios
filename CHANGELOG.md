@@ -75,6 +75,11 @@ etapa estiver pronta e testada, vira uma nova versão com data.
     perfil fica travado enquanto aberto). Testado com uma pasta do Chrome simulada e abrindo o
     perfil copiado pelo Selenium. Se o Chrome do bot fechar no meio do `explorar`, ele avisa e diz
     onde ficou o que foi capturado.
+  - No primeiro uso no Mac, o `copiar` ficava repetindo "O Chrome está aberto. Feche-o…" sem dizer
+    como (no Mac, fechar a janela não encerra o Chrome, e o Presto pode mantê-lo rodando). Agora ele
+    explica e pergunta "Posso fechar o Chrome agora?"; com "sim", fecha o Chrome como o menu
+    Chrome > Sair (as abas voltam ao abrir de novo), espera até 30 s e copia. Com "não", para sem
+    copiar.
   - Com essas capturas, o próximo passo é montar o caminho do bot: entrar no PJe pelo Presto,
     buscar o processo e baixar os autos.
 - Testado com perfil temporário e extensão simulada (o Presto não está instalado nesta máquina):

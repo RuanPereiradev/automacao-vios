@@ -85,6 +85,32 @@ def chrome_aberto():
     return r.returncode == 0
 
 
+def fechar_chrome():
+    """Pergunta e fecha o Chrome normal do jeito certo (no Mac, como o menu Chrome > Sair; as abas voltam ao
+    abrir de novo). True se ele fechou."""
+    print("\nO seu Chrome está aberto, e o perfil só pode ser copiado com ele fechado (leva cerca de 1 minuto).\n"
+          "No Mac, fechar a janela não fecha o Chrome: ele continua rodando no Dock.")
+    try:
+        r = input("Posso fechar o Chrome agora? As abas voltam quando você abrir de novo. [S/n] ").strip().lower()
+    except (KeyboardInterrupt, EOFError):
+        print()
+        return False
+    if r not in ("", "s", "sim", "y"):
+        return False
+    if platform.system() == "Darwin":
+        subprocess.run(["osascript", "-e", 'quit app "Google Chrome"'], capture_output=True)
+    else:
+        subprocess.run(["pkill", "-TERM", "-x", "chrome"], capture_output=True)
+    for _ in range(30):  # até 30 s para o Chrome terminar de fechar e salvar o perfil
+        if not chrome_aberto():
+            time.sleep(2)  # folga para soltar os arquivos do perfil
+            print("Chrome fechado.")
+            return True
+        time.sleep(1)
+    print("O Chrome não fechou (pode haver uma janela perguntando algo, como \"Sair do Chrome?\"). Responda a ela.")
+    return False
+
+
 def args_perfil():
     """Argumentos do Chrome para abrir o perfil do bot (e a pasta do perfil copiado, se houver)."""
     a = [f"--user-data-dir={PERFIL}"]
@@ -107,8 +133,10 @@ def copiar(base=None, escolha=None):
         d, nome, _ = perfis[int(escolha) - 1]
     except (ValueError, IndexError):
         raise SystemExit("Número inválido.")
-    while base == pasta_chrome() and chrome_aberto():
-        input("O Chrome está aberto. Feche-o (Cmd+Q no Mac; fechar a janela não basta) e tecle Enter... ")
+    if base == pasta_chrome() and chrome_aberto():
+        if not fechar_chrome():
+            raise SystemExit("O Chrome continua aberto; a cópia não foi feita. Feche o Chrome (menu Chrome > Sair) "
+                             "e rode o 'copiar' de novo.")
     if PERFIL.exists():
         shutil.rmtree(PERFIL)
     PERFIL.mkdir()
