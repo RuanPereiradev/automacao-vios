@@ -58,6 +58,11 @@ COLUNAS = [
 ]
 NOMES = [nome for nome, _ in COLUNAS]
 
+# "Processo" vazio no VIOS: o tipo sai da "Área", como a equipe cadastra os demais processos
+# (Cível Consumidor e Administrativo -> CÍVEL etc.); o processo continua em "Cadastro incompleto"
+AREA_TIPO = {"CÍVEL CONSUMIDOR": "CÍVEL", "ADMINISTRATIVO": "CÍVEL", "CONTRATOS": "CÍVEL",
+             "TRABALHISTA": "TRABALHISTA", "TRIBUTÁRIO": "TRIBUTÁRIO"}
+
 # campos do cadastro que o relatório usa; vazio = cadastro incompleto
 CADASTRO = {
     "Número do processo": "N.° CNJ",
@@ -213,7 +218,7 @@ def montar_linha(item, proc, ia):
         "Polo do cliente": d.get("Polo do cliente", ""),
         "Parte ativa": "; ".join(item.get("parte_ativa", [])) or d.get("Parte ativa", ""),
         "Parte passiva": "; ".join(item.get("parte_passiva", [])) or d.get("Parte passiva", ""),
-        "Tipo de processo": (d.get("Processo") or "").upper(),
+        "Tipo de processo": (d.get("Processo") or "").upper() or AREA_TIPO.get((d.get("Área") or "").upper(), ""),
         "Órgão": d.get("Comarcas / Tribunais / Órgãos adm.") or item.get("orgao", ""),
         "Data da distribuição": _br(d.get("Data da ação / Distribuição", "")),
         "Valor da ação": _valor(d.get("Valor da ação", "")),
@@ -225,11 +230,15 @@ def montar_linha(item, proc, ia):
         "Pendência — documentos faltando": docs,
         # só para a aba Resumo (não vira coluna)
         "_condenacao": "" if erro else ia["condenacao_situacao"],
+        "_tipo_pela_area": not (d.get("Processo") or "").strip(),
     }
 
 
 def cadastro_incompleto(linha):
-    return [col for col in CADASTRO if linha[col] in (None, "")]
+    faltam = [col for col in CADASTRO if linha[col] in (None, "")]
+    if linha.get("_tipo_pela_area") and "Tipo de processo" not in faltam:
+        faltam.insert(0, "Tipo de processo")  # preenchido pela Área, mas vazio no VIOS
+    return faltam
 
 
 def salvar_xlsx(arquivo, grupo, linhas, info):

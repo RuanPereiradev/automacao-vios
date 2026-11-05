@@ -12,6 +12,17 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — PDF do relatório: sem a soma dos valores e sem a frase do rodapé (05/11/2026)
+- A capa não mostra mais a "Soma dos valores das ações" (a soma continua na aba Resumo da planilha).
+- Saiu a frase "Relatório de processos · <grupo> · <mês>" do pé de todas as páginas; fica só o
+  número da página.
+
+### Corrigido — Tipo de processo "não informado" (05/11/2026)
+- 5 processos (1 da MG/SP e 4 da Casa do Celular, quase todos de PROCON) estavam com o campo
+  "Processo" vazio no VIOS. Agora o tipo sai da "Área", como a equipe cadastra os demais (Cível
+  Consumidor, Administrativo e Contratos → CÍVEL; Trabalhista; Tributário). Vale para a planilha,
+  o PDF e o resumo da IA; esses processos continuam na aba "Cadastro incompleto" para corrigir no VIOS.
+
 ### Alterado — Vila 04 vira a garagem do Homem de Ferro (05/11/2026)
 - O cenário da Vila 04 passa a ser a garagem do `fundo-oficina-jarvis.html` (parede, túnel com
   luzes, janelas, telas, carros, armaduras em exposição, braços robóticos soldando e uma máquina

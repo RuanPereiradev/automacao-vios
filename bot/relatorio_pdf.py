@@ -129,16 +129,14 @@ def _dinheiro(v):
     return "R$ " + f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-def _desenhar_timbrado(canvas, doc, rodape_texto, fonte):
+def _desenhar_timbrado(canvas, doc, fonte):
     canvas.saveState()
     canvas.drawImage(str(PASTA / "marca_dagua.png"), 0, 0, LARGURA, ALTURA, mask="auto")
     canvas.drawImage(str(PASTA / "cabecalho.png"), 0, ALTURA - FAIXA, LARGURA, FAIXA, mask="auto")
     canvas.drawImage(str(PASTA / "rodape.png"), 0, 0, LARGURA, FAIXA, mask="auto")
     canvas.setFont(fonte, 8.5)
     canvas.setFillColor(CINZA)
-    y = FAIXA + 6
-    canvas.drawString(MARGENS["leftMargin"], y, rodape_texto)
-    canvas.drawRightString(LARGURA - MARGENS["rightMargin"], y, f"Página {doc.page}")
+    canvas.drawRightString(LARGURA - MARGENS["rightMargin"], FAIXA + 6, f"Página {doc.page}")
     canvas.restoreState()
 
 
@@ -193,25 +191,18 @@ def salvar_pdf(arquivo, grupo, linhas, info, paragrafos_mes):
     e = _estilos(f)
     gerado = info["gerado_em"]
     mes = f"{MESES[gerado.month - 1].capitalize()} de {gerado.year}"
-    rodape_texto = f"Relatório de processos · {grupo} · {mes}"
     doc = SimpleDocTemplate(str(arquivo), pagesize=A4, title=f"Relatório de processos — {grupo} — {mes}",
                             author="RFeitosa Advogados Associados", **MARGENS)
     largura = doc.width
     corpo = [_p("Relatório mensal de processos", e["titulo"]), Spacer(1, 4), _p(f"{grupo} · {mes}", e["sub"]),
              Spacer(1, 2), _p(f"Atualizado em {gerado:%d/%m/%Y}", e["nota"]), Spacer(1, 14)]
 
-    # números do mês (os mesmos da aba Resumo da planilha)
-    soma = sum(l["Valor da ação"] or 0 for l in linhas)
-    sem_valor = sum(1 for l in linhas if l["Valor da ação"] is None)
-    destaque = Table([[_p("Processos no relatório", e["rotulo"]), _p("Soma dos valores das ações", e["rotulo"])],
-                      [_p(len(linhas), e["titulo"]), _p(_dinheiro(soma), e["titulo"])]],
-                     colWidths=[largura / 2] * 2, hAlign="LEFT")
+    # números do mês (as contagens da aba Resumo da planilha; sem a soma dos valores das ações)
+    destaque = Table([[_p("Processos no relatório", e["rotulo"])], [_p(len(linhas), e["titulo"])]],
+                     colWidths=[largura], hAlign="LEFT")
     destaque.setStyle(TableStyle([("LINEABOVE", (0, 0), (-1, 0), 1.2, DOURADO), ("LEFTPADDING", (0, 0), (-1, -1), 0),
                                   ("TOPPADDING", (0, 0), (-1, -1), 6)]))
-    corpo += [_p("Números do mês", e["h2"]), destaque]
-    if sem_valor:
-        corpo.append(_p(f"{sem_valor} processo(s) sem valor da ação no cadastro: a soma considera só os demais.", e["nota"]))
-    corpo.append(Spacer(1, 10))
+    corpo += [_p("Números do mês", e["h2"]), destaque, Spacer(1, 10)]
     resultado = Counter(l.get("_condenacao") or "não informado" for l in linhas)
     ordem = [(c, resultado[c]) for c in CONDENACOES if resultado[c]] + \
             [(c, q) for c, q in resultado.items() if c not in CONDENACOES]
@@ -235,6 +226,6 @@ def salvar_pdf(arquivo, grupo, linhas, info, paragrafos_mes):
     for l in linhas:
         corpo += _ficha(l, e, largura)
 
-    pagina = lambda canvas, d: _desenhar_timbrado(canvas, d, rodape_texto, f["normal"])
+    pagina = lambda canvas, d: _desenhar_timbrado(canvas, d, f["normal"])
     arquivo.parent.mkdir(parents=True, exist_ok=True)
     doc.build(corpo, onFirstPage=pagina, onLaterPages=pagina)

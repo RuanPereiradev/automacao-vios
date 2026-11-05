@@ -95,7 +95,7 @@ no mesmo mês sobrescreve.
 | Cliente | lupa: `Cliente` | — |
 | Polo do cliente | lupa: `Polo do cliente` | — |
 | Parte ativa / Parte passiva | lista | várias partes separadas por `;` |
-| Tipo de processo | lupa: `Processo` | em maiúsculas |
+| Tipo de processo | lupa: `Processo`; vazio → pela `Área` (Cível Consumidor, Administrativo e Contratos → CÍVEL; Trabalhista; Tributário), como a equipe cadastra os demais | em maiúsculas; o processo continua em "Cadastro incompleto" |
 | Órgão | lupa: `Comarcas / Tribunais / Órgãos adm.` | — |
 | Data da distribuição | lupa: `Data da ação / Distribuição` | data |
 | Valor da ação | lupa: `Valor da ação` | número (R$) |
@@ -136,10 +136,11 @@ Campo vazio no VIOS fica vazio na planilha. Erro na IA aparece como
 Para cada grupo, `<GRUPO>.pdf` ao lado da `<GRUPO>.xlsx` (`bot/relatorio_pdf.py`), no timbrado do
 escritório: cabeçalho, rodapé com os 5 escritórios e marca d'água "RF" nas mesmas posições e
 margens do `Timbrado_RFeitosa_Advogados_COM_MARCADOR.docx` (imagens em `bot/timbrado/`), fonte
-Garamond (sem Garamond no computador, Times).
+Garamond (sem Garamond no computador, Times). Embaixo de cada página, só o número da página.
 
-1. **Capa e números do mês**: grupo, mês, data, total de processos, soma dos valores das ações
-   e as contagens por resultado da decisão, tipo, motivação e polo (as da aba Resumo).
+1. **Capa e números do mês**: grupo, mês, data, total de processos e as contagens por resultado
+   da decisão, tipo, motivação e polo (as da aba Resumo). Sem a soma dos valores das ações
+   (pedido de 05/11/2026; a soma continua na aba Resumo da planilha).
 2. **Resumo do mês**: 2 a 4 parágrafos escritos pela IA para o cliente (uma chamada por grupo,
    com as fichas do grupo; mesmas regras: só fatos, sem nomes de pessoas, CPF, número de
    processo, equipe ou opiniões internas). Se a IA falhar, o PDF sai sem essa página.
