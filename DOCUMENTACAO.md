@@ -669,9 +669,28 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   processos, no padrão da Central de Atendimento ao Cliente (abertura com a atendente,
   "*1️⃣ Autor x Réu*", "Trata-se de…", assunto, valor, situação atual, conclusão e ressalva).
   Escolha a atendente (Beatriz Vasconcelos ou Renara Kathleem), revise e clique em "Copiar
-  mensagem". Ela usa só os registros do Sonar (cadastro do processo): fatos, movimentações e
-  decisões não vêm do Sonar, então não aparecem. Arquivos: `mensagens_cac.txt` e `.json`
-  (`albi/mensagem_cac.py`).
+  mensagem". Arquivos: `mensagens_cac.txt` e `.json` (`albi/mensagem_cac.py`). **Sem IA**:
+  o texto sai de regras fixas, no roteiro do prompt da CAC:
+  - do que se trata (classe, número, data, vara, posição da pessoa) e por que o processo existe
+    (o que é esse tipo de ação, os assuntos cadastrados pelo tribunal explicados em palavras
+    simples e o valor da causa);
+  - os acontecimentos com data (citação/notificação, contestação, réplica, audiências, liminar,
+    gratuidade, recursos) e as decisões (sentença de procedência/improcedência/parcial, acordo,
+    embargos, julgamento do recurso, trânsito em julgado, cumprimento de sentença, alvará,
+    penhora), tirados das **movimentações oficiais** de cada processo na API pública do CNJ
+    (DataJud, `albi/datajud.py`). Só o número do processo é enviado; o resultado fica em
+    `datajud/` na pasta da execução e não é consultado de novo;
+  - a situação atual pelo movimento mais recente (arquivado, em recurso, aguardando audiência,
+    em cumprimento de sentença…), com aviso quando o status do Sonar diz outra coisa, e um
+    resumo de cada processo; com mais de um, a conclusão diz se há sentença desfavorável.
+  - O que **não** aparece: os fatos narrados nas petições (ex.: jornada, valores recebidos) e
+    os fundamentos das decisões, porque o texto dos autos não está no Sonar nem no DataJud; a
+    data marcada da audiência; processos em segredo de justiça. Sem resposta do DataJud, o
+    processo sai só com o cadastro do Sonar.
+  - No `albi/.env` (opcional): `DATAJUD=false` desliga a consulta; `DATAJUD_PRAZO` (segundos,
+    padrão 150) limita o tempo total; `DATAJUD_CHAVE` troca a chave pública, se o CNJ mudar.
+    Pelo terminal: `relatorio.py <pasta> --sem-datajud`, ou `.venv/bin/python datajud.py
+    <número>` para ver o que o CNJ tem de um processo.
 - **Baixar de novo** (não compra): na execução já confirmada, o botão "Baixar de novo
   os resultados de cada um" (ou `./rodar.sh --arquivo X --baixar`) pega o número de
   cada pedido no registro e baixa de novo o PDF e a planilha, sem abrir a Nova
@@ -794,6 +813,19 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   Albi, Jarvis, Orelha) com o botão para a página de cada um. Nenhum bot fica fixo no topo.
 - A página de envio do Sam fica em `http://<IP do Mac>:5001/sam`. As páginas de bot têm o botão
   "Vila dos Bots" para voltar à entrada.
+
+### Passo 33 — Albi: autos dos processos pelo Presto (em construção)
+- Objetivo: o bot baixar os autos de cada processo do relatório do Leme, como a atendente fazia à
+  mão, entrando no tribunal pela extensão do **Presto** (Oystr). O plano do escritório não tem a
+  API de robôs da Oystr, então o bot usa a extensão num perfil do Chrome só dele.
+- Preparar (uma vez, no computador onde o Albi roda): `cd albi && .venv/bin/python presto.py
+  preparar`. Abre o Chrome com o perfil `albi/perfil_presto/`: instalar a extensão do Presto,
+  entrar na conta do Presto, conferir que abre o PJe logado e fechar a janela.
+- Explorar: `.venv/bin/python presto.py explorar <URL do tribunal>`. Salva em
+  `albi/logs/presto/<data_hora>/` o print, o HTML, o texto e os botões/campos/links do pop-up da
+  extensão e de cada site, mais o resumo da extensão (`presto_manifest.json`). Serve para montar o
+  caminho do bot (entrar, buscar o processo, baixar os autos) sem inspecionar pelo DevTools.
+- O perfil e as capturas ficam fora do git (sessão do Presto e possíveis nomes de clientes).
 
 ### Passo 32 — Jarvis na Vila 04 (relatório mensal de processos)
 - A vila tem 5 vilas: 01 · Sam, 02 · Bumblebee, 03 · Albi, **04 · Jarvis** e 05 · Orelha. O Jarvis é o

@@ -9,12 +9,14 @@ o arquivo vem como .xls, mas é .xlsx por dentro) e escreve, na mesma pasta:
   processos.csv    um processo por linha, para abrir no Excel
   mensagem.txt     uma mensagem resumida por empresa, pronta para mandar (WhatsApp/e-mail) à
                    empresa que pediu a pesquisa (CPF mascarado; o detalhe vai no relatorio.pdf)
-  mensagens_cac.*  uma mensagem por pessoa com processos, no padrão da CAC (mensagem_cac.py)
+  mensagens_cac.*  uma mensagem por pessoa com processos, no padrão da CAC (mensagem_cac.py), com
+                   as movimentações de cada processo na API pública do CNJ (datajud.py; guardadas
+                   em datajud/ dentro da pasta)
 
-Só biblioteca padrão (o PDF usa o Selenium que o Albi já tem). Não entra no Sonar.
+Só biblioteca padrão (o PDF usa o Selenium que o Albi já tem). Não entra no Sonar. Sem IA.
 
 uso (dentro de albi/):
-  .venv/bin/python relatorio.py PASTA_DO_RESULTADO [--sem-pdf]
+  .venv/bin/python relatorio.py PASTA_DO_RESULTADO [--sem-pdf] [--sem-datajud]
 """
 import base64
 import csv
@@ -502,7 +504,7 @@ def escrever_mensagem(caminho, titulo, pessoas, assinatura=ASSINATURA):
     Path(caminho).write_text(f"\n\n{SEPARADOR}\n\n".join(textos) + "\n", encoding="utf-8")
 
 
-def gerar(pasta, driver=None, pdf=True, assinatura=ASSINATURA):
+def gerar(pasta, driver=None, pdf=True, assinatura=ASSINATURA, datajud=True):
     """Gera relatorio.html, processos.csv, mensagem.txt e (com pdf=True) relatorio.pdf. Devolve um resumo."""
     pasta = Path(pasta)
     titulo, pessoas = montar(pasta)
@@ -510,7 +512,7 @@ def gerar(pasta, driver=None, pdf=True, assinatura=ASSINATURA):
     escrever_csv(pasta / "processos.csv", pessoas)
     escrever_mensagem(pasta / "mensagem.txt", titulo, pessoas, assinatura or ASSINATURA)
     import mensagem_cac  # aqui dentro: o mensagem_cac usa as funções deste arquivo
-    mensagem_cac.gerar(pasta, pessoas)
+    mensagem_cac.gerar(pasta, pessoas, datajud=datajud)
     info = {"pessoas": len(pessoas), "com_processos": sum(1 for p in pessoas if p["processos"]),
             "processos": sum(len(p["processos"]) for p in pessoas), "avisos": [p["aviso"] for p in pessoas if p["aviso"]],
             "pdf": False}
@@ -525,13 +527,13 @@ def gerar(pasta, driver=None, pdf=True, assinatura=ASSINATURA):
 
 def main(*args):
     args = list(args)
-    sem_pdf = "--sem-pdf" in args
-    args = [a for a in args if a != "--sem-pdf"]
+    sem_pdf, sem_dj = "--sem-pdf" in args, "--sem-datajud" in args
+    args = [a for a in args if a not in ("--sem-pdf", "--sem-datajud")]
     if not args:
         print(__doc__)
         return 2
     try:
-        info = gerar(args[0], pdf=not sem_pdf)
+        info = gerar(args[0], pdf=not sem_pdf, datajud=not sem_dj)
     except RelatorioErro as ex:
         print(f"Erro: {ex}", file=sys.stderr)
         return 2

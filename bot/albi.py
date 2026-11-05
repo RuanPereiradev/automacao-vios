@@ -267,7 +267,7 @@ def gerar_relatorio(p, pasta_saida, envio_id):
     try:
         r = subprocess.run([str(_python(p)), "relatorio.py", str(base.resolve())], cwd=p, env=_ambiente(),
                            stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=180)
+                           errors="replace", timeout=360)  # inclui a consulta ao DataJud (até ~150 s)
     except (OSError, subprocess.TimeoutExpired) as e:
         raise AlbiErro(f"o relatório não foi gerado: {e}")
     if r.returncode != 0 or not (base / "relatorio.html").exists():

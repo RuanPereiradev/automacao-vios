@@ -30,8 +30,13 @@ a planilha) e escreve o `resultado.txt`.
    Escreve também o `mensagem.txt`, com o resumo pronto para mandar a cada empresa (CPF mascarado). Na
    página, é o botão "Capturar resumo".
    E `mensagens_cac.txt`/`.json` (`mensagem_cac.py`): uma mensagem por pessoa com processos, no padrão da CAC
-   ("*Beatriz Vasconcelos:* Informamos que…", "*1️⃣ Autor x Réu*", "Trata-se de…", situação e ressalva), só
-   com o que está nos registros do Sonar.
+   ("*Beatriz Vasconcelos:* Informamos que…", "*1️⃣ Autor x Réu*", "Trata-se de…", situação e ressalva), sem IA.
+   Para contar o que aconteceu em cada processo (contestação, audiências, sentença, recurso, trânsito em
+   julgado, cumprimento, arquivamento), `datajud.py` consulta o número do processo na API pública do CNJ
+   (DataJud) e guarda a resposta em `datajud/` na pasta do resultado. Os fatos narrados nas petições e os
+   fundamentos das decisões não estão em nenhuma das fontes, e a mensagem diz isso. Sem resposta da API, o
+   processo sai só com o cadastro do Sonar. Ver um processo: `.venv/bin/python datajud.py <número>`;
+   desligar: `DATAJUD=false` no `.env` ou `relatorio.py <pasta> --sem-datajud`.
 7. Não compra duas vezes: o registro `saida/pedidos_confirmados.json` é anotado antes de cada
    clique em Confirmar; CPF já pesquisado para a mesma empresa nos últimos 30 dias usa o pedido
    anterior. Erro depois do clique vira "Conferir no Sonar" (nunca clica de novo); 3 seguidos param.
@@ -77,6 +82,10 @@ Abra `albi/.env` e preencha (o modelo comentado está em `.env.example`):
 | `SONAR_EMAIL` | e-mail do login |
 | `SONAR_SENHA` | senha; se tiver espaço ou " #", entre aspas simples: `SONAR_SENHA='minha senha #1'` |
 
+Opcionais, da consulta ao DataJud (CNJ) para a mensagem da CAC: `DATAJUD=false` desliga;
+`DATAJUD_PRAZO` (segundos no total, padrão 150); `DATAJUD_CHAVE` (a chave pública do CNJ já vem no
+código; só preencha se o CNJ trocar).
+
 O `.env` nunca vai para o git. Os campos da tela (`LOGIN_CAMPO_*`, `LOGIN_BOTAO`) já vêm
 certos; só mude se a tela do Sonar mudar.
 
@@ -103,6 +112,21 @@ topo e a caixa para soltar o `.txt`. O Ultron guarda o arquivo em `saida/albi/` 
 O log dessas execuções fica em `albi/logs/execucoes_ultron.log`.
 
 Se o Albi estiver em outra pasta, defina `ALBI_PASTA` no `.env` do Ultron.
+
+## Presto (Oystr): autos dos processos (em construção)
+
+Para a mensagem da CAC ter os fatos de cada processo, o bot vai baixar os autos entrando no tribunal
+pela extensão do Presto, o cofre de credenciais da Oystr que o escritório já usa. O plano atual não
+tem a API de robôs da Oystr. Primeiro passo, no computador onde o bot vai rodar:
+
+```bash
+.venv/bin/python presto.py preparar     # Chrome com o perfil do bot: instalar o Presto e entrar (uma vez)
+.venv/bin/python presto.py explorar https://pje.trt7.jus.br/primeirograu/login.seam
+```
+
+O `explorar` salva em `logs/presto/<data_hora>/` o print, o HTML e os botões do pop-up da extensão e
+de cada site pedido, sem precisar do DevTools. O perfil (`perfil_presto/`) guarda a sessão do Presto
+e fica fora do git; a senha fica só no Presto.
 
 ## Mascote
 

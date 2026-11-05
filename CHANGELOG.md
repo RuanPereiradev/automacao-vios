@@ -47,6 +47,63 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 - 1ª rodada do placar de prazos neste Linux (05/11/2026): 201 tarefas atrasadas (45 há mais de
   7 dias), 26 responsáveis, 129 vencem hoje.
 
+### Adicionado — Albi: preparação para baixar os autos pelo Presto (Oystr) (05/11/2026)
+- Contexto: para a mensagem da CAC ter os fatos de cada processo (o que foi narrado na petição), a
+  atendente pesquisava processo por processo no tribunal, entrando pela extensão do **Presto**
+  (cofre de credenciais da Oystr), baixava os autos e mandava para o ChatGPT. A Oystr tem robôs
+  de "cópia integral" por API, mas o plano do escritório (Padrão: credenciais, bloqueios e
+  assinaturas) não inclui a API. Caminho escolhido: o bot usa a própria extensão do Presto.
+- Novo `albi/presto.py`, primeiro passo (ainda não baixa autos):
+  - `presto.py preparar`: abre um Chrome normal com um perfil só do bot (`albi/perfil_presto/`,
+    fora do git porque guarda a sessão do Presto). A pessoa instala a extensão e entra no Presto
+    uma vez. O bot nunca vê nem guarda a senha.
+  - `presto.py explorar [URL ...]`: abre esse perfil pelo Selenium, acha a extensão (pelo nome
+    "Presto"/"Oystr" no manifest, inclusive nome traduzido), abre o pop-up dela numa aba
+    (`chrome-extension://<id>/<popup>`), sem precisar inspecionar pelo DevTools, e salva print,
+    HTML, texto e a lista de botões, campos e links. Faz o mesmo em cada URL de tribunal pedida, e
+    nas abas que o Presto abrir. Também salva o resumo do manifest (em quais sites a extensão age).
+    Tudo em `albi/logs/presto/<data_hora>/` (fora do git).
+  - Com essas capturas, o próximo passo é montar o caminho do bot: entrar no PJe pelo Presto,
+    buscar o processo e baixar os autos.
+- Testado com perfil temporário e extensão simulada (o Presto não está instalado nesta máquina):
+  o Chrome abre com o perfil, a captura do pop-up e do site sai completa, e a extensão é achada
+  numa pasta com a estrutura real do Chrome.
+
+### Alterado — Albi: mensagem da CAC conta a história do processo, sem IA (05/11/2026)
+- A mensagem de cada pessoa com processos (`mensagens_cac.txt`, "Capturar resumo") agora segue o
+  roteiro do prompt da CAC: do que se trata, por que o processo existe, o que aconteceu (com
+  datas), as decisões, a situação atual e um resumo de cada processo. Tudo por regras fixas,
+  sem API de inteligência artificial.
+- Novo `albi/datajud.py`: consulta cada número de processo na **API pública do DataJud (CNJ)**,
+  que é gratuita e traz as movimentações oficiais com os códigos da Tabela Processual Unificada.
+  Viram frases: citação/notificação, contestação, réplica, audiências (realizadas, marcadas e
+  quantas não aconteceram), liminar, gratuidade, recursos e contrarrazões, envio ao tribunal,
+  sentença (procedência, improcedência, parcial, acordo, extinção), embargos, julgamento do
+  recurso, trânsito em julgado, cumprimento de sentença, alvará/RPV (sempre com a ressalva de que
+  não comprovam pagamento), penhora, falta de bens, arquivamento, desarquivamento, baixa e
+  suspensão. Junta os graus (1º grau, turma recursal, tribunal) e conta cada tipo de decisão uma
+  vez só (o TJCE repete o mesmo registro de sentença várias vezes).
+- Situação atual pelo movimento mais recente; se o status da planilha do Sonar disser outra
+  coisa, a mensagem avisa. A conclusão diz quantos estão em andamento e se há sentença
+  desfavorável à pessoa (ré com pedido aceito, ou autora com pedido negado).
+- "Por que o processo existe": explica em palavras simples o tipo de ação (reclamação
+  trabalhista, execução fiscal, inquérito policial…) e os assuntos cadastrados pelo tribunal
+  (horas extras, inclusão indevida em cadastro de inadimplentes, dano moral…).
+- Só o número do processo sai do computador (nunca CPF nem nome). O resultado fica em
+  `datajud/` na pasta da execução e não é consultado de novo; "não encontrado" é consultado de
+  novo na próxima vez. Tempo total limitado (`DATAJUD_PRAZO`, 150 s); se a API não responder
+  (ela recusa consultas quando está sobrecarregada; o Albi tenta 3 vezes), o processo sai como
+  antes, só com o cadastro do Sonar. `DATAJUD=false` no `albi/.env` ou `--sem-datajud` no
+  `relatorio.py` desligam.
+- O que continua fora (não está no Sonar nem no DataJud): os fatos narrados nas petições, os
+  fundamentos das decisões e a data marcada das audiências. A ressalva final diz isso.
+- O "Capturar resumo" da página espera até 6 minutos pelo relatório (antes 3), por causa da
+  consulta.
+- Testado com a API real (processo do Juizado de Juazeiro do Norte com sentença, embargos,
+  recurso negado na turma recursal, trânsito, cumprimento e arquivamento), com um caso montado
+  igual ao exemplo do Robério (trabalhista aguardando audiência; cível com contestação,
+  gratuidade e réplica), com processo não encontrado e com a consulta desligada.
+
 ### Alterado — A entrada do sistema é a Vila dos Bots (05/11/2026)
 - Quem entra no sistema (`http://<IP do Mac>:5001/`) vê agora a **Vila dos Bots**, uma página neutra,
   sem nome nem mascote de nenhum bot no topo:
