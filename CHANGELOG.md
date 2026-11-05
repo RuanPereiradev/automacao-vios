@@ -12,6 +12,24 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Vila 02 vira a batalha na ponte do Bumblebee, vista de cima (05/11/2026)
+- Cenário do `doc/vila/zangao-transforma_att.html`: ponte sobre a água (ondas e reflexo do fogo),
+  pista com faixas tracejadas e a dupla amarela, guard-rail e quatro pilares com luz vermelha.
+- Os postos ficam nos mesmos lugares, como coisas da ponte: Doca 01 = garagem listrada com a vaga
+  marcada; Filtro previdenciário = cabine de pedágio com cancela (sobe quando ele filtra ou passa);
+  Captura de dados = pórtico com o painel de mensagens; Torre VIOS = antena no pilar da direita.
+  Placas novas; os eventos, as falas e o painel não mudam.
+- O Bumblebee parado é o robô de frente; para andar, as peças encaixam no **carro visto de cima**,
+  que gira para o lado em que vai (faróis, rastro e onda de choque ao virar). Anda só na pista.
+- Em volta, a batalha: dois duelos de robôs (chegam como carros, brigam, explodem e vão embora),
+  trânsito, carcaças pegando fogo, explosões longe dele, destroços, fumaça e brasas. Só desenhada
+  com a Vila 01, 02 ou 03 na tela; sem tremer a tela. Partes que ficariam atrás da caixa de fala
+  foram subidas.
+- Patch: `doc/vila/ligar_vila02_ponte.py`, o último da lista (depois do `ligar_vila04_garagem.py`).
+- Testado no Chrome sem janela: a Vila 02 desenha tudo e anima (transformação, carro virando,
+  duelos, explosão), sem erro no console; as Vilas 01 e 03 continuam iguais; a vila regerada do
+  zero com todos os patches na ordem fica igual à do repositório; rodar o patch de novo não repete.
+
 ### Alterado — Vila 04 vira a garagem do Homem de Ferro, com uma máquina por estação (05/11/2026)
 - Trabalho do Kaio (commit `17103ec` da branch `relatorio-processos`), trazido para a main. O commit
   foi escrito para a vila antiga de 4 vilas e conflitava com a atual (5 vilas, com o Orelha); em vez

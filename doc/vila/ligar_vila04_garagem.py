@@ -11,7 +11,7 @@ trazido para a vila de 5 vilas como patch próprio, igual à arena (Vila 03) e a
 Os eventos, as falas e o painel do Jarvis não mudam.
 
 uso: python3 doc/vila/ligar_vila04_garagem.py bot/vila/vila.html
-(depois de todos os outros, inclusive o ligar_orelha_agenda.py; rodar de novo não repete nada)
+(depois de todos os outros, inclusive o ligar_orelha_agenda.py, e antes do ligar_vila02_ponte.py; rodar de novo não repete nada)
 """
 import json
 import sys

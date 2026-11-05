@@ -725,8 +725,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `python3 doc/vila/ligar_orelha.py bot/vila/vila.html`,
   `python3 doc/vila/ligar_jarvis.py bot/vila/vila.html`,
   `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html`,
-  `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html` e por último
-  `python3 doc/vila/ligar_vila04_garagem.py bot/vila/vila.html`.
+  `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_vila04_garagem.py bot/vila/vila.html` e por último
+  `python3 doc/vila/ligar_vila02_ponte.py bot/vila/vila.html`.
 
 ### Passo 32 — Vila 05: o parque do Orelha
 - A Vila 05 virou um parque dos cães cheio de brinquedos: cerca branca de madeira, grama com flores
@@ -788,6 +789,18 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   - Página `/zangao`: o robô no topo (SVG) e, na cena, um canvas com a mesma transformação
     (`bot/templates/_zangao.html`: `zangao_cena()` e `bumblebee_script()`). Com "reduzir
     movimento" ligado no sistema, a troca é direta, sem animação.
+- **Vila 02 vira a batalha na ponte, vista de cima** (desenho em `doc/vila/zangao-transforma_att.html`):
+  ponte sobre a água (ondas e o reflexo do fogo), pista com faixas, guard-rail e quatro pilares com
+  luz vermelha. Os postos ficam nos mesmos lugares, como coisas da ponte: **Doca 01** = garagem
+  listrada com a vaga marcada; **Filtro previdenciário** = cabine de pedágio com cancela (sobe quando
+  ele filtra ou passa); **Captura de dados** = pórtico com o painel de mensagens (a tela da captura);
+  **Torre VIOS** = antena no pilar da direita. O Bumblebee parado é o robô de frente; para andar,
+  vira o **carro visto de cima**, que gira para o lado em que vai (com faróis, rastro e uma onda de
+  choque ao virar). Em volta: dois duelos de robôs (chegam como carros, brigam, explodem e vão
+  embora), trânsito, carcaças pegando fogo, explosões longe dele, fumaça e brasas. Ele anda só na
+  pista. A parte animada só é desenhada com a Vila 01, 02 ou 03 na tela. Os eventos, as falas e o
+  painel não mudam. Patch: `doc/vila/ligar_vila02_ponte.py` (o último da lista, depois do
+  `ligar_vila04_garagem.py`).
 ### Passo 35 — Orelha avisa quando o relatório roda e guarda os relatórios no Arquivo
 - **Horário**: `ORELHA_HORARIO` (padrão `seg-sex 07:30`) e `ORELHA_HORARIO_PARADOS` (padrão
   `sab 08:00`) no `orelha/.env`. Formato `<dias> <HH:MM>`, com faixa (`seg-sex`) ou lista
@@ -863,7 +876,7 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   Conexão VIOS, Leitura dos processos e Planilhas. O Jarvis (núcleo de IA: esfera azul em
   espiral, com anéis e o centro pulsando) voa pela garagem em linha reta e se apresenta no diálogo.
   `/vila?vila=4` abre direto nela. A parte animada da garagem só é desenhada com a Vila 03, 04 ou 05
-  na tela. Patch: `doc/vila/ligar_vila04_garagem.py` (o último da lista).
+  na tela. Patch: `doc/vila/ligar_vila04_garagem.py` (o penúltimo da lista, antes do `ligar_vila02_ponte.py`).
 - **Rodar pela vila**: com o Jarvis instalado (`cd jarvis && ./instalar.sh` e o `jarvis/.env`
   preenchido; `JARVIS_PASTA` só se ele estiver noutra pasta),
   a caixa de fala da Vila 04 ganha "Escolher grupos e gerar" e "Planilhas", que abrem a página
@@ -887,8 +900,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   vila01_campo, vila03_arena, orelha), depois `python3 doc/vila/ligar_jarvis.py
   bot/vila/vila.html` (no fim, `propulsor` troca o núcleo pelo mascote com propulsores),
   `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html` (o parque do Orelha),
-  `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html` (horário e Arquivo do Orelha) e por
-  último `python3 doc/vila/ligar_vila04_garagem.py bot/vila/vila.html` (a garagem do Jarvis).
+  `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html` (horário e Arquivo do Orelha),
+  `python3 doc/vila/ligar_vila04_garagem.py bot/vila/vila.html` (a garagem do Jarvis) e por último
+  `python3 doc/vila/ligar_vila02_ponte.py bot/vila/vila.html` (a ponte do Bumblebee).
 
 ### Passo 27 — Segurança das rotas
 - Com `ENVIO_REDE=true`, toda rota (GET e POST) pede a senha (`ENVIO_SENHA`).

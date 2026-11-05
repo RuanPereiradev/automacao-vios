@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zangão · batalha na ponte (vista de cima)</title>
+<style>
+  html,body{margin:0;height:100%;background:#0f1a22;overflow:hidden;}
+  body{display:flex;align-items:center;justify-content:center;}
+  canvas{display:block;image-rendering:pixelated;width:min(100vw,calc(100vh * 16 / 9));height:auto;cursor:pointer;}
+  #hint{position:fixed;left:0;right:0;top:2vh;text-align:center;color:#c9c2b4;font:13px/1.4 system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;pointer-events:none;text-shadow:0 1px 2px #000;}
+</style>
+</head>
+<body>
+<canvas id="c" width="240" height="135"></canvas>
+<div id="hint">Clique em qualquer ponto da ponte · ele vira carro para ir até lá</div>
+<script>
+const cv = document.getElementById('c'), c = cv.getContext('2d');
+const W = 240, H = 135, DT = 26, DB = 112; // tabuleiro da ponte: y de DT a DB
+const R = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
+const rr = s => { s = Math.sin(s * 127.1) * 43758.5453; return s - Math.floor(s); };
+const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// ---------- sprites ----------
+const ROBOT = [ // Zangão, 24 x 26, vista 3/4 de frente
+  '.........KKKKKK.........', '........KYYYYYYK........', '.......KYYYYYYYYK.......', '.......KYKKKKKKYK.......',
+  '.......KYKBEBEKYK.......', '.......KYKKKKKKYK.......', '........KYGGGGYK........', '.........KKKKKK.........',
+  'LLLL....KKYYYYKK....LLLL', 'LBBL...KYYYYYYYYK...LBBL', 'LBBL..KYYYKKKKYYYK..LBBL', 'LBBL..KYYKWWWWKYYK..LBBL',
+  'LLLL..KYYKGGGGKYYK..LLLL', '..K...KYYYKKKKYYYK...K..', '..KKKKKYYYYYYYYYYKKKKK..', '..KYYKKYYYYYYYYYYKKYYK..',
+  '..KYYK.KKKKKKKKKK.KYYK..', '..KYYK.KYYYKKYYYK.KYYK..', '..KKKK.KYYYK.KYYYK.KKKK.', '.......KYYYK.KYYYK......',
+  '.......KYYYK.KYYYK......', '.......KKKKK.KKKKK......', '.......KGGGK.KGGGK......', '.......KGGGK.KGGGK......',
+  '......KKKKKK.KKKKKK.....', '......KDDDDK.KDDDDK.....'
+];
+const CAR_T = [ // Zangão carro, vista de cima, 30 x 12, frente para a direita
+  '....KKKK............KKKK......', '..KKYYYYYYYYYYYYYYYYYYYYYYKK..', '.KYYYYYYYBBBBYYYYYYBBBBYYYYYHK',
+  'KYYYYYYYBBBBBYYYYYYBBBBBYYYYYK', 'KKKKKKKKBBBBBKKKKKKBBBBBKKKKKK', 'KYYYYYYYBBBBBYYYYYYBBBBBYYYYYK',
+  'KYYYYYYYBBBBBYYYYYYBBBBBYYYYYK', 'KKKKKKKKBBBBBKKKKKKBBBBBKKKKKK', 'KYYYYYYYBBBBBYYYYYYBBBBBYYYYYK',
+  '.KYYYYYYYBBBBYYYYYYBBBBYYYYYHK', '..KKYYYYYYYYYYYYYYYYYYYYYYKK..', '....KKKK............KKKK......'
+];
+const PAL = { Y: '#e8b923', H: '#fff1a8', K: '#1d1e21', B: '#3d8bff', E: '#cfeaff', W: '#8fc3e0', G: '#8c939c', L: '#5a616b', D: '#4a4f57' };
+const NPC_ROBOT = [ // 16 x 18
+  '.....KKKKKK.....', '....KAAAAAAK....', '....KAKEEKAK....', '....KAAAAAAK....', '.....KKKKKK.....', '..KKKKBBBBKKKK..',
+  '.KAAKBBBBBBKAAK.', '.KAAKBBCCBBKAAK.', '.KAAKBBBBBBKAAK.', '.KAAKKBBBBKKAAK.', '.KAK.KAAAAK.KAK.', '.KKK.KAAAAK.KKK.',
+  '.....KKKKKK.....', '.....KAKKAK.....', '.....KAKKAK.....', '.....KAKKAK.....', '....KKAKKAKK....', '....KKKKKKKK....'
+];
+const NPC_CAR = [ // 22 x 8, vista de cima
+  '...KKK.........KKK....', '.KKAAAAAAAAAAAAAAAAKK.', 'KAAAAAWWWWAAAAWWAAAAHK', 'KAAAAWWWWWAAAAWWWAAAAK',
+  'KAAAAWWWWWAAAAWWWAAAAK', 'KAAAAAWWWWAAAAWWAAAAHK', '.KKAAAAAAAAAAAAAAAAKK.', '...KKK.........KKK....'
+];
+const BASEP = { K: '#1d1e21', W: '#8fc3e0', H: '#fff1a8' };
+const NPAL = [
+  Object.assign({ A: '#9aa0a8', B: '#5a616b', C: '#5ad8ff', E: '#5ad8ff' }, BASEP),
+  Object.assign({ A: '#3a3f46', B: '#7a1a2a', C: '#ff3b2f', E: '#ff3b2f' }, BASEP),
+  Object.assign({ A: '#3f8f4a', B: '#b68235', C: '#fff1a8', E: '#7fe3ff' }, BASEP),
+  Object.assign({ A: '#4a2a5a', B: '#2b2e36', C: '#c86bff', E: '#c86bff' }, BASEP)
+];
+const TRAFFIC_PAL = ['#c0c4c9', '#1e3a8a', '#8c1420'].map(a => Object.assign({ A: a }, BASEP));
+
+function blit(rows, x, y, pal, alpha = 1) {
+  c.globalAlpha = alpha;
+  rows.forEach((r, j) => { for (let i = 0; i < r.length; i++) { const ch = r[i]; if (ch === '.') continue; c.fillStyle = pal[ch] || PAL[ch]; c.fillRect(Math.round(x) + i, Math.round(y) + j, 1, 1); } });
+  c.globalAlpha = 1;
+}
+function blitRot(rows, cx, cy, ang, pal, alpha = 1) {
+  const w = rows[0].length, h = rows.length;
+  c.save(); c.translate(Math.round(cx), Math.round(cy)); c.rotate(ang); c.globalAlpha = alpha;
+  rows.forEach((r, j) => { for (let i = 0; i < r.length; i++) { const ch = r[i]; if (ch === '.') continue; c.fillStyle = pal[ch] || PAL[ch]; c.fillRect(i - (w >> 1), j - (h >> 1), 1, 1); } });
+  c.restore();
+}
+const rot = (x, y, a) => [Math.round(x * Math.cos(a) - y * Math.sin(a)), Math.round(x * Math.sin(a) + y * Math.cos(a))];
+function shadow(x, y, w) { c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(x, y, w, w * .35, 0, 0, 6.283); c.fill(); }
+function sparks(x, y, n, col, seed) { for (let i = 0; i < n; i++) { const a = rr(i + seed) * 6.283, d = 1 + rr(i * 3 + seed) * 5; R(x + Math.cos(a) * d, y + Math.sin(a) * d, 1, 1, i % 2 ? '#ffffff' : col); } }
+
+// peças do Zangão: recorte no ROBOT -> posição no carro (relativa ao centro, frente para a direita)
+const PARTS = [
+  { rx: 7, ry: 0, rw: 10, rh: 8, dx: 6, dy: 0, rot: .5, d: 0 },
+  { rx: 6, ry: 8, rw: 12, rh: 9, dx: -1, dy: 0, rot: 0, d: .08 },
+  { rx: 0, ry: 8, rw: 4, rh: 5, dx: -3, dy: -4, rot: 1, d: .12 },
+  { rx: 20, ry: 8, rw: 4, rh: 5, dx: -3, dy: 4, rot: 1, d: .12 },
+  { rx: 2, ry: 13, rw: 4, rh: 6, dx: -11, dy: -3, rot: .5, d: .18 },
+  { rx: 18, ry: 13, rw: 4, rh: 6, dx: -11, dy: 3, rot: .5, d: .18 },
+  { rx: 7, ry: 17, rw: 5, rh: 9, dx: 10, dy: -3, rot: .25, d: .26 },
+  { rx: 13, ry: 17, rw: 5, rh: 9, dx: 10, dy: 3, rot: .25, d: .26 }
+];
+// peças genéricas dos outros robôs (faixas de linhas)
+const NPARTS = [{ r0: 0, r1: 5, dx: 6, rot: .5 }, { r0: 5, r1: 10, dx: 0, rot: 0 }, { r0: 10, r1: 13, dx: -4, rot: .25 }, { r0: 13, r1: 18, dx: -8, rot: .5 }];
+
+function drawPiece(src, rx, ry, rw, rh, px, py, ang, pal, alpha) {
+  c.save(); c.translate(Math.round(px), Math.round(py)); c.rotate(ang); c.globalAlpha = alpha;
+  const hw = rw >> 1, hh = rh >> 1;
+  for (let j = 0; j < rh; j++) for (let i = 0; i < rw; i++) { const ch = src[ry + j][rx + i]; if (!ch || ch === '.') continue; c.fillStyle = pal[ch] || PAL[ch]; c.fillRect(i - hw, j - hh, 1, 1); }
+  c.restore();
+}
+
+// ---------- estado ----------
+const b = { x: 120, y: 84, tx: 120, ty: 84, m: 0, face: 0 };
+cv.addEventListener('click', e => { const r = cv.getBoundingClientRect(); b.tx = clamp(Math.round((e.clientX - r.left) / r.width * W), 16, W - 16); b.ty = clamp(Math.round((e.clientY - r.top) / r.height * H), DT + 18, DB - 2); });
+let f = 0, shake = 0, pulse = 0, wasCar = false;
+let SMOKE = [], DEB = [], EXP = [], LAS = [], DECAL = [];
+const WRECKS = [[34, 44, 0], [206, 50, Math.PI / 2], [96, 106, Math.PI], [154, 38, 0]];
+const EMB = Array.from({ length: 26 }, (_, i) => ({ x: rr(i) * W, y: rr(i + 9) * H, s: .1 + rr(i + 3) * .3, p: rr(i + 5) * 6 }));
+const PAIRS = [ // dois duelos: chegam como carros, viram robôs, brigam, viram carros e vão embora
+  { y: 58, mx: 72, a: 0, b: 1, off: 0 },
+  { y: 104, mx: 176, a: 2, b: 3, off: 300 }
+];
+const TRAFFIC = [{ y: 40, sp: 1.8, o: 0, p: 0 }, { y: 76, sp: -2.4, o: 120, p: 1 }, { y: 92, sp: 1.3, o: 60, p: 2 }];
+function puff(x, y, big) { if (SMOKE.length < 140) SMOKE.push({ x, y, r: big ? 3 : 2, a: big ? .45 : .3, vx: .18 + Math.random() * .1, vy: -.12 - Math.random() * .08 }); }
+function boom(x, y) { EXP.push({ x, y, t: 0 }); shake = 4; DECAL.push({ x, y, a: .6 }); if (DECAL.length > 10) DECAL.shift(); for (let i = 0; i < 16; i++) DEB.push({ x, y, vx: (rr(i + f) - .5) * 3, vy: (rr(i * 7 + f) - .5) * 3, z: 0, vz: 1 + rr(i + 2 * f) * 1.5, l: 36 }); }
+
+// ---------- cenário ----------
+function water() {
+  R(0, 0, W, H, '#13222e');
+  for (let y = 0; y < H; y += 4) { if (y > DT - 4 && y < DB + 4) continue; for (let x = 0; x < W; x += 16) { const o = Math.round(Math.sin(f * .04 + y * .5 + x * .1) * 3); R(x + o, y, 5, 1, '#1f3a4a'); } }
+  // reflexo do fogo na água
+  [[40, 10], [200, 14], [110, 124], [170, 128]].forEach(([x, y], i) => { const a = .25 + .15 * Math.sin(f * .2 + i); for (let k = 0; k < 4; k++) R(x - 8 + Math.sin(f * .1 + k) * 3, y + k * 2, 16 - k * 3, 1, 'rgba(255,140,60,' + a + ')'); });
+}
+function deck() {
+  // asfalto
+  R(0, DT, W, DB - DT, '#34363c');
+  for (let i = 0; i < 90; i++) { const x = rr(i) * W, y = DT + 4 + rr(i + 40) * (DB - DT - 8); R(x, y, 1, 1, i % 3 ? '#3c3f46' : '#2b2d32'); }
+  // faixas
+  for (let x = 0; x < W; x += 14) { R(x, 49, 7, 1, '#d9d0c0'); R(x, 91, 7, 1, '#d9d0c0'); }
+  R(0, 69, W, 1, '#e8b923'); R(0, 71, W, 1, '#e8b923');
+  // bordas, guard-rail e cabos
+  R(0, DT, W, 3, '#5a616b'); R(0, DT + 3, W, 1, '#8c939c'); R(0, DB - 4, W, 1, '#8c939c'); R(0, DB - 3, W, 3, '#5a616b');
+  for (let x = 2; x < W; x += 8) { R(x, DT + 1, 1, 1, '#2b2e36'); R(x, DB - 2, 1, 1, '#2b2e36'); }
+  R(0, DT - 2, W, 1, '#6b727b'); R(0, DB + 1, W, 1, '#6b727b');
+  // sombra das vigas das torres atravessando a pista
+  [60, 180].forEach(x => { c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(x - 2, DT, 14, DB - DT); });
+  // pilares das torres (vistos de cima)
+  [60, 180].forEach(x => [DT - 8, DB - 2].forEach(y => { R(x, y, 12, 10, '#2b2e36'); R(x + 1, y + 1, 10, 8, '#4a4f57'); R(x + 1, y + 1, 10, 1, '#6b727b'); R(x + 4, y + 3, 4, 4, '#1d1e21'); if ((f >> 4) % 2) R(x + 5, y + 4, 2, 2, '#ff3b2f'); }));
+  // marcas de explosão
+  DECAL.forEach(d => { const g = c.createRadialGradient(d.x, d.y, 0, d.x, d.y, 10); g.addColorStop(0, 'rgba(10,8,8,' + d.a + ')'); g.addColorStop(1, 'rgba(10,8,8,0)'); c.fillStyle = g; c.fillRect(d.x - 10, d.y - 6, 20, 12); d.a = Math.max(.25, d.a - .0004); });
+}
+function fire(x, y, s) {
+  for (let i = 0; i < 8 * s; i++) { const fx = x + (rr(i + (f >> 2)) - .5) * 6 * s, fy = y - rr(i * 3 + (f >> 2)) * 5 * s; R(fx, fy, 1, 1, i % 3 === 0 ? '#fff1a8' : i % 3 === 1 ? '#ffb15a' : '#ff5a2a'); }
+  const g = c.createRadialGradient(x, y - 2, 0, x, y - 2, 9 * s); g.addColorStop(0, 'rgba(255,150,60,.25)'); g.addColorStop(1, 'rgba(255,150,60,0)'); c.fillStyle = g; c.fillRect(x - 10 * s, y - 12 * s, 20 * s, 20 * s);
+  if (f % 7 === 0) puff(x, y - 4, true);
+}
+function wreck(x, y, a) {
+  const pal = Object.assign({}, BASEP, { A: '#2a2a2e', W: '#1d1e21', H: '#3a3f46' });
+  blitRot(NPC_CAR, x, y, a, pal);
+  fire(x + 2, y, 1);
+}
+
+// ---------- personagens ----------
+function drawZangao() {
+  const x = b.x, y = b.y, k = b.m, face = b.face;
+  if (k > .04 && k < .9) {
+    shadow(x, y, 10);
+    blitRot(CAR_T, x, y - 6, face, PAL, Math.max(0, (k - .5) * 2));
+    PARTS.forEach(p => {
+      const t = ease(clamp((k - p.d) / (.9 - p.d), 0, 1));
+      const ox = x - 12 + p.rx + p.rw / 2, oy = y - 26 + p.ry + p.rh / 2;
+      const [ddx, ddy] = rot(p.dx, p.dy, face), dx = x + ddx, dy = y - 6 + ddy;
+      const steps = Math.round(p.rot * 4 * t);
+      drawPiece(ROBOT, p.rx, p.ry, p.rw, p.rh, ox + (dx - ox) * t, oy + (dy - oy) * t - Math.sin(t * Math.PI) * 8, steps * Math.PI / 2, PAL, 1 - Math.max(0, (t - .85) / .15));
+    });
+  } else if (k >= .9) {
+    c.fillStyle = 'rgba(0,0,0,.35)'; const sv = Math.abs(Math.sin(face)) > .5; c.fillRect(x - (sv ? 6 : 15) + 1, y - 6 - (sv ? 15 : 6) + 2, sv ? 12 : 30, sv ? 30 : 12);
+    // faróis
+    c.save(); c.translate(Math.round(x), Math.round(y - 6)); c.rotate(face); const g = c.createLinearGradient(15, 0, 34, 0); g.addColorStop(0, 'rgba(255,241,168,.4)'); g.addColorStop(1, 'rgba(255,241,168,0)'); c.fillStyle = g; c.beginPath(); c.moveTo(14, -5); c.lineTo(34, -9); c.lineTo(34, 9); c.lineTo(14, 5); c.fill();
+    // rastro de velocidade
+    if (Math.abs(b.tx - b.x) > 1 || Math.abs(b.ty - b.y) > 1) for (let i = 0; i < 4; i++) { c.fillStyle = 'rgba(207,234,255,.3)'; c.fillRect(-18 - i * 5 - (f % 5), -4 + i * 2 + (i > 1 ? 1 : 0), 4, 1); }
+    c.restore();
+    blitRot(CAR_T, x, y - 6, face, PAL);
+  } else {
+    shadow(x, y, 9);
+    const blink = f % 180 < 6, pal = Object.assign({}, PAL, { E: blink ? PAL.K : PAL.E });
+    blit(ROBOT, x - 12, y - 26, pal);
+    if ((f >> 4) % 2) { R(x - 13, y - 19, 1, 1, PAL.L); R(x + 12, y - 19, 1, 1, PAL.L); }
+    if (!blink) R(x - 3, y - 23, 7, 3, 'rgba(61,139,255,.35)');
+  }
+}
+function drawNPC(n) {
+  const { x, y, m, face, pal, punch = 0, side = 1 } = n;
+  if (m > .04 && m < .96) {
+    shadow(x, y, 8);
+    blitRot(NPC_CAR, x, y - 5, face, pal, Math.max(0, (m - .5) * 2));
+    NPARTS.forEach((p, i) => {
+      const t = ease(clamp((m - i * .06) / (.9 - i * .06), 0, 1));
+      const ox = x, oy = y - 18 + (p.r0 + p.r1) / 2, [ddx, ddy] = rot(p.dx, 0, face);
+      drawPiece(NPC_ROBOT, 0, p.r0, 16, p.r1 - p.r0, ox + (x + ddx - ox) * t, oy + (y - 5 + ddy - oy) * t - Math.sin(t * Math.PI) * 6, Math.round(p.rot * 4 * t) * Math.PI / 2, pal, 1 - Math.max(0, (t - .85) / .15));
+    });
+    if (Math.abs(m - .5) < .08) sparks(x, y - 9, 6, pal.E, f);
+  } else if (m >= .96) {
+    c.fillStyle = 'rgba(0,0,0,.35)'; const sv = Math.abs(Math.sin(face)) > .5; c.fillRect(x - (sv ? 4 : 11) + 1, y - 5 - (sv ? 11 : 4) + 2, sv ? 8 : 22, sv ? 22 : 8);
+    blitRot(NPC_CAR, x, y - 5, face, pal);
+  } else {
+    shadow(x, y, 7);
+    blit(NPC_ROBOT, x - 8, y - 18, pal);
+    if (punch > 0) { const sx = side > 0 ? x + 7 : x - 7 - punch; R(sx, y - 11, punch, 2, pal.A); R(side > 0 ? x + 7 + punch : x - 9 - punch, y - 12, 2, 3, pal.K); }
+    R(x - 2, y - 16, 4, 1, 'rgba(255,255,255,.15)');
+  }
+}
+function pairState(P, list) {
+  const L = 600, t = (f + P.off) % L, A = { pal: NPAL[P.a] }, B = { pal: NPAL[P.b] };
+  const ax = P.mx - 13, bx = P.mx + 13;
+  A.y = B.y = P.y;
+  if (t < 130) { const k = t / 130; A.x = -30 + (ax + 30) * k; B.x = W + 30 - (W + 30 - bx) * k; A.m = B.m = 1; A.face = 0; B.face = Math.PI; }
+  else if (t < 165) { const k = 1 - (t - 130) / 35; A.x = ax; B.x = bx; A.m = B.m = k; A.face = 0; B.face = Math.PI; }
+  else if (t < 400) {
+    A.x = ax; B.x = bx; A.m = B.m = 0; A.side = 1; B.side = -1;
+    const s = (t - 165) % 36, att = Math.floor((t - 165) / 36) % 2, pu = s < 14 ? Math.round(Math.sin(s / 14 * Math.PI) * 6) : 0, hit = s > 5 && s < 10;
+    if (att === 0) { A.punch = pu; if (hit) B.x += 2; } else { B.punch = pu; if (hit) A.x -= 2; }
+    if (hit) { sparks(P.mx, P.y - 11, 12, att ? B.pal.E : A.pal.E, f); if (s === 7) shake = Math.max(shake, 1.5); }
+    if (s === 20 && Math.floor((t - 165) / 36) % 3 === 2) { const from = att ? B : A; LAS.push({ x: from.x, y: P.y - 15, vx: att ? -3.5 : 3.5, col: from.pal.E, l: 40 }); }
+    A.y += (f >> 3) % 2; B.y += ((f >> 3) + 1) % 2;
+    if (t === 390) boom(P.mx, P.y - 2);
+  }
+  else if (t < 435) { const k = (t - 400) / 35; A.x = ax; B.x = bx; A.m = B.m = k; A.face = Math.PI; B.face = 0; }
+  else if (t < 560) { const k = (t - 435) / 125; A.x = ax - (ax + 40) * k; B.x = bx + (W + 40 - bx) * k; A.m = B.m = 1; A.face = Math.PI; B.face = 0; }
+  else return;
+  A.face = A.face || 0; B.face = B.face ?? 0;
+  list.push({ y: A.y, d: () => drawNPC(A) }, { y: B.y, d: () => drawNPC(B) });
+}
+
+// ---------- loop ----------
+function loop() {
+  f++;
+  // movimento do Zangão em L (primeiro horizontal, depois vertical), estilo jogo antigo
+  const dx = b.tx - b.x, dy = b.ty - b.y, moving = Math.abs(dx) > 1 || Math.abs(dy) > 1;
+  if (moving) b.face = Math.abs(dx) > 1 ? (dx > 0 ? 0 : Math.PI) : (dy > 0 ? Math.PI / 2 : -Math.PI / 2);
+  b.m += ((moving ? 1 : 0) - b.m) * .07;
+  if (b.m > .9 && moving) { const sp = 1.1; if (Math.abs(dx) > 1) b.x += Math.sign(dx) * Math.min(sp, Math.abs(dx)); else b.y += Math.sign(dy) * Math.min(sp, Math.abs(dy)); }
+  if (!moving) { b.x = Math.round(b.x); b.y = Math.round(b.y); }
+  const carish = b.m > .5; if (carish !== wasCar) { pulse = 1; wasCar = carish; }
+
+  shake *= .85;
+  c.save(); c.translate(Math.round((Math.random() - .5) * shake), Math.round((Math.random() - .5) * shake));
+  water(); deck();
+  if (moving) { R(b.tx - 2, b.ty, 5, 1, (f >> 3) % 2 ? '#f0c46a' : '#b68235'); R(b.tx, b.ty - 2, 1, 5, (f >> 3) % 2 ? '#f0c46a' : '#b68235'); }
+  // onda de choque da transformação
+  if (pulse > 0) { c.strokeStyle = 'rgba(207,234,255,' + pulse * .7 + ')'; c.lineWidth = 1; c.beginPath(); c.ellipse(b.x, b.y - 3, (1 - pulse) * 40 + 4, ((1 - pulse) * 40 + 4) * .45, 0, 0, 6.283); c.stroke(); pulse -= .035; }
+
+  // entidades ordenadas por profundidade
+  const list = [];
+  WRECKS.forEach(([x, y, a]) => list.push({ y: y + 4, d: () => wreck(x, y, a) }));
+  TRAFFIC.forEach(t => { const x = ((f * t.sp + t.o) % (W + 60) + W + 60) % (W + 60) - 30; list.push({ y: t.y, d: () => { c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(x - 10, t.y - 7, 22, 8); blitRot(NPC_CAR, x, t.y - 5, t.sp > 0 ? 0 : Math.PI, TRAFFIC_PAL[t.p]); } }); });
+  PAIRS.forEach(P => pairState(P, list));
+  list.push({ y: b.y, d: drawZangao });
+  list.sort((a, z) => a.y - z.y).forEach(e => e.d());
+
+  // disparos
+  LAS = LAS.filter(l => l.l-- > 0); LAS.forEach(l => { l.x += l.vx; R(l.x - 3, l.y, 7, 1, l.col); R(l.x - 4, l.y - 1, 9, 3, 'rgba(255,255,255,.15)'); if (l.l === 1) boom(l.x, l.y + 12); });
+  // explosões e destroços
+  if (f % 170 === 60) { let ex, ey, tries = 0; do { ex = 20 + rr(f + tries) * 200; ey = DT + 14 + rr(f * 3 + tries) * (DB - DT - 24); tries++; } while (Math.hypot(ex - b.x, ey - b.y) < 30 && tries < 8); boom(ex, ey); }
+  EXP = EXP.filter(e => e.t < 26); EXP.forEach(e => { e.t++; const r = Math.min(15, e.t * 1.5), a = 1 - e.t / 26; const g = c.createRadialGradient(e.x, e.y - 3, 0, e.x, e.y - 3, r); g.addColorStop(0, 'rgba(255,250,220,' + a + ')'); g.addColorStop(.45, 'rgba(255,160,60,' + a + ')'); g.addColorStop(1, 'rgba(200,60,30,0)'); c.fillStyle = g; c.fillRect(e.x - r, e.y - 3 - r, r * 2, r * 2); if (e.t % 3 === 0) puff(e.x + (rr(e.t + e.x) - .5) * 8, e.y - 4, true); });
+  DEB = DEB.filter(d => d.l-- > 0); DEB.forEach(d => { d.x += d.vx * .6; d.y += d.vy * .6; d.z += d.vz; d.vz -= .12; if (d.z < 0) { d.z = 0; d.vz *= -.3; d.vx *= .6; d.vy *= .6; } R(d.x, d.y - d.z, 1, 1, d.l > 22 ? '#ffcf7a' : '#5a616b'); });
+  // fumaça por cima de tudo (vista de cima)
+  SMOKE = SMOKE.filter(s => s.a > 0); SMOKE.forEach(s => { s.x += s.vx; s.y += s.vy; s.r += .05; s.a -= .003; c.fillStyle = 'rgba(40,36,42,' + s.a + ')'; c.beginPath(); c.arc(s.x, s.y, s.r, 0, 6.283); c.fill(); });
+  // brasas
+  EMB.forEach(e => { e.y -= e.s; e.x += Math.sin(f * .03 + e.p) * .2 + .1; if (e.y < 0) { e.y = H; e.x = rr(f + e.p) * W; } if ((f + e.p * 10 | 0) % 5) R(((e.x % W) + W) % W, e.y, 1, 1, e.p > 3 ? '#ffb15a' : '#ff6a2a'); });
+  c.restore();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
