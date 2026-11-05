@@ -120,7 +120,8 @@ pela extensão do Presto, o cofre de credenciais da Oystr que o escritório já 
 tem a API de robôs da Oystr. Primeiro passo, no computador onde o bot vai rodar:
 
 ```bash
-.venv/bin/python presto.py preparar     # Chrome com o perfil do bot: instalar o Presto e entrar (uma vez)
+.venv/bin/python presto.py copiar       # copia o perfil do Chrome que já tem o Presto logado (uma vez)
+# ou: .venv/bin/python presto.py preparar  # perfil novo: instalar o Presto e entrar
 .venv/bin/python presto.py explorar https://pje.trt7.jus.br/primeirograu/login.seam
 ```
 

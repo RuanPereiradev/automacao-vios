@@ -67,6 +67,14 @@ etapa estiver pronta e testada, vira uma nova versão com data.
     ficava esperando (só saía com Ctrl+C), e o Terminal se enchia de avisos internos do Chrome
     (GoogleUpdater, Crashpad). Agora ele espera um Enter no Terminal, fecha o Chrome salvando o
     perfil, esconde esses avisos e diz se achou o Presto no perfil.
+  - Novo `presto.py copiar`: copia o perfil do Chrome que já tem o Presto instalado e logado para o
+    perfil do bot (pedido do usuário: "abrir o Chrome com o perfil que já está aberto"). Lista os
+    perfis do Chrome (nome e conta), pede para fechar o Chrome só durante a cópia, deixa de fora
+    caches e abas da última sessão e guarda qual pasta foi copiada (`--profile-directory`). O
+    Chrome não permite usar o perfil aberto direto (automação no perfil principal é bloqueada e o
+    perfil fica travado enquanto aberto). Testado com uma pasta do Chrome simulada e abrindo o
+    perfil copiado pelo Selenium. Se o Chrome do bot fechar no meio do `explorar`, ele avisa e diz
+    onde ficou o que foi capturado.
   - Com essas capturas, o próximo passo é montar o caminho do bot: entrar no PJe pelo Presto,
     buscar o processo e baixar os autos.
 - Testado com perfil temporário e extensão simulada (o Presto não está instalado nesta máquina):

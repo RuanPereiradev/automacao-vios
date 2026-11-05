@@ -818,7 +818,12 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - Objetivo: o bot baixar os autos de cada processo do relatório do Leme, como a atendente fazia à
   mão, entrando no tribunal pela extensão do **Presto** (Oystr). O plano do escritório não tem a
   API de robôs da Oystr, então o bot usa a extensão num perfil do Chrome só dele.
-- Preparar (uma vez, no computador onde o Albi roda): `cd albi && .venv/bin/python presto.py
+- Copiar o perfil (uma vez, no computador onde o Albi roda): `cd albi && .venv/bin/python presto.py
+  copiar`. Mostra os perfis do Chrome; escolha o que tem o Presto logado. Feche o Chrome (Cmd+Q)
+  quando ele pedir; a cópia vai para `albi/perfil_presto/` (sem caches nem abas) e o Chrome pode ser
+  aberto de novo. O bot não usa o perfil aberto direto porque o Chrome não deixa automação no perfil
+  principal nem dois Chromes no mesmo perfil. Se o Presto sair da conta no bot, copiar de novo.
+- Alternativa (perfil novo, instalando o Presto nele): `cd albi && .venv/bin/python presto.py
   preparar`. Abre o Chrome com o perfil `albi/perfil_presto/`: instalar a extensão do Presto,
   entrar na conta do Presto, conferir que abre o PJe logado e teclar Enter no Terminal (o script
   fecha o Chrome; no Mac, fechar a janela não encerra o Chrome, e Ctrl+C não é preciso).
