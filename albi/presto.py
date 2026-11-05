@@ -7,7 +7,9 @@ extensão mostra, para montar os passos do bot (entrar no PJe, buscar o processo
 
   .venv/bin/python presto.py preparar
       Abre um Chrome NORMAL (sem automação) com o perfil do bot (albi/perfil_presto/). Nele:
-      instale a extensão do Presto, entre na sua conta do Presto e feche a janela. Só uma vez.
+      instale a extensão do Presto e entre na sua conta do Presto; depois tecle Enter no Terminal
+      (o script fecha o Chrome salvando o perfil; no Mac, fechar a janela não encerra o Chrome).
+      Só uma vez. Rode de dentro da pasta albi/.
 
   .venv/bin/python presto.py explorar [URL do tribunal ...]
       Abre o mesmo perfil pelo Selenium, acha a extensão do Presto, abre o pop-up dela numa aba
@@ -47,11 +49,25 @@ def chrome():
 def preparar():
     PERFIL.mkdir(exist_ok=True)
     print(f"Abrindo o Chrome com o perfil do bot ({PERFIL}).\n"
-          "  1. Instale a extensão do Presto (pelo console do Presto ou pela Chrome Web Store);\n"
+          "  1. Instale a extensão do Presto (Chrome Web Store: procure \"Presto\" da Oystr);\n"
           "  2. entre na sua conta do Presto pela extensão;\n"
           "  3. confira que ela abre o PJe logado;\n"
-          "  4. feche a janela do Chrome.")
-    subprocess.run([chrome(), f"--user-data-dir={PERFIL}", "--no-first-run", CONSOLE])
+          "  4. volte AQUI no Terminal e tecle Enter (não precisa fechar o Chrome nem usar Ctrl+C).")
+    # os avisos internos do Chrome (GoogleUpdater, Crashpad...) não interessam: vão para o lixo
+    proc = subprocess.Popen([chrome(), f"--user-data-dir={PERFIL}", "--no-first-run", CONSOLE],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
+    try:
+        input("\nQuando terminar, tecle Enter aqui... ")
+    except (KeyboardInterrupt, EOFError):
+        print()
+    # no Mac, fechar a janela não encerra o Chrome; o terminate fecha salvando o perfil
+    if proc.poll() is None:
+        proc.terminate()
+        try:
+            proc.wait(timeout=15)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+    print("Chrome do bot fechado.")
     ext = achar_extensao()
     print("Extensão do Presto encontrada no perfil." if ext else
           "ATENÇÃO: não achei a extensão do Presto no perfil. Rode 'preparar' de novo e instale.")

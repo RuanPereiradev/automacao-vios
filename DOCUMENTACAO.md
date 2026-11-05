@@ -820,7 +820,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   API de robôs da Oystr, então o bot usa a extensão num perfil do Chrome só dele.
 - Preparar (uma vez, no computador onde o Albi roda): `cd albi && .venv/bin/python presto.py
   preparar`. Abre o Chrome com o perfil `albi/perfil_presto/`: instalar a extensão do Presto,
-  entrar na conta do Presto, conferir que abre o PJe logado e fechar a janela.
+  entrar na conta do Presto, conferir que abre o PJe logado e teclar Enter no Terminal (o script
+  fecha o Chrome; no Mac, fechar a janela não encerra o Chrome, e Ctrl+C não é preciso).
 - Explorar: `.venv/bin/python presto.py explorar <URL do tribunal>`. Salva em
   `albi/logs/presto/<data_hora>/` o print, o HTML, o texto e os botões/campos/links do pop-up da
   extensão e de cada site, mais o resumo da extensão (`presto_manifest.json`). Serve para montar o

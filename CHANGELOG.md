@@ -63,6 +63,10 @@ etapa estiver pronta e testada, vira uma nova versão com data.
     HTML, texto e a lista de botões, campos e links. Faz o mesmo em cada URL de tribunal pedida, e
     nas abas que o Presto abrir. Também salva o resumo do manifest (em quais sites a extensão age).
     Tudo em `albi/logs/presto/<data_hora>/` (fora do git).
+  - Corrigido no primeiro uso no Mac: fechar a janela não encerra o Chrome, então o `preparar`
+    ficava esperando (só saía com Ctrl+C), e o Terminal se enchia de avisos internos do Chrome
+    (GoogleUpdater, Crashpad). Agora ele espera um Enter no Terminal, fecha o Chrome salvando o
+    perfil, esconde esses avisos e diz se achou o Presto no perfil.
   - Com essas capturas, o próximo passo é montar o caminho do bot: entrar no PJe pelo Presto,
     buscar o processo e baixar os autos.
 - Testado com perfil temporário e extensão simulada (o Presto não está instalado nesta máquina):
