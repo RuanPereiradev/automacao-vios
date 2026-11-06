@@ -451,6 +451,26 @@ def logado(w, t):
     return u if u.startswith("http") and not re.search(r"login\.seam|/auth/|sso\.|/login", u) else ""
 
 
+def _pede_pin(quadro):
+    """O quadro do Presto está mostrando o campo do PIN? Devolve o quadro (ou None)."""
+    if quadro and quadro.get("ok") and any(i.get("visivel") and i.get("type") == "password"
+                                           for i in quadro.get("inputs", [])):
+        return quadro
+    return None
+
+
+def _clique_real(CM, w, t, qual, termo=""):
+    """Clique do mouse de verdade no link da credencial ou no campo do PIN do quadro. True se clicou."""
+    CM.para_frente(w, t)
+    onde = CM.presto_onde(w, t, qual, termo)
+    if not onde.get("ok"):
+        print("  não achei onde clicar:", onde.get("erro"))
+        return False
+    CM.clicar_tela(onde["x"], onde["y"])
+    time.sleep(0.5)
+    return True
+
+
 def login(w, t, cfg, destino, prefixo=""):
     """Na aba (já aberta no login do tribunal), entra pelo quadro do Presto: credencial + PIN do .env.
     Se a aba já estiver logada (sessão de antes), não faz nada. Devolve a URL final ("" = não entrou)."""
@@ -472,25 +492,37 @@ def login(w, t, cfg, destino, prefixo=""):
         return ""
     (destino / f"{prefixo}1_quadro.json").write_text(json.dumps(quadro, ensure_ascii=False, indent=1), encoding="utf-8")
     print("Quadro do Presto:", ", ".join(quadro["creds"]) or "(sem credenciais)")
-    r = CM.presto_credencial(w, t, cfg.get("PRESTO_CREDENCIAL", ""))
+    termo = cfg.get("PRESTO_CREDENCIAL", "")
+    r = CM.presto_credencial(w, t, termo)
     if not r.get("ok"):
         print("Não consegui escolher a credencial:", r.get("erro"))
         return ""
     print("Credencial escolhida:", r["nome"])
-    time.sleep(3)
-    quadro2 = CM.presto(w, t)
+    quadro2 = _esperar(lambda: _pede_pin(CM.presto(w, t)), 8)
+    if not quadro2:
+        # a extensão pode ignorar clique feito por JavaScript: clica com o mouse de verdade
+        print("O clique por JavaScript não abriu o campo do PIN; clicando com o mouse no número...")
+        _clique_real(CM, w, t, "credencial", termo)
+        quadro2 = _esperar(lambda: _pede_pin(CM.presto(w, t)), 10)
+    quadro2 = quadro2 or CM.presto(w, t)
     (destino / f"{prefixo}2_quadro_depois.json").write_text(json.dumps(quadro2, ensure_ascii=False, indent=1),
                                                              encoding="utf-8")
     _salvar_captura(destino, f"{prefixo}2_depois_credencial", CM.capturar(w, t))
-    if quadro2.get("ok") and any(i.get("visivel") for i in quadro2.get("inputs", [])):
+    if _pede_pin(quadro2):
         pin = cfg.get("PRESTO_PIN", "")
         if not pin:
             print("O Presto pediu a senha/PIN, mas PRESTO_PIN não está no albi/.env. Preencha e rode de novo.")
             return ""
         r = CM.presto_pin(w, t, pin)
         print("PIN preenchido; confirmei em:", r.get("botao") if r.get("ok") else r.get("erro"))
+        if not _esperar(lambda: logado(w, t), 12, passo=2) and _pede_pin(CM.presto(w, t)):
+            print("O PIN por JavaScript não entrou; digitando o PIN com o teclado de verdade...")
+            if _clique_real(CM, w, t, "pin"):
+                CM.digitar_tela(pin)
     elif quadro2.get("ok"):
-        print("Depois da credencial o quadro continua sem campo de senha:", quadro2.get("texto", "")[:200])
+        print("Depois da credencial o quadro continua sem campo de PIN:", quadro2.get("texto", "")[:200])
+        print("Se o Terminal não está em Ajustes do Sistema > Privacidade e Segurança > Acessibilidade, "
+              "ligue-o (o clique de verdade precisa disso) e rode de novo.")
     final = _esperar(lambda: logado(w, t), 60, passo=2)
     CM.esperar(w, t, maximo=20, folga=2)
     _salvar_captura(destino, f"{prefixo}3_final", CM.capturar(w, t))

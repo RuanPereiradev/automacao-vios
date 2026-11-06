@@ -12,6 +12,16 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Albi/Presto: clique de verdade no número da credencial e no PIN (06/11/2026)
+- No Mac, o `entrar tjce1` abriu o console, clicou no TJCE e chegou ao login, mas não conseguiu clicar no
+  número da credencial para abrir o campo do PIN. Agora: o quadro do Presto é procurado também em
+  "shadow roots" e frames; o clique por JavaScript manda a sequência completa (ponteiro, mouse, click);
+  se em 8 s o campo do PIN não aparecer, o robô traz a aba para a frente e clica com o mouse de verdade
+  no número (`chrome_mac.clicar_tela`, posição calculada da página); se o PIN por JavaScript não entrar
+  em 12 s, clica no campo e digita o PIN pelo teclado (`chrome_mac.digitar_tela`, System Events). O
+  clique e a digitação de verdade precisam do Terminal em Acessibilidade. Testado com uma página falsa
+  que só aceita clique e tecla de verdade e põe o quadro num shadow root; ainda não rodou no Mac.
+
 ### Adicionado — Albi/Presto: `presto.py liberar-chrome` liga o JavaScript por Apple Events (06/11/2026)
 - O usuário não achou no Chrome do Mac o menu Visualizar > Desenvolvedor > "Permitir JavaScript de
   Apple Events", que o bot precisa. O novo comando faz isso sem o menu: pergunta antes (`--sim` não

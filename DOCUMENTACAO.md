@@ -923,6 +923,11 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   trt7, trt7-2, jfce, trf5, trf5-2, ou a URL de login). O bot abre o login no Chrome aberto, clica na
   credencial no quadro "Credenciais Disponíveis" que o Presto põe na página, preenche o PIN, confirma e
   diz se entrou. O PIN não aparece no Terminal nem nas capturas.
+  Se o clique por JavaScript não abrir o campo do PIN (a extensão pode ignorar cliques que não são de
+  verdade), o robô põe a aba na frente e clica com o mouse de verdade no número da credencial; se o PIN
+  por JavaScript não entrar em 12 s, clica no campo e digita o PIN pelo teclado. Isso precisa, uma vez,
+  do Terminal em Ajustes do Sistema > Privacidade e Segurança > **Acessibilidade**, e o Chrome fica na
+  frente enquanto o robô faz o login. O quadro é procurado também dentro de "shadow roots" e frames.
 - **Tribunal aberto pelo console do Presto:** o `entrar` e o `processos` abrem o tribunal como a
   atendente faz: console do Presto > **Sites** > procura o tribunal na lista > clica. Se o console
   pedir login, o robô usa `PRESTO_EMAIL` e `PRESTO_SENHA` do `albi/.env` (preencher no Mac; nunca vão

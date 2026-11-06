@@ -272,7 +272,34 @@ def print_tela(caminho):
 
 # ---------------- quadro do Presto dentro da página do tribunal ----------------
 # o Presto põe na página um quadro "Credenciais Disponíveis" (div.presto-dialog-root, data-presto-el)
-_DIALOGO = "document.querySelector('.presto-dialog-root') || document.querySelector('[data-presto-el]')"
+# procura na página, nos "shadow roots" abertos e nos frames do mesmo site
+_DIALOGO = r"""(function() {
+  function busca(raiz) {
+    var d = raiz.querySelector('.presto-dialog-root') || raiz.querySelector('[data-presto-el]');
+    if (d) return d;
+    var els = raiz.querySelectorAll('*');
+    for (var i = 0; i < els.length; i++) if (els[i].shadowRoot) { d = busca(els[i].shadowRoot); if (d) return d; }
+    return null;
+  }
+  var d = busca(document);
+  if (d) return d;
+  var fr = document.querySelectorAll('iframe, frame');
+  for (var j = 0; j < fr.length; j++) { try { d = busca(fr[j].contentDocument); if (d) return d; } catch (e) {} }
+  return null;
+})()"""
+
+# clique "completo" (ponteiro + mouse + click), como o Vue/a extensão podem esperar
+_CLIQUE = r"""
+function _albiClique(el) {
+  var r = el.getBoundingClientRect(), o = {bubbles: true, cancelable: true, view: window, button: 0,
+    clientX: r.left + r.width / 2, clientY: r.top + r.height / 2};
+  try { el.scrollIntoView({block: 'center'}); } catch (e) {}
+  ['pointerdown', 'mousedown', 'pointerup', 'mouseup'].forEach(function(n) {
+    try { el.dispatchEvent(n.indexOf('pointer') === 0 ? new PointerEvent(n, o) : new MouseEvent(n, o)); } catch (e) {}
+  });
+  el.click();
+}
+"""
 
 JS_PRESTO = "(function(){var d=" + _DIALOGO + r""";
   if (!d) return JSON.stringify({ok: false});
@@ -289,7 +316,7 @@ JS_PRESTO = "(function(){var d=" + _DIALOGO + r""";
 })()"""
 
 # clica na credencial cujo nome contém o termo (ou na primeira)
-JS_PRESTO_CREDENCIAL = "(function(termo){var d=" + _DIALOGO + r""";
+JS_PRESTO_CREDENCIAL = "(function(termo){" + _CLIQUE + "var d=" + _DIALOGO + r""";
   if (!d) return JSON.stringify({ok: false, erro: 'quadro do Presto não está na página'});
   var links = [].slice.call(d.querySelectorAll('a.prs-text-presto-blue'));
   var alvo = links.filter(function(a) {
@@ -299,7 +326,7 @@ JS_PRESTO_CREDENCIAL = "(function(termo){var d=" + _DIALOGO + r""";
   if (!alvo) return JSON.stringify({ok: false, erro: 'nenhuma credencial no quadro do Presto'});
   var box = alvo.parentElement && alvo.parentElement.parentElement;
   var nome = ((box ? box.innerText : '') || '').split('\n')[0].trim();  // antes do clique: o quadro muda
-  alvo.click();
+  _albiClique(alvo);
   return JSON.stringify({ok: true, nome: nome});
 })"""
 
@@ -328,6 +355,75 @@ JS_PRESTO_PIN = "(function(pin){var d=" + _DIALOGO + r""";
   if (campo.form) campo.form.requestSubmit ? campo.form.requestSubmit() : campo.form.submit();
   return JSON.stringify({ok: true, botao: '(Enter)'});
 })"""
+
+
+# onde está, na TELA, o link da credencial ("credencial") ou o campo do PIN ("pin"): para o clique de verdade
+JS_PRESTO_ONDE = "(function(qual, termo){var d=" + _DIALOGO + r""";
+  if (!d) return JSON.stringify({ok: false, erro: 'quadro do Presto não está na página'});
+  var el = null;
+  if (qual === 'pin') {
+    el = [].filter.call(d.querySelectorAll('input'), function(i) {
+      var r = i.getBoundingClientRect(); return r.width > 0 && r.height > 0 && i.type === 'password';
+    })[0];
+  } else {
+    var links = [].slice.call(d.querySelectorAll('a.prs-text-presto-blue'));
+    el = links.filter(function(a) {
+      var box = a.parentElement && a.parentElement.parentElement;
+      return !termo || ((box ? box.innerText : '') || '').toLowerCase().indexOf(termo.toLowerCase()) >= 0;
+    })[0] || links[0];
+  }
+  if (!el) return JSON.stringify({ok: false, erro: 'não achei ' + qual + ' no quadro'});
+  el.scrollIntoView({block: 'center'});
+  var r = el.getBoundingClientRect();
+  // a área da página começa abaixo da barra do Chrome: (outer - inner) é a altura dessa barra
+  return JSON.stringify({ok: true, x: Math.round(window.screenX + (window.outerWidth - window.innerWidth) + r.left + r.width / 2),
+                         y: Math.round(window.screenY + (window.outerHeight - window.innerHeight) + r.top + r.height / 2)});
+})"""
+
+SEM_ACESSIBILIDADE = ("O macOS não deixou o Terminal mexer no mouse/teclado. Ajustes do Sistema > Privacidade e "
+                      "Segurança > Acessibilidade: ligue o Terminal e rode de novo.")
+
+
+def presto_onde(w, t, qual, termo=""):
+    return json.loads(js(w, t, f"{JS_PRESTO_ONDE}({json.dumps(qual)}, {json.dumps(termo)})"))
+
+
+def para_frente(w, t):
+    """Põe a aba na frente (aba ativa, janela da frente, Chrome em primeiro plano) antes do clique de verdade."""
+    _osa(['on run argv', 'tell application "Google Chrome"',
+          'set w to window id ((item 1 of argv) as integer)',
+          'repeat with k from 1 to (count of tabs of w)',
+          'if (id of tab k of w) = ((item 2 of argv) as integer) then set active tab index of w to k',
+          'end repeat', 'set index of w to 1', 'activate', 'end tell', 'end run'], w, t)
+    time.sleep(0.8)
+
+
+def clicar_tela(x, y):
+    """Clique de verdade do mouse no ponto (x, y) da tela (precisa da permissão Acessibilidade para o Terminal)."""
+    script = ('ObjC.import("Cocoa");'
+              'function run(argv) { var p = {x: Number(argv[0]), y: Number(argv[1])};'
+              ' [5, 1, 2].forEach(function(tipo) {'  # mover, apertar, soltar (botão esquerdo = 0; HID = 0)
+              '  $.CGEventPost(0, $.CGEventCreateMouseEvent($(), tipo, p, 0));'
+              '  delay(0.08); }); return "ok"; }')
+    r = subprocess.run(["osascript", "-l", "JavaScript", "-e", script, str(x), str(y)],
+                       capture_output=True, text=True, timeout=20)
+    if r.returncode != 0:
+        raise ChromeMacErro(SEM_ACESSIBILIDADE if "1002" in r.stderr or "-25211" in r.stderr
+                            else (r.stderr.strip() or "o clique do mouse falhou"))
+
+
+def digitar_tela(texto, enter=True):
+    """Digita de verdade (teclado) no campo que está com o foco; Enter no fim. O texto não aparece em lugar nenhum."""
+    linhas = ['on run argv', 'tell application "System Events"',
+              'keystroke "a" using command down', 'delay 0.1', 'keystroke (item 1 of argv)']
+    if enter:
+        linhas += ['delay 0.2', 'key code 36']
+    try:
+        _osa(linhas + ['end tell', 'end run'], texto, timeout=20)
+    except ChromeMacErro as e:
+        if "1002" in str(e) or "-25211" in str(e) or "não tem permissão" in str(e) or "not allowed" in str(e):
+            raise ChromeMacErro(SEM_ACESSIBILIDADE)
+        raise
 
 
 def presto(w, t):
