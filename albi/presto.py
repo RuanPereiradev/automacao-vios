@@ -5,8 +5,10 @@ O plano do escritório (Padrão) não tem a API de robôs da Oystr; então o bot
 extensão, num perfil do Chrome só dele. Este script prepara esse perfil e "fotografa" o que a
 extensão mostra, para montar os passos do bot (entrar no PJe, buscar o processo, baixar os autos).
 
-  .venv/bin/python presto.py entrar [tribunal ou URL]  (Mac; o caminho atual)
-      No Chrome já aberto, abre o login do tribunal (tjce1, tjce2, trt7, trt7-2, jfce, trf5,
+  .venv/bin/python presto.py entrar [tribunal ou URL] [--direto]  (Mac; o caminho atual)
+      No Chrome já aberto, abre o console do Presto, entra nele (PRESTO_EMAIL/PRESTO_SENHA do
+      albi/.env, se pedir), vai em Sites, procura o tribunal na lista e clica nele: é assim que a
+      extensão faz o login (--direto pula o console e abre a URL do login). Depois, abre o login do tribunal (tjce1, tjce2, trt7, trt7-2, jfce, trf5,
       trf5-2 ou uma URL; padrão tjce1), espera o quadro "Credenciais Disponíveis" que o Presto põe
       na página, clica na credencial (PRESTO_CREDENCIAL no albi/.env, padrão a primeira) e, se o
       quadro pedir senha/PIN, preenche com PRESTO_PIN do albi/.env e confirma. Salva o que viu em
@@ -74,6 +76,17 @@ TRIBUNAIS = {
     "jfce": "https://pje.jfce.jus.br/pje/login.seam",
     "trf5": "https://pje1g.trf5.jus.br/pje/",
     "trf5-2": "https://pje2g.trf5.jus.br/pje/",
+}
+
+# nome de cada tribunal na página Sites do console do Presto (é por lá que a extensão entra)
+SITES = {
+    "tjce1": "TJCE 1º Grau - PJe",
+    "tjce2": "TJCE 2º Grau - PJe",
+    "trt7": "Pje TRT 07 1g",
+    "trt7-2": "Pje TRT 07 2g",
+    "jfce": "JFCE - PJe",
+    "trf5": "TRF5 1º Grau - PJe",
+    "trf5-2": "TRF5 2º Grau - PJe",
 }
 
 
@@ -480,7 +493,55 @@ def login(w, t, cfg, destino, prefixo=""):
     return final or ""
 
 
-def entrar(alvo="tjce1"):
+def abrir_tribunal(cfg, chave, destino, direto=False):
+    """Abre o login do tribunal do jeito que o Presto age: console do Presto > Sites > clique no site.
+    Entra no console com PRESTO_EMAIL/PRESTO_SENHA se ele pedir. Devolve (janela, aba) do tribunal.
+    direto=True (ou tribunal sem nome em SITES) abre a URL do login direto, como antes."""
+    import chrome_mac as CM
+    if direto or chave not in SITES:
+        w, t = CM.abrir_aba(TRIBUNAIS[chave])
+        return w, t
+    sites = CONSOLE.rstrip("/") + "/sites"
+    print(f"Abrindo o console do Presto (Sites) para entrar em {SITES[chave]}...")
+    w, t = CM.abrir_aba(sites)
+    CM.esperar(w, t, folga=3)
+    if _esperar(lambda: CM.console_pede_login(w, t), 6):
+        email, senha = cfg.get("PRESTO_EMAIL", ""), cfg.get("PRESTO_SENHA", "")
+        if not (email and senha):
+            raise CM.ChromeMacErro("o console do Presto pediu login, mas PRESTO_EMAIL/PRESTO_SENHA não estão no albi/.env")
+        _salvar_captura(destino, "0_console_login", CM.capturar(w, t))
+        r = CM.console_login(w, t, email, senha)
+        if not r.get("ok"):
+            raise CM.ChromeMacErro("login do console: " + r.get("erro", "?"))
+        print("Console do Presto: e-mail e senha preenchidos; confirmei em", r.get("botao"))
+        saiu = _esperar(lambda: not CM.console_pede_login(w, t), 30, passo=2)
+        if not saiu:
+            _salvar_captura(destino, "0_console_login_depois", CM.capturar(w, t))
+            raise CM.ChromeMacErro("o console do Presto continua na tela de login (senha errada ou código de 2 fatores?)")
+        if "/sites" not in CM.url(w, t):
+            CM.ir(w, t, sites)
+            CM.esperar(w, t, folga=3)
+    CM.console_site(w, t, SITES[chave])  # digita no filtro
+    achou = _esperar(lambda: CM.console_site(w, t, SITES[chave]).get("ok") and CM.console_site(w, t, SITES[chave]), 20)
+    _salvar_captura(destino, "0_console_sites", CM.capturar(w, t))
+    if not achou:
+        r = CM.console_site(w, t, SITES[chave])
+        raise CM.ChromeMacErro(f"{r.get('erro')}; parecidos: {', '.join(r.get('parecidos', [])) or 'nenhum'}")
+    antes = {a[0] for a in CM.abas(w)}
+    r = CM.console_site(w, t, SITES[chave], clicar=True)
+    print(f"Console: cliquei em {r['nome']} ({r.get('link') or r.get('dominio')})")
+    time.sleep(5)
+    novas = [a for a in CM.abas(w) if a[0] not in antes]
+    if novas:  # o console abriu o tribunal numa aba nova
+        t = novas[-1][0]
+    elif "presto.oystr" in CM.url(w, t):  # o clique não saiu do console: abre o login nesta aba
+        print("O clique não abriu o tribunal; abrindo o login do tribunal nesta aba.")
+        CM.ir(w, t, r.get("link") if (r.get("link") or "").startswith("http") else TRIBUNAIS[chave])
+    CM.esperar(w, t)
+    return w, t
+
+
+def entrar(alvo="tjce1", direto=False):
     """Entra no tribunal pelo Presto no Chrome aberto (Mac): credencial do quadro + PIN do .env."""
     import chrome_mac as CM
     if not CM.disponivel():
@@ -493,8 +554,11 @@ def entrar(alvo="tjce1"):
         return 2
     destino = LOGS / datetime.now().strftime("%Y-%m-%d_%H%M%S")
     try:
-        print(f"Abrindo {url} no Chrome aberto...")
-        w, t = CM.abrir_aba(url)
+        if alvo.lower() in TRIBUNAIS:
+            w, t = abrir_tribunal(cfg, alvo.lower(), destino, direto)
+        else:
+            print(f"Abrindo {url} no Chrome aberto...")
+            w, t = CM.abrir_aba(url)
         final = login(w, t, cfg, destino)
     except CM.ChromeMacErro as e:
         print("Parou:", e)
@@ -508,7 +572,8 @@ def main(*args):
         import presto_processos
         return presto_processos.main(*args[1:])
     if args and args[0] == "entrar":
-        return entrar(*(args[1:2] or ["tjce1"]))
+        resto = [a for a in args[1:] if a != "--direto"]
+        return entrar(*(resto[:1] or ["tjce1"]), direto="--direto" in args)
     if not args or args[0] not in ("aberto", "copiar", "preparar", "explorar"):
         print(__doc__)
         return 2

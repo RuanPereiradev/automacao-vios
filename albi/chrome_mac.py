@@ -264,3 +264,71 @@ def presto_credencial(w, t, termo=""):
 
 def presto_pin(w, t, pin):
     return json.loads(js(w, t, f"{JS_PRESTO_PIN}({json.dumps(pin)})"))
+
+
+# ---------------- console do Presto (console.presto.oystr.com.br) ----------------
+_VUE_POR = r"""
+function _albiPor(el, v) {
+  var setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  el.focus(); setter.call(el, v);
+  ['input', 'keyup', 'change'].forEach(function(n) { el.dispatchEvent(new Event(n, {bubbles: true})); });
+}
+function _albiVis(el) { var r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
+"""
+
+# {"login": bool}: a página mostra o formulário de login do console (campo de senha visível)
+JS_CONSOLE_PEDE_LOGIN = "(function(){" + _VUE_POR + r"""
+  var s = [].filter.call(document.querySelectorAll('input[type=password]'), _albiVis);
+  return JSON.stringify({login: s.length > 0, url: location.href});
+})()"""
+
+# preenche e-mail e senha do console e clica em Entrar (nunca devolve o que foi digitado)
+JS_CONSOLE_LOGIN = "(function(email, senha){" + _VUE_POR + r"""
+  var ins = [].filter.call(document.querySelectorAll('input'), _albiVis);
+  var s = ins.filter(function(i) { return i.type === 'password'; })[0];
+  var e = ins.filter(function(i) { return i.type === 'email' || /mail|usu[aá]rio|login|user/i.test((i.name || '') + ' ' + (i.id || '') + ' ' + (i.placeholder || '') + ' ' + (i.getAttribute('autocomplete') || '')); })[0]
+          || ins.filter(function(i) { return i !== s && /^(text|email|)$/i.test(i.type || ''); })[0];
+  if (!s || !e) return JSON.stringify({ok: false, erro: 'não achei os campos de e-mail e senha do console'});
+  _albiPor(e, email); _albiPor(s, senha);
+  var b = [].filter.call(document.querySelectorAll('button, input[type=submit]'), function(x) {
+    return _albiVis(x) && !x.disabled && /entrar|login|acessar|continuar|sign in/i.test(x.innerText || x.value || '');
+  })[0] || (s.form && s.form.querySelector('button[type=submit], input[type=submit]'));
+  if (b) { b.click(); return JSON.stringify({ok: true, botao: (b.innerText || b.value || '').trim()}); }
+  if (s.form) { s.form.requestSubmit ? s.form.requestSubmit() : s.form.submit(); return JSON.stringify({ok: true, botao: '(enviar)'}); }
+  return JSON.stringify({ok: false, erro: 'não achei o botão Entrar do console'});
+})"""
+
+# na página Sites: digita o nome no filtro, acha a linha do site (nome exato, sem acento/caixa) e clica no link
+JS_CONSOLE_SITE = "(function(nome, clicar){" + _VUE_POR + r"""
+  function n(t) { return (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/º|°/g, 'o')
+                    .replace(/\s+/g, ' ').trim().toLowerCase(); }
+  var filtro = [].filter.call(document.querySelectorAll('input.x-input, input[type=text]'), _albiVis)[0];
+  if (filtro && !clicar) _albiPor(filtro, nome);
+  var linhas = [].slice.call(document.querySelectorAll('tr')), alvo = null, nomes = [];
+  linhas.forEach(function(tr) {
+    var c = tr.querySelector('td[data-column="Site"]') || tr.querySelector('td');
+    var b = c && c.querySelector('.font-bold');
+    if (!b) return;
+    nomes.push(b.innerText.trim());
+    if (!alvo && n(b.innerText) === n(nome)) alvo = [tr, c, b];
+  });
+  if (!alvo) return JSON.stringify({ok: false, erro: 'o site "' + nome + '" não está na lista do console', filtro: !!filtro,
+                                    parecidos: nomes.filter(function(x) { return n(x).indexOf(n(nome).split(' ')[0]) >= 0; }).slice(0, 10)});
+  var a = alvo[1].querySelector('a');
+  var info = {ok: true, nome: alvo[2].innerText.trim(), link: a ? a.getAttribute('href') : '',
+              dominio: a ? a.innerText.trim() : ((alvo[1].innerText || '').split('\n').pop() || '').trim()};
+  if (clicar) { (a || alvo[2]).click(); info.clicou = a ? 'link' : 'nome'; }
+  return JSON.stringify(info);
+})"""
+
+
+def console_pede_login(w, t):
+    return json.loads(js(w, t, JS_CONSOLE_PEDE_LOGIN)).get("login")
+
+
+def console_login(w, t, email, senha):
+    return json.loads(js(w, t, f"{JS_CONSOLE_LOGIN}({json.dumps(email)}, {json.dumps(senha)})"))
+
+
+def console_site(w, t, nome, clicar=False):
+    return json.loads(js(w, t, f"{JS_CONSOLE_SITE}({json.dumps(nome)}, {'true' if clicar else 'false'})"))

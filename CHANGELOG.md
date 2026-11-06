@@ -12,6 +12,23 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Albi/Presto: tribunal aberto pelo console do Presto (Sites) (06/11/2026)
+- Pedido do usuário: o fluxo é achar o tribunal, abrir o console do Presto
+  (`console.presto.oystr.com.br`), ir em **Sites** e abrir o tribunal por lá, porque é assim que a
+  extensão faz o login. Novo `presto.abrir_tribunal`, usado pelo `entrar` e pelo `processos`: abre
+  `/sites`; se o console pedir login, preenche `PRESTO_EMAIL` e `PRESTO_SENHA` do `albi/.env` e clica em
+  Entrar (avisa se continuar na tela de login, por exemplo com código de 2 fatores); digita o nome do
+  tribunal no filtro "Site", acha a linha pelo nome (`SITES` no `presto.py`: "TJCE 1º Grau - PJe",
+  "JFCE - PJe", "Pje TRT 07 1g"...) e clica no link. Usa a aba nova que o console abrir; se o clique
+  não sair do console (site sem link, como o TRT7 1º grau), abre o login do tribunal na mesma aba.
+  Depois segue como antes: quadro do Presto, credencial, PIN e consulta do processo.
+- `--direto` (no `entrar` e no `processos`) pula o console e abre a URL do login como antes.
+- Novos `PRESTO_EMAIL` e `PRESTO_SENHA` no `.env.example` (vazios). Nunca são impressos nem salvos:
+  conferido que a senha não aparece em nenhuma captura.
+- Testado no Linux com páginas que imitam o console (login e a tabela de Sites com o HTML real) e o
+  PJe: entrou no console, achou o TJCE 1º grau, clicou, entrou pelo quadro com o PIN e procurou os
+  processos.
+
 ### Corrigido — Albi/Presto: `processos` pega o último relatório que tem processos (06/11/2026)
 - No primeiro uso no Mac, o `presto.py processos` pegou o relatório mais novo (05/11, sem nenhum
   processo) e parou com "não tem processos". Agora ele pula os relatórios sem processos e pega o mais

@@ -8,7 +8,8 @@
 2. Pelo número CNJ de cada processo (J.TR e a origem) e pela instância do Sonar, diz o tribunal:
    TJCE (8.06), TRT7 (5.07), JFCE (4.05, origem 81xx) e TRF5 (4.05, o resto). Os outros tribunais
    ainda não têm login no Presto aqui e ficam listados como "fora".
-3. Para cada tribunal: abre o login no Chrome aberto, entra pelo quadro do Presto (presto.login)
+3. Para cada tribunal: abre o console do Presto > Sites > clica no tribunal (presto.abrir_tribunal;
+   --direto pula o console), entra pelo quadro do Presto (presto.login)
    e, na mesma aba, procura cada processo na consulta do tribunal (PJe: tela "Consultar processos";
    TRT7: detalhe do processo). Salva HTML, texto, elementos e print de cada um e escreve
    resumo.txt / resumo.json em <pasta do resultado>/presto/<data_hora>/.
@@ -265,7 +266,7 @@ def consultar(CM, w, t, chave, proc, destino, cfg):
     return reg
 
 
-def rodar(pasta, processos, so=None, maximo=None):
+def rodar(pasta, processos, so=None, maximo=None, direto=False):
     import chrome_mac as CM
     import presto
     if not CM.disponivel():
@@ -286,10 +287,15 @@ def rodar(pasta, processos, so=None, maximo=None):
             if maximo is not None and contador >= maximo:
                 break
             print(f"\n== {NOMES[chave]}: {len(procs)} processo(s) ==")
-            w, t = CM.abrir_aba(presto.TRIBUNAIS[chave])
             pasta_trib = destino / chave
             pasta_trib.mkdir(exist_ok=True)
-            if not presto.login(w, t, cfg, pasta_trib, prefixo="login_"):
+            try:
+                w, t = presto.abrir_tribunal(cfg, chave, pasta_trib, direto)
+                entrou = presto.login(w, t, cfg, pasta_trib, prefixo="login_")
+            except CM.ChromeMacErro as e:
+                print("  não consegui abrir o tribunal pelo Presto:", e)
+                entrou = ""
+            if not entrou:
                 for p in procs:
                     resumo.append({"numero": p["numero"], "tribunal": NOMES[chave], "pessoas": p["pessoas"],
                                    "empresas": p["empresas"], "resultado": "não entrou",
@@ -357,8 +363,8 @@ def main(*args):
     if "--listar" in args:
         return listar()
     so = maximo = None
-    so_conferir = "--conferir" in args
-    args = [a for a in args if a != "--conferir"]
+    so_conferir, direto = "--conferir" in args, "--direto" in args
+    args = [a for a in args if a not in ("--conferir", "--direto")]
     if "--tribunal" in args:
         i = args.index("--tribunal")
         so = (args[i + 1:i + 2] or [""])[0].lower()
@@ -391,7 +397,7 @@ def main(*args):
         conferir(pasta, processos)
         return 0
     print(f"Relatório: {pasta} ({len(processos)} processo(s)). Deixe na frente a janela do Chrome do escritório.")
-    return rodar(pasta, processos, so, maximo)
+    return rodar(pasta, processos, so, maximo, direto)
 
 
 if __name__ == "__main__":

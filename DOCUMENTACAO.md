@@ -872,6 +872,10 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   trt7, trt7-2, jfce, trf5, trf5-2, ou a URL de login). O bot abre o login no Chrome aberto, clica na
   credencial no quadro "Credenciais Disponíveis" que o Presto põe na página, preenche o PIN, confirma e
   diz se entrou. O PIN não aparece no Terminal nem nas capturas.
+- **Tribunal aberto pelo console do Presto:** o `entrar` e o `processos` abrem o tribunal como a
+  atendente faz: console do Presto > **Sites** > procura o tribunal na lista > clica. Se o console
+  pedir login, o robô usa `PRESTO_EMAIL` e `PRESTO_SENHA` do `albi/.env` (preencher no Mac; nunca vão
+  para o git nem para a documentação). `--direto` pula o console e abre a URL de login como antes.
 - **Procurar nos tribunais os processos do último relatório:** `cd albi && .venv/bin/python presto.py
   processos --conferir` mostra, sem abrir o Chrome, qual relatório ele pegou (o `processos.csv` mais novo
   que tem processos, em `albi/saida/` ou em `saida/albi/`, onde a página `/albi` guarda; `--listar` mostra todos) e em qual tribunal está cada

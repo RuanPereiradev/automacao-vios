@@ -130,6 +130,10 @@ tem a API de robôs da Oystr. Primeiro passo, no computador onde o bot vai rodar
 .venv/bin/python presto.py explorar https://pje.trt7.jus.br/primeirograu/login.seam
 ```
 
+O `entrar` e o `processos` abrem cada tribunal pelo console do Presto: página **Sites**, procura o
+tribunal na lista e clica (é assim que a extensão faz o login). Se o console pedir login, usam
+`PRESTO_EMAIL` e `PRESTO_SENHA` do `albi/.env`. `--direto` pula o console.
+
 O `processos` lê o `processos.csv` do último relatório (ou `presto.py processos <pasta>`), descobre o
 tribunal pelo número CNJ (TJCE, TRT7, JFCE e TRF5; os outros ficam como "fora"), entra em cada um pelo
 Presto e procura cada processo na consulta do tribunal (`--tribunal tjce1` só um; `--max N` só os N
