@@ -13,18 +13,26 @@ Formato do horário: "<dias> <HH:MM>", e mais de um separado por ";". Dias: seg,
 sab, dom, com faixa ("seg-sex") ou lista ("seg,qua,sex"). Ex.: "seg-sex 07:30".
 """
 import json
+import logging
 import os
 import re
+import subprocess
+import threading
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from dotenv import dotenv_values
 
+log = logging.getLogger("ultron")
 ENV = ".env"
 PASTA_PADRAO = Path(__file__).resolve().parent.parent / "orelha"
 HORARIO_PADRAO = "seg-sex 07:30"
 PARADOS_PADRAO = "sab 08:00"
-ARQUIVOS = {"relatorio.html": "text/html", "relatorio.pdf": "application/pdf"}
+ARQUIVOS = {"relatorio.html": "text/html", "relatorio.pdf": "application/pdf",
+            "painel-semanal.html": "text/html", "painel-semanal.pdf": "application/pdf"}
+PAINEL_ARQUIVO = "painel-rodando.json"  # orelha/saida/: quem está gerando o painel agora
+PAINEL_LOG = "painel_sam.log"
+_trava = threading.Lock()
 DIAS = ["seg", "ter", "qua", "qui", "sex", "sab", "dom"]
 NOMES = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
 ATRASO = timedelta(minutes=45)  # depois disto, o relatório da hora marcada já devia ter saído
@@ -254,3 +262,134 @@ def status(pasta, agora=None):
         fala += f" Tenho {info['total']} relatório(s) guardado(s) no arquivo."
     info["aviso"] = fala
     return info
+
+
+# --- painel semanal (botão da página /orelha) -----------------------------------------------------
+# O painel (peças + audiências, PDF no papel timbrado) não roda por agendamento: a colaboradora aperta o
+# botão quando quer. O Sam abre o Orelha com `--funcoes painel` (mesma .venv e .env do Orelha, só leitura
+# do VIOS) e a página mostra quando termina. Só funciona se o Orelha estiver neste mesmo computador.
+
+class PainelErro(Exception):
+    pass
+
+
+def _python(pasta):
+    for caminho in (Path(pasta) / ".venv" / "bin" / "python", Path(pasta) / ".venv" / "Scripts" / "python.exe"):
+        if caminho.exists():
+            return caminho
+    return Path(pasta) / ".venv" / "bin" / "python"
+
+
+def _painel_pronto(pasta):
+    return _python(pasta).exists() and (Path(pasta) / "main.py").exists() and (Path(pasta) / ".env").exists()
+
+
+def _vivo(pid):
+    """O processo existe e é o main.py do Orelha (não um pid reaproveitado)."""
+    if pid <= 0:
+        return False
+    if os.name == "nt":  # no Windows os.kill(pid, 0) ENCERRA o processo: pergunta ao tasklist
+        try:
+            saida = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True, text=True,
+                                   timeout=10).stdout
+        except Exception:
+            return True
+        return str(pid) in saida
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    try:
+        cmd = subprocess.run(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True,
+                             timeout=5).stdout
+    except Exception:
+        return True
+    return "main.py" in cmd or not cmd.strip()
+
+
+def _painel_atual(pasta):
+    try:
+        return json.loads((pasta_saida(pasta) / PAINEL_ARQUIVO).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def paineis(pasta):
+    """Painéis semanais já gerados, do mais novo para o mais antigo: [{"pasta", "data", "simulado",
+    "html", "pdf", "gerado_em"}]."""
+    base = pasta_saida(pasta)
+    if not base.is_dir():
+        return []
+    saida = []
+    for item in base.iterdir():
+        m = _PASTA_DIA.match(item.name)
+        if not m or not item.is_dir() or not (item / "painel-semanal.html").exists():
+            continue
+        try:
+            dia = date.fromisoformat(m.group(2))
+        except ValueError:
+            continue
+        html = item / "painel-semanal.html"
+        saida.append({"pasta": item.name, "data": dia, "simulado": bool(m.group(1)), "html": True,
+                      "pdf": (item / "painel-semanal.pdf").exists(),
+                      "gerado_em": datetime.fromtimestamp(html.stat().st_mtime).isoformat(timespec="seconds")})
+    return sorted(saida, key=lambda r: (r["data"], r["gerado_em"]), reverse=True)
+
+
+def painel_status(pasta):
+    """{"configurado", "rodando", "inicio", "ultimo"} (ultimo = o painel real mais novo ou None)."""
+    info = {"configurado": configurado(pasta) and _painel_pronto(pasta), "rodando": False, "inicio": None,
+            "ultimo": None}
+    atual = _painel_atual(pasta)
+    if atual and _vivo(int(atual.get("pid", 0))):
+        info.update(rodando=True, inicio=atual.get("inicio"))
+    reais = [p for p in paineis(pasta) if not p["simulado"]]
+    if reais:
+        u = reais[0]
+        info["ultimo"] = {"pasta": u["pasta"], "data": u["data"].isoformat(), "gerado_em": u["gerado_em"], "pdf": u["pdf"]}
+    return info
+
+
+def rodar_painel(pasta):
+    """Abre o Orelha em segundo plano só com o painel semanal. Devolve o status; levanta PainelErro."""
+    if not configurado(pasta):
+        raise PainelErro("o Orelha não está neste servidor (ORELHA_PASTA)")
+    if not _painel_pronto(pasta):
+        raise PainelErro("o Orelha não está instalado aqui (falta .venv ou .env em orelha/)")
+    pasta = Path(pasta)
+    with _trava:
+        if painel_status(pasta)["rodando"]:
+            raise PainelErro("o painel já está sendo gerado; espere terminar")
+        saida = pasta_saida(pasta)
+        (pasta / "logs").mkdir(exist_ok=True)
+        saida.mkdir(parents=True, exist_ok=True)
+        ambiente = {k: os.environ[k] for k in ("PATH", "HOME", "USER", "LANG", "LC_ALL", "SYSTEMROOT", "TEMP", "TMP",
+                                               "USERPROFILE", "LOCALAPPDATA") if k in os.environ}
+        ambiente["PYTHONUTF8"] = "1"
+        inicio = datetime.now().isoformat(timespec="seconds")
+        arq_log = open(pasta / "logs" / PAINEL_LOG, "a", encoding="utf-8")
+        arq_log.write(f"\n===== {inicio} · painel semanal (pelo botão) =====\n")
+        arq_log.flush()
+        try:
+            proc = subprocess.Popen([str(_python(pasta)), "main.py", "--funcoes", "painel"], cwd=pasta, env=ambiente,
+                                    stdin=subprocess.DEVNULL, stdout=arq_log, stderr=subprocess.STDOUT,
+                                    start_new_session=True)
+        except OSError as e:
+            raise PainelErro(f"não consegui abrir o Orelha: {e}")
+        finally:
+            arq_log.close()
+        arquivo = saida / PAINEL_ARQUIVO
+        arquivo.write_text(json.dumps({"pid": proc.pid, "inicio": inicio}), encoding="utf-8")
+        log.info("Painel semanal do Orelha iniciado pelo botão, pid %d", proc.pid)
+
+        def esperar():
+            codigo = proc.wait()  # recolhe o processo (sem isso ele ficaria "zumbi" e pareceria vivo)
+            log.info("Painel semanal do Orelha terminou (código %s)", codigo)
+            try:
+                if (_painel_atual(pasta) or {}).get("pid") == proc.pid:
+                    arquivo.unlink()
+            except OSError:
+                pass
+
+        threading.Thread(target=esperar, daemon=True).start()
+    return painel_status(pasta)

@@ -621,6 +621,14 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `python3 doc/vila/ligar_orelha.py bot/vila/vila.html`, `ligar_jarvis.py`, `ligar_vila05_parque.py`
   (o parque, ver Passo 32) e, por último, `ligar_orelha_agenda.py` (horário e Arquivo, ver Passo 35).
 
+### Painel semanal do Orelha (PDF no papel timbrado)
+- Botão **Gerar painel semanal** na página `/orelha` do Sam (ou `./rodar.sh --funcoes painel` dentro de
+  `orelha/`), sem agendamento, gera `saida/<data>/painel-semanal.pdf`:
+  resumo executivo, taxa de resolução, carga por advogado, agenda de audiências e tarefas não feitas,
+  no papel timbrado do escritório. Não entra no relatório do dia. A 1ª edição não tem semana anterior; a
+  comparação começa na 2ª. Detalhes e variáveis `ORELHA_PAINEL_*`: `orelha/README.md` e
+  `orelha/.env.example`.
+
 ### Passo 28 — Albi: .txt de CPF/CNPJ, página `/albi` e Vila 03
 - O Albi recebe um `.txt` **organizado por empresa**: a linha `EMPRESA:` e,
   embaixo, uma pessoa por linha, `CPF ; nome` (modelo em `albi/modelo_pedidos.txt`,

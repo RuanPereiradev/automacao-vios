@@ -75,6 +75,34 @@
       Quem roda o Orelha é o agendamento; esta página só avisa.</p>
   </div>
   <div class="cartao">
+    <h1>Painel semanal</h1>
+    <p class="suave">Peças e audiências da equipe, em PDF no papel timbrado do escritório. Aperte quando quiser o
+      relatório da semana; leva alguns minutos (o Orelha só lê o VIOS, nada é alterado lá).</p>
+    <p>
+      <button class="botao primario" id="painel-botao" type="button" {% if not painel.configurado %}disabled{% endif %}>Gerar painel semanal</button>
+      <span id="painel-msg" class="suave" style="margin-left: 8px"></span>
+    </p>
+    {% if not painel.configurado %}<p class="aviso">O Orelha não está instalado neste servidor (falta <code>.venv</code> ou <code>.env</code> em <code>orelha/</code>).</p>{% endif %}
+    {% if paineis %}
+      <div class="tabela"><table>
+        <tr><th>Gerado em</th><th></th></tr>
+        {% for p in paineis %}
+        <tr>
+          <td><b>{{ p.data.strftime("%d/%m/%Y") }}</b> <span class="suave">{{ dias[p.data.weekday()] }} · {{ p.gerado_em[11:16] }}</span></td>
+          <td class="acoes">
+            {% if p.pdf %}<a class="botao primario" href="{{ url_for('orelha_relatorio', dia=p.pasta, nome='painel-semanal.pdf') }}" target="_blank" rel="noopener">Abrir PDF</a>{% endif %}
+            <a class="botao secundario" href="{{ url_for('orelha_relatorio', dia=p.pasta, nome='painel-semanal.html') }}" target="_blank" rel="noopener">HTML</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </table></div>
+    {% else %}
+      <p class="suave">Nenhum painel gerado ainda.</p>
+    {% endif %}
+    <p class="suave">A 1ª edição não tem semana anterior para comparar: a taxa de resolução e as "não feitas"
+      aparecem a partir do 2º painel. Gerar mais de uma vez no mesmo dia só atualiza o painel do dia.</p>
+  </div>
+  <div class="cartao">
     <h1>Relatórios guardados</h1>
     {% if reais %}
       <p class="suave">{{ reais | length }} relatório(s), do mais novo para o mais antigo. Ficam em
@@ -100,5 +128,37 @@
   {% endif %}
   {% endif %}
 </main>
+<script>
+(function () {
+  const botao = document.getElementById('painel-botao');
+  if (!botao) return;
+  const msg = document.getElementById('painel-msg');
+  let timer = null;
+  function parar() { clearInterval(timer); timer = null; }
+  async function consultar() {
+    try {
+      const r = await fetch('{{ url_for("orelha_painel_status") }}', { credentials: 'same-origin' });
+      const s = await r.json();
+      if (s.rodando) { botao.disabled = true; msg.textContent = 'Gerando o painel… (alguns minutos)'; return; }
+      parar();
+      botao.disabled = false;
+      if (s.ultimo) { msg.textContent = 'Pronto. Atualizando a página…'; setTimeout(() => location.reload(), 800); }
+      else { msg.textContent = 'O Orelha terminou sem gerar o painel (veja orelha/logs/painel_sam.log).'; }
+    } catch (e) { msg.textContent = 'Não consegui consultar o andamento.'; }
+  }
+  function acompanhar() { if (!timer) { timer = setInterval(consultar, 4000); consultar(); } }
+  botao.addEventListener('click', async () => {
+    botao.disabled = true; msg.textContent = 'Iniciando…';
+    try {
+      const r = await fetch('{{ url_for("orelha_painel_rodar") }}', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const s = await r.json();
+      if (!r.ok && !s.rodando) { botao.disabled = false; msg.textContent = s.erro || 'Não foi possível iniciar.'; return; }
+      acompanhar();
+    } catch (e) { botao.disabled = false; msg.textContent = 'Não consegui falar com o servidor.'; }
+  });
+  {% if painel.rodando %}botao.disabled = true; acompanhar();{% endif %}
+})();
+</script>
 </body>
 </html>

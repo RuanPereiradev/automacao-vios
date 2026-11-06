@@ -24,6 +24,35 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   conversor do horário aceita faixa, lista, domingo e faixa que vira a semana, e recusa dia ou hora
   inválidos. Falta testar no Mac de verdade.
 
+### Adicionado — Orelha: botão "Gerar painel semanal" na página `/orelha` (06/11/2026)
+- Sem dia fixo: a colaboradora aperta o botão quando quer o relatório semanal. `POST /orelha/painel/rodar`
+  (`bot/envio_web.py`, `bot/orelha.py: rodar_painel`) abre `orelha/main.py --funcoes painel` em segundo plano
+  (uma execução por vez, mesma checagem de origem das outras páginas), `GET /orelha/painel/status` informa o
+  andamento e a página lista os painéis gerados com "Abrir PDF" e "HTML". Log em `orelha/logs/painel_sam.log`.
+- `bot/orelha.py` serve também `painel-semanal.pdf/.html` (lista fechada de nomes) e, no Windows, confere se
+  o processo vive pelo `tasklist` (lá `os.kill(pid, 0)` encerraria o processo).
+- As regras do painel não mudaram; só a forma de disparar (botão, em vez de agendamento).
+
+### Adicionado — Orelha: painel semanal de peças e audiências em PDF no papel timbrado (06/11/2026)
+- Nova função `painel` (`orelha/funcoes/painel.py`; `./rodar.sh --funcoes painel`, semanal): gera
+  `saida/<data>/painel-semanal.pdf` e `.html` seguindo o modelo `2026_PAINEL_SEMANAL`: resumo executivo,
+  taxa de resolução semanal, carga por advogado, agenda de audiências dos próximos 7 dias e lista de
+  tarefas com a situação em cores (VENCIDA, URGENTE, ATENÇÃO, PRÓXIMA, NO PRAZO).
+- Papel timbrado do escritório (`orelha/nucleo/timbrado.py` + `orelha/assets/timbrado/`, imagens
+  extraídas do `.docx` do timbrado): A4, marca d'água, faixa vinho e rodapé em todas as páginas, com as
+  margens do modelo. Desenho em `orelha/nucleo/painel.py`. O PDF sai pelo mesmo Chrome do relatório do dia.
+- Comparação entre semanas por registro (`historico/painel-<data>.json`): não feitas, novas e taxa de
+  resolução. A 1ª edição não tem semana anterior e avisa. Leitura incompleta não grava o registro.
+- Configuração opcional `ORELHA_PAINEL_*` no `orelha/.env.example` (termos de peça e audiência, dias da
+  fila e da agenda, limiar de carga alta, faixas da taxa).
+- Testes em `orelha/tests/test_painel.py` e fixtures fictícias em `orelha/fixtures/painel/`.
+
+### Alterado — Orelha: funções com documento próprio ficam fora do relatório do dia (06/11/2026)
+- `main.py`: função com `RELATORIO_DIARIO = False` (o painel) não entra no `relatorio.html` e, rodando
+  sozinha, não gera nem sobrescreve o relatório do dia. `Contexto` ganhou `pdf` (valor de `--sem-pdf`).
+- `funcoes/prazos.py`: `TarefaLista` ganhou `processo` (coluna `nro_proc` da lista de tarefas); o
+  relatório do dia não muda.
+
 ### Alterado — Vila 02 vira a batalha na ponte do Bumblebee, vista de cima (05/11/2026)
 - Cenário do `doc/vila/zangao-transforma_att.html`: ponte sobre a água (ondas e reflexo do fogo),
   pista com faixas tracejadas e a dupla amarela, guard-rail e quatro pilares com luz vermelha.

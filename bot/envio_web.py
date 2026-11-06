@@ -658,7 +658,9 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         todos = orelha.relatorios(pasta_orelha)
         return render_template("orelha.html", info=orelha.status(pasta_orelha), pasta=pasta_orelha,
                                reais=[r for r in todos if not r["simulado"]],
-                               simulados=[r for r in todos if r["simulado"]])
+                               simulados=[r for r in todos if r["simulado"]],
+                               painel=orelha.painel_status(pasta_orelha),
+                               paineis=[p for p in orelha.paineis(pasta_orelha) if not p["simulado"]])
 
     @app.route("/orelha/relatorio/<dia>/<nome>")
     def orelha_relatorio(dia, nome):
@@ -667,6 +669,23 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         if nome.endswith(".csv"):
             return send_file(arquivo, as_attachment=True, download_name=nome)
         return send_file(arquivo, mimetype=orelha.ARQUIVOS[nome])
+
+    @app.route("/orelha/painel/rodar", methods=["POST"])
+    def orelha_painel_rodar():
+        """Botão "Gerar painel semanal": abre o Orelha em segundo plano só com o painel (PDF no papel timbrado)."""
+        if not _mesma_origem():
+            return jsonify(erro="pedido recusado"), 403
+        try:
+            info = orelha.rodar_painel(pasta_orelha)
+        except orelha.PainelErro as e:
+            return jsonify(erro=str(e), **orelha.painel_status(pasta_orelha)), 409
+        log.info("Painel semanal do Orelha disparado por %s", request.remote_addr)
+        return jsonify(info)
+
+    @app.route("/orelha/painel/status")
+    def orelha_painel_status():
+        """Se o painel está sendo gerado e qual é o último pronto (a página consulta enquanto espera)."""
+        return jsonify(orelha.painel_status(pasta_orelha))
 
     @app.route("/orelha/status")
     def orelha_status():
