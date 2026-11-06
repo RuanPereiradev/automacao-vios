@@ -27,6 +27,20 @@ def secoes():
 
 
 class TestRelatorio(unittest.TestCase):
+    def test_grupos_que_abrem_e_quadro(self):
+        s = Secao("prazos", "Tarefas atrasadas", "2", [Item("A", "x", "grave", grupo="Ontem"), Item("B", "", "atencao", grupo="Ontem"),
+                                                       Item("C", "", "atencao", grupo="Há 3 dias")],
+                  {}, recolher=True, quadro={"titulo": "Por responsável", "colunas": ["Responsável", "Atrasadas"],
+                                             "linhas": [["Pessoa <A>", 2]]})
+        html = relatorio.montar_html([s], HOJE)
+        self.assertEqual(html.count('<details class="grupo">'), 3)  # dois grupos e o quadro, todos fechados
+        self.assertIn('<span class="g-nome">Ontem</span><span class="g-qtd">2 tarefas</span>', html)
+        self.assertIn('<span class="chip grave">1 urgente</span>', html)
+        self.assertIn('style="width:100%"', html)
+        self.assertIn("<td>Pessoa &lt;A&gt;</td><td class=n>2</td>", html)
+        self.assertNotIn("<h3>Ontem</h3>", html)
+        self.assertNotIn("<script", html)
+
     def setUp(self):
         self.pasta = Path(tempfile.mkdtemp()) / "2026-11-04"
 

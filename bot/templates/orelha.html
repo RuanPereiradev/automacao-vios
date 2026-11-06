@@ -10,6 +10,7 @@
     <td class="acoes">
       <a class="botao primario" href="{{ url_for('orelha_relatorio', dia=r.pasta, nome='relatorio.html') }}" target="_blank" rel="noopener">Abrir</a>
       {% if r.pdf %}<a class="botao secundario" href="{{ url_for('orelha_relatorio', dia=r.pasta, nome='relatorio.pdf') }}" target="_blank" rel="noopener">PDF</a>{% endif %}
+      {% if r.semana %}<a class="botao secundario" href="{{ url_for('orelha_relatorio', dia=r.pasta, nome='semana.html') }}" target="_blank" rel="noopener">Semana</a>{% endif %}
       {% if r.planilhas %}<a class="botao secundario" href="{{ url_for('orelha_relatorio', dia=r.pasta, nome=r.planilhas) }}">Planilhas (.csv)</a>{% endif %}
     </td>
   </tr>
@@ -40,6 +41,10 @@
   .atraso { padding: 10px 14px; border-radius: 10px; background: rgba(255, 123, 114, .1); border: 1px solid rgba(255, 123, 114, .4); color: #ffb3ad; }
   .tabela { overflow-x: auto; }
   details summary { cursor: pointer; color: var(--suave); }
+  .abas { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 4px 0 12px; }
+  .abas .botao[aria-selected="true"] { background: var(--red); color: #1b130b; border-color: var(--red); }
+  .abas .nova { margin-left: auto; }
+  iframe.relatorio { width: 100%; height: 640px; border: 0; border-radius: 12px; background: #f4f7f6; display: block; }
 </style>
 </head>
 <body>
@@ -74,6 +79,21 @@
       <code>orelha/.env</code> e tem que ser o mesmo do agendamento (cron ou launchd, ver <code>orelha/README.md</code>).
       Quem roda o Orelha é o agendamento; esta página só avisa.</p>
   </div>
+  {% if reais %}{% set ultimo = reais[0] %}
+  <div class="cartao">
+    <h1>Último relatório · {{ ultimo.data.strftime("%d/%m/%Y") }} <span class="suave">{{ dias[ultimo.data.weekday()] }}</span></h1>
+    <div class="abas" role="tablist">
+      <button class="botao secundario" type="button" role="tab" aria-selected="true"
+              data-src="{{ url_for('orelha_relatorio', dia=ultimo.pasta, nome='relatorio.html') }}">Relatório do dia</button>
+      {% if ultimo.semana %}<button class="botao secundario" type="button" role="tab" aria-selected="false"
+              data-src="{{ url_for('orelha_relatorio', dia=ultimo.pasta, nome='semana.html') }}">Atrasadas da semana</button>{% endif %}
+      <a class="botao secundario nova" id="aba-nova" href="{{ url_for('orelha_relatorio', dia=ultimo.pasta, nome='relatorio.html') }}" target="_blank" rel="noopener">Abrir em outra aba</a>
+    </div>
+    <iframe class="relatorio" id="relatorio-frame" title="Relatório do Orelha"
+            src="{{ url_for('orelha_relatorio', dia=ultimo.pasta, nome='relatorio.html') }}"></iframe>
+    <p class="suave">Clique em cada grupo para abrir as tarefas. "Abrir no VIOS" abre a tarefa em outra aba.</p>
+  </div>
+  {% endif %}
   <div class="cartao">
     <h1>Painel semanal</h1>
     <p class="suave">Peças e audiências da equipe, em PDF no papel timbrado do escritório. Aperte quando quiser o
@@ -129,6 +149,33 @@
   {% endif %}
 </main>
 <script>
+(function () {
+  // o relatório dentro da página: abas (dia / semana), altura acompanhando o que abre e links do VIOS em outra aba
+  const frame = document.getElementById('relatorio-frame');
+  if (!frame) return;
+  const nova = document.getElementById('aba-nova');
+  function ajustar() {
+    // mede o conteúdo (body), não a janela: assim a altura também diminui quando um grupo fecha
+    try { frame.style.height = (Math.ceil(frame.contentDocument.body.getBoundingClientRect().height) + 8) + 'px'; } catch (e) {}
+  }
+  function preparar() {
+    try {
+      const doc = frame.contentDocument;
+      if (!doc || doc.__orelha) return;
+      doc.__orelha = true;
+      doc.querySelectorAll('a[href^="http"]').forEach(a => { a.target = '_blank'; a.rel = 'noopener'; });
+      doc.addEventListener('toggle', ajustar, true);
+    } catch (e) {}
+    ajustar();
+  }
+  frame.addEventListener('load', preparar);
+  // o relatório pode terminar de carregar antes deste script: prepara já se estiver pronto
+  try { if (frame.contentDocument && frame.contentDocument.readyState === 'complete' && frame.contentDocument.body) preparar(); } catch (e) {}
+  document.querySelectorAll('.abas [role="tab"]').forEach(aba => aba.addEventListener('click', () => {
+    document.querySelectorAll('.abas [role="tab"]').forEach(b => b.setAttribute('aria-selected', b === aba ? 'true' : 'false'));
+    frame.src = aba.dataset.src; nova.href = aba.dataset.src;
+  }));
+})();
 (function () {
   const botao = document.getElementById('painel-botao');
   if (!botao) return;

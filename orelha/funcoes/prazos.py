@@ -6,7 +6,11 @@
     "atencao" até ORELHA_PRAZOS_DIAS_GRAVE dias (padrão 7) e "grave" com mais que isso.
   (Na 1ª rodada real, 04/11/2026, "limite vencida ou hoje" virou quase tudo grave: o limite costuma
   ser 1 dia depois da conclusão; e as que vencem hoje entravam como atrasadas.)
-Grupo = responsável. numeros = {"atrasadas", "graves", "por_responsavel", ...}. Tendência: grava
+Grupo = o dia do vencimento (data para conclusão; sem ela, a limite): cada dia da última semana num
+grupo ("Quinta-feira, 05/11 · ontem"), depois de 8 a 35 dias atrás por semana, depois por mês e por ano.
+No relatório os grupos vêm fechados (clica e abre). A contagem por responsável vai no quadro do fim da
+seção. Também gera semana.html (nucleo/semana.py): a semana dia a dia, com a mesma leitura.
+numeros = {"atrasadas", "graves", "por_responsavel", ...}. Tendência: grava
 historico/prazos-<AAAA-MM-DD>.json com as contagens e compara com o registro de 7 dias antes.
 
 Leitura padrão (ORELHA_PRAZOS_FONTE=lista), vista ao vivo em 04/11/2026: a LISTA DE TAREFAS do VIOS
@@ -39,7 +43,7 @@ from datetime import date, timedelta
 from urllib.parse import unquote, urljoin
 
 from funcoes import agenda
-from nucleo import simulado, vios
+from nucleo import semana, simulado, vios
 from nucleo.modelos import Item, Secao
 
 TITULO = "Tarefas atrasadas da equipe"
@@ -102,6 +106,29 @@ def responsavel_principal(texto):
 
 VENCE_HOJE = "Vencem hoje"
 DIAS_GRAVE = 7
+DIAS_SEMANA = ("Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo")
+MESES = ("janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro",
+         "novembro", "dezembro")
+
+
+def referencia(ev):
+    """O dia em que a tarefa venceu: a data para conclusão; sem ela, a limite."""
+    return ev.conclusao or ev.limite
+
+
+def grupo_do_dia(ref, hoje):
+    """(ordem, rótulo) do grupo de uma atrasada pelo dia do vencimento, do mais recente para o mais antigo:
+    cada dia até 7 dias atrás; de 8 a 35 dias, uma faixa de 7 dias; depois o mês (até 12 meses) e o ano."""
+    d = (hoje - ref).days
+    if d <= 7:
+        return (0, d), f"{DIAS_SEMANA[ref.weekday()]}, {ref:%d/%m}" + (" · ontem" if d == 1 else f" · há {d} dias")
+    if d <= 35:
+        k = (d - 8) // 7
+        mais_novo, mais_velho = hoje - timedelta(days=8 + 7 * k), hoje - timedelta(days=14 + 7 * k)
+        return (1, k), f"De {mais_velho:%d/%m} a {mais_novo:%d/%m} · há {8 + 7 * k} a {14 + 7 * k} dias"
+    if (hoje.year * 12 + hoje.month) - (ref.year * 12 + ref.month) < 12:
+        return (2, -(ref.year * 12 + ref.month)), f"{MESES[ref.month - 1].capitalize()} de {ref.year}"
+    return (3, -ref.year), f"Ano de {ref.year}"
 
 
 def classificar(ev, hoje, dias_grave=DIAS_GRAVE):
@@ -139,10 +166,7 @@ def placar(tarefas, hoje, dias_grave=DIAS_GRAVE):
                           + (f" (venceu há {_dias(d)})" if d > 0 else " (hoje)" if d == 0 else ""))
         else:
             partes.append("data limite não lida")
-        if situacao == "hoje":
-            partes.insert(0, f"responsável: {ev.responsavel or SEM_RESPONSAVEL}")
-        elif ev.responsavel and ev.responsavel != dono:
-            partes.append(f"responsáveis: {ev.responsavel}")
+        partes.insert(0, f"responsável: {ev.responsavel or SEM_RESPONSAVEL}")
         if ev.tipo and agenda.dobrar(ev.tipo) not in agenda.dobrar(ev.titulo):
             partes.append(ev.tipo)
         if getattr(ev, "etiqueta", ""):
@@ -151,12 +175,13 @@ def placar(tarefas, hoje, dias_grave=DIAS_GRAVE):
         if situacao == "hoje":
             hoje_itens.append((agenda.dobrar(dono), agenda.dobrar(ev.titulo),
                                Item(titulo=ev.titulo, detalhe=" · ".join(partes), nivel="info", link=link,
-                                    grupo=VENCE_HOJE)))
+                                    grupo=VENCE_HOJE, dia=hoje)))
             continue
         grave = atraso > dias_grave
+        ordem, rotulo = grupo_do_dia(referencia(ev), hoje)
         item = Item(titulo=ev.titulo, detalhe=" · ".join(partes), nivel="grave" if grave else "atencao",
-                    link=link, grupo=dono)
-        linhas.append((dono, grave, -atraso, agenda.dobrar(ev.titulo), item))
+                    link=link, grupo=rotulo, dia=referencia(ev))
+        linhas.append((dono, grave, -atraso, agenda.dobrar(ev.titulo), item, ordem, referencia(ev)))
 
     por = {}
     for dono, grave, *_ in linhas:
@@ -164,8 +189,8 @@ def placar(tarefas, hoje, dias_grave=DIAS_GRAVE):
         c["atrasadas"] += 1
         c["graves"] += int(grave)
     ordem = sorted(por, key=lambda d: (d == SEM_RESPONSAVEL, -por[d]["graves"], -por[d]["atrasadas"], agenda.dobrar(d)))
-    posicao = {d: i for i, d in enumerate(ordem)}
-    linhas.sort(key=lambda x: (posicao[x[0]], not x[1], x[2], x[3]))
+    # grupos do dia mais recente para o mais antigo; dentro, mais atrasada primeiro, depois responsável e título
+    linhas.sort(key=lambda x: (x[5], x[2], x[0] == SEM_RESPONSAVEL, agenda.dobrar(x[0]), x[3]))
     hoje_itens.sort(key=lambda x: (x[0], x[1]))
     atrasadas = [x[4] for x in linhas]
     numeros = {"atrasadas": len(atrasadas), "graves": sum(1 for i in atrasadas if i.nivel == "grave"),
@@ -176,6 +201,14 @@ def placar(tarefas, hoje, dias_grave=DIAS_GRAVE):
                "sem_data_limite": sum(1 for i in atrasadas if "data limite não lida" in i.detalhe),
                "por_responsavel": {d: dict(por[d]) for d in ordem}}
     return [x[2] for x in hoje_itens] + atrasadas, numeros
+
+
+def quadro_responsaveis(numeros, dias_grave=DIAS_GRAVE):
+    """Tabela do fim da seção: atrasadas por responsável (quem tem mais graves primeiro)."""
+    por = numeros.get("por_responsavel") or {}
+    return {"titulo": "Atrasadas por responsável",
+            "colunas": ["Responsável", "Atrasadas", f"Há mais de {dias_grave} dias"],
+            "linhas": [[d, c["atrasadas"], c["graves"]] for d, c in por.items()]}
 
 
 def registro(numeros, hoje):
@@ -477,8 +510,10 @@ def executar(ctx):
 
 def _secao(ctx, tarefas, avisos):
     """Placar, avisos comuns, tendência e a Secao."""
-    itens, numeros = placar(tarefas, ctx.hoje, ctx.cfg.valor("ORELHA_PRAZOS_DIAS_GRAVE", DIAS_GRAVE, int))
+    dias_grave = ctx.cfg.valor("ORELHA_PRAZOS_DIAS_GRAVE", DIAS_GRAVE, int)
+    itens, numeros = placar(tarefas, ctx.hoje, dias_grave)
     numeros["lidas"] = len(tarefas)
+    gerar_semana(ctx, itens, numeros)
     if numeros["sem_responsavel"]:
         avisos.append(f"{numeros['sem_responsavel']} tarefa(s) atrasada(s) vieram sem responsável na leitura")
     if numeros["sem_data_limite"]:
@@ -490,7 +525,19 @@ def _secao(ctx, tarefas, avisos):
         numeros["variacao_7d_atrasadas"] = variacao["atrasadas"]
         numeros["variacao_7d_graves"] = variacao["graves"]
     return Secao(chave="prazos", titulo=TITULO, resumo=montar_resumo(numeros, variacao, anterior),
-                 itens=itens, numeros=numeros, avisos=avisos)
+                 itens=itens, numeros=numeros, avisos=avisos, recolher=True,
+                 quadro=quadro_responsaveis(numeros, dias_grave))
+
+
+def gerar_semana(ctx, itens, numeros):
+    """semana.html na pasta do dia (a semana dia a dia). Falhar aqui não derruba o placar."""
+    if ctx.saida is None:
+        return
+    try:
+        caminho = semana.gerar(itens, numeros, ctx.hoje, ctx.saida, simulado=ctx.simulado)
+        log.info("Semana: %s", caminho)
+    except Exception as e:  # noqa: BLE001 — a página da semana é um extra
+        log.warning("Semana: não gerei a página (%s)", e)
 
 
 def _executar_calendario(ctx):
@@ -530,8 +577,10 @@ def _executar_calendario(ctx):
     if falhas:
         avisos.append(f"{falhas} ficha(s) de tarefa não abriram (ver logs/orelha.log)")
 
-    itens, numeros = placar(tarefas, ctx.hoje, cfg.valor("ORELHA_PRAZOS_DIAS_GRAVE", DIAS_GRAVE, int))
+    dias_grave = cfg.valor("ORELHA_PRAZOS_DIAS_GRAVE", DIAS_GRAVE, int)
+    itens, numeros = placar(tarefas, ctx.hoje, dias_grave)
     numeros["lidas"] = len(tarefas)
+    gerar_semana(ctx, itens, numeros)
     # o calendário só traz os meses lidos: atrasada mais antiga que isso fica de fora do placar
     inicio = _primeiro_dia(ctx.hoje, max(0, meses))
     avisos.append(f"Tarefas com data para conclusão antes de {vios.br(inicio)} não entram no placar "
@@ -550,4 +599,5 @@ def _executar_calendario(ctx):
         numeros["variacao_7d_atrasadas"] = variacao["atrasadas"]
         numeros["variacao_7d_graves"] = variacao["graves"]
     return Secao(chave="prazos", titulo=TITULO, resumo=montar_resumo(numeros, variacao, anterior),
-                 itens=itens, numeros=numeros, avisos=avisos)
+                 itens=itens, numeros=numeros, avisos=avisos, recolher=True,
+                 quadro=quadro_responsaveis(numeros, dias_grave))

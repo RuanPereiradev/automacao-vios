@@ -829,6 +829,13 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   horário, o próximo relatório, o aviso de atraso e a lista de todos os relatórios já feitos, do mais
   novo para o mais antigo, com graves e pontos de atenção e os botões **Abrir**, **PDF** e
   **Planilhas (.csv)**. Os simulados ficam à parte. Os arquivos continuam em `orelha/saida/<data>/`.
+- **Relatório mais compacto e a semana** (06/11/2026): as atrasadas vêm agrupadas por **dia do
+  vencimento** (ontem, anteontem… depois por faixa de 7 dias, por mês e por ano), cada grupo fechado
+  com o total; clica no grupo e abrem as tarefas. O quadro "Atrasadas por responsável" fecha a seção.
+  Junto sai `semana.html`, **Atrasadas da semana**: de segunda até hoje, um grupo por dia com as
+  tarefas que venciam nele e continuam abertas (na segunda-feira, a semana passada). Na página
+  `/orelha`, o último relatório aparece **dentro da página**, com as abas "Relatório do dia" e
+  "Atrasadas da semana"; na lista dos guardados, o botão "Semana".
 - `GET /orelha/status` (para a vila) leva só datas e contagens. O texto dos relatórios só aparece na
   página e nos arquivos, atrás da senha das páginas (`ENVIO_SENHA`), como as do Albi.
 - Patch da vila: `doc/vila/ligar_orelha_agenda.py`, o último da lista. O `ligar_vila05_parque.py`

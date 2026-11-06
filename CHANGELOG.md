@@ -12,6 +12,25 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Orelha: atrasadas agrupadas por dia (clica e abre), Atrasadas da semana e relatório na página /orelha (06/11/2026)
+- O relatório do dia ficou grande demais (279 que vencem hoje + 210 atrasadas, tudo aberto). Agora as
+  atrasadas vêm agrupadas por **dia do vencimento**: cada dia da última semana, depois faixas de 7 dias
+  (até 35 dias), meses e anos. Cada grupo vem **fechado**, com o total, os selos e uma barra; clica e
+  abrem as tarefas (`<details>`, sem JavaScript). O responsável vai em cada tarefa e no quadro
+  "Atrasadas por responsável" do fim da seção. O PDF sai com os grupos fechados (resumo).
+- Novo `semana.html` (**Atrasadas da semana**), feito pela função `prazos` com a mesma leitura: de
+  segunda até hoje, um grupo por dia com as tarefas que venciam nele e continuam abertas; na
+  segunda-feira, a semana passada inteira. Embaixo, as de antes da semana e o quadro por responsável.
+- Página `/orelha` do Sam: o último relatório aparece dentro da página, com as abas "Relatório do dia"
+  e "Atrasadas da semana" (a altura acompanha o que abre; "Abrir no VIOS" abre em outra aba); na lista
+  dos guardados, o botão "Semana".
+- Código: `orelha/nucleo/semana.py` (novo), `nucleo/relatorio.py` (grupos que abrem e quadro),
+  `nucleo/modelos.py` (`Secao.recolher`, `Secao.quadro`, `Item.dia`), `funcoes/prazos.py`
+  (`grupo_do_dia`), `bot/orelha.py` e `bot/templates/orelha.html`.
+- Testado: 253 testes do Orelha (novos: grupos por dia, semana, HTML que abre e fecha); rodada real
+  no VIOS (210 atrasadas em 17 grupos; semana com 114 desta semana e 96 de antes); a página `/orelha`
+  num servidor de teste, no Chrome: abas, altura que cresce e diminui, links em outra aba.
+
 ### Adicionado — Orelha: `orelha/agendar_mac.sh` agenda o relatório no Mac com um comando (06/11/2026)
 - Em 06/11 a página `/orelha` avisou que o relatório das 7h30 não saiu. Causa: o Orelha nunca tinha
   sido agendado (nem launchd no Mac, nem cron no Linux); o horário do `.env` só serve para o aviso.

@@ -29,7 +29,8 @@ PASTA_PADRAO = Path(__file__).resolve().parent.parent / "orelha"
 HORARIO_PADRAO = "seg-sex 07:30"
 PARADOS_PADRAO = "sab 08:00"
 ARQUIVOS = {"relatorio.html": "text/html", "relatorio.pdf": "application/pdf",
-            "painel-semanal.html": "text/html", "painel-semanal.pdf": "application/pdf"}
+            "painel-semanal.html": "text/html", "painel-semanal.pdf": "application/pdf",
+            "semana.html": "text/html"}
 PAINEL_ARQUIVO = "painel-rodando.json"  # orelha/saida/: quem está gerando o painel agora
 PAINEL_LOG = "painel_sam.log"
 _trava = threading.Lock()
@@ -195,6 +196,7 @@ def relatorios(pasta):
         csv = next(iter(sorted(item.glob("planilhas-*.csv"))), None)
         saida.append({"pasta": item.name, "data": dia, "simulado": bool(m.group(1)),
                       "html": True, "pdf": (item / "relatorio.pdf").exists(),
+                      "semana": (item / "semana.html").exists(),
                       "planilhas": csv.name if csv else None, **_resumo(item)})
     return sorted(saida, key=lambda r: (r["data"], r.get("gerado_em") or ""), reverse=True)
 

@@ -51,18 +51,22 @@ class TestPlacar(unittest.TestCase):
             tarefa("SEM LIMITE", d(-8), None, "", 7),
         ]
         itens, numeros = prazos.placar(tarefas, HOJE)
+        # grupos = dia do vencimento, do mais recente para o mais antigo (antes: um grupo por responsável)
         self.assertEqual([(i.grupo, i.titulo, i.nivel) for i in itens], [
             ("Vencem hoje", "LIMITE HOJE", "info"),       # vence hoje: não é atrasada
             ("Vencem hoje", "NO PRAZO", "info"),
-            ("Ana Fictícia", "MUITO ATRASADA", "grave"),  # mais de 7 dias de atraso
-            ("Ana Fictícia", "LIMITE VENCIDO", "atencao"),
-            ("Ana Fictícia", "ATRASADA", "atencao"),
-            ("Sem responsável identificado", "SEM LIMITE", "grave"),
+            ("Segunda-feira, 02/11 · há 2 dias", "ATRASADA", "atencao"),
+            ("Domingo, 01/11 · há 3 dias", "LIMITE VENCIDO", "atencao"),
+            ("De 21/10 a 27/10 · há 8 a 14 dias", "MUITO ATRASADA", "grave"),  # mais de 7 dias de atraso
+            ("De 21/10 a 27/10 · há 8 a 14 dias", "SEM LIMITE", "grave"),
         ])
         self.assertEqual(itens[0].detalhe, "responsável: Bruno Fictício · para conclusão 04/11/2026 (hoje) · "
                                            "limite 04/11/2026 (hoje)")
-        self.assertEqual(itens[3].detalhe, "para conclusão 01/11/2026 (há 3 dias) · limite 03/11/2026 (venceu há 1 dia)")
-        self.assertEqual(itens[5].detalhe, "para conclusão 27/10/2026 (há 8 dias) · data limite não lida")
+        self.assertEqual(itens[3].detalhe, "responsável: Ana Fictícia · para conclusão 01/11/2026 (há 3 dias) · "
+                                           "limite 03/11/2026 (venceu há 1 dia)")
+        self.assertEqual(itens[5].detalhe, "responsável: Sem responsável identificado · para conclusão 27/10/2026 "
+                                           "(há 8 dias) · data limite não lida")
+        self.assertEqual((itens[0].dia, itens[2].dia, itens[5].dia), (HOJE, d(-2), d(-8)))
         self.assertEqual((numeros["atrasadas"], numeros["graves"], numeros["vencem_hoje"]), (4, 2, 2))
         self.assertEqual(numeros["destaque"], 4)  # o cartão do relatório mostra só as atrasadas
         self.assertEqual(numeros["pessoas_com_atraso"], 1)
@@ -84,8 +88,9 @@ class TestPlacar(unittest.TestCase):
         tarefas = [tarefa("A1", d(-1), d(1), "Ana Fictícia", 1),
                    tarefa("B1", d(-9), d(-8), "Bruno Fictício, Carla Fictícia", 2)]
         itens, numeros = prazos.placar(tarefas, HOJE)
-        self.assertEqual([i.grupo for i in itens], ["Bruno Fictício", "Ana Fictícia"])  # quem tem grave primeiro
-        self.assertIn("responsáveis: Bruno Fictício, Carla Fictícia", itens[0].detalhe)
+        self.assertEqual([i.grupo for i in itens], ["Terça-feira, 03/11 · ontem", "De 21/10 a 27/10 · há 8 a 14 dias"])  # o dia mais recente primeiro
+        self.assertIn("responsável: Bruno Fictício, Carla Fictícia", itens[1].detalhe)
+        self.assertEqual(list(numeros["por_responsavel"]), ["Bruno Fictício", "Ana Fictícia"])  # quem tem grave primeiro
         self.assertEqual(prazos.responsavel_principal("Eva Fictícia e Davi Fictício"), "Eva Fictícia")
         self.assertEqual(prazos.responsavel_principal(""), "")
 
@@ -119,7 +124,8 @@ class TestPlacar(unittest.TestCase):
         self.assertEqual([t.pxe_id for t in tarefas], ["900201", "900203", "900204"])  # a concluída sai
         itens, numeros = prazos.placar(tarefas, HOJE)
         self.assertEqual([(i.grupo, i.nivel) for i in itens],
-                         [("Vencem hoje", "info"), ("Ana Fictícia", "atencao"), ("Bruno Fictício", "atencao")])
+                         [("Vencem hoje", "info"), ("Terça-feira, 03/11 · ontem", "atencao"),
+                          ("Domingo, 01/11 · há 3 dias", "atencao")])
         self.assertEqual((numeros["atrasadas"], numeros["vencem_hoje"]), (2, 1))
 
 
@@ -209,10 +215,14 @@ class TestExecutar(unittest.TestCase):
         self.assertEqual(eventos, [("fase", {"fase": "lendo_calendario"})])
         self.assertEqual([(i.grupo, i.nivel) for i in s.itens], [
             ("Vencem hoje", "info"),                                   # a da Carla vence hoje: não é atrasada
-            ("Bruno Fictício", "grave"), ("Bruno Fictício", "atencao"),   # grave = mais de 7 dias de atraso
-            ("Ana Fictícia", "atencao"), ("Ana Fictícia", "atencao"),
-            ("Eva Fictícia", "atencao"),                               # Eva veio da ficha da tarefa
-            ("Sem responsável identificado", "atencao")])
+            ("Terça-feira, 03/11 · ontem", "atencao"), ("Segunda-feira, 02/11 · há 2 dias", "atencao"),
+            ("Domingo, 01/11 · há 3 dias", "atencao"), ("Sábado, 31/10 · há 4 dias", "atencao"),
+            ("Quinta-feira, 29/10 · há 6 dias", "atencao"),
+            ("De 21/10 a 27/10 · há 8 a 14 dias", "grave")])                                          # grave = mais de 7 dias de atraso
+        self.assertTrue(s.recolher)
+        self.assertEqual(s.quadro["linhas"], [["Bruno Fictício", 2, 1], ["Ana Fictícia", 2, 0], ["Eva Fictícia", 1, 0],
+                                              ["Sem responsável identificado", 1, 0]])  # Eva veio da ficha
+        self.assertTrue((ctx.saida / "semana.html").exists())
         n = s.numeros
         self.assertEqual((n["atrasadas"], n["graves"], n["vencem_hoje"], n["lidas"]), (6, 1, 1, 8))
         self.assertEqual((n["variacao_7d_atrasadas"], n["variacao_7d_graves"]), (1, -1))  # fixture: 5 e 2
@@ -316,7 +326,8 @@ class TestListaDeTarefas(unittest.TestCase):
         self.assertEqual((n["atrasadas"], n["graves"], n["vencem_hoje"], n["lidas"]), (6, 1, 1, 7))
         self.assertEqual(n["pessoas_com_atraso"], 4)
         self.assertEqual([(i.grupo, i.titulo) for i in s.itens if i.nivel == "grave"],
-                         [("BRUNO FICTÍCIO", "PROTOCOLAR INICIAL (PREVIDENCIÁRIO) 2026")])  # 10 dias de atraso
+                         [("De 21/10 a 27/10 · há 8 a 14 dias", "PROTOCOLAR INICIAL (PREVIDENCIÁRIO) 2026")])  # 10 dias de atraso
+        self.assertEqual(s.quadro["linhas"][0][0], "BRUNO FICTÍCIO")
         self.assertEqual(s.itens[0].grupo, "Vencem hoje")
         self.assertFalse(any("não entram no placar" in a for a in s.avisos))
         self.assertNotIn("FICTÍCI", json.dumps(eventos, ensure_ascii=False).upper())
@@ -376,3 +387,22 @@ class TestLerListaSemTabela(unittest.TestCase):
             ctx = self._ctx(estado)
             with mock.patch.object(vios, "abrir"), mock.patch.object(vios, "esperar", side_effect=vios.ViosErro("x")):
                 self.assertEqual(prazos.ler_lista(ctx, "data_prevista", HOJE, HOJE), "")
+
+
+class TestGrupoDoDia(unittest.TestCase):
+    def test_faixas(self):
+        g = lambda n: prazos.grupo_do_dia(HOJE - timedelta(days=n), HOJE)[1]
+        self.assertEqual(g(1), "Terça-feira, 03/11 · ontem")
+        self.assertEqual(g(7), "Quarta-feira, 28/10 · há 7 dias")
+        self.assertEqual(g(8), "De 21/10 a 27/10 · há 8 a 14 dias")
+        self.assertEqual(g(14), "De 21/10 a 27/10 · há 8 a 14 dias")
+        self.assertEqual(g(15), "De 14/10 a 20/10 · há 15 a 21 dias")
+        self.assertEqual(g(35), "De 30/09 a 06/10 · há 29 a 35 dias")
+        self.assertEqual(g(36), "Setembro de 2026")
+        self.assertEqual(prazos.grupo_do_dia(date(2025, 12, 3), HOJE)[1], "Dezembro de 2025")
+        self.assertEqual(prazos.grupo_do_dia(date(2025, 11, 3), HOJE)[1], "Ano de 2025")  # 12 meses ou mais
+
+    def test_ordem_do_mais_recente(self):
+        dias = [1, 3, 9, 20, 40, 100, 400, 800]
+        chaves = [prazos.grupo_do_dia(HOJE - timedelta(days=n), HOJE)[0] for n in dias]
+        self.assertEqual(chaves, sorted(chaves))

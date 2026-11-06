@@ -68,12 +68,33 @@ ul.itens .chip { margin-top: 3px; min-width: 76px; text-align:center; }
 a.abrir { flex:none; font-size: 14px; color: var(--marca-esc); font-weight:600; text-decoration:none;
           border:1px solid var(--marca); border-radius:8px; padding:2px 8px; margin-top:2px; white-space:nowrap; }
 .vazio { color: var(--ok); font-weight:600; margin: 6px 0; }
+details.grupo { border: 1px solid var(--linha); border-radius: 10px; margin: 8px 0; background: var(--papel); }
+details.grupo > summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+                          padding: 10px 12px; border-radius: 10px; }
+details.grupo > summary::-webkit-details-marker { display: none; }
+details.grupo > summary::before { content: "▸"; color: var(--marca-esc); font-size: 14px; width: 12px; }
+details.grupo[open] > summary::before { content: "▾"; }
+details.grupo > summary:hover { background: var(--fundo); }
+details.grupo[open] > summary { border-bottom: 1px solid var(--linha); border-radius: 10px 10px 0 0; }
+details.grupo .g-nome { font-weight: 700; }
+details.grupo .g-qtd { color: var(--suave); font-size: 14px; }
+details.grupo .g-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+details.grupo .barra { flex-basis: 100%; height: 4px; border-radius: 4px; background: var(--fundo); overflow: hidden; }
+details.grupo .barra i { display: block; height: 100%; background: var(--atencao); }
+details.grupo .barra i.grave { background: var(--grave); }
+details.grupo .barra i.info { background: var(--info); }
+details.grupo > ul.itens, details.grupo > .dentro { padding: 0 12px 4px; }
+table.quadro { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.quadro th, table.quadro td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--linha); }
+table.quadro th { color: var(--suave); font-weight: 600; }
+table.quadro td.n, table.quadro th.n { text-align: right; white-space: nowrap; }
 footer { margin-top: 28px; font-size: 14px; color: var(--suave); }
 footer .chip { margin-right: 4px; }
 @media (max-width: 560px) { ul.itens li { flex-wrap: wrap; } .item-texto { flex-basis: calc(100% - 90px); } }
 @media print { body { background:#fff; font-size: 12px; } main { padding: 0; max-width:none; }
                section.secao { break-inside: auto; border-color:#bbb; } ul.itens li { break-inside: avoid; }
-               a.abrir { display:none; } .cartao { border-color:#bbb; } @page { size: A4; margin: 14mm; } }
+               a.abrir { display:none; } .cartao { border-color:#bbb; } @page { size: A4; margin: 14mm; }
+               details.grupo { break-inside: avoid; } details.grupo > summary::before { content: ""; width: 0; } }
 """
 
 
@@ -107,6 +128,52 @@ def _grupos(itens):
     for item in itens:
         grupos.setdefault(item.grupo or "", []).append(item)
     return list(grupos.items())
+
+
+def item_html(item):
+    """Uma linha <li> da lista de itens (chip do nível, título, detalhe e "Abrir no VIOS")."""
+    abrir = (f'<a class="abrir" href="{_e(item.link)}">Abrir no VIOS</a>' if _link_ok(item.link) else "")
+    detalhe = f'<div class="item-detalhe">{_e(item.detalhe)}</div>' if item.detalhe else ""
+    return (f'<li><span class="chip {item.nivel}">{ROTULOS_NIVEL[item.nivel]}</span>'
+            f'<div class="item-texto"><div class="item-titulo">{_e(item.titulo)}</div>{detalhe}</div>{abrir}</li>')
+
+
+def lista_html(itens):
+    return '<ul class="itens">' + "".join(item_html(i) for i in itens) + "</ul>"
+
+
+def grupo_html(nome, itens, maior=0, aberto=False, dentro_html=None, ancora=""):
+    """Grupo que abre e fecha com um clique (<details>, sem JavaScript): no título, o nome, o total e
+    os chips por nível; com `maior`, uma barra proporcional ao maior grupo. `dentro_html` troca a lista
+    de itens por outro conteúdo (ex.: grupos dentro do grupo)."""
+    por = {n: 0 for n in reversed(NIVEIS)}
+    for i in itens:
+        por[i.nivel] += 1
+    chips = "".join(f'<span class="chip {n}">{por[n]} {ROTULOS_NIVEL[n].lower()}</span>' for n in por if por[n])
+    barra = ""
+    if maior:
+        nivel = "grave" if por["grave"] else "atencao" if por["atencao"] else "info"
+        barra = f'<span class="barra"><i class="{nivel}" style="width:{max(2, round(100 * len(itens) / maior))}%"></i></span>'
+    corpo = dentro_html if dentro_html is not None else lista_html(itens)
+    attrs = (" open" if aberto else "") + (' id="' + _e(ancora) + '"' if ancora else "")
+    return (f'<details class="grupo"{attrs}>'
+            f'<summary><span class="g-nome">{_e(nome)}</span>'
+            f'<span class="g-qtd">{_qtd(len(itens), "tarefa", "tarefas") if itens else "nenhuma"}</span>'
+            f'<span class="g-chips">{chips}</span>{barra}</summary>{corpo}</details>')
+
+
+def quadro_html(quadro):
+    """Tabela fechada no fim da seção ({"titulo", "colunas", "linhas"}); colunas numéricas à direita."""
+    if not quadro or not quadro.get("linhas"):
+        return ""
+    colunas = quadro.get("colunas") or []
+    num = [all(isinstance(l[k], (int, float)) for l in quadro["linhas"] if k < len(l)) for k in range(len(colunas))]
+    cab = "".join(f'<th{" class=n" if num[k] else ""}>{_e(c)}</th>' for k, c in enumerate(colunas))
+    corpo = "".join("<tr>" + "".join(f'<td{" class=n" if k < len(num) and num[k] else ""}>{_e(v)}</td>'
+                                     for k, v in enumerate(l)) + "</tr>" for l in quadro["linhas"])
+    return (f'<details class="grupo"><summary><span class="g-nome">{_e(quadro.get("titulo", ""))}</span>'
+            f'<span class="g-qtd">{len(quadro["linhas"])}</span></summary>'
+            f'<div class="dentro"><table class="quadro"><tr>{cab}</tr>{corpo}</table></div></details>')
 
 
 def montar_html(secoes, hoje, simulado=False, gerado_em=None):
@@ -153,17 +220,18 @@ def montar_html(secoes, hoje, simulado=False, gerado_em=None):
                      + "".join(f"<li>{_e(a)}</li>" for a in s.avisos) + "</ul></div>")
         if not s.itens and not s.erro:
             h.append('<p class="vazio">Nada a mostrar aqui hoje.</p>')
-        for grupo, itens in _grupos(s.itens):
-            if grupo:
-                h.append(f"<h3>{_e(grupo)}</h3>")
-            h.append('<ul class="itens">')
-            for item in itens:
-                abrir = (f'<a class="abrir" href="{_e(item.link)}">Abrir no VIOS</a>' if _link_ok(item.link) else "")
-                detalhe = f'<div class="item-detalhe">{_e(item.detalhe)}</div>' if item.detalhe else ""
-                h.append(f'<li><span class="chip {item.nivel}">{ROTULOS_NIVEL[item.nivel]}</span>'
-                         f'<div class="item-texto"><div class="item-titulo">{_e(item.titulo)}</div>{detalhe}</div>'
-                         f"{abrir}</li>")
-            h.append("</ul>")
+        grupos = _grupos(s.itens)
+        if s.recolher and grupos:
+            h.append('<p class="suave">Clique em cada grupo para ver as tarefas.</p>')
+            maior = max(len(i) for _, i in grupos)
+            for grupo, itens in grupos:
+                h.append(grupo_html(grupo or "Outros", itens, maior))
+        else:
+            for grupo, itens in grupos:
+                if grupo:
+                    h.append(f"<h3>{_e(grupo)}</h3>")
+                h.append(lista_html(itens))
+        h.append(quadro_html(s.quadro))
         h.append("</section>")
 
     h.append('<footer><p><span class="chip grave">Urgente</span> resolver hoje · '

@@ -100,7 +100,11 @@ O resultado fica em `saida/<AAAA-MM-DD>/`:
 - `relatorio.pdf`: o mesmo HTML impresso pelo Chrome. Sem Chrome ou com `--sem-pdf`, fica só o HTML;
 - `resumo.json`: os números de cada função, sem o texto dos itens;
 - `eventos.jsonl`: os eventos da execução, os mesmos que vão para a vila;
-- `planilhas-<data>.csv`: a conferência das planilhas do Albi (abre no Excel).
+- `planilhas-<data>.csv`: a conferência das planilhas do Albi (abre no Excel);
+- `semana.html`: as atrasadas da semana, dia a dia (função `prazos`, ver abaixo).
+
+Na página `/orelha` do Sam, o relatório mais recente aparece dentro da página, com as abas
+**Relatório do dia** e **Atrasadas da semana**.
 
 O histórico fica em `saida/historico/`: `prazos-<data>.json` (tendência), `parados-progresso.json`
 (retomada) e `planilhas-conferidas.json` (o que já foi conferido). O log fica em `logs/orelha.log`.
@@ -150,8 +154,21 @@ Datas), os "Responsável(eis)" (coluna Envolvidos) e o link da tarefa (`pxe.php?
 separa:
 - **Vencem hoje** (grupo no topo, "para saber"): a data para conclusão ou a limite é hoje. Ainda dá
   para fazer hoje, então não conta como atrasada.
-- **Atrasadas**, por responsável: a data para conclusão já passou. Por idade do atraso: até
-  `ORELHA_PRAZOS_DIAS_GRAVE` dias (padrão 7) é "atenção"; mais que isso é "urgente".
+- **Atrasadas**, por **dia do vencimento**: a data para conclusão já passou. Cada dia da última semana
+  é um grupo ("Quinta-feira, 05/11 · ontem"); de 8 a 35 dias atrás, faixas de 7 dias ("De 23/10 a
+  29/10 · há 8 a 14 dias"); depois um grupo por mês e, com 12 meses ou mais, por ano. Por idade do
+  atraso: até `ORELHA_PRAZOS_DIAS_GRAVE` dias (padrão 7) é "atenção"; mais que isso é "urgente". O
+  responsável aparece em cada tarefa, e o quadro **Atrasadas por responsável** fecha a seção.
+
+No relatório, cada grupo vem **fechado**, com o total, os selos por nível e uma barra do tamanho do
+grupo: clica no grupo e abrem as tarefas (é `<details>` do HTML, sem JavaScript). O PDF sai com os
+grupos fechados, como resumo de uma página; as tarefas ficam no HTML.
+
+**Atrasadas da semana** (`semana.html`, feito pela mesma função, sem ler o VIOS de novo): de segunda
+até hoje, cada dia mostra as tarefas que venciam nele e continuam abertas (clica no dia e abre), e
+hoje mostra as que vencem hoje. Na segunda-feira, mostra a semana passada inteira. Sábado e domingo
+só aparecem se tiverem tarefa. Embaixo, "Antes desta semana" (nos mesmos grupos do relatório) e o
+quadro por responsável (desta semana e de antes).
 
 Na 1ª rodada real (04/11/2026), a regra antiga ("limite vencido ou hoje" = urgente) deixava quase
 tudo urgente, porque o limite costuma ser 1 dia depois da conclusão, e contava como atrasadas as que

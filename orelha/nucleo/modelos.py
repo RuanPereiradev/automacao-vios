@@ -22,6 +22,7 @@ class Item:
     nivel: str = "info"      # "info" | "atencao" | "grave"
     link: str = ""           # link para abrir no VIOS, se houver
     grupo: str = ""          # agrupamento na seção (ex.: responsável, empresa, dia)
+    dia: date = None         # dia de referência do item, se houver (prazos: o dia do vencimento); não aparece
 
     def __post_init__(self):
         if self.nivel not in NIVEIS:
@@ -37,6 +38,8 @@ class Secao:
     numeros: dict            # contagens para o resumo.json e a vila (ex.: {"graves": 2})
     erro: str = ""           # se a função falhou: mensagem curta; o relatório sai mesmo assim
     avisos: list[str] = field(default_factory=list)
+    recolher: bool = False   # True = cada grupo vem fechado no relatório (clica no grupo e abre os itens)
+    quadro: dict = None      # tabela opcional no fim da seção, fechada: {"titulo", "colunas": [...], "linhas": [[...]]}
 
     def por_nivel(self):
         """{"grave": n, "atencao": n, "info": n}."""
