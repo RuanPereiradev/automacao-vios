@@ -121,7 +121,8 @@ tem a API de robôs da Oystr. Primeiro passo, no computador onde o bot vai rodar
 
 ```bash
 .venv/bin/python presto.py entrar tjce1 # Mac: entra no tribunal pelo Presto no Chrome JÁ ABERTO (PIN em PRESTO_PIN)
-.venv/bin/python presto.py processos --conferir  # qualquer computador: último relatório dividido por tribunal
+.venv/bin/python presto.py processos --listar    # todos os relatórios, com quantos processos cada
+.venv/bin/python presto.py processos --conferir  # qualquer computador: último relatório com processos dividido por tribunal
 .venv/bin/python presto.py processos             # Mac: entra em cada tribunal pelo Presto e procura cada processo
 .venv/bin/python presto.py aberto       # Mac: exploração (captura páginas no Chrome aberto)
 .venv/bin/python presto.py copiar       # (alternativa) copia o perfil do Chrome que tem o Presto logado

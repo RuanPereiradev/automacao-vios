@@ -2,8 +2,9 @@
 
   .venv/bin/python presto.py processos [pasta do resultado] [--tribunal tjce1] [--max N] [--conferir]
 
-1. Acha o processos.csv do último relatório do Albi (o mais novo em albi/saida/*/ e em
-   saida/albi/*/, que é onde a página /albi guarda) ou usa a pasta dada.
+1. Acha o processos.csv do último relatório do Albi QUE TEM PROCESSOS (o mais novo em albi/saida/*/ e
+   em saida/albi/*/, que é onde a página /albi guarda) ou usa a pasta dada (o nome basta).
+   --listar mostra todos os relatórios, com quantos processos e as empresas.
 2. Pelo número CNJ de cada processo (J.TR e a origem) e pela instância do Sonar, diz o tribunal:
    TJCE (8.06), TRT7 (5.07), JFCE (4.05, origem 81xx) e TRF5 (4.05, o resto). Os outros tribunais
    ainda não têm login no Presto aqui e ficam listados como "fora".
@@ -75,9 +76,37 @@ def tribunal(numero, instancia=""):
 
 
 # ---------------- qual relatório ----------------
-def ultimo_relatorio():
+def relatorios():
+    """[(pasta, nº de processos, empresas)] de todos os relatórios do Albi, do mais novo ao mais velho."""
     achados = [c for base in ONDE_PROCURAR if base.is_dir() for c in base.glob("*/processos.csv")]
-    return max(achados, key=lambda c: c.stat().st_mtime).parent if achados else None
+    out = []
+    for c in sorted(achados, key=lambda c: c.stat().st_mtime, reverse=True):
+        try:
+            with open(c, encoding="utf-8-sig", newline="") as f:
+                linhas = list(csv.DictReader(f, delimiter=";"))
+        except OSError:
+            continue
+        nums = {digitos(l.get("Processo", "")) for l in linhas} - {""}
+        emps = sorted({(l.get("Empresa") or "").strip() for l in linhas} - {""})
+        out.append((c.parent, len(nums), emps))
+    return out
+
+
+def ultimo_relatorio():
+    """O relatório mais novo que tem processos (os sem nenhum processo não interessam aqui)."""
+    return next((pasta for pasta, n, _ in relatorios() if n), None)
+
+
+def listar():
+    rel = relatorios()
+    if not rel:
+        print("Não achei nenhum relatório do Albi (processos.csv) em " + " nem em ".join(map(str, ONDE_PROCURAR)))
+        return 2
+    print("Relatórios do Albi (do mais novo ao mais velho):")
+    for pasta, n, emps in rel:
+        print(f"  {pasta.name}  {n:3d} processo(s)  {', '.join(emps) or '-'}")
+    print("\nPara usar um deles: .venv/bin/python presto.py processos <pasta> (sem pasta: o mais novo com processos)")
+    return 0
 
 
 def ler_processos(pasta):
@@ -325,6 +354,8 @@ def conferir(pasta, processos):
 
 def main(*args):
     args = list(args)
+    if "--listar" in args:
+        return listar()
     so = maximo = None
     so_conferir = "--conferir" in args
     args = [a for a in args if a != "--conferir"]
@@ -345,8 +376,13 @@ def main(*args):
         del args[i:i + 2]
     pasta = Path(args[0]) if args else ultimo_relatorio()
     if not pasta:
-        print("Não achei nenhum relatório do Albi (processos.csv) em " + " nem em ".join(map(str, ONDE_PROCURAR)))
+        print("Não achei nenhum relatório do Albi com processos (processos.csv) em "
+              + " nem em ".join(map(str, ONDE_PROCURAR)) + ". Veja todos com --listar.")
         return 2
+    if not (pasta / "processos.csv").exists() and (AQUI.parent / "saida" / "albi" / pasta.name).is_dir():
+        pasta = AQUI.parent / "saida" / "albi" / pasta.name  # deu só o nome da pasta (como no --listar)
+    elif not (pasta / "processos.csv").exists() and (AQUI / "saida" / pasta.name).is_dir():
+        pasta = AQUI / "saida" / pasta.name
     processos = ler_processos(pasta)
     if not processos:
         print(f"O relatório {pasta} não tem processos.")

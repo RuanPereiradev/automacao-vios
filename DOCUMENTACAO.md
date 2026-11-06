@@ -874,10 +874,10 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   diz se entrou. O PIN não aparece no Terminal nem nas capturas.
 - **Procurar nos tribunais os processos do último relatório:** `cd albi && .venv/bin/python presto.py
   processos --conferir` mostra, sem abrir o Chrome, qual relatório ele pegou (o `processos.csv` mais novo
-  em `albi/saida/` ou em `saida/albi/`, onde a página `/albi` guarda) e em qual tribunal está cada
+  que tem processos, em `albi/saida/` ou em `saida/albi/`, onde a página `/albi` guarda; `--listar` mostra todos) e em qual tribunal está cada
   processo, pelo número CNJ: TJCE (8.06), TRT7 (5.07), JFCE (4.05, origem 81xx) e TRF5 (4.05, o resto);
   2º grau pela instância do Sonar ou origem 0000. Os de outros tribunais aparecem como "fora". Para outro
-  relatório, passe a pasta: `presto.py processos <pasta> --conferir`. Depois, no Mac, com a janela do
+  relatório, passe a pasta (ou só o nome dela, como sai no `--listar`): `presto.py processos <pasta> --conferir`. Depois, no Mac, com a janela do
   escritório na frente: `.venv/bin/python presto.py processos` (opções: `--tribunal tjce1` só um
   tribunal; `--max 3` só os 3 primeiros). Para cada tribunal ele abre uma aba, entra pelo Presto (se a
   aba já estiver logada, segue) e, na mesma aba, procura cada processo: no PJe, a tela "Consultar

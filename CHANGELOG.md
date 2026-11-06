@@ -12,6 +12,12 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Albi/Presto: `processos` pega o último relatório que tem processos (06/11/2026)
+- No primeiro uso no Mac, o `presto.py processos` pegou o relatório mais novo (05/11, sem nenhum
+  processo) e parou com "não tem processos". Agora ele pula os relatórios sem processos e pega o mais
+  novo que tem. Novo `--listar`: mostra todos os relatórios (pasta, quantos processos, empresas); para
+  usar um deles basta o nome da pasta (`presto.py processos 2026-11-04_...`).
+
 ### Adicionado — Albi/Presto: procurar nos tribunais os processos do último relatório (06/11/2026)
 - Novo `presto.py processos [pasta] [--tribunal X] [--max N] [--conferir]` (código em
   `albi/presto_processos.py`). Pega o `processos.csv` do relatório mais novo (`albi/saida/*/` ou
