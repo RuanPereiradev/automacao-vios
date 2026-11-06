@@ -12,13 +12,6 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
-<<<<<<< HEAD
-### Corrigido — Albi/Presto: PIN do quadro enviado com Enter quando só há o botão "fechar" (06/11/2026)
-- O quadro real do Presto (v0.141.1, enviado pelo usuário) tem a credencial "Roneely A1" com o número
-  em link azul e, depois do clique, o campo "Pin do usuário" sem botão de confirmar (só "fechar").
-  Agora, sem botão de confirmar, o robô manda Enter completo no campo (keydown, keypress e keyup),
-  além de enviar o formulário se houver. Testado com uma página igual ao quadro real.
-=======
 ### Adicionado — Vila 05: o parque vivo do Orelha e o campo `cena` do `/orelha/status` (06/11/2026)
 - **`GET /orelha/status` ganhou `cena`** (`bot/orelha.py`, função `cena()`): `null` sem relatório real;
   senão só a data e as CONTAGENS do relatório real mais recente, tiradas do `resumo.json`
@@ -62,7 +55,12 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   do script da vila; smoke test em node com canvas falso (simulado com vários overrides, servidor com
   `cena` nula, parcial e zerada, execução simulada inteira com cada humor), sem erro de camada;
   capturas no Chrome headless (meio-dia, 21h, sábado); 8 testes da cena e 253 do Orelha passando.
->>>>>>> d40cdb2 (Vila 05 vira o parque vivo do Orelha: clima, ossos, dia, humor, casinhas e passeio)
+
+### Corrigido — Albi/Presto: PIN do quadro enviado com Enter quando só há o botão "fechar" (06/11/2026)
+- O quadro real do Presto (v0.141.1, enviado pelo usuário) tem a credencial "Roneely A1" com o número
+  em link azul e, depois do clique, o campo "Pin do usuário" sem botão de confirmar (só "fechar").
+  Agora, sem botão de confirmar, o robô manda Enter completo no campo (keydown, keypress e keyup),
+  além de enviar o formulário se houver. Testado com uma página igual ao quadro real.
 
 ### Alterado — Albi/Presto: tribunal aberto pelo console do Presto (Sites) (06/11/2026)
 - Pedido do usuário: o fluxo é achar o tribunal, abrir o console do Presto
