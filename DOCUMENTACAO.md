@@ -734,8 +734,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `python3 doc/vila/ligar_jarvis.py bot/vila/vila.html`,
   `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html`,
   `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html`,
-  `python3 doc/vila/ligar_vila04_garagem.py bot/vila/vila.html` e por último
-  `python3 doc/vila/ligar_vila02_ponte.py bot/vila/vila.html`.
+  `python3 doc/vila/ligar_vila04_garagem.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_vila02_ponte.py bot/vila/vila.html` e por último
+  `python3 doc/vila/ligar_vila03_arena_att.py bot/vila/vila.html`.
 
 ### Passo 32 — Vila 05: o parque do Orelha
 - A Vila 05 virou um parque dos cães cheio de brinquedos: cerca branca de madeira, grama com flores
@@ -755,16 +756,21 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   falas e o painel do Orelha não mudaram.
 
 ### Passo 31 — Vila 03: a arena do Albi
-- A Vila 03 virou a arena de `albi/mascote/fundo-arena-albi.html`, adaptada à vila: céu com
-  nuvens e pássaros, montanhas, mesas de pedra, campo, estrada, lago e a plataforma em
-  perspectiva com o brilho no piso e as quatro torres com as pontas piscando.
-- O Albi transita só em cima da plataforma e passeia por ela quando está parado. Os postos:
-  - **Doca 01 · Albi:** torre da frente à esquerda;
-  - **Receptor TXT:** torre do fundo à esquerda;
-  - **Conferência:** painel atrás da plataforma, onde ele confere as linhas;
-  - **Torre Sonar:** torre alta da frente à direita, cuja ponta pisca quando ele entra no Sonar
-    ou pesquisa.
-- Patch: `doc/vila/ligar_vila03_arena.py`. Os eventos e o painel do Albi não mudaram.
+- A Vila 03 é a arena de `albi/mascote/fundo-arena-albi.html` (a versão nova, com a luta), adaptada à
+  vila: céu com sol e nuvens, montanhas, mata, campo, a casa em domo (com anexo e torre de
+  observação), a árvore grande, o lago com reflexos e um mastro com antena à direita. No céu, o
+  dragão serpenteando e dois lutadores: chegam voando com aura, trocam socos e chutes, disparam
+  raios que se chocam e explodem; a casa e a árvore ficam em ruínas pegando fogo, eles descem,
+  reconstroem a casa, a muda cresce e tudo recomeça (ciclo de uns 8 segundos).
+- O Albi anda só no campo, entre a casa e o lago, e passeia por ele quando está parado. Os postos:
+  - **Doca 01 · Albi:** porta da casa em domo;
+  - **Receptor TXT:** porta do anexo (as faíscas da leitura saem do telhado dele);
+  - **Conferência:** janela da torre de observação, onde rolam as linhas que ele confere (com a
+    casa em ruínas, não aparecem);
+  - **Torre Sonar:** o mastro com antena, cuja ponta pisca quando ele entra no Sonar ou pesquisa.
+- A parte animada só é desenhada com a Vila 02, 03 ou 04 na tela.
+- Patches: `doc/vila/ligar_vila03_arena.py` (a primeira arena) e, por cima, `doc/vila/ligar_vila03_arena_att.py`
+  (a arena nova; o último da lista). Os eventos e o painel do Albi não mudaram.
 
 ### Passo 30 — Mascote novo do Ultron (agora Sam) e Vila 01 no campo
 - **Nome:** na tela ele se chama **Sam**: página, links, cena e Vila 01. A marca "SAM" fica nas
@@ -807,8 +813,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   choque ao virar). Em volta: dois duelos de robôs (chegam como carros, brigam, explodem e vão
   embora), trânsito, carcaças pegando fogo, explosões longe dele, fumaça e brasas. Ele anda só na
   pista. A parte animada só é desenhada com a Vila 01, 02 ou 03 na tela. Os eventos, as falas e o
-  painel não mudam. Patch: `doc/vila/ligar_vila02_ponte.py` (o último da lista, depois do
-  `ligar_vila04_garagem.py`).
+  painel não mudam. Patch: `doc/vila/ligar_vila02_ponte.py` (depois do `ligar_vila04_garagem.py` e
+  antes do `ligar_vila03_arena_att.py`).
 ### Passo 35 — Orelha avisa quando o relatório roda e guarda os relatórios no Arquivo
 - **Horário**: `ORELHA_HORARIO` (padrão `seg-sex 07:30`) e `ORELHA_HORARIO_PARADOS` (padrão
   `sab 08:00`) no `orelha/.env`. Formato `<dias> <HH:MM>`, com faixa (`seg-sex`) ou lista
@@ -895,7 +901,7 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   Conexão VIOS, Leitura dos processos e Planilhas. O Jarvis (núcleo de IA: esfera azul em
   espiral, com anéis e o centro pulsando) voa pela garagem em linha reta e se apresenta no diálogo.
   `/vila?vila=4` abre direto nela. A parte animada da garagem só é desenhada com a Vila 03, 04 ou 05
-  na tela. Patch: `doc/vila/ligar_vila04_garagem.py` (o penúltimo da lista, antes do `ligar_vila02_ponte.py`).
+  na tela. Patch: `doc/vila/ligar_vila04_garagem.py` (antes do `ligar_vila02_ponte.py`).
 - **Rodar pela vila**: com o Jarvis instalado (`cd jarvis && ./instalar.sh` e o `jarvis/.env`
   preenchido; `JARVIS_PASTA` só se ele estiver noutra pasta),
   a caixa de fala da Vila 04 ganha "Escolher grupos e gerar" e "Planilhas", que abrem a página
@@ -920,8 +926,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   bot/vila/vila.html` (no fim, `propulsor` troca o núcleo pelo mascote com propulsores),
   `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html` (o parque do Orelha),
   `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html` (horário e Arquivo do Orelha),
-  `python3 doc/vila/ligar_vila04_garagem.py bot/vila/vila.html` (a garagem do Jarvis) e por último
-  `python3 doc/vila/ligar_vila02_ponte.py bot/vila/vila.html` (a ponte do Bumblebee).
+  `python3 doc/vila/ligar_vila04_garagem.py bot/vila/vila.html` (a garagem do Jarvis),
+  `python3 doc/vila/ligar_vila02_ponte.py bot/vila/vila.html` (a ponte do Bumblebee) e por último
+  `python3 doc/vila/ligar_vila03_arena_att.py bot/vila/vila.html` (a arena nova do Albi).
 
 ### Passo 27 — Segurança das rotas
 - Com `ENVIO_REDE=true`, toda rota (GET e POST) pede a senha (`ENVIO_SENHA`).

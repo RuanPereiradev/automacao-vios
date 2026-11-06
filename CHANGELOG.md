@@ -12,6 +12,16 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Vila 03 ganha a arena nova do Albi, com a luta (06/11/2026)
+- A plataforma com as quatro torres sai; entra a cena nova de `albi/mascote/fundo-arena-albi.html`:
+  casa em domo com anexo e torre de observação, árvore, lago, dragão no céu e dois lutadores que
+  brigam, disparam raios e explodem tudo; depois descem, reconstroem a casa, a muda cresce e o ciclo
+  recomeça. O campo ganhou altura para o Albi andar entre a casa e o lago.
+- Postos: Doca 01 = porta da casa; Receptor TXT = porta do anexo; Conferência = janela da torre de
+  observação; Torre Sonar = mastro com antena novo, à direita. Os eventos, as falas e o painel não
+  mudam. Patch novo `doc/vila/ligar_vila03_arena_att.py` (o último da lista); a vila gerada do zero
+  com todos os patches sai igual à do repositório.
+
 ### Alterado — Orelha: atrasadas agrupadas por dia (clica e abre), Atrasadas da semana e relatório na página /orelha (06/11/2026)
 - O relatório do dia ficou grande demais (279 que vencem hoje + 210 atrasadas, tudo aberto). Agora as
   atrasadas vêm agrupadas por **dia do vencimento**: cada dia da última semana, depois faixas de 7 dias
