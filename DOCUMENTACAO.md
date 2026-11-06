@@ -806,6 +806,10 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `sab 08:00`) no `orelha/.env`. Formato `<dias> <HH:MM>`, com faixa (`seg-sex`) ou lista
   (`seg,qua,sex`), e mais de um separado por `;`. Tem que ser **o mesmo do agendamento** (cron ou
   launchd, `orelha/README.md`): quem roda o Orelha é o agendamento; o horário serve para avisar.
+- **Agendar no Mac** (sem isso o relatório nunca sai sozinho e a página avisa "ainda não saiu"):
+  `cd orelha && ./agendar_mac.sh instalar`. Ele cria o agendamento do launchd com o horário do próprio
+  `orelha/.env` (relatório do dia e processos parados); `./agendar_mac.sh agora` roda na hora para
+  testar, `status`, `log` e `parar`. O Mac fica com o usuário logado, como no servidor.
 - O Sam lê esse horário e os relatórios da pasta do Orelha (`bot/orelha.py`; `ORELHA_PASTA` só se ele
   estiver noutra pasta). Não roda o Orelha nem importa nada de `orelha/`.
 - **Na Vila 05**, parado, o Orelha diz quando roda, quando sai o próximo relatório ("amanhã (sexta) às

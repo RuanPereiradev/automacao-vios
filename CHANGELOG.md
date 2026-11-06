@@ -12,6 +12,18 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Orelha: `orelha/agendar_mac.sh` agenda o relatório no Mac com um comando (06/11/2026)
+- Em 06/11 a página `/orelha` avisou que o relatório das 7h30 não saiu. Causa: o Orelha nunca tinha
+  sido agendado (nem launchd no Mac, nem cron no Linux); o horário do `.env` só serve para o aviso.
+- `./agendar_mac.sh instalar` cria os dois agendamentos do launchd (relatório do dia e processos
+  parados) a partir de `ORELHA_HORARIO` e `ORELHA_HORARIO_PARADOS` do `orelha/.env`, então o horário
+  do agendamento e o do aviso não se desencontram. Também `agora` (roda já, para testar), `status`,
+  `log` e `parar`. Recusa sem `.venv`, sem login do VIOS ou com horário inválido; avisa se `HEADLESS`
+  não é `true` ou se `VILA_URL` está vazio.
+- Testado no Linux simulando o Mac: os dois `.plist` saem válidos, com seg–sex 7h30 e sáb 8h; o
+  conversor do horário aceita faixa, lista, domingo e faixa que vira a semana, e recusa dia ou hora
+  inválidos. Falta testar no Mac de verdade.
+
 ### Alterado — Vila 02 vira a batalha na ponte do Bumblebee, vista de cima (05/11/2026)
 - Cenário do `doc/vila/zangao-transforma_att.html`: ponte sobre a água (ondas e reflexo do fogo),
   pista com faixas tracejadas e a dupla amarela, guard-rail e quatro pilares com luz vermelha.

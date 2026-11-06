@@ -236,7 +236,24 @@ hoje atrasou. Se mudar um, mude o outro.
 0 8 * * 6     /caminho/automacao-vios/orelha/rodar.sh --funcoes parados --sem-pdf >> /caminho/automacao-vios/orelha/logs/cron.log 2>&1
 ```
 
-### Mac (launchd, como o `servidor_mac.sh`)
+### Mac: `./agendar_mac.sh` (um comando)
+
+```bash
+cd orelha
+./agendar_mac.sh instalar   # cria os dois agendamentos com o horário do .env (rodar de novo se mudar o horário)
+./agendar_mac.sh agora      # roda o relatório do dia agora, pelo agendamento, para testar
+./agendar_mac.sh status     # instalados? resultado da última vez
+./agendar_mac.sh log        # log do agendamento (logs/launchd.log)
+./agendar_mac.sh parar      # tira os dois agendamentos
+```
+
+Ele lê `ORELHA_HORARIO` e `ORELHA_HORARIO_PARADOS` do `orelha/.env` (vazios = `seg-sex 07:30` e `sab
+08:00`), então o agendamento e o aviso da vila/página `/orelha` ficam sempre iguais. Recusa se falta
+`.venv`, `SISTEMA_USUARIO`/`SISTEMA_SENHA` ou se o horário é inválido, e avisa se `HEADLESS` não é
+`true` ou se `VILA_URL` está vazio. No Mac do servidor, a vila é `VILA_URL=http://127.0.0.1:5001/eventos`
+com `VILA_SENHA` = `ENVIO_SENHA` do Sam. O que ele cria é o mesmo que o modelo abaixo.
+
+### Mac (launchd à mão, como o `servidor_mac.sh`)
 
 O Chrome precisa de uma sessão aberta, então o Mac fica **com o usuário logado**, como no
 `servidor_mac.sh` (Passo 22 da `DOCUMENTACAO.md`). Crie
