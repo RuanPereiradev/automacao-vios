@@ -1,6 +1,6 @@
 """Orelha — assistente da equipe que SÓ LÊ o VIOS e entrega o relatório do dia.
 
-Funções (orelha/funcoes/): agenda, prazos, intimacoes, parados, planilhas. Cada uma roda isolada:
+Funções (orelha/funcoes/): agenda, prazos, intimacoes, parados, planilhas, painel. Cada uma roda isolada:
 se falhar, vira uma seção com o erro e as outras continuam. Separado do Ultron, do Zangão e do
 Albi: tem .venv, .env, logs/ e saida/ próprios dentro de orelha/ e não importa nada de bot/ nem albi/.
 
@@ -9,15 +9,16 @@ de login é marcado pelo Orelha e passa; a primeira página depois do login já 
 se a página não abrir com o bloqueio ativo, para tudo (nenhuma função roda).
 ORELHA_BLOQUEIO_NO_LOGIN=false volta a ligar o bloqueio logo depois do login, como o Zangão.
 
-uso: python main.py [--funcoes agenda,prazos,intimacoes,parados,planilhas] [--simulado]
+uso: python main.py [--funcoes agenda,prazos,intimacoes,parados,planilhas,painel] [--simulado]
                     [--data AAAA-MM-DD] [--sem-pdf] [--eventos] [--albi-saida PASTA] [--env ARQUIVO]
-  padrão: todas menos parados (ORELHA_FUNCOES no .env)
+  padrão: todas menos parados e painel (ORELHA_FUNCOES no .env)
+  painel       painel semanal em PDF no papel timbrado (painel-semanal.pdf); não entra no relatório do dia
   --simulado   sem navegador nem senha: lê orelha/fixtures/ (dados fictícios)
   --data       dia do relatório (padrão: hoje)
   --sem-pdf    só relatorio.html e resumo.json
   --eventos    cada evento da vila vira uma linha "@evento {json}" na saída padrão
   --albi-saida pasta dos resultados do Albi (padrão ORELHA_ALBI_SAIDA ou ../albi/saida)
-Saída: saida/<AAAA-MM-DD>/relatorio.html, resumo.json, relatorio.pdf. Código 1 se alguma
+Saída: saida/<AAAA-MM-DD>/relatorio.html, resumo.json, relatorio.pdf (e painel-semanal.html/.pdf). Código 1 se alguma
 função deu erro (ou a execução parou), 2 se a linha de comando/configuração está errada.
 """
 import argparse
@@ -218,7 +219,8 @@ def main(argv=None):
     eventos.iniciar(cfg, pasta=saida, stdout=args.eventos)
     base = Contexto(driver=None, cfg=cfg, hoje=hoje, emitir=eventos.emitir, simulado=args.simulado,
                     fixtures=PASTA / "fixtures", saida=saida, historico=cfg.pasta_saida / "historico",
-                    albi_saida=Path(args.albi_saida).expanduser().resolve() if args.albi_saida else cfg.albi_saida)
+                    albi_saida=Path(args.albi_saida).expanduser().resolve() if args.albi_saida else cfg.albi_saida,
+                    pdf=not args.sem_pdf)
     log.info("Orelha: %s, funções %s%s", f"{hoje:%d/%m/%Y}", ", ".join(funcoes),
              " (SIMULADO: fixtures, sem VIOS)" if args.simulado else "")
     eventos.emitir("execucao_iniciada", funcoes=funcoes, simulado=args.simulado, data=hoje.isoformat())
@@ -251,19 +253,26 @@ def main(argv=None):
             emitir_achados(secao)
 
         eventos.emitir("fase", fase="gerando_relatorio")
+        # o painel semanal tem o próprio PDF: ele não entra (nem sobrescreve) o relatório do dia
+        diarias = [s for s in secoes if getattr(REGISTRO[s.chave], "RELATORIO_DIARIO", True)]
         try:
-            info = relatorio.gerar(secoes, saida, hoje, simulado=args.simulado, pdf=not args.sem_pdf,
-                                   driver=base.driver)
+            if not diarias:
+                log.info("Só funções com documento próprio: o relatório do dia não foi gerado")
+                info = None
+            else:
+                info = relatorio.gerar(diarias, saida, hoje, simulado=args.simulado, pdf=not args.sem_pdf,
+                                       driver=base.driver)
         except Exception as e:
             # sem relatório não tem o que entregar, mas a vila precisa saber que acabou
             log.exception("Relatório não gerado: %s", mensagem(e))
             falha_relatorio = mensagem(e)
         else:
-            log.info("Relatório: %s", info["html"])
-            if info["pdf"]:
-                log.info("PDF: %s", info["pdf"])
-            elif not args.sem_pdf:
-                log.warning("PDF não gerado (%s): fica o HTML, que também imprime", info["erro_pdf"])
+            if info is not None:
+                log.info("Relatório: %s", info["html"])
+                if info["pdf"]:
+                    log.info("PDF: %s", info["pdf"])
+                elif not args.sem_pdf:
+                    log.warning("PDF não gerado (%s): fica o HTML, que também imprime", info["erro_pdf"])
     finally:
         if base.driver is not None and not cfg.manter_aberto:
             try:

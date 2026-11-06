@@ -309,6 +309,7 @@ class TarefaLista:
     concluida: bool = False
     hora: str = ""   # "15:50" quando a data para conclusão vem com faixa de horário "(15:50 - 23:59)"
     etiqueta: str = ""  # etiqueta da tarefa no VIOS (ex.: "Urgente", "Reaberta")
+    processo: str = ""  # texto da coluna "nro_proc" (número CNJ, ou "CI nnn" quando não há processo); só o painel usa
 
 
 def url_lista(tp_data, inicio, fim, limite=LISTA_MAXIMO):
@@ -352,6 +353,7 @@ def tarefas_da_lista(html, base=""):
                                  conclusao=vios.data_br(mc.group(1)) if mc else None,
                                  limite=vios.data_br(ml.group(1)) if ml else None,
                                  hora=(mc.group(2) or "").zfill(5) if mc and mc.group(2) else "", etiqueta=etiqueta,
+                                 processo=vios.limpar(ln.get("nro_proc")),
                                  link=urljoin(base, link) if link else ""))
     return saida
 

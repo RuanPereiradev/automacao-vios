@@ -68,6 +68,7 @@ class Contexto:
     historico: Path = None           # orelha/saida/historico/
     chave: str = ""                  # função que está rodando (preenchido pelo main.py)
     albi_saida: Path = None          # pasta dos resultados do Albi (--albi-saida ou ORELHA_ALBI_SAIDA)
+    pdf: bool = True                 # False com --sem-pdf (funções que geram o próprio PDF, como o painel)
 
     @property
     def pasta_fixtures(self):

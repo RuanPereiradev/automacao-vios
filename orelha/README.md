@@ -215,6 +215,48 @@ endereço, com "Nro do Processo" (`campo_pesquisa_selecionado=nro_proc`) e "todo
 resposta não for a tela de Processos (sessão caída), o número fica "não deu para conferir", nunca
 "novo".
 
+## Painel semanal (PDF no papel timbrado)
+
+Documento à parte do relatório do dia, para a gestão: `./rodar.sh --funcoes painel` (uma vez por
+semana). Gera `saida/<AAAA-MM-DD>/painel-semanal.pdf` (e `.html`) e **não mexe** no `relatorio.html` do
+dia: a função `painel` fica fora do padrão e fora do relatório diário. O modelo do conteúdo é o
+`doc/2026_PAINEL_SEMANAL_19JUL_RF (1).pdf`; a moldura é o papel timbrado do escritório
+(`doc/Timbrado_RFeitosa_Advogados_COM_MARCADOR.docx`: marca d'água do RF, faixa vinho no alto, endereços no
+rodapé, A4 e as margens do modelo, em todas as páginas). As três imagens do timbrado estão em
+`assets/timbrado/` (`nucleo/timbrado.py` as embute no HTML). Se o escritório trocar o timbrado, troque
+essas imagens.
+
+Partes do painel (`funcoes/painel.py`, desenho em `nucleo/painel.py`):
+- **Resumo executivo**: fila total, não feitas, novas, carga do advogado mais carregado e vencidas.
+- **Taxa de resolução semanal**: fila inicial, resolvidas, taxa e leitura (Boa/Atenção/Baixa), com a
+  tendência das últimas 3 semanas.
+- **Carga por advogado**: peças, audiências, total, vencidas e "urgente ≤7d" (prazo em até 7 dias, vencidas
+  incluídas). Em vermelho quem passa de `ORELHA_PAINEL_URGENTE_ALTO`.
+- **Agenda de audiências** dos próximos 7 dias (data, hora, advogado, tipo, processo).
+- **Não feitas**: as tarefas que continuam abertas desde a semana anterior, com a situação em cores:
+  VENCIDA/URGENTE (até 2 dias) vermelho, ATENÇÃO 3 a 7 dias amarelo, PRÓXIMA 8 a 14 laranja, NO PRAZO
+  15 ou mais verde.
+
+**Fila**: tarefas não concluídas da equipe toda cujo tipo **começa** com `MINUTAR` (peças) ou
+`AUDIÊNCIA`, com data para conclusão até hoje + 14 dias (`ORELHA_PAINEL_*` no `.env.example`). Outros
+tipos de tarefa, canceladas e "INFORMAR AUDIÊNCIA" ficam de fora. Lê a mesma lista de tarefas dos
+prazos (só GET, com o bloqueio de envios).
+
+**Comparação entre semanas**: a cada execução completa o painel grava `historico/painel-<data>.json` com a
+fila lida e, na seguinte, compara com o registro mais recente que tenha de 5 a 35 dias. *Não feitas* =
+estavam na fila e continuam; *novas* = não estavam; *resolvidas* = saíram da fila (o Orelha só enxerga
+tarefas abertas, então concluídas e canceladas se confundem; a nota sai no PDF). **A 1ª edição não tem semana
+anterior**: o painel avisa e lista a fila inteira, e a taxa aparece a partir da 2ª. Leitura incompleta
+(página que não abriu, limite de páginas) não grava o registro, para não distorcer a semana seguinte.
+
+**Quando gerar**: não há agendamento. Quem quer o painel aperta o botão **Gerar painel semanal** na página
+`/orelha` do Sam (abaixo do horário; leva alguns minutos e, ao terminar, a página mostra "Abrir PDF"). O botão
+abre `main.py --funcoes painel` em segundo plano com a `.venv` e o `.env` do Orelha (log em
+`logs/painel_sam.log`), recusa um segundo clique enquanto roda e só funciona se o Orelha estiver no mesmo
+computador do Sam (`ORELHA_PASTA`). Pelo terminal: `./rodar.sh --funcoes painel` (`--sem-pdf` gera só o
+HTML; sem senha: `./rodar.sh --simulado --funcoes painel`). Se algum dia quiserem horário fixo, basta um
+cron/launchd com o mesmo comando.
+
 ## Agendar
 
 O relatório diário roda de segunda a sexta de manhã. Os `parados` rodam à parte, uma vez por
