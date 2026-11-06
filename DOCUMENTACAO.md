@@ -872,6 +872,20 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   trt7, trt7-2, jfce, trf5, trf5-2, ou a URL de login). O bot abre o login no Chrome aberto, clica na
   credencial no quadro "Credenciais Disponíveis" que o Presto põe na página, preenche o PIN, confirma e
   diz se entrou. O PIN não aparece no Terminal nem nas capturas.
+- **Procurar nos tribunais os processos do último relatório:** `cd albi && .venv/bin/python presto.py
+  processos --conferir` mostra, sem abrir o Chrome, qual relatório ele pegou (o `processos.csv` mais novo
+  em `albi/saida/` ou em `saida/albi/`, onde a página `/albi` guarda) e em qual tribunal está cada
+  processo, pelo número CNJ: TJCE (8.06), TRT7 (5.07), JFCE (4.05, origem 81xx) e TRF5 (4.05, o resto);
+  2º grau pela instância do Sonar ou origem 0000. Os de outros tribunais aparecem como "fora". Para outro
+  relatório, passe a pasta: `presto.py processos <pasta> --conferir`. Depois, no Mac, com a janela do
+  escritório na frente: `.venv/bin/python presto.py processos` (opções: `--tribunal tjce1` só um
+  tribunal; `--max 3` só os 3 primeiros). Para cada tribunal ele abre uma aba, entra pelo Presto (se a
+  aba já estiver logada, segue) e, na mesma aba, procura cada processo: no PJe, a tela "Consultar
+  processos" (preenche o número e clica em Pesquisar); no TRT7, o detalhe do processo da consulta
+  processual. Se cair no login no meio, entra de novo uma vez. Resultado de cada um: achou, não
+  encontrado, captcha, sem formulário, não entrou ou fora. Salva tudo em
+  `<pasta do relatório>/presto/<data_hora>/` (`resumo.txt`, `resumo.json` com os links do processo e
+  as capturas de cada um, por tribunal). Ainda não baixa os autos.
 - (Tentativa anterior, perfil separado) Copiar o perfil (uma vez, no computador onde o Albi roda): `cd albi && .venv/bin/python presto.py
   copiar`. Mostra os perfis do Chrome; escolha o que tem o Presto logado. Se o Chrome estiver
   aberto, ele pergunta se pode fechá-lo (responda Enter/"s"; as abas voltam ao abrir de novo); a cópia vai para `albi/perfil_presto/` (sem caches nem abas) e o Chrome pode ser

@@ -107,6 +107,12 @@ def abas(w):
     return out
 
 
+def ir(w, t, endereco):
+    """Leva a aba para outro endereço (como digitar na barra)."""
+    _osa(['on run argv', 'tell application "Google Chrome"', f'set URL of {_ABA} to (item 3 of argv)', 'end tell',
+          'end run'], w, t, endereco)
+
+
 def url(w, t):
     return _osa(['on run argv', 'tell application "Google Chrome"', f'return URL of {_ABA}', 'end tell', 'end run'],
                 w, t)

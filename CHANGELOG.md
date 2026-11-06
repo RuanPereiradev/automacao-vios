@@ -12,6 +12,27 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Albi/Presto: procurar nos tribunais os processos do último relatório (06/11/2026)
+- Novo `presto.py processos [pasta] [--tribunal X] [--max N] [--conferir]` (código em
+  `albi/presto_processos.py`). Pega o `processos.csv` do relatório mais novo (`albi/saida/*/` ou
+  `saida/albi/*/`) ou da pasta dada, junta as pessoas do mesmo processo e descobre o tribunal pelo número
+  CNJ: TJCE 8.06, TRT7 5.07, JFCE 4.05 com origem 81xx, TRF5 4.05 no resto; 2º grau pela instância do
+  Sonar ou pela origem 0000. Os outros tribunais ficam como "fora" (ainda sem login no Presto).
+- No Mac, para cada tribunal: abre o login no Chrome aberto, entra pelo quadro do Presto e, na mesma aba,
+  procura cada processo. No PJe (TJCE, JFCE, TRF5) usa a tela "Consultar processos": preenche o número no
+  campo único ou nos campos separados (pula os fixos) e clica no Pesquisar do formulário, não no do menu.
+  No TRT7 abre o detalhe do processo da consulta processual. Anota achou / não encontrado / captcha / sem
+  formulário / não entrou / fora e guarda os links do processo (onde estão os autos) em `resumo.json`,
+  mais `resumo.txt` e as capturas em `<pasta do relatório>/presto/<data_hora>/`. Se a consulta mandar
+  para o login, entra de novo uma vez. Só clica em "Pesquisar"; ainda não baixa os autos.
+- `--conferir` mostra a divisão por tribunal sem abrir o Chrome (roda no Linux também).
+- O login do `presto.py entrar` virou a função `presto.login`, usada pelos dois comandos; se a aba já
+  estiver logada, ele segue sem procurar o quadro. Novo `chrome_mac.ir` (leva a aba para outro endereço).
+- Testado no Linux com o `chrome_mac` imitado pelo Selenium e páginas locais que imitam o quadro do
+  Presto e a consulta do PJe: entrou com o PIN, preencheu os campos separados, achou o processo e o link
+  `openPopUp(... listProcessoCompletoAdvogado.seam ...)`, e marcou "não encontrado" no outro. Os sites
+  reais dos tribunais e o AppleScript só no Mac.
+
 ### Alterado — Vila 03 ganha a arena nova do Albi, com a luta (06/11/2026)
 - A plataforma com as quatro torres sai; entra a cena nova de `albi/mascote/fundo-arena-albi.html`:
   casa em domo com anexo e torre de observação, árvore, lago, dragão no céu e dois lutadores que

@@ -121,11 +121,19 @@ tem a API de robôs da Oystr. Primeiro passo, no computador onde o bot vai rodar
 
 ```bash
 .venv/bin/python presto.py entrar tjce1 # Mac: entra no tribunal pelo Presto no Chrome JÁ ABERTO (PIN em PRESTO_PIN)
+.venv/bin/python presto.py processos --conferir  # qualquer computador: último relatório dividido por tribunal
+.venv/bin/python presto.py processos             # Mac: entra em cada tribunal pelo Presto e procura cada processo
 .venv/bin/python presto.py aberto       # Mac: exploração (captura páginas no Chrome aberto)
 .venv/bin/python presto.py copiar       # (alternativa) copia o perfil do Chrome que tem o Presto logado
 # ou: .venv/bin/python presto.py preparar  # perfil novo: instalar o Presto e entrar
 .venv/bin/python presto.py explorar https://pje.trt7.jus.br/primeirograu/login.seam
 ```
+
+O `processos` lê o `processos.csv` do último relatório (ou `presto.py processos <pasta>`), descobre o
+tribunal pelo número CNJ (TJCE, TRT7, JFCE e TRF5; os outros ficam como "fora"), entra em cada um pelo
+Presto e procura cada processo na consulta do tribunal (`--tribunal tjce1` só um; `--max N` só os N
+primeiros). Grava `resumo.txt`/`resumo.json` (achou, não encontrado, captcha...) e as capturas em
+`<pasta do relatório>/presto/<data_hora>/`. Ainda não baixa os autos.
 
 O `explorar` salva em `logs/presto/<data_hora>/` o print, o HTML e os botões do pop-up da extensão e
 de cada site pedido, sem precisar do DevTools. O perfil (`perfil_presto/`) guarda a sessão do Presto
