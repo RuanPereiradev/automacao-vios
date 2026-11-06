@@ -14,6 +14,11 @@ extensão mostra, para montar os passos do bot (entrar no PJe, buscar o processo
       quadro pedir senha/PIN, preenche com PRESTO_PIN do albi/.env e confirma. Salva o que viu em
       cada etapa em albi/logs/presto/<data_hora>/ e diz se entrou. O PIN nunca é impresso nem salvo.
 
+  .venv/bin/python presto.py liberar-chrome [--sim]               (Mac; uma vez)
+      Liga no Chrome a opção "Permitir JavaScript de Apple Events" (que o bot precisa) sem procurar
+      no menu: fecha o Chrome (pergunta antes; --sim não pergunta), marca a opção no arquivo
+      Preferences de cada perfil (guarda uma cópia Preferences.albi-bak) e abre o Chrome de novo.
+
   .venv/bin/python presto.py processos [pasta do resultado] [--tribunal tjce1] [--max N] [--conferir]
       (Mac) Pega o processos.csv do último relatório do Albi (ou da pasta dada), vê pelo número de
       cada processo em qual tribunal ele está, entra em cada tribunal pelo Presto (como o "entrar")
@@ -571,6 +576,9 @@ def main(*args):
     if args and args[0] == "processos":
         import presto_processos
         return presto_processos.main(*args[1:])
+    if args and args[0] == "liberar-chrome":
+        import chrome_mac
+        return chrome_mac.liberar(perguntar="--sim" not in args)
     if args and args[0] == "entrar":
         resto = [a for a in args[1:] if a != "--direto"]
         return entrar(*(resto[:1] or ["tjce1"]), direto="--direto" in args)

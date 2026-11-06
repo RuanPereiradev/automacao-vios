@@ -11,18 +11,92 @@ Precisa, uma vez:
      (ou Ajustes do Sistema > Privacidade e Segurança > Automação > Terminal > Google Chrome).
 """
 import json
+import os
 import platform
+import shutil
 import subprocess
 import time
+from pathlib import Path
 
-JS_DESLIGADO = ("O Chrome está com o JavaScript por AppleScript desligado. No Chrome: menu Visualizar > "
-                "Desenvolvedor > \"Permitir JavaScript de Apple Events\" (marcar) e rode de novo.")
+JS_DESLIGADO = ("O Chrome está com o JavaScript por AppleScript desligado. Rode uma vez "
+                "\".venv/bin/python presto.py liberar-chrome\" (fecha o Chrome, liga a opção e abre de novo) "
+                "ou, no Chrome: menu Visualizar > Desenvolvedor > \"Permitir JavaScript de Apple Events\".")
 SEM_PERMISSAO = ("O macOS não deixou o Terminal controlar o Chrome. Ajustes do Sistema > Privacidade e "
                  "Segurança > Automação > Terminal: ligue \"Google Chrome\" e rode de novo.")
 
 
 class ChromeMacErro(Exception):
     pass
+
+
+PASTA_CHROME = Path.home() / "Library" / "Application Support" / "Google" / "Chrome"
+OPCAO_JS = "allow_javascript_apple_events"  # chave "browser.allow_javascript_apple_events" do Preferences
+
+
+def perfis(pasta=PASTA_CHROME):
+    """Arquivos Preferences de cada perfil do Chrome (Default, Profile 1, ...)."""
+    return sorted(p for p in Path(pasta).glob("*/Preferences")
+                  if p.parent.name == "Default" or p.parent.name.startswith("Profile "))
+
+
+def chrome_rodando():
+    return subprocess.run(["pgrep", "-x", "Google Chrome"], capture_output=True).returncode == 0
+
+
+def ligar_opcao_js(pasta=PASTA_CHROME):
+    """Marca "Permitir JavaScript de Apple Events" direto no Preferences de cada perfil (Chrome FECHADO:
+    o Chrome regrava esse arquivo ao sair). Guarda uma cópia Preferences.albi-bak antes.
+    Devolve [(perfil, "ligado" | "já estava" | "erro: ...")]."""
+    feitos = []
+    for pref in perfis(pasta):
+        try:
+            dados = json.loads(pref.read_text(encoding="utf-8"))
+            browser = dados.setdefault("browser", {})
+            if browser.get(OPCAO_JS) is True:
+                feitos.append((pref.parent.name, "já estava"))
+                continue
+            browser[OPCAO_JS] = True
+            shutil.copy2(pref, pref.with_name("Preferences.albi-bak"))
+            tmp = pref.with_name("Preferences.albi-tmp")
+            tmp.write_text(json.dumps(dados, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            os.replace(tmp, pref)
+            feitos.append((pref.parent.name, "ligado"))
+        except Exception as e:  # noqa: BLE001 — um perfil com problema não impede os outros
+            feitos.append((pref.parent.name, f"erro: {e}"))
+    return feitos
+
+
+def liberar(perguntar=True):
+    """Fecha o Chrome, liga a opção do JavaScript por Apple Events em todos os perfis e abre de novo."""
+    if not disponivel():
+        print("Só funciona no Mac.")
+        return 2
+    if not perfis():
+        print(f"Não achei os perfis do Chrome em {PASTA_CHROME}.")
+        return 2
+    if chrome_rodando():
+        print("O Chrome vai fechar e abrir de novo para ligar a opção (ele só lê isso ao abrir).")
+        print("Se ele não estiver configurado para \"Continuar de onde parou\", as abas abertas não voltam.")
+        if perguntar and input("Pode fechar o Chrome agora? [s/N] ").strip().lower() not in ("s", "sim"):
+            print("Nada feito.")
+            return 1
+        subprocess.run(["osascript", "-e", 'tell application "Google Chrome" to quit'], capture_output=True)
+        for _ in range(60):
+            if not chrome_rodando():
+                break
+            time.sleep(0.5)
+        else:
+            print("O Chrome não fechou (alguma janela perguntando algo?). Feche com Cmd+Q e rode de novo.")
+            return 1
+        time.sleep(1)
+    erros = 0
+    for perfil, como in ligar_opcao_js():
+        print(f"  {perfil}: {como}")
+        erros += como.startswith("erro")
+    subprocess.run(["open", "-a", "Google Chrome"])
+    print("Chrome aberto de novo." + (" Algum perfil deu erro (veja acima)." if erros else
+          " Agora rode: .venv/bin/python presto.py entrar tjce1"))
+    return 1 if erros else 0
 
 
 def disponivel():

@@ -12,6 +12,14 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Albi/Presto: `presto.py liberar-chrome` liga o JavaScript por Apple Events (06/11/2026)
+- O usuário não achou no Chrome do Mac o menu Visualizar > Desenvolvedor > "Permitir JavaScript de
+  Apple Events", que o bot precisa. O novo comando faz isso sem o menu: pergunta antes (`--sim` não
+  pergunta), fecha o Chrome, marca `browser.allow_javascript_apple_events` no `Preferences` de cada
+  perfil (Default e Profile N), guardando uma cópia `Preferences.albi-bak`, e abre o Chrome de novo.
+  A mensagem de erro do JavaScript desligado agora indica esse comando. A edição do arquivo foi
+  testada com perfis falsos; o comando ainda não rodou no Mac.
+
 ### Adicionado — Vila 05: o parque vivo do Orelha e o campo `cena` do `/orelha/status` (06/11/2026)
 - **`GET /orelha/status` ganhou `cena`** (`bot/orelha.py`, função `cena()`): `null` sem relatório real;
   senão só a data e as CONTAGENS do relatório real mais recente, tiradas do `resumo.json`

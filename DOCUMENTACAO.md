@@ -908,8 +908,10 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   API de robôs da Oystr, então o bot usa a extensão num perfil do Chrome só dele.
 - **Caminho atual (Mac): o Chrome que já está aberto.** No Chrome do bot, a conta Google do
   escritório pede confirmação de identidade; por isso o Albi controla o Chrome aberto pelo
-  AppleScript (`albi/chrome_mac.py`). Uma vez: no Chrome, menu Visualizar > Desenvolvedor >
-  "Permitir JavaScript de Apple Events"; no macOS, quando aparecer "Terminal quer controlar Google
+  AppleScript (`albi/chrome_mac.py`). Uma vez: `cd albi && .venv/bin/python presto.py liberar-chrome`
+  (pergunta antes, fecha o Chrome, marca "Permitir JavaScript de Apple Events" no arquivo
+  `Preferences` de cada perfil, guardando uma cópia `Preferences.albi-bak`, e abre o Chrome de novo;
+  é o mesmo que o menu Visualizar > Desenvolvedor do Chrome); no macOS, quando aparecer "Terminal quer controlar Google
   Chrome", Permitir (e "Gravação de Tela" para o Terminal, para os prints). Depois, com a janela do
   perfil do escritório na frente: `cd albi && .venv/bin/python presto.py aberto` (console do Presto e
   login do PJe do TRT7; ou passe as URLs). Ele abre abas novas, salva o que vê em

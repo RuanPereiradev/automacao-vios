@@ -120,6 +120,7 @@ pela extensão do Presto, o cofre de credenciais da Oystr que o escritório já 
 tem a API de robôs da Oystr. Primeiro passo, no computador onde o bot vai rodar:
 
 ```bash
+.venv/bin/python presto.py liberar-chrome # Mac, uma vez: liga "Permitir JavaScript de Apple Events" no Chrome (fecha e abre o Chrome)
 .venv/bin/python presto.py entrar tjce1 # Mac: entra no tribunal pelo Presto no Chrome JÁ ABERTO (PIN em PRESTO_PIN)
 .venv/bin/python presto.py processos --listar    # todos os relatórios, com quantos processos cada
 .venv/bin/python presto.py processos --conferir  # qualquer computador: último relatório com processos dividido por tribunal
