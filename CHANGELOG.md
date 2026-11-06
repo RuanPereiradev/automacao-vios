@@ -12,6 +12,12 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Albi/Presto: PIN do quadro enviado com Enter quando só há o botão "fechar" (06/11/2026)
+- O quadro real do Presto (v0.141.1, enviado pelo usuário) tem a credencial "Roneely A1" com o número
+  em link azul e, depois do clique, o campo "Pin do usuário" sem botão de confirmar (só "fechar").
+  Agora, sem botão de confirmar, o robô manda Enter completo no campo (keydown, keypress e keyup),
+  além de enviar o formulário se houver. Testado com uma página igual ao quadro real.
+
 ### Alterado — Albi/Presto: tribunal aberto pelo console do Presto (Sites) (06/11/2026)
 - Pedido do usuário: o fluxo é achar o tribunal, abrir o console do Presto
   (`console.presto.oystr.com.br`), ir em **Sites** e abrir o tribunal por lá, porque é assim que a

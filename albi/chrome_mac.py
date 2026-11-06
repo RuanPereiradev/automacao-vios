@@ -247,7 +247,10 @@ JS_PRESTO_PIN = "(function(pin){var d=" + _DIALOGO + r""";
   });
   var botao = botoes.filter(function(b) { return /entrar|confirmar|ok|acessar|login|continuar|assinar|enviar/i.test(b.innerText || ''); })[0] || botoes[0];
   if (botao) { botao.click(); return JSON.stringify({ok: true, botao: (botao.innerText || '').trim()}); }
-  campo.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true}));
+  // sem botão de confirmar (o quadro só tem "fechar"): Enter completo no campo do PIN
+  ['keydown', 'keypress', 'keyup'].forEach(function(n) {
+    campo.dispatchEvent(new KeyboardEvent(n, {key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true}));
+  });
   if (campo.form) campo.form.requestSubmit ? campo.form.requestSubmit() : campo.form.submit();
   return JSON.stringify({ok: true, botao: '(Enter)'});
 })"""
