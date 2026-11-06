@@ -12,11 +12,57 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+<<<<<<< HEAD
 ### Corrigido — Albi/Presto: PIN do quadro enviado com Enter quando só há o botão "fechar" (06/11/2026)
 - O quadro real do Presto (v0.141.1, enviado pelo usuário) tem a credencial "Roneely A1" com o número
   em link azul e, depois do clique, o campo "Pin do usuário" sem botão de confirmar (só "fechar").
   Agora, sem botão de confirmar, o robô manda Enter completo no campo (keydown, keypress e keyup),
   além de enviar o formulário se houver. Testado com uma página igual ao quadro real.
+=======
+### Adicionado — Vila 05: o parque vivo do Orelha e o campo `cena` do `/orelha/status` (06/11/2026)
+- **`GET /orelha/status` ganhou `cena`** (`bot/orelha.py`, função `cena()`): `null` sem relatório real;
+  senão só a data e as CONTAGENS do relatório real mais recente, tiradas do `resumo.json`
+  (`atrasadas`, `graves` = atrasadas há mais de 7 dias, `vencem_hoje`, `intimacoes`,
+  `intimacoes_graves`, `parados`, `parados_graves`, `audiencias_hoje`, `pericias_hoje`, `erros`,
+  `funcoes`). Campo ausente = 0; nunca leva nomes, `por_responsavel` nem `por_area`. O `_resumo`
+  passou a guardar os `numeros` de cada seção. Testes novos em `tests/test_orelha_cena.py` (8).
+- **Esqueleto** `doc/vila/ligar_vila05_vida.py`: cria `this.v5` (cena, hora, minuto, dia da semana,
+  humor, rotina e os testes pela URL) e seis ganchos vazios que as camadas preenchem. Sem as camadas a
+  vila fica igual. Sem servidor (site publicado) usa uma cena de exemplo.
+- **Casinhas** (`ligar_vila05_casinhas.py`): duas casinhas novas ao lado da do Orelha; a cada 2 ou 3
+  minutos a Pretinha ou o Caramelo saem, dão uma voltinha, cheiram o ar e voltam.
+- **Ossos** (`ligar_vila05_ossos.py`): as tarefas atrasadas viram ossos meio enterrados na caixa de
+  areia (até 12; acima disso cada osso vale mais de uma); as graves são ossos escuros. Quando a
+  contagem cai, um osso sai voando; quando sobe, cresce um montinho e aparece outro.
+- **Clima** (`ligar_vila05_clima.py`): sol com brilhinhos e borboletas sem atrasadas; sombras de nuvem
+  com poucas; céu fechado com muitas ou com graves; chuva leve com poças a partir de 5 graves.
+- **Dia** (`ligar_vila05_dia.py`): a luz segue a hora do navegador (madrugada, nascer, dia, pôr do sol,
+  noite; tinta de no máximo 34%); à noite acendem a lanterna, a antena da torre e vagalumes. O Orelha
+  dorme na porta da casinha antes das 8h, depois das 18h e no fim de semana, almoça das 12h às 13h e
+  usa chapéu de palha no fim de semana. Uma execução sempre passa na frente.
+- **Humor** (`ligar_vila05_humor.py`): no fim de cada execução, zoomies em oito em volta da piscina e
+  reverência (ok), emburrado de costas com nuvenzinha e o balão "HMPF... DEU ERRO, OLHA O LOG." (erro)
+  ou um suspiro (parou). Acrescenta um ponto de extensão no desenho do Orelha para as poses novas.
+- **Passeio** (`ligar_vila05_passeio.py`): de vez em quando (cerca de 1 minuto, das 7h às 19h, mais
+  vezes no fim de semana) uma pessoa genérica dá uma volta pelos caminhos (corredor, moça com bolsa,
+  criança com balão ou senhor de bengala). Se o Orelha está livre e no expediente, ele vai até ela e
+  eles brincam: cheira, pula em cima, late, roda, ganha carinho (coraçãozinho) ou petisco; depois ela
+  acena e segue. Quando ele atravessa a barreira de agility, salta por cima (a sombra fica no chão) e
+  levanta poeira ao pousar; de vez em quando ele faz um treino na barreira. O plano novo
+  `this.v5.passeio` vale depois do humor e antes da rotina.
+- Testar pela URL, também sem servidor: `?vila=5&v5hora=21`, `&v5dia=6`, `&v5atrasadas=40&v5graves=8`,
+  `&v5humor=ok|erro|parou`, `&v5visita=1|pretinha|caramelo`, `&v5pessoa=1|corredor|moca|crianca|senhor`,
+  `&v5agility=1`.
+- Guia dos ganchos em `doc/vila/ganchos-vila05.md` e ferramentas de teste em `doc/vila/teste-vila05/`
+  (`checar.py`, `rodar.js`, `igual.js`).
+- Ordem: `ligar_vila05_vida.py` depois de todos os outros `ligar_*` (inclusive o
+  `ligar_vila02_ponte.py` e o `ligar_vila03_arena_att.py`), e as seis camadas em seguida, em qualquer ordem. `DOCUMENTACAO.md`
+  (Passo 36) e `orelha/README.md` atualizados.
+- Testado: as seis aplicadas numa cópia e no `bot/vila/vila.html`, todas idempotentes; `node --check`
+  do script da vila; smoke test em node com canvas falso (simulado com vários overrides, servidor com
+  `cena` nula, parcial e zerada, execução simulada inteira com cada humor), sem erro de camada;
+  capturas no Chrome headless (meio-dia, 21h, sábado); 8 testes da cena e 253 do Orelha passando.
+>>>>>>> d40cdb2 (Vila 05 vira o parque vivo do Orelha: clima, ossos, dia, humor, casinhas e passeio)
 
 ### Alterado — Albi/Presto: tribunal aberto pelo console do Presto (Sites) (06/11/2026)
 - Pedido do usuário: o fluxo é achar o tribunal, abrir o console do Presto

@@ -17,7 +17,8 @@ O fundo da vila genérica (prédios cinza, lotes e torre de metal) é trocado po
 O Bumblebee anda só na pista (linhas 4 a 11 da Vila 02), sem passar pela base da antena.
 
 uso: python3 doc/vila/ligar_vila02_ponte.py bot/vila/vila.html
-(depois de todos os outros, inclusive o ligar_vila04_garagem.py; rodar de novo não repete nada)
+(depois de todos os outros, inclusive o ligar_vila04_garagem.py, e antes do ligar_vila05_vida.py e das
+camadas do parque vivo da Vila 05; rodar de novo não repete nada)
 """
 import json
 import sys

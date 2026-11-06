@@ -231,7 +231,8 @@ Na vila (`bot/vila/vila.html`):
   Orelha"; os postos e os eventos `bot: "orelha"` são os mesmos.
 - Por fim, `doc/vila/ligar_orelha_agenda.py`: a vila lê também `GET /orelha/status` do Sam a cada
   30 s (não é evento): `horario_texto`, `proximo_texto`, `atrasado`/`atrasado_texto`, `total` de
-  relatórios guardados, `ultimo` (data e contagens) e `aviso` (a frase pronta). Nada de texto de
-  cliente. No fim de cada execução, o Orelha guarda a folha no Arquivo do parque. Na branch `relatorio-processos`
+  relatórios guardados, `ultimo` (data e contagens), `aviso` (a frase pronta) e `cena` (as contagens
+  do último relatório real que desenham o parque: atrasadas, graves, intimações, parados, audiências;
+  `null` sem relatório; ver Passo 36 da DOCUMENTACAO). Nada de texto de cliente nem nomes. No fim de cada execução, o Orelha guarda a folha no Arquivo do parque. Na branch `relatorio-processos`
   a Vila 04 é do Jarvis (`ligar_jarvis.py`, que espera a vila com 3 vilas): ao juntar as duas,
   aplicar o Jarvis antes e ajustar este script (ele hoje exige `static NV = 3;`).

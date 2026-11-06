@@ -373,6 +373,15 @@ Parado, o Orelha diz na vila quando roda e quando sai o próximo relatório, e a
 não saiu. No fim de cada execução, guarda a folha no **Arquivo** do parque. Depois do
 `ligar_vila05_parque.py`, rode `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html`.
 
+O parque é vivo: as tarefas atrasadas do último relatório real viram ossos na caixa de areia, o tempo
+fecha e chove conforme as atrasadas e as graves, a luz segue a hora do dia (à noite acendem a
+lanterna, a torre e vagalumes), o Orelha dorme fora do expediente e almoça ao meio-dia, e reage ao fim
+de cada execução (zoomies, emburrado ou suspiro). Pessoas passeiam pelo parque e ele vai brincar com
+elas, e salta quando atravessa a barreira de agility. Depois de todos os outros `ligar_*`, rode
+`python3 doc/vila/ligar_vila05_vida.py bot/vila/vila.html` e as camadas `ligar_vila05_casinhas.py`,
+`ligar_vila05_ossos.py`, `ligar_vila05_clima.py`, `ligar_vila05_dia.py`, `ligar_vila05_humor.py` e
+`ligar_vila05_passeio.py`. Para testar sem esperar: `/vila?vila=5&v5hora=21&v5atrasadas=40&v5graves=8&v5humor=erro`.
+
 ## Relatórios guardados (página `/orelha` do Sam)
 
 Cada relatório fica na pasta do dia (`saida/<AAAA-MM-DD>/`: `relatorio.html`, `relatorio.pdf`,
@@ -381,7 +390,9 @@ e mostra todos na página `/orelha`, aberta pelo botão "Relatórios guardados" 
 cartão do Orelha na Vila dos Bots: dia, hora, graves, pontos de atenção e os botões Abrir, PDF e
 Planilhas (.csv). Os do `--simulado` ficam à parte. A página fica atrás da senha das páginas do Sam,
 porque o relatório tem nomes de clientes e da equipe. Para a vila só vão datas e contagens
-(`/orelha/status`).
+(`/orelha/status`). O campo `cena` desse status leva só a data e as contagens do relatório real mais
+recente (atrasadas, graves, vencem hoje, intimações, parados, audiências, perícias, erros e as funções
+que rodaram), ou `null` se ainda não houver um; nunca nomes nem os quadros por responsável ou área.
 
 ## O que ainda falta conferir na tela real
 

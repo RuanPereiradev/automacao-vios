@@ -619,7 +619,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `doc/vila/contrato-eventos.md`). A vila agora tem 5 vilas, e a Vila 04 está vaga. Abrir direto:
   `/vila?vila=5`. Se a vila for baixada de novo do site: `ligar_zangao.py`, `ligar_albi.py`, depois
   `python3 doc/vila/ligar_orelha.py bot/vila/vila.html`, `ligar_jarvis.py`, `ligar_vila05_parque.py`
-  (o parque, ver Passo 32) e, por último, `ligar_orelha_agenda.py` (horário e Arquivo, ver Passo 35).
+  (o parque, ver Passo 32), `ligar_orelha_agenda.py` (horário e Arquivo, ver Passo 35) e, depois de
+  todos, `ligar_vila05_vida.py` e as camadas do parque vivo (ver Passo 36).
 
 ### Painel semanal do Orelha (PDF no papel timbrado)
 - Botão **Gerar painel semanal** na página `/orelha` do Sam (ou `./rodar.sh --funcoes painel` dentro de
@@ -735,8 +736,11 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html`,
   `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html`,
   `python3 doc/vila/ligar_vila04_garagem.py bot/vila/vila.html`,
-  `python3 doc/vila/ligar_vila02_ponte.py bot/vila/vila.html` e por último
-  `python3 doc/vila/ligar_vila03_arena_att.py bot/vila/vila.html`.
+  `python3 doc/vila/ligar_vila02_ponte.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_vila03_arena_att.py bot/vila/vila.html` e, por último, o parque vivo da
+  Vila 05 (Passo 36): `ligar_vila05_vida.py` e depois as camadas `ligar_vila05_casinhas.py`,
+  `ligar_vila05_ossos.py`, `ligar_vila05_clima.py`, `ligar_vila05_dia.py`, `ligar_vila05_humor.py` e
+  `ligar_vila05_passeio.py`.
 
 ### Passo 32 — Vila 05: o parque do Orelha
 - A Vila 05 virou um parque dos cães cheio de brinquedos: cerca branca de madeira, grama com flores
@@ -815,6 +819,51 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   pista. A parte animada só é desenhada com a Vila 01, 02 ou 03 na tela. Os eventos, as falas e o
   painel não mudam. Patch: `doc/vila/ligar_vila02_ponte.py` (depois do `ligar_vila04_garagem.py` e
   antes do `ligar_vila03_arena_att.py`).
+
+### Passo 36 — Vila 05: o parque vivo (a cena do relatório, o dia e o humor do Orelha)
+- **Campo `cena` no `GET /orelha/status`** (`bot/orelha.py`, função `cena()`): `null` sem relatório
+  real (ou com o Orelha não configurado); senão só a data e CONTAGENS do relatório real mais recente,
+  lidas do `resumo.json`: `data`, `gerado_em`, `atrasadas`, `graves` (atrasadas há mais de 7 dias),
+  `vencem_hoje`, `intimacoes`, `intimacoes_graves`, `parados`, `parados_graves`, `audiencias_hoje`,
+  `pericias_hoje`, `erros` e `funcoes` (as seções que rodaram). Campo ausente = 0. Nunca leva nomes,
+  `por_responsavel` nem `por_area`. Os simulados são ignorados. Testes: `tests/test_orelha_cena.py`
+  (rodar com `.venv/bin/python -m unittest discover -s tests`, na raiz do repo).
+- A Vila 05 lê esse campo a cada 30 s (sem servidor, no site publicado, usa uma cena de exemplo):
+  - **Casinhas**: duas casinhas novas ao lado da do Orelha; de tempos em tempos a Pretinha ou o
+    Caramelo saem para uma voltinha e voltam.
+  - **Ossos**: cada tarefa atrasada é um osso meio enterrado na caixa de areia (acima de 12, cada osso
+    vale mais de uma); as graves são ossos escuros. Quando a contagem cai, um osso sai voando; quando
+    sobe, cresce um montinho e aparece outro.
+  - **Clima**: sem atrasadas faz sol; com poucas passam sombras de nuvem; com muitas ou com graves o
+    céu fecha; com 5 graves ou mais chove de leve, com poças.
+  - **Dia**: a luz muda com a hora do navegador (madrugada, nascer, dia, pôr do sol, noite); à noite
+    acendem a lanterna da casinha, a antena da torre e vagalumes. Fora do expediente (antes das 8h,
+    depois das 18h e no fim de semana) o Orelha dorme na porta da casinha; das 12h às 13h almoça no
+    pote de ração; no fim de semana troca o fedora por um chapéu de palha.
+  - **Humor**: no fim de cada execução, zoomies em volta da piscina (ok), emburrado de costas com uma
+    nuvenzinha e o balão "HMPF... DEU ERRO, OLHA O LOG." (erro) ou um suspiro (parou).
+  - **Passeio**: de vez em quando (cerca de 1 minuto, das 7h às 19h, mais no fim de semana) uma pessoa
+    genérica dá uma volta pelos caminhos: corredor, moça com bolsa, criança com balão ou senhor de
+    bengala. Com o Orelha livre e no expediente (8h–18h; no fim de semana a visita o acorda), ele vai
+    até ela e eles brincam: cheira, pula em cima, late, roda, ganha carinho ou um petisco; depois ela
+    acena e segue. Uma execução sempre passa na frente.
+  - **Salto**: quando atravessa a barreira de agility ele salta (a sombra fica no chão) e levanta
+    poeira ao pousar; indo de lado, pula cada poste. De vez em quando faz um treino na barreira.
+- Testar pela URL (valem também sem servidor): `?vila=5&v5hora=21` (hora; aceita `HH:MM`),
+  `&v5dia=6` (0 = domingo … 6 = sábado), `&v5atrasadas=40&v5graves=8` (a cena) e
+  `&v5humor=ok|erro|parou` (força o humor) e `&v5visita=1|pretinha|caramelo` (uma visita a cada 15 s),
+  `&v5pessoa=1|corredor|moca|crianca|senhor` (uma pessoa a cada 15 s, a qualquer hora) e `&v5agility=1`
+  (treino na barreira a cada 20 s).
+  Ver em casa: `cd bot/vila && python3 -m http.server 5077
+  --bind 127.0.0.1` e abrir `http://127.0.0.1:5077/vila.html?vila=5&v5hora=21`.
+- Patches: `doc/vila/ligar_vila05_vida.py` (o esqueleto: `this.v5` e os ganchos, sem desenhar nada),
+  depois de todos os outros `ligar_*`; em seguida as camadas, em qualquer ordem:
+  `ligar_vila05_casinhas.py`, `ligar_vila05_ossos.py`, `ligar_vila05_clima.py`, `ligar_vila05_dia.py`,
+  `ligar_vila05_humor.py` e `ligar_vila05_passeio.py`. Rodar de novo não repete nada.
+- Para quem for mexer numa camada: o guia dos ganchos (trechos exatos, coordenadas, como mover o
+  Orelha) é `doc/vila/ganchos-vila05.md`, e as ferramentas de teste ficam em `doc/vila/teste-vila05/`
+  (`checar.py` roda `node --check` no JS da vila; `rodar.js` roda a vila em node com canvas falso).
+
 ### Passo 35 — Orelha avisa quando o relatório roda e guarda os relatórios no Arquivo
 - **Horário**: `ORELHA_HORARIO` (padrão `seg-sex 07:30`) e `ORELHA_HORARIO_PARADOS` (padrão
   `sab 08:00`) no `orelha/.env`. Formato `<dias> <HH:MM>`, com faixa (`seg-sex`) ou lista
@@ -842,7 +891,7 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   tarefas que venciam nele e continuam abertas (na segunda-feira, a semana passada). Na página
   `/orelha`, o último relatório aparece **dentro da página**, com as abas "Relatório do dia" e
   "Atrasadas da semana"; na lista dos guardados, o botão "Semana".
-- `GET /orelha/status` (para a vila) leva só datas e contagens. O texto dos relatórios só aparece na
+- `GET /orelha/status` (para a vila) leva só datas e contagens (inclusive o campo `cena`, ver Passo 36). O texto dos relatórios só aparece na
   página e nos arquivos, atrás da senha das páginas (`ENVIO_SENHA`), como as do Albi.
 - Patch da vila: `doc/vila/ligar_orelha_agenda.py`, o último da lista. O `ligar_vila05_parque.py`
   ganhou o armário do Arquivo (a barreira de agility desceu para a grama de baixo).

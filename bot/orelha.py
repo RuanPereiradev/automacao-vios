@@ -168,12 +168,15 @@ def _resumo(pasta_dia):
     except (OSError, ValueError):
         return {}
     graves = atencao = 0
+    numeros = {}
     for s in dados.get("secoes") or []:
+        if s.get("chave") and isinstance(s.get("numeros"), dict):
+            numeros[s["chave"]] = s["numeros"]
         por = s.get("por_nivel") or {}
         graves += int(por.get("grave") or 0)
         atencao += int(por.get("atencao") or 0)
     return {"gerado_em": dados.get("gerado_em"), "graves": graves, "atencao": atencao,
-            "erros": [str(e) for e in dados.get("erros") or []],
+            "erros": [str(e) for e in dados.get("erros") or []], "numeros": numeros,
             "funcoes": [s.get("chave") for s in dados.get("secoes") or [] if s.get("chave")]}
 
 
@@ -212,13 +215,37 @@ def arquivo(pasta, nome_pasta, nome):
     return caminho if caminho.is_file() else None
 
 
+def _n(numeros, secao, campo):
+    """Contagem inteira (>= 0) de numeros[secao][campo]; ausente ou inválido = 0."""
+    try:
+        return max(0, int((numeros.get(secao) or {}).get(campo) or 0))
+    except (AttributeError, TypeError, ValueError):
+        return 0
+
+
+def cena(relatorio):
+    """Contrato "cena" da Vila 05: só datas e CONTAGENS do relatório real mais recente (nunca nomes,
+    nunca por_responsavel/por_area). None sem relatório real."""
+    if not relatorio:
+        return None
+    n = relatorio.get("numeros") or {}
+    return {"data": relatorio["data"].isoformat(), "gerado_em": relatorio.get("gerado_em"),
+            "atrasadas": _n(n, "prazos", "atrasadas"), "graves": _n(n, "prazos", "graves"),
+            "vencem_hoje": _n(n, "prazos", "vencem_hoje"),
+            "intimacoes": _n(n, "intimacoes", "esquecidas"), "intimacoes_graves": _n(n, "intimacoes", "graves"),
+            "parados": _n(n, "parados", "parados"), "parados_graves": _n(n, "parados", "graves"),
+            "audiencias_hoje": _n(n, "agenda", "audiencias_hoje"), "pericias_hoje": _n(n, "agenda", "pericias_hoje"),
+            "erros": len(relatorio.get("erros") or []),
+            "funcoes": [str(f) for f in relatorio.get("funcoes") or []]}
+
+
 # --- situação (vai para a vila: só datas e contagens) --------------------------------------------
 
 def status(pasta, agora=None):
     agora = agora or datetime.now()
     info = {"configurado": configurado(pasta), "horario": "", "horario_texto": "", "parados_texto": "",
             "proximo": None, "proximo_texto": "", "atrasado": False, "atrasado_texto": "",
-            "total": 0, "ultimo": None, "aviso": "", "erro_horario": ""}
+            "total": 0, "ultimo": None, "aviso": "", "erro_horario": "", "cena": None}
     if not info["configurado"]:
         return info
     env = _env(pasta)
@@ -242,6 +269,8 @@ def status(pasta, agora=None):
         u = reais[0]
         info["ultimo"] = {"data": u["data"].isoformat(), "gerado_em": u.get("gerado_em"),
                           "graves": u.get("graves", 0), "atencao": u.get("atencao", 0), "erros": len(u.get("erros") or [])}
+
+    info["cena"] = cena(reais[0] if reais else None)
 
     prox = proxima(regras, agora)
     if prox:
