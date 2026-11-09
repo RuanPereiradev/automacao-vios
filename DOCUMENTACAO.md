@@ -979,8 +979,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - **Rodar pela vila**: com o Jarvis instalado (`cd jarvis && ./instalar.sh` e o `jarvis/.env`
   preenchido; `JARVIS_PASTA` só se ele estiver noutra pasta),
   a caixa de fala da Vila 04 ganha "Escolher grupos e gerar" e "Planilhas", que abrem a página
-  `/jarvis`: lá a pessoa **marca os grupos** (do `PROCESSOS_GRUPOS` do Jarvis; nunca todos sem
-  escolher) e clica em "Gerar relatório do mês" (com confirmação: segundo clique em até 6 s) ou
+  `/jarvis`: lá a pessoa **marca os grupos** (do `PROCESSOS_GRUPOS` do Jarvis, que
+  `cd jarvis && ./rodar.sh --grupos --salvar` completa com todos os grupos do filtro Grupo Cliente
+  do VIOS; nunca todos sem escolher) e clica em "Gerar relatório do mês" (com confirmação: segundo clique em até 6 s) ou
   "Testar (2 processos por grupo)" (salva em `AAAA-MM/teste/`); embaixo, as planilhas para baixar. Rotas: `/jarvis`, `/jarvis/status`, `POST /jarvis/rodar`,
   `/jarvis/planilha/<mês>/<arquivo>` (só arquivos listados; nada fora da pasta).
 - O Jarvis roda em segundo plano, com ambiente limpo (nenhuma variável do Ultron chega a ele),

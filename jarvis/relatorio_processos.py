@@ -85,10 +85,64 @@ def gerar_grupo(driver, cfg, grupo, valor, pasta, agente, gasto, modelo, limite,
     return erros_ia
 
 
+def juntar_grupos(atuais, vios):
+    """Lista do PROCESSOS_GRUPOS com os grupos do VIOS: mantém os atuais (na ordem) e põe no fim os que
+    faltam, na ordem do filtro. Devolve (lista nova, novos, atuais que não existem mais no VIOS)."""
+    ja = {_normal(g) for g in atuais}
+    novos = [g for g in vios if _normal(g) not in ja and _normal(g) != "TODOS"]
+    sumiram = [g for g in atuais if _normal(g) not in {_normal(v) for v in vios}]
+    return list(atuais) + novos, novos, sumiram
+
+
+def gravar_grupos(caminho_env, grupos):
+    """Troca a linha PROCESSOS_GRUPOS= do .env (ou acrescenta no fim); o resto do arquivo fica igual."""
+    arq = Path(caminho_env)
+    linhas = arq.read_text(encoding="utf-8").splitlines() if arq.exists() else []
+    nova = "PROCESSOS_GRUPOS=" + "|".join(grupos)
+    for i, linha in enumerate(linhas):
+        if linha.strip().startswith("PROCESSOS_GRUPOS="):
+            linhas[i] = nova
+            break
+    else:
+        linhas.append(nova)
+    arq.write_text("\n".join(linhas) + "\n", encoding="utf-8")
+
+
+def listar_grupos(cfg, caminho_env, salvar, log):
+    """Entra no VIOS, lê o filtro Grupo Cliente e mostra os grupos (com --salvar, põe os que faltam no .env)."""
+    driver = criar_driver(cfg.headless, cfg.manter_aberto, cfg.navegador_rapido)
+    try:
+        fazer_login(driver, cfg)
+        ir_ate_tabela(driver, cfg)
+        vios = list(grupos_disponiveis(driver, cfg.timeout))
+    finally:
+        if not cfg.manter_aberto:
+            driver.quit()
+    atuais = [g.strip() for g in os.getenv("PROCESSOS_GRUPOS", "").split("|") if g.strip()]
+    lista, novos, sumiram = juntar_grupos(atuais, vios)
+    print(f"Grupos no filtro Grupo Cliente do VIOS ({len(vios)}):")
+    for g in vios:
+        print(("  [já na lista] " if g not in novos else "  [novo]       ") + g)
+    if sumiram:
+        print("No PROCESSOS_GRUPOS mas não existem mais no VIOS:", ", ".join(sumiram))
+    if not salvar:
+        print(f"{len(novos)} grupo(s) novo(s). Para pôr na página /jarvis: --grupos --salvar")
+        return 0
+    if novos:
+        gravar_grupos(caminho_env, lista)
+        log.info("PROCESSOS_GRUPOS de %s agora tem %d grupos (%d novos)", caminho_env, len(lista), len(novos))
+    else:
+        print("Nada novo: o PROCESSOS_GRUPOS já tem todos os grupos do VIOS.")
+    return 0
+
+
 def main(*args):
     configurar_log()
     log = logging.getLogger("relatorio")
     args = list(args)
+    # --grupos: só lista os grupos do VIOS; --grupos --salvar: põe os que faltam no PROCESSOS_GRUPOS do .env
+    so_grupos, salvar = "--grupos" in args, "--salvar" in args
+    args = [a for a in args if a not in ("--grupos", "--salvar")]
     # --grupo "CASA DO CELULAR|CASA DO CELULAR MG/SP" (sem --grupo: PROCESSOS_GRUPOS do .env)
     grupos_txt = _opcao(args, "--grupo")
     # --limite N: só os N primeiros processos de cada grupo (para testar)
@@ -99,6 +153,8 @@ def main(*args):
     except config.ConfigErro as e:
         log.error(e)
         return 1
+    if so_grupos:
+        return listar_grupos(cfg, caminho_env, salvar, log)
     pedidos = [g.strip() for g in (grupos_txt or os.getenv("PROCESSOS_GRUPOS", "")).split("|") if g.strip()]
     if not pedidos:
         log.error("Informe os grupos: --grupo \"CASA DO CELULAR\" ou PROCESSOS_GRUPOS no %s", caminho_env)
@@ -168,4 +224,5 @@ def main(*args):
 
 if __name__ == "__main__":
     # uso: python relatorio_processos.py [caminho/do/.env] [--grupo "CASA DO CELULAR"|todos] [--limite N]
+    #      python relatorio_processos.py [caminho/do/.env] --grupos [--salvar]  (grupos do VIOS -> PROCESSOS_GRUPOS)
     sys.exit(main(*sys.argv[1:]))

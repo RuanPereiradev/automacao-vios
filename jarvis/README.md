@@ -207,6 +207,12 @@ noutra pasta.
 ### Pelo terminal
 
 No Mac/Linux: `./rodar.sh --grupo "CASA DO CELULAR" --limite 3` (mesmas opções do `.bat`).
+
+Para pôr na página `/jarvis` todos os grupos que existem no VIOS: `./rodar.sh --grupos` entra no
+VIOS, lê o filtro **Grupo Cliente** e mostra cada grupo como `[já na lista]` ou `[novo]` (sem IA,
+sem planilha). `./rodar.sh --grupos --salvar` acrescenta os novos no fim do `PROCESSOS_GRUPOS` do
+`jarvis/.env` (os que já estavam ficam na mesma ordem; o "TODOS" nunca entra). A página `/jarvis`
+lê o `.env` a cada vez, então não precisa reiniciar o Sam.
 No Windows, na pasta `jarvis\`:
 
 ```powershell

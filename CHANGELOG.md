@@ -12,6 +12,16 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Jarvis: `--grupos` lê os grupos do VIOS e `--salvar` põe os que faltam na página (09/11/2026)
+- Pedido do usuário: a página `/jarvis` só mostrava os 6 grupos escritos à mão no `PROCESSOS_GRUPOS`
+  (Plasfran Itapipoca, Camocim e Maranhão, LD Urbanismo e as duas Casas do Celular); faltavam as
+  outras empresas. `relatorio_processos.py --grupos` (ou `./rodar.sh --grupos`) entra no VIOS, lê o
+  filtro Grupo Cliente e lista cada grupo como já na lista ou novo, sem IA e sem planilha;
+  com `--salvar`, acrescenta os novos no fim do `PROCESSOS_GRUPOS` do `.env` (os atuais ficam na mesma
+  ordem, o resto do arquivo não muda, "TODOS" nunca entra) e avisa os que não existem mais no VIOS.
+  A junção e a gravação do `.env` foram testadas com uma lista falsa; a leitura do VIOS usa o
+  `grupos_disponiveis` que o relatório já usa.
+
 ### Corrigido — Albi/Presto: clique de verdade no número da credencial e no PIN (06/11/2026)
 - No Mac, o `entrar tjce1` abriu o console, clicou no TJCE e chegou ao login, mas não conseguiu clicar no
   número da credencial para abrir o campo do PIN. Agora: o quadro do Presto é procurado também em
