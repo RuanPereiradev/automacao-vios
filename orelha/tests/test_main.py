@@ -227,6 +227,35 @@ class TestMainComVios(unittest.TestCase):
         fim = self.eventos()[-1]
         self.assertEqual((fim["resultado"], fim["motivo"]), ("parou", "login_falhou"))
 
+    def _login(self, efeitos):
+        with mock.patch.dict(main.REGISTRO, {"agenda": modulo(lambda ctx: Secao("agenda", "A", "ok", [], {}))}), \
+                mock.patch.object(main.navegador, "criar_driver", return_value=self.driver), \
+                mock.patch.object(main.vios, "entrar", side_effect=efeitos) as entrar, \
+                mock.patch.object(main.navegador, "bloquear_envios"), \
+                mock.patch.object(main.vios, "_envios_bloqueados", return_value=True), \
+                mock.patch.object(main.vios, "esperar_ajax"), \
+                mock.patch.object(main, "ESPERAS_LOGIN", (0, 0, 0)), \
+                redirect_stderr(io.StringIO()) as erro, redirect_stdout(io.StringIO()):
+            codigo = main.main(["--env", str(self.env), "--data", "2026-11-04", "--sem-pdf", "--funcoes", "agenda"])
+        return codigo, entrar.call_count, erro.getvalue()
+
+    def test_tela_de_login_que_nao_abre_tenta_de_novo(self):
+        sem_tela = vios.LoginSemTela("a tela de login não apareceu em 30s; a página era \"\" (about:blank)")
+        codigo, vezes, log = self._login([sem_tela, None])
+        self.assertEqual((codigo, vezes), (0, 2), log)
+        self.assertIn("tentativa 1", log)
+        self.driver.save_screenshot.assert_called_once()
+
+    def test_tela_de_login_que_nunca_abre_para_depois_de_3(self):
+        codigo, vezes, log = self._login(vios.LoginSemTela("a tela de login não apareceu"))
+        self.assertEqual((codigo, vezes), (1, 3))
+        resumo = json.loads((self.pasta / "saida" / "2026-11-04" / "resumo.json").read_text(encoding="utf-8"))
+        self.assertIn("3 tentativas", resumo["secoes"][0]["erro"])
+
+    def test_senha_errada_nao_repete(self):
+        codigo, vezes, _ = self._login(vios.LoginErro("login não confirmado em 30s (usuário/senha errados)"))
+        self.assertEqual((codigo, vezes), (1, 1))
+
 
 if __name__ == "__main__":
     unittest.main()

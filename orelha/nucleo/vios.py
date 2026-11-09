@@ -37,8 +37,28 @@ class ViosErro(Exception):
     """Algo na tela do VIOS não saiu como esperado (elemento não apareceu etc.)."""
 
 
+class LoginTelaErro(Exception):
+    """Marca de erro passageiro no login (a tela não abriu: internet, VIOS lento ou fora do ar)."""
+
+
 class LoginErro(ViosErro):
     pass
+
+
+class LoginSemTela(LoginErro, LoginTelaErro):
+    """A tela de login não apareceu (vale tentar de novo; usuário/senha errados não entram aqui)."""
+
+
+def _o_que_apareceu(driver):
+    """Título, endereço e começo do texto da página, para o log dizer o que havia no lugar do login."""
+    try:
+        titulo, texto = driver.execute_script(
+            "return [document.title || '', (document.body && document.body.innerText || '').slice(0, 160)]")
+        texto = " ".join(str(texto).split())
+        return f"a página era \"{titulo}\" ({driver.current_url})" + (f": {texto}" if texto else ", sem texto")
+    except Exception as e:  # noqa: BLE001 — só diagnóstico
+        return f"não consegui ler a página ({e.__class__.__name__})"
+
 
 
 class AcessoProibido(ViosErro):
@@ -403,8 +423,14 @@ def entrar(ctx, marcar_formulario=False):
     from selenium.webdriver.support.ui import WebDriverWait
 
     cfg, driver = ctx.cfg, ctx.driver
+    from selenium.common.exceptions import WebDriverException
+
     log.info("Abrindo o login do VIOS: %s", cfg.vios_url)
-    driver.get(cfg.vios_url)
+    try:
+        driver.get(cfg.vios_url)
+    except WebDriverException as e:
+        texto = (getattr(e, "msg", None) or str(e) or e.__class__.__name__).strip().splitlines()[0][:200]
+        raise LoginSemTela(f"o VIOS não abriu ({texto})") from None
     espera = WebDriverWait(driver, cfg.timeout)
     try:
         for locator, texto in ((cfg.campo_usuario, cfg.usuario), (cfg.campo_senha, cfg.senha)):
@@ -412,7 +438,7 @@ def entrar(ctx, marcar_formulario=False):
             campo.clear()
             campo.send_keys(texto)
     except TimeoutException:
-        raise LoginErro("a tela de login não apareceu (confira SISTEMA_URL e LOGIN_CAMPO_*)") from None
+        raise LoginSemTela(f"a tela de login não apareceu em {cfg.timeout}s; {_o_que_apareceu(driver)}") from None
     url_login = driver.current_url
     if marcar_formulario:
         tem_form = driver.execute_script(

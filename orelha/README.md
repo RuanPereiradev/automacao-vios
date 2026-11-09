@@ -114,6 +114,12 @@ Código de saída: `0` quando tudo deu certo, `1` quando alguma função deu err
 (login, navegador, bloqueio), `2` quando a linha de comando ou o `.env` está errado. Uma função que
 falha não derruba as outras: ela vira uma seção com o erro, e o relatório sai mesmo assim.
 
+Se a tela de login do VIOS não abrir (internet que ainda não voltou depois de o Mac acordar, VIOS
+lento ou fora do ar por um momento), o Orelha tenta de novo depois de 1 minuto e depois de mais
+3 minutos. A cada falha ele guarda um print em `logs/login_falhou_<data_hora>_<n>.png` e escreve no
+log o título, o endereço e o começo do texto da página que apareceu no lugar. Usuário ou senha
+errados não são repetidos.
+
 ## Modo simulado (sem senha, sem VIOS)
 
 ```bash

@@ -24,6 +24,7 @@ função deu erro (ou a execução parou), 2 se a linha de comando/configuraçã
 import argparse
 import logging
 import sys
+import time
 from dataclasses import replace
 from datetime import date, datetime
 from pathlib import Path
@@ -37,6 +38,9 @@ from nucleo import config, eventos, navegador, relatorio, vios  # noqa: E402
 from nucleo.modelos import Contexto, Secao  # noqa: E402
 
 log = logging.getLogger("orelha")
+# espera (s) antes de cada tentativa de login: a tela pode não abrir por internet que ainda não voltou
+# (Mac acordando), VIOS lento ou fora do ar por um momento. Senha errada não é repetida.
+ESPERAS_LOGIN = (0, 60, 180)
 FORMATO_LOG = "%(asctime)s [%(levelname)s] %(message)s"
 
 
@@ -167,6 +171,18 @@ def ligar_bloqueio(ctx):
         raise ParadaErro(f"não consegui ligar o bloqueio de envios: {mensagem(e)}", "bloqueio_inativo") from None
 
 
+def _print_da_falha(ctx, n):
+    """Print da tela do login que falhou, em logs/login_falhou_<data_hora>_<n>.png (só a tela de login)."""
+    try:
+        pasta = Path(ctx.cfg.valor("ORELHA_LOGS", "logs", "caminho"))
+        pasta.mkdir(parents=True, exist_ok=True)
+        arq = pasta / f"login_falhou_{datetime.now():%Y-%m-%d_%H%M%S}_{n}.png"
+        if ctx.driver.save_screenshot(str(arq)):
+            log.info("Print da tela em %s", arq)
+    except Exception:  # noqa: BLE001 — o print é só ajuda
+        pass
+
+
 def entrar_no_vios(ctx):
     """Navegador + bloqueio de envios + login + bloqueio conferido. Devolve o driver; levanta ParadaErro."""
     cfg = ctx.cfg
@@ -183,10 +199,20 @@ def entrar_no_vios(ctx):
     # ligado antes do login, para a página que abre depois dele já vir bloqueada
     if no_login:
         ligar_bloqueio(ctx)
-    try:
-        vios.entrar(ctx, marcar_formulario=no_login)
-    except Exception as e:
-        raise ParadaErro(f"não entrei no VIOS: {mensagem(e)}", "login_falhou") from None
+    for n, espera in enumerate(ESPERAS_LOGIN, 1):
+        if espera:
+            log.warning("Tentando entrar no VIOS de novo em %d s (tentativa %d de %d)", espera, n, len(ESPERAS_LOGIN))
+            time.sleep(espera)
+        try:
+            vios.entrar(ctx, marcar_formulario=no_login)
+            break
+        except vios.LoginTelaErro as e:
+            log.warning("Login no VIOS, tentativa %d: %s", n, mensagem(e))
+            _print_da_falha(ctx, n)
+            if n == len(ESPERAS_LOGIN):
+                raise ParadaErro(f"não entrei no VIOS ({n} tentativas): {mensagem(e)}", "login_falhou") from None
+        except Exception as e:
+            raise ParadaErro(f"não entrei no VIOS: {mensagem(e)}", "login_falhou") from None
     if not no_login:
         ligar_bloqueio(ctx)
     try:

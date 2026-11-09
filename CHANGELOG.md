@@ -12,6 +12,17 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Orelha: login que não abre é tentado de novo, com print e o que apareceu (09/11/2026)
+- Na execução de 09/11, as 4 partes do relatório saíram "não rodou: não entrei no VIOS: a tela de
+  login não apareceu", sem pista do motivo. O VIOS respondeu normalmente pouco depois (o Jarvis entrou
+  às 07:46). Agora:
+  - se a tela de login não aparece, ou se a página nem abre (erro de rede do Chrome), o Orelha tenta
+    de novo depois de 60 s e de mais 180 s (`ESPERAS_LOGIN` em `orelha/main.py`). Usuário ou senha
+    errados não são repetidos;
+  - cada falha deixa um print em `logs/login_falhou_<data_hora>_<n>.png`;
+  - o erro diz o título, o endereço e o começo do texto da página que apareceu no lugar do login.
+- 3 testes novos em `orelha/tests/test_main.py`; os 256 do Orelha passam.
+
 ### Adicionado — Jarvis: `--grupos` lê os grupos do VIOS e `--salvar` põe os que faltam na página (09/11/2026)
 - Pedido do usuário: a página `/jarvis` só mostrava os 6 grupos escritos à mão no `PROCESSOS_GRUPOS`
   (Plasfran Itapipoca, Camocim e Maranhão, LD Urbanismo e as duas Casas do Celular); faltavam as
