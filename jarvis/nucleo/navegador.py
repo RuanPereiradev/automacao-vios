@@ -9,10 +9,7 @@ POLL = 0.1
 
 def criar_driver(headless=False, manter_aberto=False, rapido=True):
     # O Selenium Manager baixa o chromedriver compatível automaticamente
-    import os
     options = webdriver.ChromeOptions()
-    if certificado_vencido_aceito(os.getenv("SISTEMA_URL", "").strip(), os.getenv("VIOS_CERTIFICADO_VENCIDO", "")):
-        options.accept_insecure_certs = True
     if rapido:
         # NAVEGADOR_RAPIDO: o driver.get não espera recursos que o robô não usa; as esperas do robô
         # continuam (página completa, jQuery parado, editor pronto). As imagens continuam: sem elas
@@ -27,43 +24,49 @@ def criar_driver(headless=False, manter_aberto=False, rapido=True):
     return webdriver.Chrome(options=options)
 
 
-# --- VIOS com certificado vencido (VIOS_CERTIFICADO_VENCIDO no .env) ---
-# Aceita SÓ o certificado cuja impressão digital SHA-256 está no .env: se o VIOS mostrar outro (renovado ou
-# falso), o Chrome confere normalmente. Tirar a linha do .env quando o VIOS renovar.
-def _impressao_do_servidor(url, timeout=10):
-    import hashlib
-    import socket
-    import ssl
-    from urllib.parse import urlparse
-    u = urlparse(url)
-    contexto = ssl.create_default_context()
-    contexto.check_hostname = False
-    contexto.verify_mode = ssl.CERT_NONE  # só para LER o certificado e comparar com o do .env
-    with socket.create_connection((u.hostname, u.port or 443), timeout) as s, \
-            contexto.wrap_socket(s, server_hostname=u.hostname) as t:
-        return hashlib.sha256(t.getpeercert(binary_form=True)).hexdigest()
+# --- VIOS com certificado vencido ---
+# Se o Chrome mostrar "Sua conexão não é particular" porque o certificado do VIOS VENCEU
+# (net::ERR_CERT_DATE_INVALID), clica em "Avançadas" > "Ir para ... (não seguro)", como a pessoa faria.
+# Só passa nesse caso e só no endereço do VIOS: qualquer outro erro de certificado (emissor desconhecido,
+# nome errado — o que aparece num ataque) continua bloqueando o login.
+_JS_AVISO = ("var d = window.loadTimeDataRaw; return d && d.type === 'SSL' ? "
+             "[d.errorCode || '', d.subject || '', d.expirationDate || ''] : null;")
 
 
-def certificado_vencido_aceito(url, impressao):
-    """True só se `impressao` (VIOS_CERTIFICADO_VENCIDO) for a do certificado que o VIOS mostra agora."""
+def passar_aviso_certificado(driver, url, espera=15):
+    """Passa pelo aviso do Chrome de certificado VENCIDO do VIOS. True se passou."""
     import logging
-    import re
+    import time
+    from urllib.parse import urlparse
+
+    from selenium.webdriver.common.by import By
+
     log = logging.getLogger(__name__)
-    alvo = re.sub(r"[^0-9a-f]", "", (impressao or "").lower())
-    if not alvo or not (url or "").startswith("https://"):
-        return False
     try:
-        atual = _impressao_do_servidor(url)
-    except OSError as e:
-        log.warning("VIOS_CERTIFICADO_VENCIDO: não consegui ler o certificado do VIOS (%s); o Chrome confere "
-                    "normalmente", e.__class__.__name__)
+        aviso = driver.execute_script(_JS_AVISO)
+    except Exception:  # noqa: BLE001 — página normal ou ainda carregando: não há aviso
         return False
-    if atual == alvo:
-        log.warning("VIOS com certificado vencido: aceito só este (a impressão digital confere com "
-                    "VIOS_CERTIFICADO_VENCIDO). Tire a linha do .env quando o VIOS renovar.")
-        return True
-    log.warning("VIOS_CERTIFICADO_VENCIDO está no .env, mas o VIOS mostra outro certificado: o Chrome confere "
-                "normalmente (se o VIOS renovou, tire a linha do .env)")
+    if not isinstance(aviso, list) or len(aviso) != 3:
+        return False
+    codigo, assunto, venceu = aviso
+    if codigo != "net::ERR_CERT_DATE_INVALID":
+        log.error("O Chrome bloqueou o VIOS por %s (%s): não passo, só passo certificado vencido", codigo, assunto)
+        return False
+    if urlparse(driver.current_url).hostname != urlparse(url).hostname:
+        log.error("Aviso de certificado em %s, que não é o VIOS: não passo", urlparse(driver.current_url).hostname)
+        return False
+    log.warning("VIOS com o certificado vencido (%s, venceu em %s): cliquei em Avançadas > Ir para %s (não "
+                "seguro). Avise o VIOS para renovar.", assunto, venceu, urlparse(url).hostname)
+    driver.find_element(By.ID, "details-button").click()
+    driver.find_element(By.ID, "proceed-link").click()
+    fim = time.monotonic() + espera
+    while time.monotonic() < fim:
+        time.sleep(0.5)
+        try:
+            if not driver.execute_script(_JS_AVISO):
+                return True
+        except Exception:  # noqa: BLE001 — página trocando
+            pass
     return False
 
 

@@ -431,6 +431,8 @@ def entrar(ctx, marcar_formulario=False):
     except WebDriverException as e:
         texto = (getattr(e, "msg", None) or str(e) or e.__class__.__name__).strip().splitlines()[0][:200]
         raise LoginSemTela(f"o VIOS não abriu ({texto})") from None
+    from nucleo import navegador
+    navegador.passar_aviso_certificado(driver, cfg.vios_url)  # certificado vencido: Avançadas > Ir para
     espera = WebDriverWait(driver, cfg.timeout)
     try:
         for locator, texto in ((cfg.campo_usuario, cfg.usuario), (cfg.campo_senha, cfg.senha)):

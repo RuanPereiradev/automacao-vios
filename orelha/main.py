@@ -191,8 +191,7 @@ def entrar_no_vios(ctx):
     except config.ConfigErro as e:
         raise ParadaErro(str(e), "config_invalida") from None
     try:
-        aceitar = navegador.certificado_vencido_aceito(cfg.vios_url, cfg.valor("VIOS_CERTIFICADO_VENCIDO", ""))
-        ctx.driver = navegador.criar_driver(cfg.headless, cfg.manter_aberto, aceitar_certificado=aceitar)
+        ctx.driver = navegador.criar_driver(cfg.headless, cfg.manter_aberto)
     except Exception as e:
         raise ParadaErro(f"o navegador não abriu: {mensagem(e)}", "navegador_falhou") from None
     eventos.emitir("fase", fase="entrando_vios")

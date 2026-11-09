@@ -12,18 +12,25 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
-### Adicionado — Sam, Orelha e Jarvis: `VIOS_CERTIFICADO_VENCIDO` aceita só o certificado vencido do VIOS (09/11/2026)
+### Adicionado — Sam, Orelha e Jarvis: passam pelo aviso de certificado vencido do VIOS (09/11/2026)
 - O certificado `*.vios.com.br` (GoGetSSL) venceu em 08/11/2026 às 23:59 GMT. Desde então, o Chrome
-  dos robôs mostra "Privacy error" no lugar do login. Foi isso que fez o Orelha de 09/11 sair com "a
-  tela de login não apareceu".
-- Nova variável `VIOS_CERTIFICADO_VENCIDO` (no `.env` de cada robô): a impressão digital SHA-256 do
-  certificado vencido. Antes de abrir o Chrome, o robô lê o certificado que o VIOS mostra. Só se a
-  impressão for igual liga `accept_insecure_certs`; se for outra (renovado ou falso), o Chrome confere
-  normalmente e o log manda tirar a linha. Vazio = como antes.
-- Está em `bot/navegador.py` (Sam, `main.py`, `lancar.py`, `revisar.py`), `jarvis/nucleo/navegador.py` e
-  `orelha/nucleo/navegador.py` (via `orelha/main.py`).
-- Testado contra o VIOS real: sem a variável, "Privacy error"; com a impressão certa, abre a tela de
-  login com o campo de senha; com uma impressão errada, não aceita. Os 256 testes do Orelha passam.
+  dos robôs mostra "Sua conexão não é particular" no lugar do login. Foi isso que fez o Orelha de 09/11
+  sair com "a tela de login não apareceu".
+- Pedido do usuário: o robô vai em **Avançadas** e clica em **Ir para roneely.vios.com.br (não seguro)**.
+  Novo `passar_aviso_certificado(driver, url)` em `bot/navegador.py`, `jarvis/nucleo/navegador.py` e
+  `orelha/nucleo/navegador.py`, chamado logo depois de abrir o login (`bot/login.py`,
+  `jarvis/nucleo/login.py`, `orelha/nucleo/vios.py`). Depois do clique, o Chrome lembra a escolha
+  e as outras páginas do VIOS abrem direto.
+- Só passa quando o erro do aviso é `net::ERR_CERT_DATE_INVALID` (certificado vencido) e o endereço é
+  o do VIOS. Outro erro (emissor desconhecido, nome errado) ou outro site continua bloqueando, e o
+  log diz o motivo.
+- Substitui a primeira versão do mesmo dia, que pedia a impressão digital do certificado em
+  `VIOS_CERTIFICADO_VENCIDO` no `.env`. Essa variável não é mais lida e pode ser apagada.
+- Testado no Chrome headless contra o VIOS real:
+  - o aviso foi passado, o login abriu com o campo de senha e a página de Relatórios abriu direto;
+  - com o bloqueio de envios do Orelha ligado, o bloqueio continuou ativo depois do clique;
+  - em sites de teste, o certificado autoassinado e o de outro endereço foram recusados.
+  - Os 256 testes do Orelha passam.
 
 ### Corrigido — Orelha: login que não abre é tentado de novo, com print e o que apareceu (09/11/2026)
 - Na execução de 09/11, as 4 partes do relatório saíram "não rodou: não entrei no VIOS: a tela de

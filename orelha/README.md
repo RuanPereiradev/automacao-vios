@@ -477,8 +477,8 @@ comparar o total do placar com a lista do VIOS no primeiro uso real.
 
 ## VIOS com certificado vencido
 
-Se o certificado do VIOS vencer, o Chrome mostra "Sua conexão não é particular" no lugar do login
-e o robô não entra. Para seguir até o VIOS renovar, ponha no `.env` a impressão digital do
-certificado vencido em `VIOS_CERTIFICADO_VENCIDO` (o comando para vê-la está no `.env.example`). O
-robô confere a impressão do certificado que o VIOS mostra antes de abrir o Chrome e só aceita aquele;
-se for outro, o Chrome confere normalmente. Tire a linha quando o VIOS renovar (o log avisa).
+Se o certificado do VIOS vencer, o Chrome mostra "Sua conexão não é particular" no lugar do login.
+O robô então clica em **Avançadas** > **Ir para roneely.vios.com.br (não seguro)**, como a pessoa faria,
+e avisa no log. Ele só faz isso quando o erro é de certificado **vencido** (`ERR_CERT_DATE_INVALID`) e
+no endereço do VIOS; outro erro de certificado (emissor desconhecido, nome errado — o que aparece
+num ataque) continua bloqueando o login.
