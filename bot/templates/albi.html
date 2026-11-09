@@ -1,0 +1,377 @@
+{# Página do Albi (bot do Sonar): Vila 03 no topo, caixa para soltar o .txt (por empresa, uma
+   pessoa por linha), conferência com o total em R$ antes de comprar, andamento ao vivo e os
+   resultados (resultado.txt e planilhas). bot/albi.py monta as execuções dos eventos do Albi. #}
+{% from "_ultron.html" import ultron_script %}
+{% from "_albi.html" import albi, albi_icone %}
+{% from "_vila.html" import vila_cartao %}
+{% set RES = textos.resultados %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Albi — pesquisa de processos no Sonar</title>
+{{ albi_icone() }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
+{% include "_estilo.html" %}
+<style>
+  /* cores do Albi por cima do estilo do Sam */
+  :root { --red: #f29bbf; --red-escuro: #c96a93; }
+  body { background: radial-gradient(ellipse at top, #1d1218 0%, var(--fundo) 55%) fixed, var(--fundo); }
+  .marca b { text-shadow: 0 0 12px rgba(242, 155, 191, .6); }
+  .primario { color: #1d1e21; box-shadow: 0 0 18px rgba(242, 155, 191, .3); }
+  .primario.confirmar { background: linear-gradient(180deg, #ff4b3a, #b3121b); color: #fff; box-shadow: 0 0 22px rgba(255, 60, 40, .5); }
+  .s-aviso { color: var(--ambar); border-color: rgba(227, 167, 47, .45); background: rgba(227, 167, 47, .1); }
+  .lista > li.atual { box-shadow: 0 0 18px rgba(242, 155, 191, .2); }
+  .barra i { box-shadow: 0 0 14px rgba(242, 155, 191, .7); }
+  .soltar.desligado { opacity: .55; pointer-events: none; }
+  /* mascote: pisca, achata como no original e a fivela brilha */
+  .albi.piscando .olho-a { fill: #f29bbf; }
+  .albi.subindo svg { transform: scale(1.03, .97) translateY(1.5%); }
+  .albi .fivela { animation: fivela 1s steps(1) infinite; }
+  @keyframes fivela { 50% { fill: #f0c46a; } }
+  .albi .sombra { background: radial-gradient(rgba(242, 155, 191, .3), transparent 70%); }
+  .pedido-a .detalhe { font-size: 13px; color: var(--suave); margin-top: 4px; }
+  .pedido-a code { font-size: 13px; }
+  .empresa-a { font-size: 16px; margin: 18px 0 6px; }
+  textarea.mensagem { font-size: 14px; line-height: 1.5; min-height: 320px; }
+</style>
+</head>
+<body>
+<header>
+  <a href="{{ url_for('albi_pagina') }}">{{ albi("parado", 48, "albi-topo") }}
+    <span><span class="marca"><b>A</b>LBI</span><br><span class="sub">pesquisa de processos no Sonar</span></span></a>
+  <span class="acoes" style="margin-left: auto">
+    <a class="botao secundario" href="{{ url_for('vila_dos_bots') }}">Vila dos Bots</a>
+    <a class="botao secundario" href="{{ url_for('inicio') }}">Sam</a>
+    {% if zangao_ligado %}<a class="botao secundario" href="{{ url_for('zangao_pagina') }}">Bumblebee</a>{% endif %}
+    <a class="botao secundario" href="{{ url_for('albi_historico') }}">Histórico</a>
+  </span>
+</header>
+<main>
+{% if tela == "inicio" %}
+  {{ vila_cartao(3) }}
+  <div class="cartao">
+    <form action="{{ url_for('albi_enviar') }}" method="post" enctype="multipart/form-data" id="form-arquivo">
+      <label class="soltar" id="soltar">
+        {{ albi("parado", 48, "albi-caixa") }}
+        <span class="titulo" id="soltar-titulo">Solte o .txt aqui</span>
+        <span class="suave" id="soltar-sub">um bloco por empresa, uma pessoa por linha (CPF ; nome) — o Albi confere e mostra o total antes de pesquisar</span>
+        <input type="file" name="arquivo" accept=".txt,text/plain" required id="arquivo">
+      </label>
+    </form>
+    {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+    <p class="erro" id="rodar-erro" hidden></p>
+    <p class="suave" style="margin-bottom:0">Primeira vez? <a href="{{ url_for('albi_modelo') }}">Baixe o modelo do .txt</a>,
+      troque os exemplos pelos CPFs e nomes de cada empresa e solte aqui.</p>
+  </div>
+
+  <div class="cartao" id="execucao"><p class="suave">Carregando a última execução…</p></div>
+
+  <div class="cartao">
+    <details>
+      <summary>Formato do arquivo e o que o Albi faz</summary>
+      <p class="suave">Um bloco por empresa: a linha <code>EMPRESA:</code> com o nome da empresa e, embaixo, uma pessoa por linha,
+        <b>CPF ; nome</b> (CPF com ou sem pontuação; serve CNPJ também). <code>---</code> separa as empresas (opcional);
+        linha vazia ou começando com <code>#</code> é ignorada. <a href="{{ url_for('albi_modelo') }}">Baixar o modelo</a>.</p>
+<pre>EMPRESA: Empresa A
+123.456.789-09 ; Maria da Silva
+987.654.321-00 ; João Souza
+---
+EMPRESA: Empresa B
+111.444.777-35 ; Ana Lima</pre>
+      <ul class="suave">
+        <li>Ao soltar, o Albi <b>só confere</b> (dígito verificador, repetidos, quem já foi pesquisado) e mostra quantos vão ser pesquisados e o total em R$. A compra só começa quando você confirma.</li>
+        <li>Para cada pessoa, uma por vez: Nova Pesquisa → <b>Identificador Projeto = nome da empresa</b> → CPF/CNPJ → Continuar → Sacado (o escritório) → <b>Confirmar Pedido</b>.</li>
+        <li>Depois ele espera o Sonar terminar cada pedido e baixa o resultado de <b>cada pessoa</b>: o PDF da página do pedido
+          (inclusive de quem deu "não consta") e, de quem tem processos encontrados, também a planilha ("Baixar Resultados").
+          No fim fica o <b>resultado.txt</b> (empresa, CPF, nome, pedido e o que achou), os PDFs e as planilhas, para baixar aqui (ou tudo em .zip).</li>
+        <li>Ele mesmo lê as planilhas e monta o <b>relatório dos processos</b> (na tela, em PDF e em .csv para o Excel): por empresa,
+          quem tem processos e, de cada processo, número, tribunal, vara, ação, assunto, data, se a pessoa é ré ou autora, a outra parte, o valor e o status.</li>
+        <li>CPF já pesquisado para a mesma empresa nos últimos 30 dias não é comprado de novo: o Albi usa o pedido anterior.</li>
+        <li>"Só testar" faz tudo até antes do Confirmar e não compra nada.</li>
+        <li>Uma execução por vez, com até {{ max_linhas }} linhas. Entrar no Sonar encerra a outra sessão aberta com o mesmo login.</li>
+      </ul>
+    </details>
+  </div>
+
+{% elif tela == "conferir" %}
+  {% set c = meta.conferencia %}{% set ps = c.pedidos %}
+  {% set comprar = c.comprar %}{% set ja = ps | selectattr("ja") | list | length %}
+  {% set ruins = ps | selectattr("problema") | list | length %}
+  {% set preco = (c.preco | replace("R$", "") | replace(".", "") | replace(",", ".") | trim | float) %}
+  {% set total = "%.2f" | format(comprar * preco) %}
+  <div class="cartao">
+    <div class="topo-hist"><h2>Conferir antes de pesquisar</h2><a class="botao secundario" href="{{ url_for('albi_pagina') }}">Cancelar</a></div>
+    <p class="suave">{{ meta.arquivo }} · {{ ps | length }} pessoa(s) · Sacado: o escritório · {{ c.preco }} por pesquisa</p>
+    <div class="numeros">
+      <div class="numero"><b class="ok">{{ comprar }}</b>a pesquisar</div>
+      {% if ja %}<div class="numero"><b>{{ ja }}</b>já pesquisada(s) · não compra</div>{% endif %}
+      {% if ruins %}<div class="numero"><b class="erro">{{ ruins }}</b>com problema · fica(m) de fora</div>{% endif %}
+      <div class="numero"><b>R$ {{ total | replace(".", ",") }}</b>total</div>
+    </div>
+    {% if meta.iniciado == "confirmar" %}
+      <p class="aviso">Este arquivo já foi confirmado. Para pesquisar de novo, solte o .txt outra vez.</p>
+    {% elif ocupado %}
+      <p class="aviso">O Albi está trabalhando em outro arquivo: espere terminar.</p>
+    {% else %}
+    <form method="post" action="{{ url_for('albi_rodar', envio_id=envio_id) }}" id="form-rodar" class="acoes">
+      <input type="hidden" name="certeza" id="certeza" value="">
+      <button class="secundario" name="modo" value="teste">Só testar (não compra)</button>
+      {% if comprar or ja %}
+      <button class="primario" type="button" id="btn-confirmar" data-total="{{ total | replace('.', ',') }}">
+        {% if comprar %}Confirmar e pesquisar · R$ {{ total | replace(".", ",") }}{% else %}Buscar os resultados (nada a comprar){% endif %}</button>
+      {% endif %}
+    </form>
+    <p class="suave" id="dica-confirmar">"Confirmar" compra {{ comprar }} pesquisa(s) no Sonar, uma por vez, e depois baixa os resultados.</p>
+    {% endif %}
+  </div>
+  <div class="cartao">
+    {% for empresa, grupo in ps | groupby("empresa") %}
+    <h3 class="empresa-a">{{ empresa or "(sem empresa)" }} <span class="suave">· {{ grupo | length }} pessoa(s)</span></h3>
+    <ul class="lista">
+      {% for x in grupo %}
+      <li class="pedido-a"><div class="topo"><span><b>Linha {{ x.linha }}</b> <code>{{ x.doc }}</code> {{ x.nome }}</span>
+        {% if x.problema %}<span class="selo s-erro">Fica de fora</span>
+        {% elif x.ja %}<span class="selo s-ja">Já pesquisado{% if x.ja.pedido %} · S{{ x.ja.pedido }}{% endif %}</span>
+        {% else %}<span class="selo s-ok">Vai pesquisar</span>{% endif %}</div>
+        {% if x.problema %}<div class="detalhe erro">{{ x.problema }}</div>
+        {% elif x.ja %}<div class="detalhe">Pesquisado em {{ x.ja.quando[8:10] }}/{{ x.ja.quando[5:7] }}/{{ x.ja.quando[:4] }}: não compra de novo, usa o resultado desse pedido.</div>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endfor %}
+  </div>
+  <script>
+    // confirmar compra: 2 cliques (o 2.º em até 8 s), como no Bumblebee
+    (() => {
+      const b = document.getElementById('btn-confirmar'); if (!b) return;
+      const txt = b.textContent.trim(); let ate = 0, t = null;
+      b.addEventListener('click', () => {
+        if (Date.now() < ate) {
+          document.getElementById('certeza').value = 'sim';
+          const f = document.getElementById('form-rodar'), m = document.createElement('input');
+          m.type = 'hidden'; m.name = 'modo'; m.value = 'confirmar'; f.appendChild(m);
+          b.disabled = true; b.textContent = 'Começando…'; f.submit(); return;
+        }
+        ate = Date.now() + 8000; b.classList.add('confirmar');
+        b.textContent = 'Clique de novo para confirmar · R$ ' + b.dataset.total;
+        document.getElementById('dica-confirmar').textContent = 'Isto compra as pesquisas no Sonar de verdade. Clique de novo em até 8 segundos para confirmar.';
+        clearTimeout(t); t = setTimeout(() => { ate = 0; b.classList.remove('confirmar'); b.textContent = txt; }, 8000);
+      });
+    })();
+  </script>
+
+{% elif tela == "historico" %}
+  <div class="cartao">
+    <div class="topo-hist"><h2>Execuções do Albi</h2>
+      <a class="botao secundario" href="{{ url_for('albi_pagina') }}">Voltar</a></div>
+    {% if not execucoes %}<p class="suave">Nenhuma execução ainda.</p>{% else %}
+    <div class="rolar"><table class="hist">
+      <tr><th>Quando</th><th>Arquivo</th><th>Modo</th><th>Pessoas</th><th>Resultado</th><th>Situação</th></tr>
+      {% for e in execucoes %}{% set k = e.fim.contagens if e.fim else {} %}
+      {% set r = RES.get(e.fim.resultado if e.fim else "interrompida", ["s-ja", e.fim.resultado if e.fim else "—"]) %}
+      <tr>
+        <td class="nowrap"><a href="{{ url_for('albi_execucao', execucao_id=e.id) }}">{{ e.inicio[8:10] }}/{{ e.inicio[5:7] }}/{{ e.inicio[:4] }} {{ e.inicio[11:16] }}</a></td>
+        <td>{{ e.arquivo or "—" }}</td>
+        <td>{{ textos.modos.get(e.modo, "Teste (não compra)") }}</td>
+        <td>{{ e.pedidos | length }}</td>
+        <td class="nowrap">
+          {% for c, t, cls in [("confirmados", "confirmado(s)", "ok"), ("ja_pesquisados", "já pesquisado(s)", "suave"),
+                               ("encontrados", "com processos", "aviso"), ("nao_consta", "não consta", "suave"),
+                               ("pdfs", "PDF(s)", "ok"), ("baixados", "planilha(s)", "ok"), ("prontos", "testado(s)", "suave"),
+                               ("sem_pedido", "sem pedido", "erro"),
+                               ("conferir", "a conferir", "erro"), ("erros", "erro(s)", "erro"), ("invalidos", "inválida(s)", "erro")] %}
+            {% if k.get(c) %}<span class="{{ cls }}">{{ k[c] }} {{ t }}</span>{% endif %}{% endfor %}
+          {% if e.fim and e.fim.motivo %}<span class="suave">{{ e.fim.motivo }}</span>{% endif %}
+          {% if "relatorio.html" in e.arquivos %}<a href="{{ url_for('albi_ver', envio_id=e.id) }}" target="_blank" rel="noopener">relatório</a>{% endif %}
+          {% if e.arquivos %}<a href="{{ url_for('albi_zip', envio_id=e.id) }}">.zip</a>{% endif %}
+        </td>
+        <td><span class="selo {{ r[0] }}">{{ r[1] }}</span></td>
+      </tr>
+      {% endfor %}
+    </table></div>
+    {% endif %}
+  </div>
+
+{% elif tela == "resumo" %}
+  <div class="cartao">
+    <div class="topo-hist"><h2>Mensagens prontas</h2>
+      <a class="botao secundario" href="{{ url_for('albi_execucao', execucao_id=envio_id) }}">Voltar</a></div>
+    <p class="suave">Mensagem montada com os dados do relatório: dá para editar aqui antes de copiar. Mande junto o
+      relatório em PDF (o detalhe de cada processo vai nele). O CPF vai mascarado (***.456.789-**).</p>
+    <p class="acoes">
+      {% if "relatorio.pdf" in arquivos %}<a class="botao primario" href="{{ url_for('albi_arquivo', envio_id=envio_id, nome='relatorio.pdf') }}">Baixar o relatório PDF (para anexar)</a>{% endif %}
+      {% if "relatorio.html" in arquivos %}<a class="botao secundario" href="{{ url_for('albi_ver', envio_id=envio_id) }}" target="_blank" rel="noopener">Ver relatório</a>{% endif %}
+      <a class="botao secundario" href="{{ url_for('albi_arquivo', envio_id=envio_id, nome='mensagem.txt') }}">mensagem.txt</a>
+    </p>
+  </div>
+  {% if cac.mensagens %}
+  <div class="cartao">
+    <div class="topo-hist"><h2>Mensagens da CAC · uma por pessoa com processos</h2></div>
+    <p class="suave">No padrão da Central de Atendimento ao Cliente, pronta para o WhatsApp (o negrito é com *asteriscos*).
+      Traz só o que está nos registros do Sonar (número, data, vara, partes e o papel de cada uma, ação, assunto, valor e situação)
+      e termina com a ressalva de que os autos não foram consultados. Sem "Sr./Sra.": acrescente ao revisar, se quiser.</p>
+    <p class="acoes" id="atendentes"><span class="suave">Atendente:</span>
+      {% for a in cac.atendentes %}<button type="button" class="{{ 'primario' if loop.first else 'secundario' }}" data-atendente="{{ a }}">{{ a }}</button> {% endfor %}
+      <a class="botao secundario" href="{{ url_for('albi_arquivo', envio_id=envio_id, nome='mensagens_cac.txt') }}">mensagens_cac.txt</a>
+    </p>
+  </div>
+  {% for m in cac.mensagens %}
+  <div class="cartao">
+    <div class="topo-hist"><h3 class="empresa-a">{{ m.nome }} <span class="suave">· {{ m.empresa }} · pedido S{{ m.pedido }} · {{ m.processos }} processo(s)</span></h3>
+      <button class="primario copiar" type="button" data-alvo="cac-{{ loop.index }}">Copiar mensagem</button></div>
+    <textarea class="mensagem cac" id="cac-{{ loop.index }}" rows="{{ [m.texto.count('\n') + 2, 40] | min }}">{{ m.texto }}</textarea>
+  </div>
+  {% endfor %}
+  <div class="cartao"><h2>Resumo para a empresa</h2>
+    <p class="suave">Uma mensagem por empresa, com todas as pessoas (quem tem e quem não tem processos).</p></div>
+  {% endif %}
+  {% for m in mensagens %}
+  <div class="cartao">
+    <div class="topo-hist"><h3 class="empresa-a">{{ m.empresa or "Mensagem" }}</h3>
+      <button class="primario copiar" type="button" data-alvo="msg-{{ loop.index }}">Copiar mensagem</button></div>
+    <textarea class="mensagem" id="msg-{{ loop.index }}" rows="{{ [m.texto.count('\n') + 2, 40] | min }}">{{ m.texto }}</textarea>
+  </div>
+  {% endfor %}
+
+{% elif tela == "execucao" %}
+  <div class="cartao" id="execucao"></div>
+  <p><a class="botao secundario" href="{{ url_for('albi_historico') }}">Voltar ao histórico</a></p>
+{% endif %}
+</main>
+{{ ultron_script() }}
+<script>
+(() => {
+  const T = {{ textos | tojson }};
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const dataHora = ts => ts ? `${ts.slice(8, 10)}/${ts.slice(5, 7)}/${ts.slice(0, 4)} ${ts.slice(11, 16)}` : '';
+  const plural = (q, s, p) => q + ' ' + (q === 1 ? s : p);
+  const FINAIS = ['pronto', 'erro', 'ja_pesquisado', 'encontrados', 'nao_consta', 'sem_resultado', 'conferir', 'sem_pedido'];
+  const ARQ = '{{ url_for("albi_arquivo", envio_id="ID", nome="NOME") }}', ZIP = '{{ url_for("albi_zip", envio_id="ID") }}';
+  const RODAR = '{{ url_for("albi_rodar", envio_id="ID") }}', VER = '{{ url_for("albi_ver", envio_id="ID") }}';
+  const RELATORIO = '{{ url_for("albi_relatorio", envio_id="ID") }}', RESUMO = '{{ url_for("albi_resumo", envio_id="ID") }}';
+  const link = (id, nome) => ARQ.replace('ID', encodeURIComponent(id)).replace('NOME', nome.split('/').map(encodeURIComponent).join('/'));
+
+  function cartao(e) {
+    if (!e) return '<h2>Nenhuma execução ainda</h2><p class="suave">Solte um .txt acima: o Albi confere e mostra o total antes de pesquisar.</p>';
+    const rodando = !e.fim && !e.interrompida, compra = e.modo === 'confirmar';
+    const res = rodando ? T.resultados.rodando : e.fim ? (T.resultados[e.fim.resultado] || ['s-ja', e.fim.resultado]) : T.resultados.interrompida;
+    const titulo = rodando && e.baixando ? (e.fase === 'aguardando_resultados' ? 'Baixando de novo os resultados (não compra)' : 'Entrando no Sonar para baixar de novo…')
+      : rodando ? ({ confirmando: 'Pesquisando no Sonar, uma pessoa por vez', aguardando_resultados: 'Aguardando os resultados do Sonar',
+                                preenchendo: 'Teste: preenchendo no Sonar (não compra)' }[e.fase] || 'Entrando no Sonar…')
+      : e.fim ? (e.fim.resultado === 'concluido' ? (compra ? 'Pesquisa concluída' : 'Teste concluído (nada foi comprado)') : 'A execução parou')
+      : 'Execução interrompida';
+    let h = `<div class="topo-hist"><h2>${esc(titulo)}</h2><span class="selo ${res[0]}">${esc(res[1])}</span></div>`;
+    h += `<p class="suave">${esc(e.arquivo || 'arquivo')} · ${esc(T.modos[e.modo] || 'Teste (não compra)')} · início ${esc(dataHora(e.inicio))}${e.fim && e.fim.ts ? ' · fim ' + esc(e.fim.ts.slice(11, 16)) : ''}</p>`;
+    if (e.fim && e.fim.motivo) h += `<p class="erro">${esc(e.fim.motivo)}</p>`;
+    if (e.interrompida) h += '<p class="aviso">Não chegou o fim desta execução (o Albi foi fechado no meio ou a página reiniciou). Confira no Sonar os pedidos sem resultado.</p>';
+    const arqs = e.arquivos || [];
+    if (arqs.length) h += `<p class="acoes"><a class="botao primario" href="${ZIP.replace('ID', encodeURIComponent(e.id))}">Baixar tudo (.zip)</a>` +
+      (arqs.includes('resultado.txt') ? ` <a class="botao secundario" href="${link(e.id, 'resultado.txt')}">resultado.txt</a>` : '') + '</p>';
+    // relatório dos processos (gerado pelo Albi no fim; para execução antiga, o botão gera com o que já foi baixado)
+    const ver = VER.replace('ID', encodeURIComponent(e.id)), temRel = arqs.includes('relatorio.html');
+    if (temRel) h += `<p class="acoes"><a class="botao primario" href="${ver}" target="_blank" rel="noopener">Ver relatório dos processos</a>` +
+      (arqs.includes('relatorio.pdf') ? ` <a class="botao secundario" href="${link(e.id, 'relatorio.pdf')}">relatório PDF</a>` : '') +
+      (arqs.includes('processos.csv') ? ` <a class="botao secundario" href="${link(e.id, 'processos.csv')}">processos.csv (Excel)</a>` : '') + '</p>';
+    else if (compra && !rodando && arqs.includes('resultado.txt'))
+      h += `<form method="post" action="${RELATORIO.replace('ID', encodeURIComponent(e.id))}" class="acoes">` +
+           '<button class="primario">Gerar relatório dos processos</button></form>';
+    // mensagem resumida para a empresa que pediu (gera o relatório antes, se faltar)
+    if (compra && !rodando && arqs.includes('resultado.txt'))
+      h += `<form method="post" action="${RESUMO.replace('ID', encodeURIComponent(e.id))}" class="acoes">` +
+           '<button class="primario">Capturar resumo (mensagem para a empresa)</button></form>';
+    // pesquisa já comprada e terminada: baixar de novo o PDF e a planilha de cada pedido (não compra nada)
+    if (compra && !rodando && e.pedidos.some(p => p.pedido))
+      h += `<form method="post" action="${RODAR.replace('ID', encodeURIComponent(e.id))}" class="acoes">` +
+           '<button class="secundario" name="modo" value="baixar">Baixar de novo os resultados de cada um (não compra)</button></form>';
+    if (e.alvo) h += `<div class="barra${rodando ? ' ativa' : ''}"><i style="width:${Math.round(100 * e.feitos / e.alvo)}%"></i></div>` +
+                     `<p class="suave" style="margin-top:0">${e.feitos} de ${plural(e.alvo, 'pessoa válida', 'pessoas válidas')}</p>`;
+    const conta = s => e.pedidos.filter(p => p.etapa === s).length;
+    const nums = [[e.pedidos.length, 'no arquivo']];
+    [['confirmado', 'aguardando o Sonar', ''], ['encontrados', 'com processos', 'aviso'], ['nao_consta', 'não consta', 'ok'],
+     ['ja_pesquisado', 'já pesquisada(s)', ''], ['pronto', 'testada(s)', 'ok'], ['conferir', 'conferir no Sonar', 'erro'],
+     ['sem_resultado', 'sem resultado', 'erro'], ['sem_pedido', 'sem pedido no registro', 'erro'], ['erro', 'com erro', 'erro'], ['invalido', 'inválida(s)', 'erro']]
+      .forEach(([s, t, c]) => { const q = conta(s); if (q) nums.push([q, t, c]); });
+    h += '<div class="numeros">' + nums.map(([q, t, c]) => `<div class="numero"><b class="${c || ''}">${q}</b>${esc(t)}</div>`).join('') + '</div>';
+    const grupos = [];
+    e.pedidos.forEach(p => { const k = p.empresa || '(sem empresa)'; let g = grupos.find(g => g.k === k); if (!g) grupos.push(g = { k, ps: [] }); g.ps.push(p); });
+    const comEmpresa = grupos.length > 1 || (e.pedidos[0] && e.pedidos[0].empresa);
+    h += grupos.map(g => {
+      const v = g.ps.filter(p => p.etapa !== 'invalido'), f = v.filter(p => FINAIS.includes(p.etapa)).length;
+      return (comEmpresa ? `<h3 class="empresa-a">${esc(g.k)} <span class="suave">· ${plural(g.ps.length, 'pessoa', 'pessoas')} · ${f} de ${v.length} feitas</span></h3>` : '') + lista(g.ps, e, arqs);
+    }).join('');
+    return h;
+  }
+  function lista(ps, e, arqs) {
+    return '<ul class="lista">' + ps.map(p => {
+      const s = T.etapas[p.etapa] || ['s-ja', p.etapa];
+      const meus = p.pedido ? arqs.filter(a => a.split('/').pop().startsWith('S' + p.pedido + ' ')) : [];
+      const baixar = (p.etapa === 'encontrados' && arqs.includes('relatorio.html') ? [`<a href="${VER.replace('ID', encodeURIComponent(e.id))}#S${encodeURIComponent(p.pedido)}" target="_blank" rel="noopener">ver processos</a>`] : [])
+        .concat(meus.map(a => `<a href="${link(e.id, a)}">${/\.pdf$/i.test(a) ? 'baixar PDF' : 'baixar planilha'}</a>`)).join(' · ');
+      const det = [p.pedido ? 'Pedido S' + p.pedido : '', p.resultado && p.resultado !== '—' ? p.resultado : '',
+                   p.valor && p.etapa === 'pronto' ? 'Valor no Sonar: ' + p.valor : '', p.motivo || ''].filter(Boolean).map(esc).join(' · ');
+      return `<li class="pedido-a${p.etapa === 'preenchendo' ? ' atual' : ''}"><div class="topo"><span><b>Linha ${p.linha}</b> ` +
+             `<code>${esc(p.texto || p.doc || '')}</code></span><span class="selo ${s[0]}">${esc(s[1])}</span></div>` +
+             (det || baixar ? `<div class="detalhe">${det}${baixar ? (det ? ' · ' : '') + baixar : ''}</div>` : '') + '</li>';
+    }).join('') + '</ul>';
+  }
+
+  {% if tela == "resumo" %}
+  // atendente: troca o "*Nome:*" do começo de cada mensagem da CAC (mantém o que já foi editado no resto)
+  document.querySelectorAll('#atendentes button[data-atendente]').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#atendentes button[data-atendente]').forEach(x => x.className = x === b ? 'primario' : 'secundario');
+    document.querySelectorAll('textarea.cac').forEach(t => { t.value = t.value.replace(/^\*[^*\n]+:\*/, '*' + b.dataset.atendente + ':*'); });
+  }));
+  // copiar: a página é http (rede local), onde navigator.clipboard não existe; execCommand funciona
+  document.querySelectorAll('button.copiar').forEach(b => b.addEventListener('click', () => {
+    const t = $(b.dataset.alvo), txt = b.textContent;
+    const ok = () => { b.textContent = 'Copiado!'; setTimeout(() => { b.textContent = txt; }, 2000); };
+    if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(t.value).then(ok); return; }
+    t.focus(); t.select(); try { document.execCommand('copy'); ok(); } catch (_) { b.textContent = 'Selecione e copie (Ctrl+C)'; }
+  }));
+  {% elif tela == "execucao" %}
+  $('execucao').innerHTML = cartao({{ e | tojson }});
+  {% elif tela == "inicio" %}
+  const form = $('form-arquivo'), caixa = $('soltar'), campo = $('arquivo');
+  function enviar(nome) {
+    $('soltar-titulo').textContent = 'Conferindo ' + nome + '…';
+    $('soltar-sub').textContent = 'nada é comprado agora: o Albi mostra o total antes';
+    $('albi-caixa').classList.replace('parado', 'trabalhando');
+    form.submit();
+  }
+  campo.addEventListener('change', () => campo.files.length && enviar(campo.files[0].name));
+  ['dragenter', 'dragover'].forEach(ev => caixa.addEventListener(ev, e => { e.preventDefault(); caixa.classList.add('arrastando'); }));
+  ['dragleave', 'drop'].forEach(ev => caixa.addEventListener(ev, e => { e.preventDefault(); caixa.classList.remove('arrastando'); }));
+  caixa.addEventListener('drop', e => {
+    if (!e.dataTransfer.files.length || caixa.classList.contains('desligado')) return;
+    campo.files = e.dataTransfer.files; enviar(campo.files[0].name);
+  });
+
+  let ultimoHtml = '';
+  async function atualizar() {
+    try {
+      const r = await fetch('{{ url_for("albi_andamento") }}', { credentials: 'same-origin' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const info = await r.json();
+      const ocupado = !info.configurado || info.rodando;
+      caixa.classList.toggle('desligado', ocupado);
+      campo.disabled = ocupado;
+      $('soltar-titulo').textContent = !info.configurado ? 'O Albi não está instalado neste servidor'
+        : info.rodando ? 'O Albi está trabalhando…' : 'Solte o .txt aqui';
+      $('soltar-sub').textContent = !info.configurado ? 'falta a pasta albi/ com .venv e .env (veja albi/README.md)'
+        : info.rodando ? 'uma execução por vez: espere terminar para soltar outro arquivo'
+        : 'um bloco por empresa, uma pessoa por linha (CPF ; nome) — o Albi confere e mostra o total antes de pesquisar';
+      const h = cartao(info.execucao);
+      if (h !== ultimoHtml) { $('execucao').innerHTML = h; ultimoHtml = h; }
+      $('rodar-erro').hidden = true;
+    } catch (err) { $('rodar-erro').textContent = 'Sem conexão com o servidor. Tentando de novo…'; $('rodar-erro').hidden = false; }
+  }
+  atualizar(); setInterval(atualizar, 1500);
+  {% endif %}
+})();
+</script>
+</body>
+</html>

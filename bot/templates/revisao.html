@@ -345,12 +345,14 @@ const dataOk = br => !!dataDe(br);
 const mascara = v => { const n = v.replace(/\D/g, "").slice(0, 8);
   return n.length > 4 ? `${n.slice(0, 2)}/${n.slice(2, 4)}/${n.slice(4)}` : n.length > 2 ? `${n.slice(0, 2)}/${n.slice(2)}` : n; };
 
-// mesma regra do lançamento: tudo em negrito; linhas "PRAZO FATAL..." (inclusive D-2) em vermelho
+// mesma regra do lançamento (bot/lancamento.py, PRAZO_VERMELHO): tudo em negrito; linhas "PRAZO FATAL..."
+// (inclusive D-2), "PRAZO PARA/DE EMBARGOS:" e "PRAZO PARA/DE RECURSO:" em vermelho, junto com a data
+const PRAZO_VERMELHO = /^\s*PRAZO\s+(FATAL|(PARA|DE)\s+(EMBARGOS|RECURSO))\b/i;
 function previa(texto) {
   return (texto || "").split("\n").map(l => {
     if (!l.trim()) return "<p>&nbsp;</p>";
     let h = esc(l);
-    if (l.startsWith("PRAZO FATAL")) h = `<span style="color:#ff0000">${h}</span>`;
+    if (PRAZO_VERMELHO.test(l)) h = `<span style="color:#ff0000">${h}</span>`;
     return `<p><strong>${h}</strong></p>`;
   }).join("");
 }

@@ -9,7 +9,7 @@ Detalhes em `DOCUMENTACAO.md`.
   no mesmo momento da mudança (Adicionado / Alterado / Corrigido / Removido / Segurança).
 - Se a mudança altera o funcionamento, a configuração (`.env`) ou os passos, atualizar também
   `DOCUMENTACAO.md` (seção "Passo a passo" e tabelas).
-- Mudança no relatório de processos por Grupo Cliente (`relatorio_processos.py`,
-  `bot/processos_grupo.py`, `.env.usuario2`): atualizar também `RELATORIO_PROCESSOS.md`.
+- Mudança no Jarvis (relatório de processos por Grupo Cliente, pasta `jarvis/`): atualizar também
+  `jarvis/README.md`. O Jarvis não importa nada de `bot/` (tem cópias próprias em `jarvis/nucleo/`).
 - Escrever documentação e mensagens em português.
 - Nunca colocar a senha ou o conteúdo do `.env` na documentação.

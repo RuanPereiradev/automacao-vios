@@ -1,4 +1,4 @@
-"""Relatório mensal de processos em PDF, no timbrado do escritório (bot/timbrado/).
+"""Relatório mensal de processos em PDF, no timbrado do escritório (jarvis/nucleo/timbrado/).
 
 Sai junto com a planilha: <GRUPO>.pdf ao lado de <GRUPO>.xlsx, com as mesmas linhas
 (montar_linha) — capa com os números do mês, a página "Resumo do mês" escrita pela IA
@@ -19,7 +19,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (CondPageBreak, KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table,
                                 TableStyle)
 
-from bot.relatorio_planilha import CONDENACOES
+from nucleo.relatorio_planilha import CONDENACOES
 
 PASTA = Path(__file__).parent / "timbrado"
 VINHO = colors.HexColor("#6b1414")

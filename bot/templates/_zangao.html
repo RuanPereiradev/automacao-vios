@@ -1,33 +1,64 @@
-{# Mascote do Zangão: o mesmo desenho da Vila 02 (sprite ZSPR da vila, quadro "de frente").
-   Grade 16×12 (1 caractere = 1 pixel), como o do Ultron, para usar as mesmas animações
-   (ultron_script(): brilho, piscar e flutuar; humor "parado", "trabalhando", "feliz", "erro"). #}
+{# Mascote do Bumblebee (o bot que antes se chamava Zangão): robô amarelo que vira carro para andar.
+   Desenho: doc/mascote/zangao-transforma.html (robô 24×26 de frente, carro 30×12 de lado) — o mesmo
+   da Vila 02 (doc/vila/ligar_bumblebee.py).
+   - zangao(): o robô em SVG (topo da página), com as animações do ultron_script() (brilho,
+     piscar, flutuar; humor "parado", "trabalhando", "feliz", "erro");
+   - zangao_cena(): um canvas que faz a transformação (robô ↔ carro), controlado por
+     bumblebee_script(): Bumblebee.carro(el, dir), .robo(el) e .movendo(el, sim/não). #}
 {% set ZGRADE = [
-  "...K........K...",
-  "....K......K....",
-  "..WYYYYYYYYYYH..",
-  "..YKKKKKKKKKKH..",
-  "..YKEBKKKKBEKH..",
-  "..GYYKMMMMKYYG..",
-  "YYKKKKKKKKKKKKHH",
-  "HHYYYYYYYYYYYYHH",
-  "..KKKKKKKKKKKH..",
-  "..YYYYYYYYYYYH..",
-  "...K.K....K.K...",
-  "...K.K....K.K...",
+  ".........KKKKKK.........",
+  "........KYYYYYYK........",
+  ".......KYYYYYYYYK.......",
+  ".......KYKKKKKKYK.......",
+  ".......KYKBEBEKYK.......",
+  ".......KYKKKKKKYK.......",
+  "........KYGGGGYK........",
+  ".........KKKKKK.........",
+  "LLLL....KKYYYYKK....LLLL",
+  "LBBL...KYYYYYYYYK...LBBL",
+  "LBBL..KYYYKKKKYYYK..LBBL",
+  "LBBL..KYYKWWWWKYYK..LBBL",
+  "LLLL..KYYKGGGGKYYK..LLLL",
+  "..K...KYYYKKKKYYYK...K..",
+  "..KKKKKYYYYYYYYYYKKKKK..",
+  "..KYYKKYYYYYYYYYYKKYYK..",
+  "..KYYK.KKKKKKKKKK.KYYK..",
+  "..KYYK.KYYYKKYYYK.KYYK..",
+  "..KKKK.KYYYK.KYYYK.KKKK.",
+  ".......KYYYK.KYYYK......",
+  ".......KYYYK.KYYYK......",
+  ".......KKKKK.KKKKK......",
+  ".......KGGGK.KGGGK......",
+  ".......KGGGK.KGGGK......",
+  "......KKKKKK.KKKKKK.....",
+  "......KDDDDK.KDDDDK.....",
 ] %}
-{% set ZCORES = {"Y": "#e8b923", "H": "#a8780a", "K": "#1d1e21", "W": "#fbe27a", "G": "#4a4f57",
-                 "M": "#8c939c", "E": "#3d8bff", "B": "#cfeaff"} %}
+{% set ZCARRO = [
+  "..............................",
+  "..............................",
+  ".........KKKKKKKKKKKK.........",
+  ".......KKBBBBBBBBBBBBKK.......",
+  "......KYBBBBBBBBBBBBBBYK......",
+  ".....KYYKKKKKKKKKKKKKKYYKK....",
+  "..KKKYYYYYYYYYYYYYYYYYYYYYKKK.",
+  ".KYYYYYYYYYYYYYYYYYYYYYYYYYYHK",
+  ".KYYYYYYYYYYYYYYYYYYYYYYYYYYRK",
+  ".KKKKKKKKKKKKKKKKKKKKKKKKKKKKK",
+  "...KDDK..............KDDK.....",
+  "...KDDK..............KDDK.....",
+] %}
+{% set ZCORES = {"Y": "#e8b923", "H": "#fff1a8", "K": "#1d1e21", "B": "#3d8bff", "E": "#cfeaff", "W": "#8fc3e0",
+                 "G": "#8c939c", "L": "#5a616b", "D": "#4a4f57", "R": "#ff5a3c"} %}
 
 {% macro zangao(humor="parado", tamanho=120, id="zangao") %}
 <div class="ultron zangao {{ humor }}" id="{{ id }}" style="--tam: {{ tamanho }}px" aria-hidden="true">
   <div class="corpo">
-    <svg viewBox="0 0 16 12" shape-rendering="crispEdges">
+    <svg viewBox="0 0 24 26" shape-rendering="crispEdges">
       {%- set partes = {} %}
       {%- for linha in ZGRADE %}{% set y = loop.index0 %}{% for c in linha %}{% set x = loop.index0 %}{% if c != "." %}
-        {%- if c in "EB" %}{% set classe = "olho-z" %}
-        {%- elif y < 2 %}{% set classe = "antena" %}
-        {%- elif y in (6, 7) and x < 2 %}{% set classe = "braco esq" %}{% elif y in (6, 7) and x > 13 %}{% set classe = "braco dir" %}
-        {%- elif y >= 10 %}{% set classe = "perna" %}{% else %}{% set classe = "" %}{% endif %}
+        {%- if y == 4 and c in "EB" %}{% set classe = "olho-z" %}
+        {%- elif 8 <= y <= 12 and x < 4 %}{% set classe = "braco esq" %}{% elif 8 <= y <= 12 and x > 19 %}{% set classe = "braco dir" %}
+        {%- elif y >= 19 %}{% set classe = "perna" %}{% else %}{% set classe = "" %}{% endif %}
         {%- set chave = classe ~ "|" ~ ZCORES[c] %}
         {%- set _ = partes.update({chave: partes.get(chave, "") ~ "M" ~ x ~ " " ~ y ~ "h1v1h-1z"}) %}
       {%- endif %}{% endfor %}{% endfor %}
@@ -40,10 +71,102 @@
 </div>
 {% endmacro %}
 
-{# Ícone da aba: o mesmo desenho, sem animação. #}
+{# Na cena: canvas 52×34 (o carro com farol precisa de mais largura que o robô); chão na última linha. #}
+{% macro zangao_cena(id="cena-mascote") %}
+<div class="ultron zangao parado bee" id="{{ id }}" aria-hidden="true">
+  <canvas class="bumblebee" width="52" height="34"></canvas>
+</div>
+{% endmacro %}
+
+{% macro bumblebee_script() %}
+<script>
+window.Bumblebee = (() => {
+  const ROBO = {{ ZGRADE | tojson }}, CARRO = {{ ZCARRO | tojson }}, COR = {{ ZCORES | tojson }};
+  // peça do robô (rx, ry, rw, rh) -> lugar no carro (cx, cy, a partir do centro e do chão); rot = voltas; d = atraso
+  const PECAS = [
+    { rx: 7, ry: 0, rw: 10, rh: 8, cx: 9, cy: 2, rot: .5, d: 0 }, { rx: 6, ry: 8, rw: 12, rh: 9, cx: -2, cy: 6, rot: 0, d: .08 },
+    { rx: 0, ry: 8, rw: 4, rh: 5, cx: -9, cy: 3, rot: 1, d: .12 }, { rx: 20, ry: 8, rw: 4, rh: 5, cx: 6, cy: 3, rot: 1, d: .12 },
+    { rx: 2, ry: 13, rw: 4, rh: 6, cx: -15, cy: 6, rot: .5, d: .18 }, { rx: 18, ry: 13, rw: 4, rh: 6, cx: 11, cy: 6, rot: .5, d: .18 },
+    { rx: 7, ry: 17, rw: 5, rh: 9, cx: -12, cy: 8, rot: .25, d: .26 }, { rx: 13, ry: 17, rw: 5, rh: 9, cx: 6, cy: 8, rot: .25, d: .26 }];
+  const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const calmo = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const todos = [];
+  function estado(el) {
+    const cv = el.tagName === 'CANVAS' ? el : el.querySelector('canvas.bumblebee');
+    if (!cv._bee) { cv._bee = { cv, c: cv.getContext('2d'), m: 0, alvo: 0, dir: 1, movendo: false, f: 0, fila: [] }; todos.push(cv._bee); }
+    return cv._bee;
+  }
+  const pronto = s => s.alvo ? s.m >= .9 : s.m <= .04;
+  function para(el, alvo, dir) {
+    const s = estado(el);
+    if (dir) s.dir = dir;
+    s.alvo = alvo;
+    if (calmo) s.m = alvo;
+    return new Promise(ok => {
+      if (pronto(s)) return ok();
+      s.fila.push(ok);
+      setTimeout(() => { if (s.fila.includes(ok)) { s.m = alvo; s.fila = s.fila.filter(x => x !== ok); ok(); } }, 2500); // aba escondida
+    });
+  }
+  function px(c, rows, x, y, pal, virar) {
+    const w = rows[0].length;
+    rows.forEach((r, j) => { for (let i = 0; i < w; i++) { const ch = r[i]; if (ch !== '.') { c.fillStyle = pal[ch]; c.fillRect(x + (virar ? w - 1 - i : i), y + j, 1, 1); } } });
+  }
+  function desenhar(s) {
+    const { c, f, m, movendo } = s, X = 26, G = 34, virar = s.dir < 0;
+    const pisca = f % 180 < 6, pal = pisca ? Object.assign({}, COR, { E: COR.K, B: COR.K }) : COR;
+    c.clearRect(0, 0, s.cv.width, s.cv.height);
+    const carro = m >= .9, meio = m > .04 && !carro;
+    c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(X - (carro ? 13 : 8), G - 1, carro ? 26 : 16, 1);
+    if (meio) {
+      c.globalAlpha = Math.max(0, m - .5) * 1.6; px(c, CARRO, X - 15, G - 12, pal, virar); c.globalAlpha = 1;
+      PECAS.forEach(p => {
+        const t = ease(Math.max(0, Math.min(1, (m - p.d) / (.9 - p.d))));
+        const ox = X - 12 + p.rx + p.rw / 2, oy = G - 26 + p.ry + p.rh / 2, cxm = virar ? -(p.cx + p.rw) : p.cx;
+        const dx = X + cxm + p.rw / 2, dy = G - 12 + p.cy + p.rh / 2;
+        c.save(); c.translate(Math.round(ox + (dx - ox) * t), Math.round(oy + (dy - oy) * t - Math.sin(t * Math.PI) * 6));
+        c.rotate(Math.round(p.rot * 4 * t) * (virar ? -1 : 1) * Math.PI / 2);
+        c.globalAlpha = 1 - Math.max(0, (t - .85) / .15);
+        const hw = p.rw >> 1, hh = p.rh >> 1;
+        for (let j = 0; j < p.rh; j++) for (let i = 0; i < p.rw; i++) {
+          const ch = ROBO[p.ry + j][p.rx + i]; if (ch !== '.') { c.fillStyle = pal[ch]; c.fillRect(i - hw, j - hh, 1, 1); } }
+        c.restore();
+      });
+      const wk = Math.max(0, (m - .55) / .45); c.fillStyle = COR.D;
+      c.fillRect(X - 12, G - 2 - Math.round((1 - wk) * 6), 4, 2); c.fillRect(X + 7, G - 2 - Math.round((1 - wk) * 6), 4, 2);
+      c.globalAlpha = 1;
+    } else if (carro) {
+      const pulo = movendo && (f >> 2) % 2 ? -1 : 0;
+      px(c, CARRO, X - 15, G - 12 + pulo, Object.assign({}, pal, { D: movendo && (f >> 1) % 2 ? '#6b727b' : COR.D }), virar);
+      c.fillStyle = 'rgba(255,241,168,.35)'; c.fillRect(virar ? X - 25 : X + 15, G - 5, 10, 2);
+      if (movendo) for (let i = 0; i < 4; i++) { c.fillStyle = 'rgba(169,164,155,.5)'; c.fillRect(X - s.dir * (16 + i * 4) - ((f + i * 3) % 4), G - 2 - (i % 2), 2, 1); }
+    } else {
+      px(c, ROBO, X - 12, G - 26, pal, false);
+      if ((f >> 4) % 2) { c.fillStyle = COR.L; c.fillRect(X - 13, G - 19, 1, 1); c.fillRect(X + 12, G - 19, 1, 1); }
+      if (!pisca) { c.fillStyle = 'rgba(61,139,255,.35)'; c.fillRect(X - 3, G - 23, 7, 3); }
+    }
+  }
+  function quadro() {
+    todos.forEach(s => {
+      s.f++;
+      s.m += (s.alvo - s.m) * .09;
+      if (Math.abs(s.m - s.alvo) < .005) s.m = s.alvo;
+      if (pronto(s)) s.fila.splice(0).forEach(ok => ok());
+      desenhar(s);
+    });
+    requestAnimationFrame(quadro);
+  }
+  document.querySelectorAll('canvas.bumblebee').forEach(estado);
+  requestAnimationFrame(quadro);
+  return { carro: (el, dir) => para(el, 1, dir), robo: el => para(el, 0), movendo: (el, v) => { estado(el).movendo = !!v; } };
+})();
+</script>
+{% endmacro %}
+
+{# Ícone da aba: o robô, sem animação. #}
 {% macro zangao_icone() -%}
 {%- set svg -%}
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -2 16 16" shape-rendering="crispEdges">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 0 26 26" shape-rendering="crispEdges">
 {%- for linha in ZGRADE %}{% set y = loop.index0 %}{% for c in linha %}{% if c != "." %}<rect x="{{ loop.index0 }}" y="{{ y }}" width="1" height="1" fill="{{ ZCORES[c] }}"/>{% endif %}{% endfor %}{% endfor -%}
 </svg>
 {%- endset -%}

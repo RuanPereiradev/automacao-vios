@@ -276,7 +276,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 | Horário (`fo[hora_prevista]`) | Horário do ato em audiência, perícia e sustentação oral (HH:MM); vazio nas demais. Conferido na tela antes de adicionar |
 | Responsáveis | O que o VIOS marca sozinho ao escolher a tarefa (em geral o auxiliar da intimação) + BRENO quando a regra pede; ou exatamente as pessoas escolhidas manualmente na revisão |
 | Texto intimação | Marcado (padrão do VIOS) |
-| Observação | Descrição da tarefa, toda em **negrito**; as linhas `PRAZO FATAL (D-2): ...` e `PRAZO FATAL: ...` (RPV e emenda da Suhiane) em **negrito e vermelho**. O teor que o VIOS acrescenta depois fica normal |
+| Número do processo | Cada CI mostra o número do processo na página de envio (do `PROCESSO:` do .txt; sem ele, do capturado no VIOS: campo Números ou o teor). Sem número, fora do formato ou diferente do capturado: aviso |
+| Data (corte das 12h) | `CIÊNCIA` e `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` com data de hoje, lançadas depois das 12:00 (ou no fim de semana), vão para o próximo dia de segunda a sexta (sexta 12:01 → segunda). Só a data da tarefa: as linhas de embargos, recurso e prazo fatal não mudam. Se uma delas vier antes do novo dia, fica hoje (urgente, aparece no log). A hora é a do computador do servidor, na hora de preencher cada tarefa |
+| Observação | Descrição da tarefa, toda em **negrito**; as linhas `PRAZO FATAL (D-2): ...`, `PRAZO FATAL: ...` (RPV e emenda da Suhiane), `PRAZO PARA EMBARGOS: ...` e `PRAZO PARA RECURSO: ...` (também com "DE") em **negrito e vermelho**, junto com a data. O teor que o VIOS acrescenta depois fica normal |
 
 - **Dois passos no VIOS:** *Adicionar* põe a tarefa no quadro "Tarefas"
   (provisório, some se a sessão acabar) e *Gravar* efetiva. O bot adiciona
@@ -600,23 +602,386 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `saida/vila_pendentes.jsonl` dele).
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py bot/vila/vila.html`.
 
-### Passo 28 — Jarvis na Vila 04 (relatório mensal de processos)
-- A vila tem 4 vilas: 01 · Ultron, 02 · Zangão, 03 · vaga e **04 · Jarvis**. O Jarvis é o
-  robô do relatório mensal de processos por Grupo Cliente (`relatorio_processos.py`,
-  segundo usuário do VIOS, só leitura; detalhes em `RELATORIO_PROCESSOS.md`).
-- A Vila 04 é a **garagem do Homem de Ferro** (desenho do `fundo-oficina-jarvis.html`):
+### Passo 33 — Orelha, o relatório do dia que só lê o VIOS (pasta `orelha/`) e a Vila 05
+- Quarto bot, separado como o Albi: fica em `orelha/`, com `.venv`, `.env`, `logs/` e `saida/`
+  próprios, e não importa nada de `bot/` nem de `albi/`. **Detalhes em `orelha/README.md`**:
+  instalar, configurar, rodar, `--simulado`, agendar (cron/launchd) e o que falta conferir na tela.
+- Entra no VIOS e **só lê**. O bloqueio de envios (ideia do Zangão) é ligado antes do login, e o
+  Orelha para se ele não estiver ativo. O relatório do dia (`orelha/saida/<data>/relatorio.html`, PDF e
+  `resumo.json`) tem agenda de hoje e amanhã, prazos atrasados da equipe, intimações esquecidas (sem
+  tarefa, fora ontem e hoje), processos parados (lenta: `--funcoes parados`, semanal) e a conferência
+  das planilhas do Albi no VIOS.
+- Instalar: `cd orelha && ./instalar.sh`. Preencher o `orelha/.env` (modelo em `orelha/.env.example`).
+  Ver sem senha: `./rodar.sh --simulado`. Rodar: `./rodar.sh`.
+- **Vila 05**: com `VILA_URL` e `VILA_SENHA` no `orelha/.env`, o Orelha manda os eventos por
+  `POST /eventos` ao Ultron. O Ultron aceita porque `"orelha"` está em `BOTS_EXTERNOS`
+  (`bot/eventos.py`), e os eventos levam só fases e contagens (contrato em
+  `doc/vila/contrato-eventos.md`). A vila agora tem 5 vilas, e a Vila 04 está vaga. Abrir direto:
+  `/vila?vila=5`. Se a vila for baixada de novo do site: `ligar_zangao.py`, `ligar_albi.py`, depois
+  `python3 doc/vila/ligar_orelha.py bot/vila/vila.html`, `ligar_jarvis.py`, `ligar_vila05_parque.py`
+  (o parque, ver Passo 32), `ligar_orelha_agenda.py` (horário e Arquivo, ver Passo 35) e, depois de
+  todos, `ligar_vila05_vida.py` e as camadas do parque vivo (ver Passo 36).
+
+### Painel semanal do Orelha (PDF no papel timbrado)
+- Botão **Gerar painel semanal** na página `/orelha` do Sam (ou `./rodar.sh --funcoes painel` dentro de
+  `orelha/`), sem agendamento, gera `saida/<data>/painel-semanal.pdf`:
+  resumo executivo, taxa de resolução, carga por advogado, agenda de audiências e tarefas não feitas,
+  no papel timbrado do escritório. Não entra no relatório do dia. A 1ª edição não tem semana anterior; a
+  comparação começa na 2ª. Detalhes e variáveis `ORELHA_PAINEL_*`: `orelha/README.md` e
+  `orelha/.env.example`.
+
+### Passo 28 — Albi: .txt de CPF/CNPJ, página `/albi` e Vila 03
+- O Albi recebe um `.txt` **organizado por empresa**: a linha `EMPRESA:` e,
+  embaixo, uma pessoa por linha, `CPF ; nome` (modelo em `albi/modelo_pedidos.txt`,
+  ou "Baixe o modelo" na página `/albi`). `---` separa as empresas (opcional);
+  linha vazia ou com `#` no começo é ignorada; o CPF pode vir antes ou depois do
+  nome; serve CNPJ também. Sem `EMPRESA:`, vale tudo como uma lista só.
+  ```
+  EMPRESA: Empresa A
+  123.456.789-09 ; Maria da Silva
+  987.654.321-00 ; João Souza
+  ---
+  EMPRESA: Empresa B
+  111.444.777-35 ; Ana Lima
+  ```
+- No Sonar, o "Identificador Projeto" (coluna "Projeto") fica o nome da empresa.
+- Uma pessoa por vez, na ordem do arquivo. Se a sessão do Sonar cair no meio,
+  entra de novo e tenta a mesma pessoa mais uma vez; erro numa não para as outras.
+- Antes de entrar no Sonar ele confere cada linha (11 ou 14 números, dígito
+  verificador, repetidos); linha inválida fica de fora e aparece na página.
+- Para cada pessoa, uma por vez: Nova Pesquisa → **Identificador Projeto = nome
+  da empresa** → Tipo **CPF/CNPJ** → documento → "Continuar" → passo 2 ("Pedido"):
+  confere o documento, escolhe o **Sacado** (o escritório; `SONAR_SACADO` no
+  `albi/.env`) e clica em **"Confirmar Pedido"** (R$ 15,70 cada). Guarda o número
+  do pedido.
+- Depois espera o Sonar terminar cada pedido (até `SONAR_ESPERA_MIN`, padrão 120
+  min) e baixa o resultado de **cada pessoa**: o **PDF da página do pedido** (todos,
+  inclusive "não consta") e, de quem tem processos encontrados, a **planilha**
+  ("Baixar Resultados"), em `<empresa>/S<pedido> - <nome>.pdf` / `.xls`. Escreve o
+  `resultado.txt` (por empresa: CPF ; nome ; pedido ; resultado ; arquivos). Tudo em
+  `saida/albi/<id>/` do Ultron, para baixar na página.
+- **Relatório dos processos** (automático, no fim): o Albi lê as planilhas e escreve
+  `relatorio.html`, `relatorio.pdf` e `processos.csv` na pasta da execução. Por empresa,
+  traz o resumo de todos e, de cada processo de quem tem processos: número CNJ, tribunal,
+  vara, ramo, ação, assunto, data, papel da pessoa (ré/autora, pelo CPF), outra parte,
+  valor e status. Na página: "Ver relatório dos processos", "relatório PDF" e
+  "processos.csv (Excel)". Numa execução antiga, use "Gerar relatório dos processos", que
+  usa o que já foi baixado e não entra no Sonar. Pelo terminal: `cd albi &&
+  .venv/bin/python relatorio.py <pasta>`.
+- **Capturar resumo**: o botão "Capturar resumo (mensagem para a empresa)" abre a mensagem
+  pronta para cada empresa (também em `mensagem.txt`): quantas pessoas foram pesquisadas,
+  quem tem processos (em andamento, encerrados, como ré, trabalhista/criminal e os em
+  andamento com número e vara) e quem não tem, com a assinatura do escritório e o CPF
+  mascarado. Dá para editar no campo, clicar em "Copiar mensagem" e mandar junto o
+  relatório PDF.
+- **Mensagens da CAC** (na mesma tela do "Capturar resumo"): uma mensagem por pessoa com
+  processos, no padrão da Central de Atendimento ao Cliente (abertura com a atendente,
+  "*1️⃣ Autor x Réu*", "Trata-se de…", assunto, valor, situação atual, conclusão e ressalva).
+  Escolha a atendente (Beatriz Vasconcelos ou Renara Kathleem), revise e clique em "Copiar
+  mensagem". Arquivos: `mensagens_cac.txt` e `.json` (`albi/mensagem_cac.py`). **Sem IA**:
+  o texto sai de regras fixas, no roteiro do prompt da CAC:
+  - do que se trata (classe, número, data, vara, posição da pessoa) e por que o processo existe
+    (o que é esse tipo de ação, os assuntos cadastrados pelo tribunal explicados em palavras
+    simples e o valor da causa);
+  - os acontecimentos com data (citação/notificação, contestação, réplica, audiências, liminar,
+    gratuidade, recursos) e as decisões (sentença de procedência/improcedência/parcial, acordo,
+    embargos, julgamento do recurso, trânsito em julgado, cumprimento de sentença, alvará,
+    penhora), tirados das **movimentações oficiais** de cada processo na API pública do CNJ
+    (DataJud, `albi/datajud.py`). Só o número do processo é enviado; o resultado fica em
+    `datajud/` na pasta da execução e não é consultado de novo;
+  - a situação atual pelo movimento mais recente (arquivado, em recurso, aguardando audiência,
+    em cumprimento de sentença…), com aviso quando o status do Sonar diz outra coisa, e um
+    resumo de cada processo; com mais de um, a conclusão diz se há sentença desfavorável.
+  - O que **não** aparece: os fatos narrados nas petições (ex.: jornada, valores recebidos) e
+    os fundamentos das decisões, porque o texto dos autos não está no Sonar nem no DataJud; a
+    data marcada da audiência; processos em segredo de justiça. Sem resposta do DataJud, o
+    processo sai só com o cadastro do Sonar.
+  - No `albi/.env` (opcional): `DATAJUD=false` desliga a consulta; `DATAJUD_PRAZO` (segundos,
+    padrão 150) limita o tempo total; `DATAJUD_CHAVE` troca a chave pública, se o CNJ mudar.
+    Pelo terminal: `relatorio.py <pasta> --sem-datajud`, ou `.venv/bin/python datajud.py
+    <número>` para ver o que o CNJ tem de um processo.
+- **Baixar de novo** (não compra): na execução já confirmada, o botão "Baixar de novo
+  os resultados de cada um" (ou `./rodar.sh --arquivo X --baixar`) pega o número de
+  cada pedido no registro e baixa de novo o PDF e a planilha, sem abrir a Nova
+  Pesquisa. Quem não tem pedido no registro fica como "Sem pedido no registro".
+- Não compra duas vezes: CPF já pesquisado para a mesma empresa nos últimos 30
+  dias usa o pedido anterior (registro `albi/saida/pedidos_confirmados.json`).
+- Pela página: `http://<IP do Mac>:5001/albi` (link "Albi" no topo do Ultron).
+  Soltar o `.txt` na caixa: o Albi **só confere** e mostra quem vai ser
+  pesquisado e o **total em R$**. "Só testar" faz tudo menos confirmar;
+  "Confirmar e pesquisar" (dois cliques) compra. Roda em segundo plano (um por
+  vez, até 500 linhas); a página mostra cada pessoa ao vivo, agrupada por
+  empresa, com o pedido, o resultado e os links do PDF, da planilha e do .zip. Histórico em `/albi/historico`.
+  O arquivo fica em `saida/albi/<id>.txt`; o log do Albi em
+  `albi/logs/execucoes_ultron.log`.
+- Pelo terminal: `cd albi && ./rodar.sh --arquivo pedidos.txt` (teste) ou
+  `... --confirmar` (compra; resultado em `albi/saida/<data_hora>/`) ou `... --baixar`
+  (só baixa de novo os resultados dos pedidos já comprados).
+- Se a Vila 03 for reaplicada: `python3 doc/vila/ligar_albi.py bot/vila/vila.html` (etapas
+  1 a 4; pode rodar de novo, não repete).
+- A **Vila 03** acendeu: é a vila do Albi (Doca 01 · Albi, Receptor TXT,
+  Conferência, Torre Sonar), com o mascote dele (`albi/mascote/`). Os eventos
+  levam só o número da linha, o número da empresa e o final do documento
+  ("Empresa 1 · CPF final 06"), nunca o documento inteiro, o nome da pessoa nem o
+  da empresa.
+- O Ultron acha o Albi em `albi/` deste repositório; noutra pasta, `ALBI_PASTA`
+  no `.env` do Ultron.
+- Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py
+  bot/vila/vila.html`, depois `python3 doc/vila/ligar_albi.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_bumblebee.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_vila01_campo.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_vila03_arena.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_orelha.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_jarvis.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_vila04_garagem.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_vila02_ponte.py bot/vila/vila.html`,
+  `python3 doc/vila/ligar_vila03_arena_att.py bot/vila/vila.html` e, por último, o parque vivo da
+  Vila 05 (Passo 36): `ligar_vila05_vida.py` e depois as camadas `ligar_vila05_casinhas.py`,
+  `ligar_vila05_ossos.py`, `ligar_vila05_clima.py`, `ligar_vila05_dia.py`, `ligar_vila05_humor.py` e
+  `ligar_vila05_passeio.py`.
+
+### Passo 32 — Vila 05: o parque do Orelha
+- A Vila 05 virou um parque dos cães cheio de brinquedos: cerca branca de madeira, grama com flores
+  e caminhos de areia com marcas de pata. Os postos ficaram nos mesmos lugares:
+  - **Casinha do Orelha** (a doca dele): casinha azul de telhado vermelho, com a plaquinha
+    "ORELHA", lanterna, pote de ração e pote de água;
+  - **Calendário:** mural de madeira com o calendário (um dia acende por vez enquanto ele lê);
+  - **Intimações:** caixa de correio (as cartas voam enquanto ele lê; no fim, a bandeirinha sobe
+    vermelha se tiver achado grave e verde se não tiver);
+  - **Relatório:** toalha de piquenique, onde a folha do relatório aparece;
+  - **Planilhas:** baú de brinquedos com a pilha do Albi e os baldes verde, âmbar e cinza;
+  - **Torre VIOS:** torre de parquinho com escorregador e a luz na antena.
+- Também tem piscina de bolinhas, caixa de areia, barreira de agility, prateleira de brinquedos,
+  hidrante e brinquedos pela grama. A bolinha quica, as bolinhas pulam na piscina e há borboletas.
+- Patch: `doc/vila/ligar_vila05_parque.py`, que roda depois do `ligar_orelha.py` e do
+  `ligar_jarvis.py` (e antes do `ligar_orelha_agenda.py`, o último). Os eventos, as
+  falas e o painel do Orelha não mudaram.
+
+### Passo 31 — Vila 03: a arena do Albi
+- A Vila 03 é a arena de `albi/mascote/fundo-arena-albi.html` (a versão nova, com a luta), adaptada à
+  vila: céu com sol e nuvens, montanhas, mata, campo, a casa em domo (com anexo e torre de
+  observação), a árvore grande, o lago com reflexos e um mastro com antena à direita. No céu, o
+  dragão serpenteando e dois lutadores: chegam voando com aura, trocam socos e chutes, disparam
+  raios que se chocam e explodem; a casa e a árvore ficam em ruínas pegando fogo, eles descem,
+  reconstroem a casa, a muda cresce e tudo recomeça (ciclo de uns 8 segundos).
+- O Albi anda só no campo, entre a casa e o lago, e passeia por ele quando está parado. Os postos:
+  - **Doca 01 · Albi:** porta da casa em domo;
+  - **Receptor TXT:** porta do anexo (as faíscas da leitura saem do telhado dele);
+  - **Conferência:** janela da torre de observação, onde rolam as linhas que ele confere (com a
+    casa em ruínas, não aparecem);
+  - **Torre Sonar:** o mastro com antena, cuja ponta pisca quando ele entra no Sonar ou pesquisa.
+- A parte animada só é desenhada com a Vila 02, 03 ou 04 na tela.
+- Patches: `doc/vila/ligar_vila03_arena.py` (a primeira arena) e, por cima, `doc/vila/ligar_vila03_arena_att.py`
+  (a arena nova; o último da lista). Os eventos e o painel do Albi não mudaram.
+
+### Passo 30 — Mascote novo do Ultron (agora Sam) e Vila 01 no campo
+- **Nome:** na tela ele se chama **Sam**: página, links, cena e Vila 01. A marca "SAM" fica nas
+  cores do boneco (S dourado, AM verde). Por dentro continua `ultron` (rotas, arquivos, eventos).
+- O Ultron ganhou o mascote novo (imagem `doc/mascote/WhatsApp Image 2026-11-04 at
+  11.19.56.jpeg`): cabelo dourado, olhos vermelhos fechados sorrindo, capa verde, colete e pés
+  descalços. É uma grade de 28×35 em `bot/templates/_ultron.html`, a mesma da vila; a amostra
+  está em `doc/mascote/ultron-campo.html`. Aparece no topo da página, na caixa de soltar o .txt,
+  no ícone da aba e na Vila 01. O nome continua **Ultron**.
+- A **Vila 01** foi pintada no estilo do cenário (`doc/mascote/1e86eacd-….jpeg`):
+  - céu com nuvens e colinas, grama com flores, caminhos de terra e sebe nas bordas;
+  - **Doca 01 · Ultron** = casa na colina com porta redonda verde e chaminé soltando fumaça;
+  - **Receptor TXT** = moinho com as pás girando, onde o .txt cai;
+  - **Conferência** = casa de porta amarela com o quadro onde ele organiza as CIs;
+  - **docas livres** = hortas cercadas;
+  - lago com ponte de pedra;
+  - **Torre VIOS** = torre de pedra com lanterna.
+- A geometria é a mesma (blocos, portas e postos), então os caminhos e as etapas não mudaram.
+  Patch: `doc/vila/ligar_vila01_campo.py`. As Vilas 02 e 03 ficam como estavam.
+
+### Passo 29 — Zangão vira Bumblebee (robô que se transforma em carro)
+- O bot de comprovantes previdenciários passa a se chamar **Bumblebee** no que aparece na tela:
+  página (`/zangao`), links do topo, Vila 02 (placa, abas, fala e registro) e mensagens de erro.
+  O código interno não muda: rotas `/zangao`, `ZANGAO_PASTA`, eventos `bot: "zangao"`.
+- Mascote novo (desenho em `doc/mascote/zangao-transforma.html`): robô amarelo 24×26. **Para
+  andar, ele se transforma em carro**: as peças voam e encaixam no chassi; só depois ele sai
+  rodando (farol, rodas girando e poeira). Ao chegar, desfaz e volta a robô.
+  - Vila 02: `doc/vila/ligar_bumblebee.py` (rodar depois do `ligar_zangao.py` e do
+    `ligar_albi.py`; não repete se rodar de novo).
+  - Página `/zangao`: o robô no topo (SVG) e, na cena, um canvas com a mesma transformação
+    (`bot/templates/_zangao.html`: `zangao_cena()` e `bumblebee_script()`). Com "reduzir
+    movimento" ligado no sistema, a troca é direta, sem animação.
+- **Vila 02 vira a batalha na ponte, vista de cima** (desenho em `doc/vila/zangao-transforma_att.html`):
+  ponte sobre a água (ondas e o reflexo do fogo), pista com faixas, guard-rail e quatro pilares com
+  luz vermelha. Os postos ficam nos mesmos lugares, como coisas da ponte: **Doca 01** = garagem
+  listrada com a vaga marcada; **Filtro previdenciário** = cabine de pedágio com cancela (sobe quando
+  ele filtra ou passa); **Captura de dados** = pórtico com o painel de mensagens (a tela da captura);
+  **Torre VIOS** = antena no pilar da direita. O Bumblebee parado é o robô de frente; para andar,
+  vira o **carro visto de cima**, que gira para o lado em que vai (com faróis, rastro e uma onda de
+  choque ao virar). Em volta: dois duelos de robôs (chegam como carros, brigam, explodem e vão
+  embora), trânsito, carcaças pegando fogo, explosões longe dele, fumaça e brasas. Ele anda só na
+  pista. A parte animada só é desenhada com a Vila 01, 02 ou 03 na tela. Os eventos, as falas e o
+  painel não mudam. Patch: `doc/vila/ligar_vila02_ponte.py` (depois do `ligar_vila04_garagem.py` e
+  antes do `ligar_vila03_arena_att.py`).
+
+### Passo 36 — Vila 05: o parque vivo (a cena do relatório, o dia e o humor do Orelha)
+- **Campo `cena` no `GET /orelha/status`** (`bot/orelha.py`, função `cena()`): `null` sem relatório
+  real (ou com o Orelha não configurado); senão só a data e CONTAGENS do relatório real mais recente,
+  lidas do `resumo.json`: `data`, `gerado_em`, `atrasadas`, `graves` (atrasadas há mais de 7 dias),
+  `vencem_hoje`, `intimacoes`, `intimacoes_graves`, `parados`, `parados_graves`, `audiencias_hoje`,
+  `pericias_hoje`, `erros` e `funcoes` (as seções que rodaram). Campo ausente = 0. Nunca leva nomes,
+  `por_responsavel` nem `por_area`. Os simulados são ignorados. Testes: `tests/test_orelha_cena.py`
+  (rodar com `.venv/bin/python -m unittest discover -s tests`, na raiz do repo).
+- A Vila 05 lê esse campo a cada 30 s (sem servidor, no site publicado, usa uma cena de exemplo):
+  - **Casinhas**: duas casinhas novas ao lado da do Orelha; de tempos em tempos a Pretinha ou o
+    Caramelo saem para uma voltinha e voltam.
+  - **Ossos**: cada tarefa atrasada é um osso meio enterrado na caixa de areia (acima de 12, cada osso
+    vale mais de uma); as graves são ossos escuros. Quando a contagem cai, um osso sai voando; quando
+    sobe, cresce um montinho e aparece outro.
+  - **Clima**: sem atrasadas faz sol; com poucas passam sombras de nuvem; com muitas ou com graves o
+    céu fecha; com 5 graves ou mais chove de leve, com poças.
+  - **Dia**: a luz muda com a hora do navegador (madrugada, nascer, dia, pôr do sol, noite); à noite
+    acendem a lanterna da casinha, a antena da torre e vagalumes. Fora do expediente (antes das 8h,
+    depois das 18h e no fim de semana) o Orelha dorme na porta da casinha; das 12h às 13h almoça no
+    pote de ração; no fim de semana troca o fedora por um chapéu de palha.
+  - **Humor**: no fim de cada execução, zoomies em volta da piscina (ok), emburrado de costas com uma
+    nuvenzinha e o balão "HMPF... DEU ERRO, OLHA O LOG." (erro) ou um suspiro (parou).
+  - **Passeio**: de vez em quando (cerca de 1 minuto, das 7h às 19h, mais no fim de semana) uma pessoa
+    genérica dá uma volta pelos caminhos: corredor, moça com bolsa, criança com balão ou senhor de
+    bengala. Com o Orelha livre e no expediente (8h–18h; no fim de semana a visita o acorda), ele vai
+    até ela e eles brincam: cheira, pula em cima, late, roda, ganha carinho ou um petisco; depois ela
+    acena e segue. Uma execução sempre passa na frente.
+  - **Salto**: quando atravessa a barreira de agility ele salta (a sombra fica no chão) e levanta
+    poeira ao pousar; indo de lado, pula cada poste. De vez em quando faz um treino na barreira.
+- Testar pela URL (valem também sem servidor): `?vila=5&v5hora=21` (hora; aceita `HH:MM`),
+  `&v5dia=6` (0 = domingo … 6 = sábado), `&v5atrasadas=40&v5graves=8` (a cena) e
+  `&v5humor=ok|erro|parou` (força o humor) e `&v5visita=1|pretinha|caramelo` (uma visita a cada 15 s),
+  `&v5pessoa=1|corredor|moca|crianca|senhor` (uma pessoa a cada 15 s, a qualquer hora) e `&v5agility=1`
+  (treino na barreira a cada 20 s).
+  Ver em casa: `cd bot/vila && python3 -m http.server 5077
+  --bind 127.0.0.1` e abrir `http://127.0.0.1:5077/vila.html?vila=5&v5hora=21`.
+- Patches: `doc/vila/ligar_vila05_vida.py` (o esqueleto: `this.v5` e os ganchos, sem desenhar nada),
+  depois de todos os outros `ligar_*`; em seguida as camadas, em qualquer ordem:
+  `ligar_vila05_casinhas.py`, `ligar_vila05_ossos.py`, `ligar_vila05_clima.py`, `ligar_vila05_dia.py`,
+  `ligar_vila05_humor.py` e `ligar_vila05_passeio.py`. Rodar de novo não repete nada.
+- Para quem for mexer numa camada: o guia dos ganchos (trechos exatos, coordenadas, como mover o
+  Orelha) é `doc/vila/ganchos-vila05.md`, e as ferramentas de teste ficam em `doc/vila/teste-vila05/`
+  (`checar.py` roda `node --check` no JS da vila; `rodar.js` roda a vila em node com canvas falso).
+
+### Passo 35 — Orelha avisa quando o relatório roda e guarda os relatórios no Arquivo
+- **Horário**: `ORELHA_HORARIO` (padrão `seg-sex 07:30`) e `ORELHA_HORARIO_PARADOS` (padrão
+  `sab 08:00`) no `orelha/.env`. Formato `<dias> <HH:MM>`, com faixa (`seg-sex`) ou lista
+  (`seg,qua,sex`), e mais de um separado por `;`. Tem que ser **o mesmo do agendamento** (cron ou
+  launchd, `orelha/README.md`): quem roda o Orelha é o agendamento; o horário serve para avisar.
+- **Agendar no Mac** (sem isso o relatório nunca sai sozinho e a página avisa "ainda não saiu"):
+  `cd orelha && ./agendar_mac.sh instalar`. Ele cria o agendamento do launchd com o horário do próprio
+  `orelha/.env` (relatório do dia e processos parados); `./agendar_mac.sh agora` roda na hora para
+  testar, `status`, `log` e `parar`. O Mac fica com o usuário logado, como no servidor.
+- O Sam lê esse horário e os relatórios da pasta do Orelha (`bot/orelha.py`; `ORELHA_PASTA` só se ele
+  estiver noutra pasta). Não roda o Orelha nem importa nada de `orelha/`.
+- **Na Vila 05**, parado, o Orelha diz quando roda, quando sai o próximo relatório ("amanhã (sexta) às
+  7h30") e quantos estão guardados. Se o de hoje não saiu até 45 minutos depois da hora marcada, ele
+  avisa para conferirem o computador dele, e o topo mostra "Atrasado". No fim de cada
+  execução, leva a folha até o **Arquivo** (armário do parque), guarda na gaveta e diz quando sai o
+  próximo. A placa mostra quantos estão guardados ("Arquivo · 12").
+- **Página `/orelha`** (botão "Relatórios guardados" na Vila 05 e no cartão da Vila dos Bots): o
+  horário, o próximo relatório, o aviso de atraso e a lista de todos os relatórios já feitos, do mais
+  novo para o mais antigo, com graves e pontos de atenção e os botões **Abrir**, **PDF** e
+  **Planilhas (.csv)**. Os simulados ficam à parte. Os arquivos continuam em `orelha/saida/<data>/`.
+- **Relatório mais compacto e a semana** (06/11/2026): as atrasadas vêm agrupadas por **dia do
+  vencimento** (ontem, anteontem… depois por faixa de 7 dias, por mês e por ano), cada grupo fechado
+  com o total; clica no grupo e abrem as tarefas. O quadro "Atrasadas por responsável" fecha a seção.
+  Junto sai `semana.html`, **Atrasadas da semana**: de segunda até hoje, um grupo por dia com as
+  tarefas que venciam nele e continuam abertas (na segunda-feira, a semana passada). Na página
+  `/orelha`, o último relatório aparece **dentro da página**, com as abas "Relatório do dia" e
+  "Atrasadas da semana"; na lista dos guardados, o botão "Semana".
+- `GET /orelha/status` (para a vila) leva só datas e contagens (inclusive o campo `cena`, ver Passo 36). O texto dos relatórios só aparece na
+  página e nos arquivos, atrás da senha das páginas (`ENVIO_SENHA`), como as do Albi.
+- Patch da vila: `doc/vila/ligar_orelha_agenda.py`, o último da lista. O `ligar_vila05_parque.py`
+  ganhou o armário do Arquivo (a barreira de agility desceu para a grama de baixo).
+
+### Passo 34 — Entrada: a Vila dos Bots
+- `http://<IP do Mac>:5001/` abre a **Vila dos Bots**: a vila e um cartão por bot (Sam, Bumblebee,
+  Albi, Jarvis, Orelha) com o botão para a página de cada um. Nenhum bot fica fixo no topo.
+- A página de envio do Sam fica em `http://<IP do Mac>:5001/sam`. As páginas de bot têm o botão
+  "Vila dos Bots" para voltar à entrada.
+
+### Passo 33 — Albi: autos dos processos pelo Presto (em construção)
+- Objetivo: o bot baixar os autos de cada processo do relatório do Leme, como a atendente fazia à
+  mão, entrando no tribunal pela extensão do **Presto** (Oystr). O plano do escritório não tem a
+  API de robôs da Oystr, então o bot usa a extensão num perfil do Chrome só dele.
+- **Caminho atual (Mac): o Chrome que já está aberto.** No Chrome do bot, a conta Google do
+  escritório pede confirmação de identidade; por isso o Albi controla o Chrome aberto pelo
+  AppleScript (`albi/chrome_mac.py`). Uma vez: `cd albi && .venv/bin/python presto.py liberar-chrome`
+  (pergunta antes, fecha o Chrome, marca "Permitir JavaScript de Apple Events" no arquivo
+  `Preferences` de cada perfil, guardando uma cópia `Preferences.albi-bak`, e abre o Chrome de novo;
+  é o mesmo que o menu Visualizar > Desenvolvedor do Chrome); no macOS, quando aparecer "Terminal quer controlar Google
+  Chrome", Permitir (e "Gravação de Tela" para o Terminal, para os prints). Depois, com a janela do
+  perfil do escritório na frente: `cd albi && .venv/bin/python presto.py aberto` (console do Presto e
+  login do PJe do TRT7; ou passe as URLs). Ele abre abas novas, salva o que vê em
+  `albi/logs/presto/<data_hora>/`, clica no botão de login via Presto e captura o resultado. As abas
+  ficam abertas.
+- **Entrar no tribunal pelo Presto:** no `albi/.env` do Mac, `PRESTO_PIN=` (a senha/PIN que o quadro do
+  Presto pede depois de escolher a credencial) e, se houver mais de uma credencial,
+  `PRESTO_CREDENCIAL=` (parte do nome). Depois `.venv/bin/python presto.py entrar tjce1` (ou tjce2,
+  trt7, trt7-2, jfce, trf5, trf5-2, ou a URL de login). O bot abre o login no Chrome aberto, clica na
+  credencial no quadro "Credenciais Disponíveis" que o Presto põe na página, preenche o PIN, confirma e
+  diz se entrou. O PIN não aparece no Terminal nem nas capturas.
+  Se o clique por JavaScript não abrir o campo do PIN (a extensão pode ignorar cliques que não são de
+  verdade), o robô põe a aba na frente e clica com o mouse de verdade no número da credencial; se o PIN
+  por JavaScript não entrar em 12 s, clica no campo e digita o PIN pelo teclado. Isso precisa, uma vez,
+  do Terminal em Ajustes do Sistema > Privacidade e Segurança > **Acessibilidade**, e o Chrome fica na
+  frente enquanto o robô faz o login. O quadro é procurado também dentro de "shadow roots" e frames.
+- **Tribunal aberto pelo console do Presto:** o `entrar` e o `processos` abrem o tribunal como a
+  atendente faz: console do Presto > **Sites** > procura o tribunal na lista > clica. Se o console
+  pedir login, o robô usa `PRESTO_EMAIL` e `PRESTO_SENHA` do `albi/.env` (preencher no Mac; nunca vão
+  para o git nem para a documentação). `--direto` pula o console e abre a URL de login como antes.
+- **Procurar nos tribunais os processos do último relatório:** `cd albi && .venv/bin/python presto.py
+  processos --conferir` mostra, sem abrir o Chrome, qual relatório ele pegou (o `processos.csv` mais novo
+  que tem processos, em `albi/saida/` ou em `saida/albi/`, onde a página `/albi` guarda; `--listar` mostra todos) e em qual tribunal está cada
+  processo, pelo número CNJ: TJCE (8.06), TRT7 (5.07), JFCE (4.05, origem 81xx) e TRF5 (4.05, o resto);
+  2º grau pela instância do Sonar ou origem 0000. Os de outros tribunais aparecem como "fora". Para outro
+  relatório, passe a pasta (ou só o nome dela, como sai no `--listar`): `presto.py processos <pasta> --conferir`. Depois, no Mac, com a janela do
+  escritório na frente: `.venv/bin/python presto.py processos` (opções: `--tribunal tjce1` só um
+  tribunal; `--max 3` só os 3 primeiros). Para cada tribunal ele abre uma aba, entra pelo Presto (se a
+  aba já estiver logada, segue) e, na mesma aba, procura cada processo: no PJe, a tela "Consultar
+  processos" (preenche o número e clica em Pesquisar); no TRT7, o detalhe do processo da consulta
+  processual. Se cair no login no meio, entra de novo uma vez. Resultado de cada um: achou, não
+  encontrado, captcha, sem formulário, não entrou ou fora. Salva tudo em
+  `<pasta do relatório>/presto/<data_hora>/` (`resumo.txt`, `resumo.json` com os links do processo e
+  as capturas de cada um, por tribunal). Ainda não baixa os autos.
+- (Tentativa anterior, perfil separado) Copiar o perfil (uma vez, no computador onde o Albi roda): `cd albi && .venv/bin/python presto.py
+  copiar`. Mostra os perfis do Chrome; escolha o que tem o Presto logado. Se o Chrome estiver
+  aberto, ele pergunta se pode fechá-lo (responda Enter/"s"; as abas voltam ao abrir de novo); a cópia vai para `albi/perfil_presto/` (sem caches nem abas) e o Chrome pode ser
+  aberto de novo. O bot não usa o perfil aberto direto porque o Chrome não deixa automação no perfil
+  principal nem dois Chromes no mesmo perfil. Se o Presto sair da conta no bot, copiar de novo.
+- Alternativa (perfil novo, instalando o Presto nele): `cd albi && .venv/bin/python presto.py
+  preparar`. Abre o Chrome com o perfil `albi/perfil_presto/`: instalar a extensão do Presto,
+  entrar na conta do Presto, conferir que abre o PJe logado e teclar Enter no Terminal (o script
+  fecha o Chrome; no Mac, fechar a janela não encerra o Chrome, e Ctrl+C não é preciso).
+- Explorar: `.venv/bin/python presto.py explorar <URL do tribunal>`. Salva em
+  `albi/logs/presto/<data_hora>/` o print, o HTML, o texto e os botões/campos/links do pop-up da
+  extensão e de cada site, mais o resumo da extensão (`presto_manifest.json`). Serve para montar o
+  caminho do bot (entrar, buscar o processo, baixar os autos) sem inspecionar pelo DevTools.
+- O perfil e as capturas ficam fora do git (sessão do Presto e possíveis nomes de clientes).
+
+### Passo 32 — Jarvis na Vila 04 (relatório mensal de processos)
+- A vila tem 5 vilas: 01 · Sam, 02 · Bumblebee, 03 · Albi, **04 · Jarvis** e 05 · Orelha. O Jarvis é o
+  robô do relatório mensal de processos por Grupo Cliente (segundo usuário do VIOS, só leitura).
+  **Pasta própria `jarvis/`** (como o Albi e o Orelha): `.venv`, `.env`, `logs/`, `saida/` e cópias
+  próprias do login, da configuração e da IA em `jarvis/nucleo/`; não importa nada de `bot/`.
+  Detalhes em `jarvis/README.md`.
+- A Vila 04 é a **garagem do Homem de Ferro** (desenho do `fundo-oficina-jarvis.html`, do Kaio):
   parede de concreto, túnel com luzes, janelas noturnas, telas, carros, duas armaduras em
   exposição, braços robóticos soldando e uma máquina para cada estação (rack com antena,
   scanner de documentos e terminal com impressora). No centro, o projetor do holograma é o **posto do
   Jarvis**: quando ele está lá, o holograma acende em volta dele (o Jarvis é o núcleo). Placas:
   Conexão VIOS, Leitura dos processos e Planilhas. O Jarvis (núcleo de IA: esfera azul em
-  espiral, com anéis e o centro pulsando) voa pela garagem e se apresenta no diálogo.
-  `/vila?vila=4` abre direto nela. A garagem só é desenhada com a Vila 03 ou 04 na tela.
-- **Rodar pela vila** (como o Zangão): com `JARVIS_PASTA` no `.env` do Ultron (pasta com
-  `.venv`, `relatorio_processos.py` e `.env.usuario2` do Jarvis, branch `relatorio-processos`),
+  espiral, com anéis e o centro pulsando) voa pela garagem em linha reta e se apresenta no diálogo.
+  `/vila?vila=4` abre direto nela. A parte animada da garagem só é desenhada com a Vila 03, 04 ou 05
+  na tela. Patch: `doc/vila/ligar_vila04_garagem.py` (antes do `ligar_vila02_ponte.py`).
+- **Rodar pela vila**: com o Jarvis instalado (`cd jarvis && ./instalar.sh` e o `jarvis/.env`
+  preenchido; `JARVIS_PASTA` só se ele estiver noutra pasta),
   a caixa de fala da Vila 04 ganha "Escolher grupos e gerar" e "Planilhas", que abrem a página
-  `/jarvis`: lá a pessoa **marca os grupos** (do `PROCESSOS_GRUPOS` do Jarvis; nunca todos sem
-  escolher) e clica em "Gerar relatório do mês" (com confirmação: segundo clique em até 6 s) ou
+  `/jarvis`: lá a pessoa **marca os grupos** (do `PROCESSOS_GRUPOS` do Jarvis, que
+  `cd jarvis && ./rodar.sh --grupos --salvar` completa com todos os grupos do filtro Grupo Cliente
+  do VIOS; nunca todos sem escolher) e clica em "Gerar relatório do mês" (com confirmação: segundo clique em até 6 s) ou
   "Testar (2 processos por grupo)" (salva em `AAAA-MM/teste/`); embaixo, as planilhas para baixar. Rotas: `/jarvis`, `/jarvis/status`, `POST /jarvis/rodar`,
   `/jarvis/planilha/<mês>/<arquivo>` (só arquivos listados; nada fora da pasta).
 - O Jarvis roda em segundo plano, com ambiente limpo (nenhuma variável do Ultron chega a ele),
@@ -630,10 +995,15 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   - **Planilhas** (salvando cada grupo e no fim): ele vai ao terminal, que preenche a planilha
     célula por célula e imprime; no fim, a planilha fica cheia e a folha impressa. O Jarvis fica uns
     segundos lá (salvar é rápido demais para ver) e depois volta à ronda.
-  Trabalhando, o núcleo gira 3 vezes mais rápido. Instalação no Mac: `RELATORIO_PROCESSOS.md`, seção 5.
-- Se a vila for baixada de novo do site: rodar `ligar_zangao.py` e depois
-  `python3 doc/vila/ligar_jarvis.py bot/vila/vila.html` (no fim, `propulsor` troca o
-  núcleo pelo mascote com propulsores).
+  Trabalhando, o núcleo gira 3 vezes mais rápido. Instalação no Mac: `jarvis/README.md`, seção 5.
+- Se a vila for baixada de novo do site: rodar os patches na ordem (zangão, albi, bumblebee,
+  vila01_campo, vila03_arena, orelha), depois `python3 doc/vila/ligar_jarvis.py
+  bot/vila/vila.html` (no fim, `propulsor` troca o núcleo pelo mascote com propulsores),
+  `python3 doc/vila/ligar_vila05_parque.py bot/vila/vila.html` (o parque do Orelha),
+  `python3 doc/vila/ligar_orelha_agenda.py bot/vila/vila.html` (horário e Arquivo do Orelha),
+  `python3 doc/vila/ligar_vila04_garagem.py bot/vila/vila.html` (a garagem do Jarvis),
+  `python3 doc/vila/ligar_vila02_ponte.py bot/vila/vila.html` (a ponte do Bumblebee) e por último
+  `python3 doc/vila/ligar_vila03_arena_att.py bot/vila/vila.html` (a arena nova do Albi).
 
 ### Passo 27 — Segurança das rotas
 - Com `ENVIO_REDE=true`, toda rota (GET e POST) pede a senha (`ENVIO_SENHA`).
@@ -653,7 +1023,7 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   em "Encerrar a outra sessão" e, se voltar para o login, entra de novo.
 - Depois vai direto para Pesquisa de Processos > Nova Pesquisa
   (`/modulos/pesquisa-processos/novo-pedido`, a tela do botão "Iniciar Pesquisa").
-  As próximas etapas ainda vão ser definidas.
+  Daí em diante, ver o passo 28 (pedidos pelo `.txt`).
 - Instalar: `cd albi && ./instalar.sh`; preencher `albi/.env`
   (`SONAR_CPF_CNPJ`, `SONAR_EMAIL`, `SONAR_SENHA`; modelo comentado em
   `albi/.env.example`); testar: `./rodar.sh` (diz "Login OK" e "Tela de novo
@@ -724,6 +1094,7 @@ selenium/
 ├── rodar_envio.sh       # atalho para enviar.py
 ├── instalar.sh          # prepara um computador novo (Mac ou Linux): .venv + dependências
 ├── albi/              # Albi, bot do Sonar (separado: .venv, .env, logs/ e saida/ próprios)
+├── orelha/              # Orelha, relatório do dia só lendo o VIOS (separado como o Albi; ver orelha/README.md)
 ├── servidor_mac.sh      # Mac: página de envio como serviço (launchd) — instalar/parar/status/log
 ├── bot/
 │   ├── config.py        # lê e valida o .env; converte seletores
@@ -742,11 +1113,12 @@ selenium/
 │   ├── envio_web.py     # página de envio do .txt (Flask)
 │   ├── eventos.py       # eventos para a vila (saida/eventos.jsonl, GET /eventos; POST /eventos do Zangão e do Jarvis)
 │   ├── zangao.py        # roda o Zangão em segundo plano pela vila (/zangao/status, /zangao/rodar)
-│   ├── jarvis.py        # roda o Jarvis (relatório de processos) pela vila e lista as planilhas (/jarvis)
-│   ├── vila_aviso.py    # o relatório de processos manda o andamento para a vila (bot "jarvis")
+│   ├── albi.py          # página /albi: guarda o .txt, roda o Albi e repassa os eventos dele à vila
+│   ├── jarvis.py        # roda o Jarvis (pasta jarvis/) pela vila e lista as planilhas (/jarvis)
+│   ├── orelha.py        # horário do Orelha e arquivo dos relatórios do dia (/orelha, /orelha/status)
 │   ├── vila/            # vila.html (servido em /vila)
-│   ├── templates/       # HTML das páginas de revisão, de envio e do Zangão (zangao.html);
-│   │                    # _estilo.html = estilo comum; _ultron.html / _zangao.html = mascotes;
+│   ├── templates/       # HTML das páginas de revisão, de envio, do Zangão e do Albi (albi.html);
+│   │                    # _estilo.html = estilo comum; _ultron.html / _zangao.html / _albi.html = mascotes;
 │   │                    # _vila.html = vila embutida no topo da página do Ultron
 │   ├── prazos.py        # dias úteis, feriados, prazo fatal, D-2
 │   └── ia/              # provedores de IA: openai_ia.py, anthropic_ia.py
@@ -817,8 +1189,8 @@ O chromedriver é baixado automaticamente pelo Selenium Manager.
 
 ### Segundo usuário do VIOS — Relatório de processos por Grupo Cliente
 
-Outro robô, com outro login do VIOS, que gera um `.txt` por grupo de clientes.
-Documentação própria em [RELATORIO_PROCESSOS.md](RELATORIO_PROCESSOS.md).
+O Jarvis, com outro login do VIOS, gera uma planilha .xlsx por grupo de clientes. Fica na pasta
+própria `jarvis/`; documentação em [jarvis/README.md](jarvis/README.md).
 
 ---
 
@@ -864,6 +1236,15 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `ENVIO_REDE` | não | Página de envio aberta para a rede (padrão: só nesta máquina) | `true` |
 | `ENVIO_SENHA` | com `ENVIO_REDE=true` | Senha pedida pela página de envio | (definir no `.env`) |
 | `ZANGAO_PASTA` | não | Pasta do Zangão neste computador (com `.venv` e `.env` dele); liga os botões da Vila 02 | `~/zangao` |
+| `ALBI_PASTA` | não | Pasta do Albi (com `.venv` e `.env` dele); vazio = `albi/` deste repositório | `~/albi` |
+| `ORELHA_PASTA` | não | Pasta do Orelha, de onde o Sam lê o horário e os relatórios (`/orelha`); vazio = `orelha/` deste repositório | `~/orelha` |
+
+**Site com certificado vencido.** Se o certificado do VIOS (ou do Sonar, no Albi) vencer, o Chrome
+mostra "Sua conexão não é particular" no lugar do login. O Sam, o Orelha, o Jarvis e o Albi clicam
+em **Avançadas** > **Ir para ... (não seguro)** e avisam no log (`passar_aviso_certificado`, em
+`bot/navegador.py`, `orelha/nucleo/navegador.py`, `jarvis/nucleo/navegador.py` e `albi/certificado.py`).
+Só fazem isso com o erro `net::ERR_CERT_DATE_INVALID` (vencido) e no endereço do próprio site.
+Qualquer outro erro de certificado continua bloqueando o login.
 
 ---
 

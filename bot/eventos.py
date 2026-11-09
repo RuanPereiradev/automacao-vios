@@ -60,7 +60,7 @@ def emitir(pasta, envio, tipo, bot="ultron", **dados):
 
 
 # bots de fora que podem mandar eventos por POST /eventos (o "ultron" só escreve daqui de dentro)
-BOTS_EXTERNOS = {"zangao", "jarvis"}
+BOTS_EXTERNOS = {"zangao", "orelha", "jarvis"}
 TAMANHO_MAX = 64 * 1024  # bytes do corpo de um evento recebido
 # nunca guardar em evento de bot de fora (dados de cliente / do processo / do comprovante)
 PROIBIDAS = {"texto", "titulo", "tarefa", "link", "link_tarefa", "link_processo", "cliente", "nome",

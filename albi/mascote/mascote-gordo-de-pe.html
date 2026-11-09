@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mascote · De pé</title>
+<style>
+  html,body{margin:0;height:100%;background:#141312;}
+  body{display:flex;align-items:center;justify-content:center;}
+  canvas{image-rendering:pixelated;width:min(80vw,80vh);height:auto;}
+</style>
+</head>
+<body>
+<canvas id="m" width="22" height="19"></canvas>
+<script>
+const ROWS = [
+  '........HHHHHH........',
+  '......HHPPPPPPSS......',
+  '.....HPPPPPPPPPPS.....',
+  '....HPPKKPPPPKKPPS....',
+  '....PPPKKPPPPKKPPS....',
+  '...HPCCPPPPPPPPCCPS...',
+  '..HPPPPPPKPPKPPPPPPS..',
+  '.HPPPPPPPPKKPPPPPPPPS.',
+  'LMPPPPPPPPPPPPPPPPPPML',
+  'LMSPPPPPPPPPPPPPPPPSML',
+  '.DGGGGGGGGOOGGGGGGGGD.',
+  '..UUVVUUUUUUUUUUVVUUU.',
+  '.UUVVUUUUUUUUUUUUVVUUU',
+  '.UUUUUUUUUUUUUUUUUUUUU',
+  '..UUUUUUUUUUUUUUUUUUU.',
+  '...UUUUUU....UUUUUU...',
+  '...LLLLMM....LLLLMM...',
+  '..LLMMMMD....LMMMMDD..',
+  '..DDDDDDD....DDDDDDD..'
+];
+const PAL = {
+  P:'#f29bbf', H:'#ffc9de', S:'#c96a93',  // corpo rosa
+  K:'#1d1e21', C:'#ff6f9a',               // olhos/boca, bochechas
+  G:'#b68235', O:'#d9a54e',               // cinto e fivela
+  U:'#5b3a63', V:'#7d5687',               // calça bufante
+  L:'#d4d8de', M:'#9aa0a8', D:'#5a5f67'   // botas e luvas de metal
+};
+const cv = document.getElementById('m'), c = cv.getContext('2d');
+let t = 0;
+function draw(){
+  c.clearRect(0,0,22,19);
+  const blink = t % 40 < 2, glow = Math.floor(t/5) % 2;
+  ROWS.forEach((r,y)=>r.split('').forEach((ch,x)=>{
+    if(ch==='.') return;
+    let col = PAL[ch];
+    if(ch==='K' && blink && y<5) col = PAL.P;
+    if(ch==='O' && glow) col = '#f0c46a';
+    c.fillStyle = col; c.fillRect(x,y,1,1);
+  }));
+  const squish = Math.floor(t/7) % 2;
+  cv.style.transform = squish ? 'scale(1.03,0.97) translateY(1.5%)' : 'none';
+  t++;
+}
+draw(); setInterval(draw, 100);
+</script>
+</body>
+</html>

@@ -3,6 +3,7 @@ Com as tarefas da análise já ajustadas, gere o ARQUIVO PARA O ROBÔ: um único
 PADRÃO (um bloco por tarefa; entre um bloco e outro, uma linha só com ---):
 
 CI: [número da CI]
+PROCESSO: [número do processo no padrão 0000000-00.0000.0.00.0000]
 TAREFA: [nome exato da lista oficial do VIOS]
 DATA: [DD/MM/AAAA]
 HORA: [HH:MM ou vazio]
@@ -12,8 +13,8 @@ DESCRIÇÃO:
 ---
 
 REGRAS:
-1. Os campos vêm sempre nesta ordem, um por linha: CI, TAREFA, DATA, HORA, RESPONSÁVEIS, DESCRIÇÃO. A DESCRIÇÃO é sempre o último campo; tudo abaixo dela até o --- vai para a Observação da tarefa, exatamente como escrito.
-2. CI: só o número.
+1. Os campos vêm sempre nesta ordem, um por linha: CI, PROCESSO, TAREFA, DATA, HORA, RESPONSÁVEIS, DESCRIÇÃO. A DESCRIÇÃO é sempre o último campo; tudo abaixo dela até o --- vai para a Observação da tarefa, exatamente como escrito.
+2. CI: só o número. PROCESSO: sempre o número do processo daquela CI, no padrão CNJ (0000000-00.0000.0.00.0000), em todos os blocos.
 3. TAREFA: o nome exatamente como está na lista oficial de tarefas do VIOS.
 4. DATA: a data da tarefa no VIOS (já com D-2, prioridade de RPV/Suhiane, mesmo dia até 12h ou próximo dia depois das 12h, ou data do ato, conforme as regras), na contagem simplificada (só sábado e domingo ficam de fora). Só CIÊNCIA pode ficar com DATA vazia.
 5. HORA: obrigatória em audiência, perícia e sustentação oral (na sessão virtual, o horário de início). Nas demais tarefas, deixar vazia.
@@ -26,6 +27,7 @@ REGRAS:
 EXEMPLO:
 
 CI: 42484
+PROCESSO: 0000123-45.2026.8.06.0001
 TAREFA: MINUTAR PETIÇÃO (EXECUÇÃO) 2026
 DATA: 29/10/2026
 HORA:
@@ -36,6 +38,7 @@ MINUTAR PETIÇÃO PARA INFORMAR OS DEMAIS DADOS NECESSÁRIOS PARA A CONFECÇÃO 
 Despacho: considerando a certidão de ID 192859275, intime-se a parte exequente para, no prazo de 5 dias, informar os demais dados necessários para a confecção dos requisitórios.
 ---
 CI: 42502
+PROCESSO: 0000456-78.2026.5.07.0001
 TAREFA: AUDIÊNCIA UNA/INSTRUÇÃO (TRABALHISTA) 2026
 DATA: 22/01/2027
 HORA: 08:20
@@ -50,6 +53,7 @@ ID da reunião: 851 6451 3045
 SENHA: 355957
 ---
 CI: 42491
+PROCESSO: 0000789-01.2025.8.06.0001
 TAREFA: ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026
 DATA: 29/10/2026
 HORA:

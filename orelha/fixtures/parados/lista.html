@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<!-- FIXTURE FICTÍCIA (repo público): lista de processos do VIOS no formato de
+     ?pag=sys/processos/processos-lista.php (ver doc/vios-mapa-processos.md). Nenhum dado real. -->
+<html><head><meta charset="utf-8"><title>Processos</title></head><body>
+<form method="post" action="?pag=sys/processos/processos-lista.php&amp;menu_lateral=true">
+  <select name="pesq[clientes_grupos_id]"><option value="0" selected>TODOS</option><option value="7">GRUPO FICTÍCIO</option></select>
+  <select name="pesq[limit]"><option value="30">30</option><option value="9999999" selected>Sem limite</option></select>
+  <select name="pesq[filtros_multi][]" multiple><option value="ativos" selected>Ativos</option>
+    <option value="naomigrados" selected>Não migrados</option><option value="encerrados">Encerrados</option></select>
+  <button id="Pesq" type="submit">Pesquisar</button>
+</form>
+<table class="layout"><tr><td>Filtros aplicados: Ativos, Não migrados</td></tr></table>
+<table class="geratabela">
+  <thead><tr><th>CI</th><th>Número</th><th>Cliente</th><th>Área</th><th>Ação</th><th>Advogado</th><th>Ações</th></tr></thead>
+  <tbody>
+      <tr id="processos-lista_linha_1" data-processos_id="9101" data-detalhes-linha="1">
+        <td data-id="processos-lista_linha_1_processos_id">9101</td>
+        <td data-id="processos-lista_linha_1_nro_proc_html"><span class="vj-badge">Cliente OURO</span> CNJ: 0009101-11.2099.8.06.0001</td>
+        <td data-id="processos-lista_linha_1_clientes_nome">Cliente Fictício Alfa Ltda</td>
+        <td data-id="processos-lista_linha_1_pr_areas_nome">Cível Consumidor</td>
+        <td data-id="processos-lista_linha_1_processos_acoes_nome">Indenização por Danos Morais</td>
+        <td data-id="processos-lista_linha_1_advogado_nome">Advogada Exemplo Um</td>
+        <td><a title="Visualizar" href="?pag=sys/processos/processos-vis.php&amp;processos_id=9101">ver</a>
+            <a title="Editar" href="?pag=sys/processos/processos-cad.php&amp;processos_id=9101">editar</a>
+            <a title="Apagar" href="?pag=sys/processos/processos-lista.php&amp;act=del&amp;processos_id=9101">apagar</a></td>
+      </tr>
+      <tr id="processos-lista_linha_2" data-processos_id="9102" data-detalhes-linha="1">
+        <td data-id="processos-lista_linha_2_processos_id">9102</td>
+        <td data-id="processos-lista_linha_2_nro_proc_html">CNJ: 0009102-22.2099.8.06.0001</td>
+        <td data-id="processos-lista_linha_2_clientes_nome">Cliente Fictício Beta S.A.</td>
+        <td data-id="processos-lista_linha_2_pr_areas_nome">Cível Consumidor</td>
+        <td data-id="processos-lista_linha_2_processos_acoes_nome">Obrigação de Fazer</td>
+        <td data-id="processos-lista_linha_2_advogado_nome">Advogada Exemplo Um</td>
+        <td><a title="Visualizar" href="?pag=sys/processos/processos-vis.php&amp;processos_id=9102">ver</a>
+            <a title="Editar" href="?pag=sys/processos/processos-cad.php&amp;processos_id=9102">editar</a>
+            <a title="Apagar" href="?pag=sys/processos/processos-lista.php&amp;act=del&amp;processos_id=9102">apagar</a></td>
+      </tr>
+      <tr id="processos-lista_linha_3" data-processos_id="9103" data-detalhes-linha="1">
+        <td data-id="processos-lista_linha_3_processos_id">9103</td>
+        <td data-id="processos-lista_linha_3_nro_proc_html">CNJ: 0009103-33.2099.5.07.0002</td>
+        <td data-id="processos-lista_linha_3_clientes_nome">Cliente Fictício Gama</td>
+        <td data-id="processos-lista_linha_3_pr_areas_nome">Trabalhista</td>
+        <td data-id="processos-lista_linha_3_processos_acoes_nome">Reclamação Trabalhista</td>
+        <td data-id="processos-lista_linha_3_advogado_nome">Advogado Exemplo Dois</td>
+        <td><a title="Visualizar" href="?pag=sys/processos/processos-vis.php&amp;processos_id=9103">ver</a>
+            <a title="Editar" href="?pag=sys/processos/processos-cad.php&amp;processos_id=9103">editar</a>
+            <a title="Apagar" href="?pag=sys/processos/processos-lista.php&amp;act=del&amp;processos_id=9103">apagar</a></td>
+      </tr>
+      <tr id="processos-lista_linha_4" data-processos_id="9104" data-detalhes-linha="1">
+        <td data-id="processos-lista_linha_4_processos_id">9104</td>
+        <td data-id="processos-lista_linha_4_nro_proc_html">CNJ: 0009104-44.2099.5.07.0002</td>
+        <td data-id="processos-lista_linha_4_clientes_nome">Pessoa Fictícia Delta</td>
+        <td data-id="processos-lista_linha_4_pr_areas_nome">Trabalhista</td>
+        <td data-id="processos-lista_linha_4_processos_acoes_nome">Reclamação Trabalhista</td>
+        <td data-id="processos-lista_linha_4_advogado_nome">Advogado Exemplo Dois</td>
+        <td><a title="Visualizar" href="?pag=sys/processos/processos-vis.php&amp;processos_id=9104">ver</a>
+            <a title="Editar" href="?pag=sys/processos/processos-cad.php&amp;processos_id=9104">editar</a>
+            <a title="Apagar" href="?pag=sys/processos/processos-lista.php&amp;act=del&amp;processos_id=9104">apagar</a></td>
+      </tr>
+      <tr id="processos-lista_linha_5" data-processos_id="9105" data-detalhes-linha="1">
+        <td data-id="processos-lista_linha_5_processos_id">9105</td>
+        <td data-id="processos-lista_linha_5_nro_proc_html">CNJ: 0009105-55.2099.4.05.8100</td>
+        <td data-id="processos-lista_linha_5_clientes_nome">Pessoa Fictícia Épsilon</td>
+        <td data-id="processos-lista_linha_5_pr_areas_nome">Previdenciário</td>
+        <td data-id="processos-lista_linha_5_processos_acoes_nome">Aposentadoria por Idade</td>
+        <td data-id="processos-lista_linha_5_advogado_nome">Advogada Exemplo Três</td>
+        <td><a title="Visualizar" href="?pag=sys/processos/processos-vis.php&amp;processos_id=9105">ver</a>
+            <a title="Editar" href="?pag=sys/processos/processos-cad.php&amp;processos_id=9105">editar</a>
+            <a title="Apagar" href="?pag=sys/processos/processos-lista.php&amp;act=del&amp;processos_id=9105">apagar</a></td>
+      </tr>
+      <tr id="processos-lista_linha_6" data-processos_id="9106" data-detalhes-linha="1">
+        <td data-id="processos-lista_linha_6_processos_id">9106</td>
+        <td data-id="processos-lista_linha_6_nro_proc_html">Outros: 0099/2099</td>
+        <td data-id="processos-lista_linha_6_clientes_nome">Pessoa Fictícia Zeta</td>
+        <td data-id="processos-lista_linha_6_pr_areas_nome">Previdenciário</td>
+        <td data-id="processos-lista_linha_6_processos_acoes_nome">Auxílio-Doença</td>
+        <td data-id="processos-lista_linha_6_advogado_nome">Advogada Exemplo Três</td>
+        <td><a title="Visualizar" href="?pag=sys/processos/processos-vis.php&amp;processos_id=9106">ver</a>
+            <a title="Editar" href="?pag=sys/processos/processos-cad.php&amp;processos_id=9106">editar</a>
+            <a title="Apagar" href="?pag=sys/processos/processos-lista.php&amp;act=del&amp;processos_id=9106">apagar</a></td>
+      </tr>
+      <tr id="processos-lista_linha_7" data-processos_id="9107" data-detalhes-linha="1">
+        <td data-id="processos-lista_linha_7_processos_id">9107</td>
+        <td data-id="processos-lista_linha_7_nro_proc_html">CNJ: 0009107-77.2099.8.06.0001</td>
+        <td data-id="processos-lista_linha_7_clientes_nome">Cliente Fictício Alfa Ltda</td>
+        <td data-id="processos-lista_linha_7_pr_areas_nome">Cível Consumidor</td>
+        <td data-id="processos-lista_linha_7_processos_acoes_nome">Revisional</td>
+        <td data-id="processos-lista_linha_7_advogado_nome">Advogada Exemplo Um</td>
+        <td><a title="Visualizar" href="?pag=sys/processos/processos-vis.php&amp;processos_id=9107">ver</a>
+            <a title="Editar" href="?pag=sys/processos/processos-cad.php&amp;processos_id=9107">editar</a>
+            <a title="Apagar" href="?pag=sys/processos/processos-lista.php&amp;act=del&amp;processos_id=9107">apagar</a></td>
+      </tr>
+      <tr id="processos-lista_linha_8" data-processos_id="9108" data-detalhes-linha="1">
+        <td data-id="processos-lista_linha_8_processos_id">9108</td>
+        <td data-id="processos-lista_linha_8_nro_proc_html">CNJ: 0009108-88.2099.5.07.0002</td>
+        <td data-id="processos-lista_linha_8_clientes_nome">Cliente Fictício Gama</td>
+        <td data-id="processos-lista_linha_8_pr_areas_nome">Trabalhista</td>
+        <td data-id="processos-lista_linha_8_processos_acoes_nome">Reclamação Trabalhista</td>
+        <td data-id="processos-lista_linha_8_advogado_nome">Advogado Exemplo Dois</td>
+        <td><a title="Visualizar" href="?pag=sys/processos/processos-vis.php&amp;processos_id=9108">ver</a>
+            <a title="Editar" href="?pag=sys/processos/processos-cad.php&amp;processos_id=9108">editar</a>
+            <a title="Apagar" href="?pag=sys/processos/processos-lista.php&amp;act=del&amp;processos_id=9108">apagar</a></td>
+      </tr>
+  </tbody>
+</table>
+<div class="geratabela_total_quantidade_original">Total (8)</div>
+</body></html>

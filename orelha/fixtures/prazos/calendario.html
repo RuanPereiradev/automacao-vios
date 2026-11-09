@@ -1,0 +1,19 @@
+<!-- Calendário FICTÍCIO no formato do FullCalendar 5 (visão Lista), com responsável e datas no
+     tooltip (data-tippy-content). Usado nos testes da leitura pelo HTML. -->
+<div class="fc fc-media-screen fc-direction-ltr fc-theme-standard">
+  <div class="fc-header-toolbar fc-toolbar"><h2 class="fc-toolbar-title">mês fictício</h2></div>
+  <div class="fc-view-harness"><div class="fc-list fc-listMonth-view fc-view"><table class="fc-list-table"><tbody>
+    <tr class="fc-list-day" data-date="{{ISO:HOJE-3}}"><th colspan="3"><a class="fc-list-day-text">dia</a></th></tr>
+    <tr class="fc-list-event fc-event fc-event-past" data-tippy-content="Responsável: Ana Fictícia&lt;br&gt;Para conclusão: {{HOJE-3}}&lt;br&gt;Limite: {{HOJE-1}}">
+      <td class="fc-list-event-time">dia todo</td><td class="fc-list-event-graphic"><span class="fc-list-event-dot"></span></td>
+      <td class="fc-list-event-title"><a href="?pag=sys/processos/pxe.php&amp;pxe_id=900201">ANALISAR PROCESSO (CÍVEL) 2026</a></td></tr>
+    <tr class="fc-list-event fc-event fc-event-past tarefa-concluida" data-tippy-content="Responsável: Bruno Fictício&lt;br&gt;Limite: {{HOJE-2}}">
+      <td class="fc-list-event-time">dia todo</td><td class="fc-list-event-title"><a href="?pag=sys/processos/pxe.php&amp;pxe_id=900202">TAREFA JÁ CONCLUÍDA</a></td></tr>
+    <tr class="fc-list-day" data-date="{{ISO:HOJE-1}}"><th colspan="3">dia</th></tr>
+    <tr class="fc-list-event fc-event fc-event-past" title="Responsáveis: Bruno Fictício · Limite {{HOJE+5}}">
+      <td class="fc-list-event-time">09:30</td><td class="fc-list-event-title"><a href="?pag=sys/processos/pxe.php&amp;pxe_id=900203">ELABORAR RECURSO (CÍVEL) 2026</a></td></tr>
+    <tr class="fc-list-day" data-date="{{ISO:HOJE}}"><th colspan="3">dia</th></tr>
+    <tr class="fc-list-event fc-event fc-event-today">
+      <td class="fc-list-event-time">dia todo</td><td class="fc-list-event-title"><a href="?pag=sys/processos/pxe.php&amp;pxe_id=900204">FAZER CÁLCULO (TRABALHISTA) 2026</a></td></tr>
+  </tbody></table></div></div>
+</div>

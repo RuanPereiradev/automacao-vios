@@ -14,3 +14,12 @@ doc/*.jpg
 doc/*.jpeg
 # clone do repositório da vila (RuanPereiradev/autobots), versionado à parte
 autobots/
+# perfil do Chrome do Albi com a sessão do Presto (Oystr)
+albi/perfil_presto/
+# resultado do Albi tem CPF e nome de clientes (ex.: um copiado para cá do Mac)
+resultado*.txt
+# Orelha: senha, relatórios (têm nomes da equipe e de clientes), log e ambiente próprios
+orelha/.env
+orelha/saida/
+orelha/logs/
+orelha/.venv/

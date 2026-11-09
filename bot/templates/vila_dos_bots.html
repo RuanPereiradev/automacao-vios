@@ -1,0 +1,78 @@
+{# Entrada do sistema: a Vila dos Bots. Neutra (nenhum bot fixo no topo): a vila com os eventos reais e um
+   cartão para cada bot, que leva à página dele. O Sam (envio ao VIOS) fica em /sam. #}
+{% from "_ultron.html" import ultron, ultron_script %}
+{% from "_zangao.html" import zangao %}
+{% from "_albi.html" import albi %}
+{% from "_vila.html" import vila_cartao %}
+{%- set casa -%}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="7" y="1" width="2" height="1" fill="#f0c46a"/><rect x="5" y="2" width="6" height="1" fill="#f0c46a"/><rect x="3" y="3" width="10" height="1" fill="#f0c46a"/><rect x="1" y="4" width="14" height="2" fill="#b68235"/><rect x="2" y="6" width="12" height="8" fill="#8c939c"/><rect x="3" y="7" width="3" height="3" fill="#f0c46a"/><rect x="10" y="7" width="3" height="3" fill="#f0c46a"/><rect x="7" y="9" width="2" height="5" fill="#2a2d33"/><rect x="1" y="14" width="14" height="1" fill="#3fa34d"/></svg>
+{%- endset -%}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vila dos Bots</title>
+<link rel="icon" href="data:image/svg+xml,{{ casa | urlencode }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
+{% include "_estilo.html" %}
+<style>
+  .marca-vila { color: #e6e9ef; }
+  .marca-vila b { color: #f0c46a; text-shadow: 0 0 12px rgba(240, 196, 106, .55); }
+  .casa { width: 44px; height: 44px; display: block; image-rendering: pixelated; }
+  .bots { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  .bot { display: flex; flex-direction: column; gap: 8px; margin: 0; }
+  .bot .topo-bot { display: flex; align-items: center; gap: 12px; min-height: 56px; }
+  .bot h2 { margin: 0; font-size: 17px; }
+  .bot p { margin: 0; flex: 1; }
+  .bot .ultron { flex: none; }
+  .bot .acoes { margin-top: 4px; }
+  .selo-off { font-size: 12px; color: var(--suave); }
+</style>
+</head>
+<body>
+<header>
+  <a href="{{ url_for('vila_dos_bots') }}"><span class="casa">{{ casa | safe }}</span>
+    <span><span class="marca marca-vila"><b>V</b>ILA DOS BOTS</span><br><span class="sub">as automações do escritório</span></span></a>
+</header>
+<main>
+  {{ vila_cartao(1) }}
+  <div class="bots">
+    <div class="cartao bot">
+      <div class="topo-bot">{{ ultron("parado", 44, "m-sam") }}<h2>Sam</h2></div>
+      <p class="suave">Envio de tarefas ao VIOS: solte o .txt das intimações analisadas e ele lança cada tarefa.</p>
+      <p class="acoes"><a class="botao primario" href="{{ url_for('inicio') }}">Abrir o Sam</a></p>
+    </div>
+    <div class="cartao bot">
+      <div class="topo-bot">{{ zangao("parado", 44, "m-bee") }}<h2>Bumblebee</h2></div>
+      <p class="suave">Comprovantes previdenciários: lê o protocolo e preenche CNJ, órgão e valor nas tarefas do VIOS.</p>
+      <p class="acoes">{% if zangao_pronto %}<a class="botao primario" href="{{ url_for('zangao_pagina') }}">Abrir o Bumblebee</a>
+        {% else %}<span class="selo-off">Não instalado neste servidor</span>{% endif %}</p>
+    </div>
+    <div class="cartao bot">
+      <div class="topo-bot">{{ albi("parado", 44, "m-albi") }}<h2>Albi</h2></div>
+      <p class="suave">Pesquisa de processos no Sonar: solte o .txt com os CPFs de cada empresa e receba o relatório.</p>
+      <p class="acoes">{% if albi_pronto %}<a class="botao primario" href="{{ url_for('albi_pagina') }}">Abrir o Albi</a>
+        {% else %}<span class="selo-off">Não instalado neste servidor</span>{% endif %}</p>
+    </div>
+    <div class="cartao bot">
+      <div class="topo-bot"><h2>Jarvis</h2></div>
+      <p class="suave">Relatório mensal de processos por Grupo Cliente: lê cada processo e monta a planilha de cada grupo.</p>
+      <p class="acoes">{% if jarvis_pronto %}<a class="botao primario" href="{{ url_for('jarvis_pagina') }}">Abrir o Jarvis</a>
+        {% else %}<span class="selo-off">Não instalado neste servidor (cd jarvis &amp;&amp; ./instalar.sh)</span>{% endif %}</p>
+    </div>
+    <div class="cartao bot">
+      <div class="topo-bot"><h2>Orelha</h2></div>
+      <p class="suave">Relatório do dia, só lendo o VIOS: agenda, prazos, intimações e processos parados.
+        {% if orelha_info.configurado %}Roda {{ orelha_info.horario_texto }}.{% endif %}</p>
+      {% if orelha_info.atrasado %}<p class="aviso">Atenção: {{ orelha_info.atrasado_texto }}.</p>
+      {% elif orelha_info.proximo_texto %}<p>Próximo: <b>{{ orelha_info.proximo_texto }}</b></p>{% endif %}
+      <p class="acoes">{% if orelha_info.configurado %}<a class="botao primario" href="{{ url_for('orelha_pagina') }}">Relatórios guardados{% if orelha_info.total %} ({{ orelha_info.total }}){% endif %}</a>{% endif %}
+        <a class="botao secundario" href="{{ url_for('vila') }}?vila=5" target="_blank" rel="noopener">Ver na vila</a></p>
+    </div>
+  </div>
+</main>
+{{ ultron_script() }}
+</body>
+</html>

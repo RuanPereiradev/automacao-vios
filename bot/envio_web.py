@@ -1,19 +1,22 @@
 """Página de envio: a pessoa sobe o .txt com as tarefas já ajustadas (análise feita no chat),
 confere o que vai ser gravado e o robô lança no VIOS. Não usa a IA (sem gasto de tokens)."""
 import hmac
+import io
 import json
 import logging
 import os
 import re
 import threading
 import uuid
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from flask import Flask, Response, abort, jsonify, redirect, render_template, request, send_file, url_for
+from flask import (Flask, Response, abort, jsonify, redirect, render_template, request, send_file,
+                   send_from_directory, url_for)
 
-from bot import config, duplicidade, envio_txt, eventos, jarvis, skill, zangao
+from bot import albi, config, duplicidade, envio_txt, eventos, jarvis, orelha, skill, zangao
 from bot.lancamento import REGISTRO, lancar, ler_intimacao
 from bot.login import fazer_login
 from bot.navegador import criar_driver
@@ -139,7 +142,7 @@ def status_envio(envio):
         "tarefas_feitas": sum(s in ("gravada", "testada", "adicionada", "pulada")
                               for c in cis for s in _situacao_tarefas(c)),
         "falha": envio.get("falha", ""),
-        "cis": [{"ci": c["ci"], "resultado": c.get("resultado", ""),
+        "cis": [{"ci": c["ci"], "processo": c.get("processo", ""), "resultado": c.get("resultado", ""),
                  "ultima": (c.get("mensagens") or [""])[-1][:160],
                  "tarefas": [{"nome": t["nome"], "data": t["data_tarefa"], "hora": t["hora"], "situacao": s}
                              for t, s in zip(c["tarefas"], _situacao_tarefas(c))]}
@@ -181,6 +184,12 @@ def _capturas(pasta_saida):
 def _links_capturados(pasta_saida):
     """{ci: link "Lançar Intimação"} de todas as capturas salvas."""
     return {ci: i["link_lancar"] for ci, i in _capturas(pasta_saida).items() if i.get("link_lancar")}
+
+
+def _processos_capturados(pasta_saida):
+    """{ci: número do processo} das capturas salvas (campo Números do VIOS; senão, o texto)."""
+    from bot.analise import numero_processo
+    return {ci: numero_processo(i.get("numeros", ""), i.get("texto", "")) for ci, i in _capturas(pasta_saida).items()}
 
 
 def _duplicadas(pasta_saida):
@@ -255,7 +264,7 @@ def _cis_do_form(form):
                 })
             m += 1
         if tarefas:
-            cis.append({"ci": form[f"g{g}_ci"].strip(), "tarefas": tarefas})
+            cis.append({"ci": form[f"g{g}_ci"].strip(), "processo": form.get(f"g{g}_processo", "").strip(), "tarefas": tarefas})
         g += 1
     return cis
 
@@ -287,7 +296,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         auth = request.authorization
         if auth and hmac.compare_digest((auth.password or "").encode(), senha.encode()):
             return None
-        return Response("Senha necessária.", 401, {"WWW-Authenticate": 'Basic realm="Envio ao VIOS", charset="UTF-8"'})
+        return Response("Senha necessária.", 401, {"WWW-Authenticate": 'Basic realm="Vila dos Bots", charset="UTF-8"'})
 
     cfg = config.carregar(caminho_env)
     oficiais = skill.tarefas_oficiais(pasta_skill or "doc/analise-intimacoes-controladoria")
@@ -296,8 +305,11 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     pasta_saida = Path(cfg.pasta_saida)
     # Zangão instalado neste computador (pasta com .venv e .env dele); vazio = sem botões na vila
     pasta_zangao = os.path.expanduser(os.getenv("ZANGAO_PASTA", "").strip())
-    # Jarvis (relatório mensal de processos) instalado neste computador; vazio = sem botões na Vila 04
-    pasta_jarvis = os.path.expanduser(os.getenv("JARVIS_PASTA", "").strip())
+    pasta_albi = albi.pasta()  # Albi (bot do Sonar): ALBI_PASTA ou a pasta albi/ deste repositório
+    # Jarvis (relatório mensal de processos): JARVIS_PASTA ou a pasta jarvis/ deste repositório
+    pasta_jarvis = jarvis.pasta()
+    # Orelha (relatório do dia): ORELHA_PASTA ou a pasta orelha/ deste repositório; o Sam só lê o horário e os relatórios
+    pasta_orelha = orelha.pasta()
     arquivo_pessoas = pasta_saida / "responsaveis.json"
     envios = carregar_envios(pasta_saida)  # id -> {arquivo, cis, estado, confirmar, ...}
     trava = threading.Lock()  # um envio por vez (um navegador só)
@@ -312,10 +324,18 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     def conferir(texto):
         """Lê o .txt e confere cada CI (a mesma conferência na subida e depois de editar)."""
         return envio_txt.ler(texto, oficiais, pessoas(), lancadas(), _links_capturados(pasta_saida), base_url,
-                             duplicadas=_duplicadas(pasta_saida))
+                             duplicadas=_duplicadas(pasta_saida), processos=_processos_capturados(pasta_saida))
 
     @app.route("/")
+    def vila_dos_bots():
+        """Entrada do sistema: a Vila dos Bots (neutra, sem nenhum bot fixo) com um cartão para cada bot."""
+        return render_template("vila_dos_bots.html", albi_pronto=albi.configurado(pasta_albi),
+                               jarvis_pronto=jarvis.configurado(pasta_jarvis), zangao_pronto=bool(pasta_zangao),
+                               orelha_info=orelha.status(pasta_orelha))
+
+    @app.route("/sam")
     def inicio():
+        """Página do Sam (envio de tarefas ao VIOS)."""
         recentes = sorted(envios.items(), key=lambda e: e[1]["criado"], reverse=True)[:8]
         return render_template("envio.html", tela="inicio", recentes=recentes, resumo=resumo_envio,
                                total_envios=len(envios), total_lancadas=len(lancadas()), ocupado=trava.locked())
@@ -437,7 +457,134 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
 
     @app.context_processor
     def menu():
-        return {"zangao_ligado": bool(pasta_zangao), "jarvis_ligado": bool(pasta_jarvis)}
+        return {"zangao_ligado": bool(pasta_zangao), "albi_ligado": albi.configurado(pasta_albi),
+                "jarvis_ligado": jarvis.configurado(pasta_jarvis)}
+
+    @app.route("/albi")
+    def albi_pagina():
+        """Página do Albi: solta o .txt (um CPF/CNPJ por linha) e ele preenche no Sonar, sem confirmar."""
+        return render_template("albi.html", tela="inicio", textos=albi.TEXTOS, erro=request.args.get("erro"),
+                               max_linhas=albi.MAX_LINHAS)
+
+    @app.route("/albi/enviar", methods=["POST"])
+    def albi_enviar():
+        arquivo = request.files.get("arquivo")
+        if not arquivo or not arquivo.filename:
+            return redirect(url_for("albi_pagina"))
+        bruto = arquivo.read()
+        try:
+            texto = bruto.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            texto = bruto.decode("cp1252")  # salvo pelo Bloco de Notas antigo
+        try:
+            envio_id = albi.receber(pasta_albi, pasta_saida, texto, Path(arquivo.filename).name)
+        except albi.AlbiErro as e:
+            return redirect(url_for("albi_pagina", erro=str(e)))
+        return redirect(url_for("albi_conferir", envio_id=envio_id))
+
+    def _id_albi(envio_id):
+        if not re.fullmatch(r"[\w-]{1,64}", envio_id):
+            abort(404)
+        return envio_id
+
+    @app.route("/albi/conferir/<envio_id>")
+    def albi_conferir(envio_id):
+        """Antes de comprar: quem vai ser pesquisado, quem fica de fora e o total em R$."""
+        meta = albi.conferencia(pasta_saida, _id_albi(envio_id)) or abort(404)
+        return render_template("albi.html", tela="conferir", envio_id=envio_id, meta=meta, textos=albi.TEXTOS,
+                               ocupado=albi.status(pasta_albi)["rodando"])
+
+    @app.route("/albi/rodar/<envio_id>", methods=["POST"])
+    def albi_rodar(envio_id):
+        """Roda o Albi: modo "teste" (preenche e não compra), "confirmar" (compra) ou "baixar"
+        (arquivo já confirmado: só baixa de novo os resultados, não compra)."""
+        modo = request.form.get("modo")
+        if modo == "confirmar" and request.form.get("certeza") != "sim":
+            return redirect(url_for("albi_conferir", envio_id=envio_id))
+        try:
+            albi.iniciar(pasta_albi, pasta_saida, _id_albi(envio_id), modo)
+        except albi.AlbiErro as e:
+            return redirect(url_for("albi_pagina", erro=str(e)))
+        log.info("Albi disparado pela página (%s, modo %s) por %s", envio_id, modo, request.remote_addr)
+        return redirect(url_for("albi_pagina"))
+
+    @app.route("/albi/arquivo/<envio_id>/<path:nome>")
+    def albi_arquivo(envio_id, nome):
+        """resultado.txt ou uma planilha baixada do Sonar."""
+        # caminho completo: com SAIDA_PASTA relativa (ex.: "saida"), o Flask procuraria dentro de bot/
+        return send_from_directory(albi.pasta_resultado(pasta_saida, _id_albi(envio_id)).resolve(), nome, as_attachment=True)
+
+    @app.route("/albi/relatorio/<envio_id>", methods=["POST"])
+    def albi_relatorio(envio_id):
+        """Gera o relatório dos processos com o que já foi baixado (não entra no Sonar) e abre."""
+        try:
+            albi.gerar_relatorio(pasta_albi, pasta_saida, _id_albi(envio_id))
+        except albi.AlbiErro as e:
+            return redirect(url_for("albi_pagina", erro=str(e)))
+        return redirect(url_for("albi_ver", envio_id=envio_id))
+
+    @app.route("/albi/resumo/<envio_id>", methods=["GET", "POST"])
+    def albi_resumo(envio_id):
+        """"Capturar resumo": a mensagem para a empresa (do relatório; gera antes, se ainda não tiver)."""
+        envio_id = _id_albi(envio_id)
+        if request.method == "POST":
+            if albi.mensagens(pasta_saida, envio_id) is None or albi.mensagens_cac(pasta_saida, envio_id) is None:
+                try:
+                    albi.gerar_relatorio(pasta_albi, pasta_saida, envio_id)
+                except albi.AlbiErro as e:
+                    return redirect(url_for("albi_pagina", erro=str(e)))
+            return redirect(url_for("albi_resumo", envio_id=envio_id))
+        msgs = albi.mensagens(pasta_saida, envio_id)
+        if msgs is None:
+            return redirect(url_for("albi_pagina", erro="esta execução ainda não tem o resumo: clique em \"Capturar resumo\""))
+        return render_template("albi.html", tela="resumo", envio_id=envio_id, mensagens=msgs, textos=albi.TEXTOS,
+                               cac=albi.mensagens_cac(pasta_saida, envio_id) or {"atendentes": [], "mensagens": []},
+                               arquivos=albi.arquivos(pasta_saida, envio_id))
+
+    @app.route("/albi/ver/<envio_id>")
+    def albi_ver(envio_id):
+        """relatorio.html na tela (não baixa). Sem scripts: CSP só deixa o estilo da própria página."""
+        base = albi.pasta_resultado(pasta_saida, _id_albi(envio_id)).resolve()
+        if not (base / "relatorio.html").is_file():
+            abort(404)
+        r = send_from_directory(base, "relatorio.html")
+        r.headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'; img-src data:"
+        r.headers["Cache-Control"] = "no-store"
+        return r
+
+    @app.route("/albi/zip/<envio_id>")
+    def albi_zip(envio_id):
+        """Tudo desta execução num .zip (resultado.txt e as planilhas, por empresa)."""
+        base = albi.pasta_resultado(pasta_saida, _id_albi(envio_id))
+        nomes = albi.arquivos(pasta_saida, envio_id) or abort(404)
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+            for nome in nomes:
+                z.write(base / nome, nome)
+        return Response(buf.getvalue(), 200, {"Content-Type": "application/zip",
+                        "Content-Disposition": f'attachment; filename="albi_{envio_id}.zip"'})
+
+    @app.route("/albi/modelo")
+    def albi_modelo():
+        """O modelo do .txt do Albi (albi/modelo_pedidos.txt), para baixar e preencher."""
+        modelo = albi.PASTA_PADRAO / "modelo_pedidos.txt"
+        if not modelo.exists():
+            abort(404)
+        return Response(modelo.read_bytes(), 200, {"Content-Type": "text/plain; charset=utf-8",
+                        "Content-Disposition": 'attachment; filename="modelo_albi.txt"'})
+
+    @app.route("/albi/andamento")
+    def albi_andamento():
+        return jsonify(albi.andamento(pasta_albi, pasta_saida))
+
+    @app.route("/albi/historico")
+    def albi_historico():
+        return render_template("albi.html", tela="historico", execucoes=albi.execucoes(pasta_saida), textos=albi.TEXTOS)
+
+    @app.route("/albi/execucao/<execucao_id>")
+    def albi_execucao(execucao_id):
+        e = next((e for e in albi.execucoes(pasta_saida) if e["id"] == execucao_id), None) or abort(404)
+        return render_template("albi.html", tela="execucao", e=e, textos=albi.TEXTOS)
 
     @app.route("/zangao")
     def zangao_pagina():
@@ -504,6 +651,47 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
             return jsonify(erro=str(e), **jarvis.status(pasta_jarvis)), 409
         log.info("Jarvis disparado (%s, %d grupo(s)) por %s", modo, len(escolhidos), request.remote_addr)
         return jsonify(info)
+
+    @app.route("/orelha")
+    def orelha_pagina():
+        """Arquivo do Orelha: quando o relatório roda e todos os relatórios do dia já feitos."""
+        todos = orelha.relatorios(pasta_orelha)
+        return render_template("orelha.html", info=orelha.status(pasta_orelha), pasta=pasta_orelha,
+                               reais=[r for r in todos if not r["simulado"]],
+                               simulados=[r for r in todos if r["simulado"]],
+                               painel=orelha.painel_status(pasta_orelha),
+                               paineis=[p for p in orelha.paineis(pasta_orelha) if not p["simulado"]])
+
+    @app.route("/orelha/relatorio/<dia>/<nome>")
+    def orelha_relatorio(dia, nome):
+        """Abre o relatório guardado (HTML ou PDF) ou baixa a planilha .csv daquele dia."""
+        arquivo = orelha.arquivo(pasta_orelha, dia, nome) or abort(404)
+        if nome.endswith(".csv"):
+            return send_file(arquivo, as_attachment=True, download_name=nome)
+        return send_file(arquivo, mimetype=orelha.ARQUIVOS[nome])
+
+    @app.route("/orelha/painel/rodar", methods=["POST"])
+    def orelha_painel_rodar():
+        """Botão "Gerar painel semanal": abre o Orelha em segundo plano só com o painel (PDF no papel timbrado)."""
+        if not _mesma_origem():
+            return jsonify(erro="pedido recusado"), 403
+        try:
+            info = orelha.rodar_painel(pasta_orelha)
+        except orelha.PainelErro as e:
+            return jsonify(erro=str(e), **orelha.painel_status(pasta_orelha)), 409
+        log.info("Painel semanal do Orelha disparado por %s", request.remote_addr)
+        return jsonify(info)
+
+    @app.route("/orelha/painel/status")
+    def orelha_painel_status():
+        """Se o painel está sendo gerado e qual é o último pronto (a página consulta enquanto espera)."""
+        return jsonify(orelha.painel_status(pasta_orelha))
+
+    @app.route("/orelha/status")
+    def orelha_status():
+        """Para a vila: horário, próximo relatório, se o de hoje atrasou e quantos estão guardados
+        (só datas e contagens)."""
+        return jsonify(orelha.status(pasta_orelha))
 
     @app.route("/vila")
     def vila():

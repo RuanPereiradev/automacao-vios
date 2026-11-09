@@ -5,7 +5,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from bot.navegador import POLL, clicar, esperar, preencher
+from bot.navegador import POLL, clicar, esperar, passar_aviso_certificado, preencher
 
 log = logging.getLogger(__name__)
 
@@ -17,6 +17,7 @@ class LoginErro(Exception):
 def fazer_login(driver, cfg):
     log.info("Abrindo %s", cfg.url)
     driver.get(cfg.url)
+    passar_aviso_certificado(driver, cfg.url)  # VIOS com certificado vencido: Avançadas > Ir para (não seguro)
 
     preencher(driver, cfg.campo_usuario, cfg.usuario, cfg.timeout)
     campo_senha = preencher(driver, cfg.campo_senha, cfg.senha, cfg.timeout)

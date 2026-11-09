@@ -119,6 +119,9 @@ Diferenças e detalhes que a vila precisa saber:
 
 ## Zangão (Bumblebee) na Vila 02 (03/11/2026)
 
+> 04/11/2026: na tela ele se chama **Bumblebee** e é um robô que vira carro para andar
+> (`doc/vila/ligar_bumblebee.py`, depois do `ligar_albi.py`). Os eventos continuam `bot: "zangao"`.
+
 O Zangão (bot de comprovantes previdenciários, branch `bot-edita-vios`) manda os eventos dele
 por **`POST /eventos`** ao Ultron, que guarda no mesmo `saida/eventos.jsonl`. O que ele manda
 está em `doc/vila/prompt-zangao.md` e no `bot/vila.py` daquela branch.
@@ -151,3 +154,85 @@ Na vila (`bot/vila/vila.html`, só no modo servidor, em `/vila`):
 - A mudança foi feita na cópia por `doc/vila/ligar_zangao.py`. Se a vila for baixada de novo
   do site, rodar `python3 doc/vila/ligar_zangao.py bot/vila/vila.html` (e levar a mudança para
   o código-fonte da vila).
+
+## Albi (bot do Sonar) na Vila 03 (04/11/2026)
+
+O Albi roda dentro do servidor do Ultron (página `/albi`, `bot/albi.py`): ele escreve cada
+evento como `@evento {json}` na saída padrão e o Ultron grava em `saida/eventos.jsonl` com
+`bot: "albi"` e `envio` = id da execução (o mesmo de `saida/albi/<id>.txt`).
+
+| `tipo` | campos | quando |
+| --- | --- | --- |
+| `arquivo_subido` | `arquivo`, `linhas` | o Ultron recebeu o .txt (Receptor TXT) |
+| `execucao_iniciada` | `modo` (`preencher` · `confirmar` · `baixar`), `total`, `validos`, `empresas` | o Albi leu e conferiu as linhas (Conferência) |
+| `fase` | `fase`: `entrando_sonar` → `preenchendo` (teste) ou `confirmando` → `aguardando_resultados` | Torre Sonar |
+| `pedido` | `linha`, `grupo` (n.º da empresa no arquivo: 1, 2…), `doc` ("CPF final 06"), `etapa`, `valor`, `motivo`, `pedido` (n.º no Sonar), `resultado` ("14 Processos"), `baixado`; no `preenchendo`, `i` e `de` (pessoa 5 de 27) | `etapa`: `invalido` · `preenchendo` · `pronto` (teste) · `confirmado` · `ja_pesquisado` · `encontrados` · `nao_consta` · `sem_resultado` · `conferir` (erro depois de confirmar) · `erro` (não comprado) · `sem_pedido` (no `baixar`: sem número no registro); `baixado` = PDF e/ou planilha salvos |
+| `relatorio` | `com_processos`, `processos`, `pdf` | relatório gerado no fim (a vila pode ignorar) |
+| `execucao_fim` | `resultado` (`concluido` · `parou`), `motivo`, `contagens` {`prontos`, `erros`, `invalidos`; ao confirmar também `confirmados`, `pdfs`, `baixados`…; no `baixar`, `sem_pedido`} | fim (volta à doca). Se o Albi fechar sem mandar, o Ultron manda `parou` |
+
+Dados mínimos: nunca o documento inteiro, o nome da pessoa nem o da empresa (o .txt inteiro fica
+só em `saida/albi/`, para a página `/albi`).
+A Vila 03 foi ligada por `doc/vila/ligar_albi.py` (rodar depois do `ligar_zangao.py`).
+
+> 04/11/2026: a Vila 01 passou para o campo, com o mascote novo do Ultron (na tela, agora **Sam**; os eventos
+> continuam `bot: "ultron"`)
+> (`doc/vila/ligar_vila01_campo.py`, depois do `ligar_bumblebee.py`). Os eventos não mudaram.
+> A Vila 03 virou a arena do Albi (`doc/vila/ligar_vila03_arena.py`, por último); os eventos `bot: "albi"` são os mesmos.
+O "baixar de novo" (`modo: "baixar"`) usa o mesmo `envio` da execução confirmada: a página trata
+como a mesma execução (a contagem recomeça) e não troca o modo dela.
+
+## Orelha (relatório do dia, só leitura) na Vila 05 (04/11/2026)
+
+O Orelha (`orelha/`, bot que **só lê** o VIOS e monta o relatório do dia) manda os eventos por
+**`POST /eventos`** ao Ultron, como o Zangão (`VILA_URL`, `VILA_SENHA` e `VILA_USUARIO` no
+`orelha/.env`; o cliente é cópia do do Zangão: timeout curto e, depois de 3 falhas seguidas, para de
+tentar e guarda o resto em `vila_pendentes.jsonl`). O Ultron aceita porque `"orelha"` está em
+`BOTS_EXTERNOS` (`bot/eventos.py`). Cada execução tem um `envio` próprio
+(`AAAA-MM-DD_HHMMSS_xxxx`), e todo evento também fica em `orelha/saida/<data>/eventos.jsonl`.
+
+| `tipo` | campos | quando |
+| --- | --- | --- |
+| `execucao_iniciada` | `funcoes` (lista de chaves: `agenda`, `prazos`, `intimacoes`, `parados`, `planilhas`), `simulado` (true com `--simulado`), `data` (`AAAA-MM-DD`) | começo (o Orelha late "!" na doca) |
+| `fase` | `fase`: `entrando_vios` (Torre VIOS) · `lendo_calendario` (Calendário: agenda e depois prazos) · `lendo_intimacoes` (Intimações) · `lendo_processos` (Torre VIOS: processos parados) · `lendo_planilhas` (pilha das Planilhas) · `gerando_relatorio` (Relatório) | cada função manda a sua; o `main.py` manda `entrando_vios` e `gerando_relatorio` |
+| `achado` | `funcao` (chave), `nivel` (`grave` · `atencao` · `info`), `contagem` | depois de cada função, um por nível que teve itens; `grave` = latido "!" |
+| `planilha` | `resultado` (`ja_tem` · `novo` · `nao_achou`), `indice` (posição na conferência), `total`; opcional `contagem` (lote) | um por processo das planilhas do Albi: Torre VIOS e caixa verde (`ja_tem`), âmbar (`novo`) ou cinza (`nao_achou`) |
+| `execucao_fim` | `resultado` (`concluido` · `com_erros` · `parou`), `motivo` (no `parou`: `navegador_falhou` · `login_falhou` · `bloqueio_inativo` · `config_invalida`), `contagens` {`<funcao>`: {`total`, `graves`, `atencao`, e números simples da função, como `atrasadas`}}, `erros` (chaves das funções com erro) | fim (volta à doca). Se o Orelha cair sem mandar, a vila espera 3 h depois do último evento e aí mostra que a execução não chegou ao fim |
+
+Dados mínimos: só fases, chaves de função e contagens. **Nunca** nome de cliente, de pessoa da
+equipe (nem o `por_responsavel` dos prazos), número de processo, texto de tarefa/intimação nem
+link. O Orelha retira essas chaves (`texto`, `titulo`, `detalhe`, `nome`, `responsavel`,
+`por_responsavel`, `empresa`, `processo`, `numero`, `cnj`, `link`, `itens`, `cliente`, `cpf`…) e
+troca qualquer texto com formato CNJ antes de mandar (`orelha/nucleo/eventos.py`). O Ultron
+também limpa ao receber, mas só com a lista dele (`PROIBIDAS` de `bot/eventos.py`: `texto`,
+`titulo`, `link`, `cliente`, `nome`, `cnj`...) e o formato CNJ; `responsavel`,
+`por_responsavel`, `empresa`, `numero`, `processo`, `itens`, `cpf` e `detalhe` não estão nela,
+então a barreira para essas chaves é só a do Orelha (`orelha/nucleo/eventos.py`). No evento
+`planilha`, a posição vai em `indice`, nunca em `numero`.
+
+Na vila (`bot/vila/vila.html`):
+- o mundo passa de 3 para 5 vilas: a **Vila 04 fica vaga** (apagada, "Aguardando um bot") e a
+  **Vila 05** acende com as placas Doca 01 · Orelha, Calendário, Intimações, Torre VIOS, Relatório e
+  Planilhas (pilha do Albi e as três caixas). Abrir direto: `/vila?vila=5`;
+- o mascote é o de `orelha/mascote/ficha.html` (cão-robô 20×14 com chapéu fedora): anda, lê com a
+  lente, abana o rabo no `ja_tem`, late no `novo` e no achado grave e fica triste com "?" no
+  `nao_achou` e no `parou`;
+- o painel "Relatório do dia · Orelha" tem uma linha por função (Na fila → Lendo… → contagem de
+  graves/atenção, Erro ou Não rodou) e o "Registro" ganha uma linha por execução. O texto dos
+  achados fica só no relatório (`orelha/saida/<data>/relatorio.html`);
+- ao abrir, monta a última execução sem animar; no meio de uma execução, fica no posto; com fila
+  grande ou aba escondida, pula para o estado atual (como os outros);
+- parado, passeia e faz as animações de espera da ficha (língua, rabo, duas patas, "AU AU", atrás
+  do rabo, cochilar). No modo simulado (site publicado), "Simular execução" toca uma execução de
+  exemplo, só com contagens.
+- A Vila 05 foi ligada por `doc/vila/ligar_orelha.py` (rodar depois do `ligar_zangao.py` e do
+  `ligar_albi.py`; rodar de novo só avisa que já está aplicado).
+- Por último (depois do `ligar_jarvis.py`), `doc/vila/ligar_vila05_parque.py` troca o fundo da Vila 05 pelo parque do Orelha
+  (casinha, brinquedos, caixa de correio, baú...). A placa "Doca 01 · Orelha" vira "Casinha do
+  Orelha"; os postos e os eventos `bot: "orelha"` são os mesmos.
+- Por fim, `doc/vila/ligar_orelha_agenda.py`: a vila lê também `GET /orelha/status` do Sam a cada
+  30 s (não é evento): `horario_texto`, `proximo_texto`, `atrasado`/`atrasado_texto`, `total` de
+  relatórios guardados, `ultimo` (data e contagens), `aviso` (a frase pronta) e `cena` (as contagens
+  do último relatório real que desenham o parque: atrasadas, graves, intimações, parados, audiências;
+  `null` sem relatório; ver Passo 36 da DOCUMENTACAO). Nada de texto de cliente nem nomes. No fim de cada execução, o Orelha guarda a folha no Arquivo do parque. Na branch `relatorio-processos`
+  a Vila 04 é do Jarvis (`ligar_jarvis.py`, que espera a vila com 3 vilas): ao juntar as duas,
+  aplicar o Jarvis antes e ajustar este script (ele hoje exige `static NV = 3;`).

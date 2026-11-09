@@ -19,12 +19,18 @@ O robô não refaz a análise: ele lança no VIOS exatamente as tarefas do arqui
 
 Avisos (a CI é lançada, mas a página mostra para conferir): data já passada, data em sábado ou domingo, e linhas `Responsável a marcar na tarefa` / `Advogada auxiliar` na descrição (responsáveis vão no campo `RESPONSÁVEIS`).
 
+### Número do processo
+
+- Cada CI mostra o número do processo na página de envio. Vem do campo `PROCESSO:` do arquivo; sem ele, do número capturado do VIOS (campo Números ou, se vazio, o teor da intimação). Sem nenhum dos dois, ou fora do padrão `0000000-00.0000.0.00.0000`, a página avisa (a CI ainda é lançada). Número do arquivo diferente do capturado também vira aviso.
+- Na análise do robô, o número sai sempre que estiver no campo Números ou no teor (aceita os 20 dígitos sem pontos); só fica `PENDENTE` quando não aparece em lugar nenhum.
+
 ### Como o robô preenche a tarefa no VIOS
 
 - Tarefa, data, horário (campo Horário do VIOS) e descrição na Observação.
-- Descrição toda em negrito; as linhas que começam com `PRAZO FATAL` (`PRAZO FATAL:` e `PRAZO FATAL D -2:`) em negrito e vermelho. O teor da intimação que o VIOS acrescenta fica normal.
+- Descrição toda em negrito; as linhas `PRAZO FATAL:`, `PRAZO FATAL D -2:`, `PRAZO PARA EMBARGOS:` e `PRAZO PARA RECURSO:` em negrito e vermelho, junto com a data. O teor da intimação que o VIOS acrescenta fica normal.
 - `RESPONSÁVEIS: automático`: o VIOS marca sozinho (em geral o auxiliar da intimação). Com nomes: o robô marca exatamente essas pessoas. Na petição da Execução da Tamira: `TAMIRA LOIOLA, BRENO SILVA MOTA`.
 - `CIÊNCIA` com `DATA:` vazia vai para o dia do envio.
+- **Corte das 12h na hora do lançamento:** `CIÊNCIA` e `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` com data de hoje (ou ciência sem data) lançadas depois das 12:00, ou no sábado/domingo, vão para o próximo dia de segunda a sexta (sexta 12:01 → segunda). Só a data da tarefa muda; `PRAZO PARA EMBARGOS`, `PRAZO PARA RECURSO` e `PRAZO FATAL` da descrição ficam como estão. Se alguma dessas datas vier antes do novo dia, a tarefa fica para hoje (urgente). Data já futura no arquivo não é mexida.
 - Duas tarefas da mesma CI são gravadas juntas e conferidas na tela de conferência do VIOS.
 
 ### Duplicidade

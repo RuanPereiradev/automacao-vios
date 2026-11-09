@@ -640,12 +640,18 @@ O robô não refaz a análise: ele lança no VIOS exatamente as tarefas do arqui
 
 Avisos (a CI é lançada, mas a página mostra para conferir): data já passada, data em sábado ou domingo, e linhas `Responsável a marcar na tarefa` / `Advogada auxiliar` na descrição (responsáveis vão no campo `RESPONSÁVEIS`).
 
+### Número do processo
+
+- Cada CI mostra o número do processo na página de envio. Vem do campo `PROCESSO:` do arquivo; sem ele, do número capturado do VIOS (campo Números ou, se vazio, o teor da intimação). Sem nenhum dos dois, ou fora do padrão `0000000-00.0000.0.00.0000`, a página avisa (a CI ainda é lançada). Número do arquivo diferente do capturado também vira aviso.
+- Na análise do robô, o número sai sempre que estiver no campo Números ou no teor (aceita os 20 dígitos sem pontos); só fica `PENDENTE` quando não aparece em lugar nenhum.
+
 ### Como o robô preenche a tarefa no VIOS
 
 - Tarefa, data, horário (campo Horário do VIOS) e descrição na Observação.
-- Descrição toda em negrito; as linhas que começam com `PRAZO FATAL` (`PRAZO FATAL:` e `PRAZO FATAL D -2:`) em negrito e vermelho. O teor da intimação que o VIOS acrescenta fica normal.
+- Descrição toda em negrito; as linhas `PRAZO FATAL:`, `PRAZO FATAL D -2:`, `PRAZO PARA EMBARGOS:` e `PRAZO PARA RECURSO:` em negrito e vermelho, junto com a data. O teor da intimação que o VIOS acrescenta fica normal.
 - `RESPONSÁVEIS: automático`: o VIOS marca sozinho (em geral o auxiliar da intimação). Com nomes: o robô marca exatamente essas pessoas. Na petição da Execução da Tamira: `TAMIRA LOIOLA, BRENO SILVA MOTA`.
 - `CIÊNCIA` com `DATA:` vazia vai para o dia do envio.
+- **Corte das 12h na hora do lançamento:** `CIÊNCIA` e `ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO` com data de hoje (ou ciência sem data) lançadas depois das 12:00, ou no sábado/domingo, vão para o próximo dia de segunda a sexta (sexta 12:01 → segunda). Só a data da tarefa muda; `PRAZO PARA EMBARGOS`, `PRAZO PARA RECURSO` e `PRAZO FATAL` da descrição ficam como estão. Se alguma dessas datas vier antes do novo dia, a tarefa fica para hoje (urgente). Data já futura no arquivo não é mexida.
 - Duas tarefas da mesma CI são gravadas juntas e conferidas na tela de conferência do VIOS.
 
 ### Duplicidade
@@ -661,6 +667,7 @@ Formato — um bloco por tarefa, separados por uma linha só com `---`:
 
 ```text
 CI: 42484
+PROCESSO: 0000123-45.2026.8.06.0001
 TAREFA: MINUTAR PETIÇÃO (EXECUÇÃO) 2026
 DATA: 29/10/2026
 HORA:
@@ -671,6 +678,7 @@ MINUTAR PETIÇÃO PARA INFORMAR OS DEMAIS DADOS NECESSÁRIOS PARA A CONFECÇÃO 
 Despacho: considerando a certidão de ID 192859275, intime-se a parte exequente para, no prazo de 5 dias, informar os demais dados necessários para a confecção dos requisitórios.
 ---
 CI: 42502
+PROCESSO: 0000456-78.2026.5.07.0001
 TAREFA: AUDIÊNCIA UNA/INSTRUÇÃO (TRABALHISTA) 2026
 DATA: 22/01/2027
 HORA: 08:20
@@ -685,6 +693,7 @@ ID da reunião: 851 6451 3045
 SENHA: 355957
 ---
 CI: 42491
+PROCESSO: 0000789-01.2025.8.06.0001
 TAREFA: ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026
 DATA: 29/10/2026
 HORA:
@@ -701,6 +710,7 @@ No exemplo, as três intimações foram publicadas em 28/10/2026. Na 42484 (dado
 Regras do arquivo:
 
 - `CI`: só o número da CI do VIOS.
+- `PROCESSO`: **sempre** o número do processo da CI no padrão CNJ (`0000000-00.0000.0.00.0000`), como está no campo Números da intimação (ou no teor). A página de envio mostra esse número em cada CI; se faltar, ela usa o número capturado do VIOS e avisa quando não acha nenhum.
 - `TAREFA`: o nome exato da lista oficial (seção "Referência — Tarefas VIOS e Modelos de Descrição").
 - `DATA`: a data da tarefa no VIOS (DD/MM/AAAA), já calculada pelas regras de data da skill (D-2; prioridade RPV/Suhiane no próximo dia de segunda a sexta; análise e ciência no mesmo dia até 12h ou no próximo dia depois das 12h; data exata do ato), sempre com a contagem simplificada (só sábado e domingo ficam de fora). Só `CIÊNCIA` pode ficar com `DATA:` vazia (vai para o dia do envio).
 - `HORA`: HH:MM em audiência, perícia e sustentação oral (na sessão virtual, o horário de início); vazia nas demais tarefas.

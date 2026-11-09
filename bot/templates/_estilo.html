@@ -1,4 +1,4 @@
-{# Estilo comum das páginas do Ultron e do Zangão (cada página pode trocar as cores por cima). #}
+{# Estilo comum das páginas do Ultron e do Bumblebee (cada página pode trocar as cores por cima). #}
 <style>
   :root { --fundo: #0a0c11; --cartao: #12161e; --cartao2: #181d27; --borda: #262d3a; --texto: #e6e9ef;
           --suave: #8b93a3; --red: #ff2a2a; --red-escuro: #b3121b; --verde: #3fb950; --ambar: #e3a72f;
@@ -12,6 +12,9 @@
   header a { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--texto); }
   .marca { font-family: Orbitron, system-ui, sans-serif; font-weight: 800; letter-spacing: .28em; font-size: 20px; }
   .marca b { color: var(--red); text-shadow: 0 0 12px rgba(255, 42, 42, .6); }
+  /* Sam: "S" dourado como o cabelo e "AM" verde como a capa (cores do mascote, _ultron.html) */
+  .marca-sam { color: #9fcf6a; }
+  .marca-sam b { color: #fdc155; text-shadow: 0 0 12px rgba(253, 193, 85, .6); }
   .sub { color: var(--suave); font-size: 13px; letter-spacing: .04em; }
   main { max-width: 1100px; margin: 28px auto; padding: 0 16px; }
   .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 14px; padding: 22px; margin-bottom: 16px; }
@@ -114,8 +117,10 @@
   .mono { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
   .grade { display: grid; grid-template-columns: 2fr 130px 90px 2fr auto; gap: 10px; align-items: end; margin-bottom: 10px; }
   .remover { white-space: nowrap; padding-bottom: 10px; text-transform: none; }
-  .ci-topo { display: flex; gap: 12px; align-items: end; margin-bottom: 6px; }
+  .ci-topo { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 6px; }
   .campo-ci { width: 110px; font-weight: 700; }
+  .campo-processo { width: 250px; font-variant-numeric: tabular-nums; }
+  .processo { font-variant-numeric: tabular-nums; color: var(--suave); }
   .com-problema { border-left: 4px solid #ff7b72; }
   .barra-salvar { position: sticky; bottom: 0; padding: 14px 0; text-align: right;
                   background: linear-gradient(transparent, var(--fundo) 40%); }
@@ -150,7 +155,9 @@
   .cena-chip.ativo i { animation: luz-chip .8s steps(2) infinite; }
   @keyframes luz-chip { 50% { opacity: .2; } }
   .cena-teste { border-color: #ff5a3c; color: #ffb3a6; }
-  .cena-ultron { position: absolute; top: 47.4%; width: 6.25%; transition-property: left; transition-timing-function: linear; }
+  /* mascote do Ultron 28×35 a 2,5 unidades da cena por pixel: 70 de largura, pés na pista (y 206).
+     O Bumblebee (zangao.html, .bee) tem tamanho próprio. */
+  .cena-ultron { position: absolute; top: 34.9%; width: 7.29%; transition-property: left; transition-timing-function: linear; }
   .cena-ultron .ultron { width: 100% !important; }
   .cena-ultron.virado .ultron svg { transform: scaleX(-1); }
   .cena-papel { position: absolute; left: 30%; top: -42%; width: 40%; aspect-ratio: 3 / 4; background: #f4efe3; border: 2px solid #1b1d21;
