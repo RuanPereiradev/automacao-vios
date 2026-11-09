@@ -106,7 +106,7 @@ def passar_aviso_certificado(driver, url, espera=15):
 
     from selenium.webdriver.common.by import By
 
-    log = logging.getLogger(__name__)
+    log = logging.getLogger("orelha")  # o logger do Orelha (vai para o orelha.log)
     try:
         aviso = driver.execute_script(_JS_AVISO)
     except Exception:  # noqa: BLE001 — página normal ou ainda carregando: não há aviso

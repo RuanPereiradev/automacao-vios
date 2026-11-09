@@ -12,6 +12,10 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Orelha: aviso do certificado vencido vai para o `orelha.log` (09/11/2026)
+- Na execução das 09:13 no Mac, o aviso "VIOS com o certificado vencido..." saiu sem data e não entrou
+  no `orelha/logs/orelha.log`, porque usava outro logger. Agora usa o logger `orelha`.
+
 ### Adicionado — Albi: passa pelo aviso de certificado vencido do Sonar (09/11/2026)
 - Pedido do usuário: "faça isso pra todos os bots". O Sam, o Orelha e o Jarvis já passavam pelo aviso do
   VIOS; o Albi (Sonar da Leme) ganhou o mesmo em `albi/certificado.py`, uma cópia do
