@@ -12,6 +12,14 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Albi/Presto: TRT7 pelo botão "Login via Presto" (09/11/2026)
+- No TRT7 (PJe-JT), o `primeirograu/login.seam` mostra o botão "Login via Presto" (`onLoginSSO()`),
+  que leva ao SSO (`sso.cloud.pje.jus.br`, `client_id=pje-trt07-1g`), onde aparece o quadro do Presto.
+- Na tela de login do tribunal, se o quadro ainda não está lá e existe esse botão, o robô clica nele
+  e espera o SSO. Depois segue igual ao TJCE: credencial, PIN, entrou.
+- `logado()` não confunde mais o `authenticateSSO.seam` (passagem do SSO de volta ao tribunal) com
+  o tribunal já logado.
+
 ### Corrigido — Albi/Presto: espera as credenciais no quadro e não pega aba errada (09/11/2026)
 - No Mac, o quadro "Credenciais Disponíveis" apareceu primeiro vazio e o robô parou com "nenhuma
   credencial". Agora espera até 45 s as credenciais chegarem e avisa enquanto espera.

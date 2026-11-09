@@ -458,6 +458,28 @@ def digitar_tela(texto, enter=True):
         raise
 
 
+# botão do próprio tribunal que leva ao login do Presto/SSO. No TRT7 (PJe-JT), primeirograu/login.seam
+# tem <button onclick="onLoginSSO();return false;">Login via Presto</button>; no TJCE o login já é o SSO.
+JS_BOTAO_LOGIN_PRESTO = r"""(function(clicar){
+  var cands = [].filter.call(document.querySelectorAll('button, a, input[type=button], input[type=submit]'), function(b) {
+    var r = b.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && !b.closest('[data-presto-el], .presto-dialog-root');
+  });
+  function txt(b) { return ((b.innerText || b.value || '') + '').replace(/\s+/g, ' ').trim(); }
+  var alvo = cands.filter(function(b) { return /login via presto/i.test(txt(b)); })[0]
+          || cands.filter(function(b) { return /onLoginSSO/.test(b.getAttribute('onclick') || ''); })[0];
+  if (!alvo) return JSON.stringify({ok: false});
+  var info = {ok: true, texto: txt(alvo)};
+  if (clicar) alvo.click();
+  return JSON.stringify(info);
+})"""
+
+
+def botao_login_presto(w, t, clicar=False):
+    """{"ok", "texto"}: a página do tribunal tem o botão "Login via Presto" (TRT7)? clicar=True clica nele."""
+    return json.loads(js(w, t, f"{JS_BOTAO_LOGIN_PRESTO}({'true' if clicar else 'false'})"))
+
+
 def presto(w, t):
     """{"ok", "texto", "creds", "inputs", "botoes"} do quadro do Presto na aba (ok=False se não há quadro)."""
     return json.loads(js(w, t, JS_PRESTO))

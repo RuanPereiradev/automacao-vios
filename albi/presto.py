@@ -448,7 +448,7 @@ def logado(w, t):
     """URL da aba se ela já saiu das telas de login (login.seam / sso / auth); senão ""."""
     import chrome_mac as CM
     u = CM.url(w, t)
-    return u if u.startswith("http") and not re.search(r"login\.seam|/auth/|sso\.|/login", u) else ""
+    return u if u.startswith("http") and not re.search(r"login\.seam|/auth/|sso\.|/login|authenticate", u, re.I) else ""
 
 
 def _pede_pin(quadro):
@@ -483,6 +483,13 @@ def login(w, t, cfg, destino, prefixo=""):
     if ja:
         print("Já estava logado:", ja)
         return ja
+    # TRT7 (PJe-JT): o login.seam mostra o botão "Login via Presto" (onLoginSSO); ele leva ao SSO, onde vem o quadro
+    if not CM.presto(w, t).get("ok") and CM.botao_login_presto(w, t).get("ok"):
+        r = CM.botao_login_presto(w, t, clicar=True)
+        print(f"Cliquei em \"{r.get('texto') or 'Login via Presto'}\" na página do tribunal; indo para o SSO...")
+        antes = CM.url(w, t)
+        _esperar(lambda: CM.url(w, t) != antes, 20)
+        CM.esperar(w, t)
     print("Esperando o quadro do Presto com as credenciais (até 45 s)...")
     # o quadro aparece primeiro vazio e as credenciais chegam depois: espera até elas aparecerem
     quadro = _esperar(lambda: (lambda q: q.get("ok") and q.get("creds") and q)(CM.presto(w, t)), 45, passo=1.5)
