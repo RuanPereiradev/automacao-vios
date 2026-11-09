@@ -530,6 +530,66 @@ def login(w, t, cfg, destino, prefixo=""):
     return final or ""
 
 
+def _estado_console(CM, w, t, maximo):
+    """Espera o console do Presto mostrar o login ou a lista de sites (o site carrega aos poucos)."""
+    ultimo = {}
+
+    def pronto():
+        ultimo.update(CM.console_estado(w, t))
+        return ultimo.get("estado") in ("login", "sites")
+    _esperar(pronto, maximo)
+    return ultimo
+
+
+def _entrar_console(CM, w, t, cfg, destino):
+    """Login do console do Presto com PRESTO_EMAIL/PRESTO_SENHA do albi/.env. Aceita login em 1 tela
+    (e-mail + senha) ou em 2 (e-mail, Continuar, senha). Se o preenchimento por JavaScript não pegar,
+    clica nos campos e digita com o teclado de verdade. A senha nunca é impressa nem salva."""
+    email, senha = cfg.get("PRESTO_EMAIL", ""), cfg.get("PRESTO_SENHA", "")
+    if not (email and senha):
+        raise CM.ChromeMacErro("o console do Presto pediu login, mas PRESTO_EMAIL/PRESTO_SENHA não estão no albi/.env")
+    _salvar_captura(destino, "0_console_login", CM.capturar(w, t))
+    print("Console do Presto pediu login; entrando com o e-mail do albi/.env...")
+    for _ in range(3):  # no máximo: e-mail, senha e mais uma tentativa
+        antes = CM.console_estado(w, t)
+        r = CM.console_login(w, t, email, senha)
+        if not r.get("ok"):
+            raise CM.ChromeMacErro("login do console: " + r.get("erro", "?"))
+        print(f"  preenchi {r['etapa'].replace('+', ' e ')}; confirmei em {r.get('botao')}")
+        # espera sair do login ou mudar de etapa (apareceu o campo de senha)
+        _esperar(lambda: (lambda e: e.get("estado") == "sites" or e.get("estado") != "login"
+                          or (e.get("senha") and not antes.get("senha")))(CM.console_estado(w, t)), 15, passo=1.5)
+        agora = CM.console_estado(w, t)
+        if agora.get("estado") != "login":
+            return
+        if agora.get("senha") and not antes.get("senha"):
+            continue  # passou do e-mail para a senha: preenche de novo
+        break  # mesma tela: o JavaScript não pegou
+    print("  o preenchimento por JavaScript não entrou; digitando com o teclado de verdade...")
+    CM.para_frente(w, t)
+    agora = CM.console_estado(w, t)
+    for qual, texto in (("email", email), ("senha", senha)):
+        if (qual == "email" and not agora.get("email")) or (qual == "senha" and not agora.get("senha")):
+            continue
+        onde = CM.console_onde(w, t, qual)
+        if onde.get("ok"):
+            CM.clicar_tela(onde["x"], onde["y"])
+            time.sleep(0.4)
+            CM.digitar_tela(texto, enter=(qual == "senha" or not agora.get("senha")))
+            time.sleep(1)
+    if not agora.get("senha"):  # login em 2 etapas: depois do e-mail vem a senha
+        if _esperar(lambda: CM.console_estado(w, t).get("senha"), 15):
+            onde = CM.console_onde(w, t, "senha")
+            if onde.get("ok"):
+                CM.clicar_tela(onde["x"], onde["y"])
+                time.sleep(0.4)
+                CM.digitar_tela(senha)
+    if not _esperar(lambda: CM.console_estado(w, t).get("estado") != "login", 30, passo=2):
+        _salvar_captura(destino, "0_console_login_depois", CM.capturar(w, t))
+        raise CM.ChromeMacErro("o console do Presto continua na tela de login (senha errada, código de 2 fatores "
+                               "ou captcha?). Veja o print 0_console_login_depois nas capturas")
+
+
 def abrir_tribunal(cfg, chave, destino, direto=False):
     """Abre o login do tribunal do jeito que o Presto age: console do Presto > Sites > clique no site.
     Entra no console com PRESTO_EMAIL/PRESTO_SENHA se ele pedir. Devolve (janela, aba) do tribunal.
@@ -542,22 +602,21 @@ def abrir_tribunal(cfg, chave, destino, direto=False):
     print(f"Abrindo o console do Presto (Sites) para entrar em {SITES[chave]}...")
     w, t = CM.abrir_aba(sites)
     CM.esperar(w, t, folga=3)
-    if _esperar(lambda: CM.console_pede_login(w, t), 6):
-        email, senha = cfg.get("PRESTO_EMAIL", ""), cfg.get("PRESTO_SENHA", "")
-        if not (email and senha):
-            raise CM.ChromeMacErro("o console do Presto pediu login, mas PRESTO_EMAIL/PRESTO_SENHA não estão no albi/.env")
-        _salvar_captura(destino, "0_console_login", CM.capturar(w, t))
-        r = CM.console_login(w, t, email, senha)
-        if not r.get("ok"):
-            raise CM.ChromeMacErro("login do console: " + r.get("erro", "?"))
-        print("Console do Presto: e-mail e senha preenchidos; confirmei em", r.get("botao"))
-        saiu = _esperar(lambda: not CM.console_pede_login(w, t), 30, passo=2)
-        if not saiu:
-            _salvar_captura(destino, "0_console_login_depois", CM.capturar(w, t))
-            raise CM.ChromeMacErro("o console do Presto continua na tela de login (senha errada ou código de 2 fatores?)")
+    estado = _estado_console(CM, w, t, 25)
+    if estado.get("estado") == "carregando":
+        _salvar_captura(destino, "0_console", CM.capturar(w, t))
+        raise CM.ChromeMacErro(f"o console do Presto não mostrou nem o login nem a lista de sites em 25 s ({estado.get('url')})")
+    if estado["estado"] == "login":
+        _entrar_console(CM, w, t, cfg, destino)
         if "/sites" not in CM.url(w, t):
             CM.ir(w, t, sites)
             CM.esperar(w, t, folga=3)
+        estado = _estado_console(CM, w, t, 25)
+        if estado.get("estado") != "sites":
+            _salvar_captura(destino, "0_console_depois_login", CM.capturar(w, t))
+            raise CM.ChromeMacErro(f"entrei no console, mas a lista de sites não apareceu ({estado.get('url')})")
+    else:
+        print("Console do Presto: já estava logado.")
     CM.console_site(w, t, SITES[chave])  # digita no filtro
     achou = _esperar(lambda: CM.console_site(w, t, SITES[chave]).get("ok") and CM.console_site(w, t, SITES[chave]), 20)
     _salvar_captura(destino, "0_console_sites", CM.capturar(w, t))

@@ -12,6 +12,16 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Albi/Presto: o robô não pula mais o login do console do Presto (09/11/2026)
+- O `entrar` e o `processos` olhavam só 6 s se o console pedia login, e só reconheciam o login pelo
+  campo de senha. Com o site lento ou com o login em duas etapas (e-mail primeiro), achavam que já
+  estavam logados e iam direto para Sites.
+- Agora esperam até 25 s o console mostrar o login ou a lista de sites. O login é reconhecido pelo
+  campo de e-mail, pelo campo de senha ou pela URL, e aceita uma tela (e-mail e senha) ou duas
+  (e-mail, Continuar, senha).
+- Se o preenchimento por JavaScript não pegar, clicam nos campos e digitam com o teclado de verdade.
+- Se continuar no login, param com o print `0_console_login_depois`. A senha nunca é impressa nem salva.
+
 ### Alterado — Albi/Presto: aviso de Acessibilidade cita o Visual Studio Code (09/11/2026)
 - Quando o clique de verdade precisa da permissão Acessibilidade do macOS, a mensagem agora diz para
   ligar o app onde o bot roda (Terminal ou Visual Studio Code), e não só o Terminal.

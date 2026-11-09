@@ -449,26 +449,55 @@ function _albiPor(el, v) {
 function _albiVis(el) { var r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
 """
 
-# {"login": bool}: a página mostra o formulário de login do console (campo de senha visível)
-JS_CONSOLE_PEDE_LOGIN = "(function(){" + _VUE_POR + r"""
-  var s = [].filter.call(document.querySelectorAll('input[type=password]'), _albiVis);
-  return JSON.stringify({login: s.length > 0, url: location.href});
+# {"estado": "sites" | "login" | "carregando", "url", "email", "senha"}: o que o console está mostrando.
+# "login" = campo de senha ou de e-mail visível, ou URL de login (o login pode ser em 2 etapas: e-mail e depois
+# senha); "sites" = a lista de sites já apareceu; "carregando" = ainda nenhum dos dois.
+JS_CONSOLE_ESTADO = "(function(){" + _VUE_POR + r"""
+  var ins = [].filter.call(document.querySelectorAll('input'), _albiVis);
+  var senha = ins.filter(function(i) { return i.type === 'password'; }).length > 0;
+  var email = ins.filter(function(i) { return i.type === 'email' || /e-?mail|usu[aá]rio|username|login/i.test((i.name || '') + ' ' + (i.id || '') + ' ' + (i.placeholder || '') + ' ' + (i.getAttribute('autocomplete') || '')); }).length > 0;
+  var sites = [].some.call(document.querySelectorAll('tr'), function(tr) {
+    var c = tr.querySelector('td[data-column="Site"]') || tr.querySelector('td');
+    return c && c.querySelector('.font-bold');
+  }) || (/\/sites/.test(location.pathname) && !senha && !email &&
+         [].filter.call(document.querySelectorAll('input.x-input, input[type=text], input[type=search]'), _albiVis).length > 0);
+  var urlLogin = /\/(login|signin|sign-in|entrar|auth)\b|\/realms\//i.test(location.pathname + location.hash);
+  var estado = (senha || email || urlLogin) && !sites ? 'login' : (sites ? 'sites' : 'carregando');
+  return JSON.stringify({estado: estado, url: location.href, email: email, senha: senha});
 })()"""
 
-# preenche e-mail e senha do console e clica em Entrar (nunca devolve o que foi digitado)
+# preenche o que o login do console mostrar (e-mail e/ou senha) e clica em Entrar/Continuar/Próximo.
+# Devolve {"ok", "etapa": "email" | "senha" | "email+senha", "botao"}; nunca devolve o que foi digitado.
 JS_CONSOLE_LOGIN = "(function(email, senha){" + _VUE_POR + r"""
   var ins = [].filter.call(document.querySelectorAll('input'), _albiVis);
   var s = ins.filter(function(i) { return i.type === 'password'; })[0];
   var e = ins.filter(function(i) { return i.type === 'email' || /mail|usu[aá]rio|login|user/i.test((i.name || '') + ' ' + (i.id || '') + ' ' + (i.placeholder || '') + ' ' + (i.getAttribute('autocomplete') || '')); })[0]
           || ins.filter(function(i) { return i !== s && /^(text|email|)$/i.test(i.type || ''); })[0];
-  if (!s || !e) return JSON.stringify({ok: false, erro: 'não achei os campos de e-mail e senha do console'});
-  _albiPor(e, email); _albiPor(s, senha);
+  if (!s && !e) return JSON.stringify({ok: false, erro: 'não achei os campos de e-mail e senha do console'});
+  if (e) _albiPor(e, email);
+  if (s) _albiPor(s, senha);
+  var etapa = e && s ? 'email+senha' : (s ? 'senha' : 'email');
+  var campo = s || e;
   var b = [].filter.call(document.querySelectorAll('button, input[type=submit]'), function(x) {
-    return _albiVis(x) && !x.disabled && /entrar|login|acessar|continuar|sign in/i.test(x.innerText || x.value || '');
-  })[0] || (s.form && s.form.querySelector('button[type=submit], input[type=submit]'));
-  if (b) { b.click(); return JSON.stringify({ok: true, botao: (b.innerText || b.value || '').trim()}); }
-  if (s.form) { s.form.requestSubmit ? s.form.requestSubmit() : s.form.submit(); return JSON.stringify({ok: true, botao: '(enviar)'}); }
+    return _albiVis(x) && !x.disabled && /entrar|login|acessar|continuar|pr[oó]xim|avan[cç]ar|sign in|next|continue/i.test(x.innerText || x.value || '');
+  })[0] || (campo.form && campo.form.querySelector('button[type=submit], input[type=submit]'));
+  if (b) { b.click(); return JSON.stringify({ok: true, etapa: etapa, botao: (b.innerText || b.value || '').trim()}); }
+  if (campo.form) { campo.form.requestSubmit ? campo.form.requestSubmit() : campo.form.submit(); return JSON.stringify({ok: true, etapa: etapa, botao: '(enviar)'}); }
   return JSON.stringify({ok: false, erro: 'não achei o botão Entrar do console'});
+})"""
+
+# posição na tela do campo de e-mail ou de senha do login do console (para clicar e digitar de verdade)
+JS_CONSOLE_ONDE = "(function(qual){" + _VUE_POR + r"""
+  var ins = [].filter.call(document.querySelectorAll('input'), _albiVis);
+  var s = ins.filter(function(i) { return i.type === 'password'; })[0];
+  var e = ins.filter(function(i) { return i.type === 'email' || /mail|usu[aá]rio|login|user/i.test((i.name || '') + ' ' + (i.id || '') + ' ' + (i.placeholder || '') + ' ' + (i.getAttribute('autocomplete') || '')); })[0]
+          || ins.filter(function(i) { return i !== s && /^(text|email|)$/i.test(i.type || ''); })[0];
+  var el = qual === 'senha' ? s : e;
+  if (!el) return JSON.stringify({ok: false, erro: 'não achei o campo de ' + qual + ' do console'});
+  el.scrollIntoView({block: 'center'});
+  var r = el.getBoundingClientRect();
+  return JSON.stringify({ok: true, x: Math.round(window.screenX + (window.outerWidth - window.innerWidth) + r.left + r.width / 2),
+                         y: Math.round(window.screenY + (window.outerHeight - window.innerHeight) + r.top + r.height / 2)});
 })"""
 
 # na página Sites: digita o nome no filtro, acha a linha do site (nome exato, sem acento/caixa) e clica no link
@@ -495,8 +524,17 @@ JS_CONSOLE_SITE = "(function(nome, clicar){" + _VUE_POR + r"""
 })"""
 
 
+def console_estado(w, t):
+    """{"estado": "sites" | "login" | "carregando", "url", "email", "senha"} do console do Presto na aba."""
+    return json.loads(js(w, t, JS_CONSOLE_ESTADO))
+
+
 def console_pede_login(w, t):
-    return json.loads(js(w, t, JS_CONSOLE_PEDE_LOGIN)).get("login")
+    return console_estado(w, t).get("estado") == "login"
+
+
+def console_onde(w, t, qual):
+    return json.loads(js(w, t, f"{JS_CONSOLE_ONDE}({json.dumps(qual)})"))
 
 
 def console_login(w, t, email, senha):
