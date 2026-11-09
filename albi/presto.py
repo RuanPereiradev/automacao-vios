@@ -461,6 +461,9 @@ def _pede_pin(quadro):
 
 def _clique_real(CM, w, t, qual, termo=""):
     """Clique do mouse de verdade no link da credencial ou no campo do PIN do quadro. True se clicou."""
+    if CM.acessibilidade_ok() is False:
+        print("  " + CM.SEM_ACESSIBILIDADE)
+        return False
     CM.para_frente(w, t)
     onde = CM.presto_onde(w, t, qual, termo)
     if not onde.get("ok"):
@@ -623,13 +626,14 @@ def abrir_tribunal(cfg, chave, destino, direto=False):
     if not achou:
         r = CM.console_site(w, t, SITES[chave])
         raise CM.ChromeMacErro(f"{r.get('erro')}; parecidos: {', '.join(r.get('parecidos', [])) or 'nenhum'}")
-    antes = {a[0] for a in CM.abas(w)}
+    antes = {(a[0], a[1]) for a in CM.todas_abas()}
     r = CM.console_site(w, t, SITES[chave], clicar=True)
     print(f"Console: cliquei em {r['nome']} ({r.get('link') or r.get('dominio')})")
     time.sleep(5)
-    novas = [a for a in CM.abas(w) if a[0] not in antes]
-    if novas:  # o console abriu o tribunal numa aba nova
-        t = novas[-1][0]
+    novas = [a for a in CM.todas_abas() if (a[0], a[1]) not in antes]
+    if novas:  # o console abriu o tribunal numa aba nova (nesta janela ou numa janela nova)
+        w, t = novas[-1][0], novas[-1][1]
+        print("O tribunal abriu numa aba nova:", novas[-1][2][:90])
     elif "presto.oystr" in CM.url(w, t):  # o clique não saiu do console: abre o login nesta aba
         print("O clique não abriu o tribunal; abrindo o login do tribunal nesta aba.")
         CM.ir(w, t, r.get("link") if (r.get("link") or "").startswith("http") else TRIBUNAIS[chave])
@@ -649,6 +653,8 @@ def entrar(alvo="tjce1", direto=False):
         print(f"Tribunal desconhecido: {alvo}. Use {', '.join(TRIBUNAIS)} ou uma URL.")
         return 2
     destino = LOGS / datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    if CM.acessibilidade_ok() is False:
+        print("Atenção: " + CM.SEM_ACESSIBILIDADE + " Sem isso o bot não consegue clicar no número da credencial.")
     try:
         if alvo.lower() in TRIBUNAIS:
             w, t = abrir_tribunal(cfg, alvo.lower(), destino, direto)

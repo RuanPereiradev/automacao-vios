@@ -935,7 +935,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   mostrar o login ou a lista de sites (não pula mais o login quando o site demora); aceita o login em
   uma tela (e-mail e senha) ou em duas (no console real: e-mail, **Acessar**, senha, **Login**) e, se o preenchimento não pegar,
   clica nos campos e digita com o teclado de verdade (precisa da Acessibilidade). Se continuar no
-  login, para e salva o print `0_console_login_depois`. `--direto` pula o console e abre a URL de
+  login, para e salva o print `0_console_login_depois`. No quadro "Credenciais Disponíveis" do Presto, o
+  número da credencial só abre o campo do PIN com clique de mouse de verdade: o `entrar` avisa no começo
+  se falta a permissão Acessibilidade (Terminal ou Visual Studio Code). Feche o DevTools antes de rodar. `--direto` pula o console e abre a URL de
   login como antes.
 - **Procurar nos tribunais os processos do último relatório:** `cd albi && .venv/bin/python presto.py
   processos --conferir` mostra, sem abrir o Chrome, qual relatório ele pegou (o `processos.csv` mais novo

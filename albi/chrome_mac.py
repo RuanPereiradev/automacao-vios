@@ -181,6 +181,20 @@ def abas(w):
     return out
 
 
+def todas_abas():
+    """[(janela, aba, url)] de todas as janelas do Chrome (o tribunal pode abrir numa janela nova)."""
+    s = _osa(['on run argv', 'set sep to character id 9', 'set fim to character id 10', 'set saida to ""',
+              'tell application "Google Chrome"', 'repeat with w in windows', 'repeat with t in tabs of w',
+              'set saida to saida & ((id of w) as text) & sep & ((id of t) as text) & sep & (URL of t) & fim',
+              'end repeat', 'end repeat', 'end tell', 'return saida', 'end run'], "x")
+    out = []
+    for linha in s.splitlines():
+        p = linha.split("\t")
+        if len(p) >= 3 and p[0].isdigit() and p[1].isdigit():
+            out.append((int(p[0]), int(p[1]), p[2]))
+    return out
+
+
 def ir(w, t, endereco):
     """Leva a aba para outro endereço (como digitar na barra)."""
     _osa(['on run argv', 'tell application "Google Chrome"', f'set URL of {_ABA} to (item 3 of argv)', 'end tell',
@@ -375,8 +389,9 @@ JS_PRESTO_ONDE = "(function(qual, termo){var d=" + _DIALOGO + r""";
   if (!el) return JSON.stringify({ok: false, erro: 'não achei ' + qual + ' no quadro'});
   el.scrollIntoView({block: 'center'});
   var r = el.getBoundingClientRect();
-  // a área da página começa abaixo da barra do Chrome: (outer - inner) é a altura dessa barra
-  return JSON.stringify({ok: true, x: Math.round(window.screenX + (window.outerWidth - window.innerWidth) + r.left + r.width / 2),
+  // a área da página começa abaixo da barra do Chrome: (outer - inner) é a altura dessa barra. Na horizontal não
+  // soma nada (no Mac a janela não tem borda; outerWidth - innerWidth é o DevTools aberto ao lado)
+  return JSON.stringify({ok: true, x: Math.round(window.screenX + r.left + r.width / 2),
                          y: Math.round(window.screenY + (window.outerHeight - window.innerHeight) + r.top + r.height / 2)});
 })"""
 
@@ -396,6 +411,20 @@ def para_frente(w, t):
           'if (id of tab k of w) = ((item 2 of argv) as integer) then set active tab index of w to k',
           'end repeat', 'set index of w to 1', 'activate', 'end tell', 'end run'], w, t)
     time.sleep(0.8)
+
+
+def acessibilidade_ok():
+    """O macOS deixa este app (Terminal/VS Code) mexer no mouse e no teclado? True/False (None = não deu para saber).
+    Sem isso o clique de verdade é descartado em silêncio, sem erro nenhum."""
+    try:
+        r = subprocess.run(["osascript", "-l", "JavaScript", "-e",
+                            'ObjC.import("ApplicationServices"); $.AXIsProcessTrusted()'],
+                           capture_output=True, text=True, timeout=20)
+    except Exception:
+        return None
+    if r.returncode != 0:
+        return None
+    return r.stdout.strip() == "true"
 
 
 def clicar_tela(x, y):
@@ -512,7 +541,7 @@ JS_CONSOLE_ONDE = "(function(qual){" + _CAMPOS_LOGIN + r"""
   if (!el) return JSON.stringify({ok: false, erro: 'não achei o campo de ' + qual + ' do console'});
   el.scrollIntoView({block: 'center'});
   var r = el.getBoundingClientRect();
-  return JSON.stringify({ok: true, x: Math.round(window.screenX + (window.outerWidth - window.innerWidth) + r.left + r.width / 2),
+  return JSON.stringify({ok: true, x: Math.round(window.screenX + r.left + r.width / 2),
                          y: Math.round(window.screenY + (window.outerHeight - window.innerHeight) + r.top + r.height / 2)});
 })"""
 

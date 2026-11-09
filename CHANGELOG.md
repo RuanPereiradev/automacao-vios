@@ -12,6 +12,14 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Albi/Presto: clique de verdade no número da credencial (09/11/2026)
+- O quadro "Credenciais Disponíveis" (v0.143.0) só abre o campo do PIN com clique de mouse de verdade
+  no número (`a.prs-text-presto-blue`).
+- O `entrar` agora avisa logo no começo quando o macOS não deu a permissão Acessibilidade ao app onde
+  o bot roda. Sem ela, o clique de verdade é descartado sem erro nenhum.
+- A posição do número na tela não soma mais a largura do DevTools aberto ao lado.
+- O tribunal aberto pelo console é encontrado também quando abre numa janela nova.
+
 ### Corrigido — Albi/Presto: login do console do Presto de verdade (e-mail, Acessar, senha, Login) (09/11/2026)
 - No console real, o login fica na própria página `/sites` (`#login-page`). O campo de e-mail é um
   `<input type="text">` com o rótulo "Email" num `<label>` ao lado. O robô achava que era o filtro de
