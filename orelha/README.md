@@ -249,6 +249,10 @@ rodapé, A4 e as margens do modelo, em todas as páginas). As três imagens do t
 `assets/timbrado/` (`nucleo/timbrado.py` as embute no HTML). Se o escritório trocar o timbrado, troque
 essas imagens.
 
+**Período**: a semana do painel começa no dia em que ele é pedido e vai até 7 dias depois (ex.: pedido em
+09/11 → "Semana de 09/11 a 16/11"). A fila pega as tarefas com prazo até esse fim (`ORELHA_PAINEL_DIAS_FILA`,
+padrão 7) e também as vencidas que continuam abertas.
+
 Partes do painel (`funcoes/painel.py`, desenho em `nucleo/painel.py`):
 - **Resumo executivo**: fila total, não feitas, novas, carga do advogado mais carregado e vencidas.
 - **Taxa de resolução semanal**: fila inicial, resolvidas, taxa e leitura (Boa/Atenção/Baixa), com a

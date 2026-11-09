@@ -6,7 +6,7 @@ moldura: papel timbrado, nucleo/timbrado.py). Não entra no relatório do dia (R
 
 Fila = tarefas NÃO concluídas da equipe toda, de peças (tipo começa com ORELHA_PAINEL_TERMOS_PECA,
 padrão "MINUTAR") e audiências (começa com ORELHA_PAINEL_TERMOS_AUDIENCIA, padrão "AUDIÊNCIA"), com data
-para conclusão (ou, sem ela, a limite) até hoje + ORELHA_PAINEL_DIAS_FILA dias (padrão 14), lidas da
+para conclusão (ou, sem ela, a limite) até hoje + ORELHA_PAINEL_DIAS_FILA dias (padrão 7), lidas da
 lista de tarefas do VIOS (a mesma leitura dos prazos, só por GET). Tarefas canceladas ficam de fora.
 
 Situação (dias até o prazo; negativo = vencida): VENCIDA (já passou), URGENTE (hoje a 2 dias),
@@ -40,7 +40,7 @@ RELATORIO_DIARIO = False  # tem o próprio PDF; não entra no relatorio.html do 
 log = logging.getLogger("orelha")
 
 SEM_RESPONSAVEL = "Sem responsável"
-DIAS_FILA = 14
+DIAS_FILA = 7  # a semana do painel: do dia do pedido até 7 dias depois (até 09/11/2026 eram 14)
 DIAS_AGENDA = 7
 URGENTE_ALTO = 15
 TAXA_BOA = 70
@@ -288,7 +288,8 @@ def montar_dados(ctx, fila, ignoradas, leitura_avisos, cfg_painel):
     if sem_dono:
         avisos.append(f"{_plural(sem_dono, 'tarefa', 'tarefas')} sem responsável na leitura")
     dados = {
-        "inicio": hoje - timedelta(days=7), "fim": hoje, "gerado_em": datetime.now(), "cartoes": cartoes,
+        # semana do painel = do dia em que foi pedido até dias_fila dias depois (antes: a semana anterior até hoje)
+        "inicio": hoje, "fim": hoje + timedelta(days=cfg_painel.get("dias_fila", DIAS_FILA)), "gerado_em": datetime.now(), "cartoes": cartoes,
         "semanas": semanas,
         "nota_semanas": ("Resolvidas = tarefas que estavam na fila da leitura anterior e não aparecem mais abertas no VIOS "
                          "(concluídas ou canceladas: o Orelha só enxerga as abertas)." if semanas else ""),

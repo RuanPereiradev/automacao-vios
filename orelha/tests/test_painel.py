@@ -105,7 +105,8 @@ class TestFila(unittest.TestCase):
                       tarefa("MINUTAR Z", 3, "", 12)])
         fila, _ = fila_de(tarefas)
         c = {x["nome"]: x for x in painel.carga(fila, urgente_alto=3)}
-        self.assertEqual(c["Ana Fictícia"], {"nome": "Ana Fictícia", "pecas": 3, "audiencias": 1, "total": 4,
+        # a MINUTAR de daqui a 9 dias fica fora da semana do painel (até 7 dias depois do pedido)
+        self.assertEqual(c["Ana Fictícia"], {"nome": "Ana Fictícia", "pecas": 2, "audiencias": 1, "total": 3,
                                              "vencidas": 1, "urgente": 3, "destaque": True})
         self.assertFalse(c["Bruno Fictício"]["destaque"])
         self.assertEqual([x["nome"] for x in painel.carga(fila)], ["Ana Fictícia", "Bruno Fictício", "Sem responsável"])
@@ -171,11 +172,11 @@ class TestExecutar(unittest.TestCase):
         self.assertEqual(secao.chave, "painel")
         self.assertEqual(secao.erro, "")
         n = secao.numeros
-        self.assertEqual(n["fila"], 43)  # o que a fixture tem de peça e audiência, dentro de 14 dias, sem cancelada
+        self.assertEqual(n["fila"], 34)  # o que a fixture tem de peça e audiência, até 7 dias depois, sem cancelada
         self.assertEqual(n["nao_feitas"] + n["novas"], n["fila"])
         self.assertEqual(n["destaque"], n["fila"])
         html = (ctx.saida / "painel-semanal.html").read_text(encoding="utf-8")
-        self.assertIn("Painel Semanal — Semana de 30/10 a 06/11/2026", html)
+        self.assertIn("Painel Semanal — Semana de 06/11 a 13/11/2026", html)  # do dia do pedido até 7 dias depois
         self.assertIn("NÃO FEITAS", html)
         self.assertFalse((ctx.saida / "painel-semanal.pdf").exists())  # pdf=False
         registro = json.loads((ctx.historico / painel.nome_registro(HOJE, True)).read_text(encoding="utf-8"))

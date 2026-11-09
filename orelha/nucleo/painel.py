@@ -6,7 +6,7 @@ de audiências e a lista de tarefas com a situação em cores), e a moldura é o
 (nucleo/timbrado.py). O HTML sai autocontido; o PDF é o mesmo HTML impresso pelo Chrome.
 
 `dados` (dict montado por funcoes/painel.py):
-  inicio, fim      date    período da semana (fim = dia da leitura)
+  inicio, fim      date    período da semana (inicio = dia da leitura; fim = inicio + ORELHA_PAINEL_DIAS_FILA)
   gerado_em        datetime
   cartoes          [(número ou "—", rótulo, classe)]    resumo executivo
   semanas          [{"semana", "fila_inicial", "resolvidas", "taxa" (float ou None), "leitura", "aproximada"}]

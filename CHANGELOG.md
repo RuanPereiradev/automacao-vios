@@ -12,6 +12,13 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Orelha: painel semanal vai do dia do pedido até 7 dias depois (09/11/2026)
+- O painel semanal mostrava "Semana de" a semana anterior até hoje. Agora a semana começa no dia em
+  que o painel é pedido e vai até 7 dias depois. Exemplo: pedido em 09/11 → "Semana de 09/11 a 16/11".
+- A fila pega as tarefas com prazo até esse fim: `ORELHA_PAINEL_DIAS_FILA` passou de 14 para 7.
+- As vencidas que continuam abertas seguem na fila (a comparação "não feitas" depende delas).
+- Testes do painel ajustados para a janela nova.
+
 ### Adicionado — Albi/Presto: TRT7 pelo botão "Login via Presto" (09/11/2026)
 - No TRT7 (PJe-JT), o `primeirograu/login.seam` mostra o botão "Login via Presto" (`onLoginSSO()`),
   que leva ao SSO (`sso.cloud.pje.jus.br`, `client_id=pje-trt07-1g`), onde aparece o quadro do Presto.
