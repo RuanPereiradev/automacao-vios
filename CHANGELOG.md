@@ -12,6 +12,15 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Albi/Presto: login do console do Presto de verdade (e-mail, Acessar, senha, Login) (09/11/2026)
+- No console real, o login fica na própria página `/sites` (`#login-page`). O campo de e-mail é um
+  `<input type="text">` com o rótulo "Email" num `<label>` ao lado. O robô achava que era o filtro de
+  Sites e digitava o nome do tribunal no campo de e-mail.
+- Agora reconhece a tela de login pelo `#login-page`, pelo rótulo do campo e pelo "esqueci minha senha".
+- Clica no botão "Acessar" só depois que ele habilita.
+- Nunca digita o tribunal enquanto a tela de login estiver aberta.
+- Testado no console real: e-mail, Acessar, senha, Login, Sites, TJCE 1º Grau e a tela de login do PJe.
+
 ### Corrigido — Albi/Presto: o robô não pula mais o login do console do Presto (09/11/2026)
 - O `entrar` e o `processos` olhavam só 6 s se o console pedia login, e só reconheciam o login pelo
   campo de senha. Com o site lento ou com o login em duas etapas (e-mail primeiro), achavam que já

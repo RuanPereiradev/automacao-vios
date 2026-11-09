@@ -933,7 +933,7 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   pedir login, o robô usa `PRESTO_EMAIL` e `PRESTO_SENHA` do `albi/.env` (preencher no Mac; nunca vão
   para o git nem para a documentação). Antes de procurar o tribunal, o robô espera até 25 s o console
   mostrar o login ou a lista de sites (não pula mais o login quando o site demora); aceita o login em
-  uma tela (e-mail e senha) ou em duas (e-mail, Continuar, senha) e, se o preenchimento não pegar,
+  uma tela (e-mail e senha) ou em duas (no console real: e-mail, **Acessar**, senha, **Login**) e, se o preenchimento não pegar,
   clica nos campos e digita com o teclado de verdade (precisa da Acessibilidade). Se continuar no
   login, para e salva o print `0_console_login_depois`. `--direto` pula o console e abre a URL de
   login como antes.

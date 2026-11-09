@@ -449,50 +449,66 @@ function _albiPor(el, v) {
 function _albiVis(el) { var r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
 """
 
+# campos do login do console. O console do Presto (Vue) tem o login em 2 etapas, na própria URL /sites:
+# <div id="login-page"> com <input type="text"> + <label>Email</label> ao lado e o botão "Acessar"
+# (desabilitado até o e-mail ser preenchido); depois vem a senha. O nome do campo está só no <label>.
+_CAMPOS_LOGIN = _VUE_POR + r"""
+function _albiRotulo(i) {
+  var l = i.id && document.querySelector('label[for="' + i.id + '"]');
+  var viz = i.parentElement && i.parentElement.querySelector('label');
+  return [i.name, i.id, i.placeholder, i.getAttribute('autocomplete'), i.getAttribute('aria-label'),
+          l && l.innerText, viz && viz.innerText, i.closest('label') && i.closest('label').innerText].join(' ');
+}
+function _albiCampos() {
+  var pag = document.getElementById('login-page');
+  var ins = [].filter.call(document.querySelectorAll('input'), function(i) { return _albiVis(i) && !/hidden|checkbox|radio|submit|button/i.test(i.type); });
+  var s = ins.filter(function(i) { return i.type === 'password' || /senha|password/i.test(_albiRotulo(i)); })[0];
+  var e = ins.filter(function(i) { return i !== s && (i.type === 'email' || /e-?mail|usu[aá]rio|username|login/i.test(_albiRotulo(i))); })[0];
+  if (!e && pag) e = ins.filter(function(i) { return i !== s && pag.contains(i); })[0];
+  var tela = !!pag || /esqueci (minha )?senha|forgot/i.test((document.body && document.body.innerText) || '');
+  return {senha: s, email: e, tela: tela};
+}
+"""
+
 # {"estado": "sites" | "login" | "carregando", "url", "email", "senha"}: o que o console está mostrando.
-# "login" = campo de senha ou de e-mail visível, ou URL de login (o login pode ser em 2 etapas: e-mail e depois
-# senha); "sites" = a lista de sites já apareceu; "carregando" = ainda nenhum dos dois.
-JS_CONSOLE_ESTADO = "(function(){" + _VUE_POR + r"""
-  var ins = [].filter.call(document.querySelectorAll('input'), _albiVis);
-  var senha = ins.filter(function(i) { return i.type === 'password'; }).length > 0;
-  var email = ins.filter(function(i) { return i.type === 'email' || /e-?mail|usu[aá]rio|username|login/i.test((i.name || '') + ' ' + (i.id || '') + ' ' + (i.placeholder || '') + ' ' + (i.getAttribute('autocomplete') || '')); }).length > 0;
+JS_CONSOLE_ESTADO = "(function(){" + _CAMPOS_LOGIN + r"""
+  var c = _albiCampos();
   var sites = [].some.call(document.querySelectorAll('tr'), function(tr) {
-    var c = tr.querySelector('td[data-column="Site"]') || tr.querySelector('td');
-    return c && c.querySelector('.font-bold');
-  }) || (/\/sites/.test(location.pathname) && !senha && !email &&
-         [].filter.call(document.querySelectorAll('input.x-input, input[type=text], input[type=search]'), _albiVis).length > 0);
+    var td = tr.querySelector('td[data-column="Site"]') || tr.querySelector('td');
+    return td && td.querySelector('.font-bold');
+  });
   var urlLogin = /\/(login|signin|sign-in|entrar|auth)\b|\/realms\//i.test(location.pathname + location.hash);
-  var estado = (senha || email || urlLogin) && !sites ? 'login' : (sites ? 'sites' : 'carregando');
-  return JSON.stringify({estado: estado, url: location.href, email: email, senha: senha});
+  var login = !!(c.tela || c.senha || c.email || urlLogin);
+  if (!login && !sites && /\/sites/.test(location.pathname))  // Sites aberto, lista ainda vazia: só o filtro
+    sites = [].filter.call(document.querySelectorAll('input.x-input, input[type=text], input[type=search]'), _albiVis).length > 0;
+  var estado = login ? 'login' : (sites ? 'sites' : 'carregando');
+  return JSON.stringify({estado: estado, url: location.href, email: !!c.email, senha: !!c.senha});
 })()"""
 
-# preenche o que o login do console mostrar (e-mail e/ou senha) e clica em Entrar/Continuar/Próximo.
+# preenche o que o login do console mostrar (e-mail e/ou senha) e clica em Acessar/Entrar/Continuar.
 # Devolve {"ok", "etapa": "email" | "senha" | "email+senha", "botao"}; nunca devolve o que foi digitado.
-JS_CONSOLE_LOGIN = "(function(email, senha){" + _VUE_POR + r"""
-  var ins = [].filter.call(document.querySelectorAll('input'), _albiVis);
-  var s = ins.filter(function(i) { return i.type === 'password'; })[0];
-  var e = ins.filter(function(i) { return i.type === 'email' || /mail|usu[aá]rio|login|user/i.test((i.name || '') + ' ' + (i.id || '') + ' ' + (i.placeholder || '') + ' ' + (i.getAttribute('autocomplete') || '')); })[0]
-          || ins.filter(function(i) { return i !== s && /^(text|email|)$/i.test(i.type || ''); })[0];
+# O botão fica desabilitado até o Vue ver o campo preenchido: o clique vai 0,8 s depois.
+JS_CONSOLE_LOGIN = "(function(email, senha){" + _CAMPOS_LOGIN + r"""
+  var c = _albiCampos(), s = c.senha, e = c.email;
   if (!s && !e) return JSON.stringify({ok: false, erro: 'não achei os campos de e-mail e senha do console'});
-  if (e) _albiPor(e, email);
+  if (e && !e.disabled && !e.readOnly) _albiPor(e, email);
   if (s) _albiPor(s, senha);
   var etapa = e && s ? 'email+senha' : (s ? 'senha' : 'email');
   var campo = s || e;
   var b = [].filter.call(document.querySelectorAll('button, input[type=submit]'), function(x) {
-    return _albiVis(x) && !x.disabled && /entrar|login|acessar|continuar|pr[oó]xim|avan[cç]ar|sign in|next|continue/i.test(x.innerText || x.value || '');
+    return _albiVis(x) && /acessar|entrar|login|continuar|pr[oó]xim|avan[cç]ar|sign in|next|continue/i.test(x.innerText || x.value || '');
   })[0] || (campo.form && campo.form.querySelector('button[type=submit], input[type=submit]'));
-  if (b) { b.click(); return JSON.stringify({ok: true, etapa: etapa, botao: (b.innerText || b.value || '').trim()}); }
+  if (b) {
+    setTimeout(function() { if (b.disabled) campo.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true})); else b.click(); }, 800);
+    return JSON.stringify({ok: true, etapa: etapa, botao: (b.innerText || b.value || '').trim()});
+  }
   if (campo.form) { campo.form.requestSubmit ? campo.form.requestSubmit() : campo.form.submit(); return JSON.stringify({ok: true, etapa: etapa, botao: '(enviar)'}); }
-  return JSON.stringify({ok: false, erro: 'não achei o botão Entrar do console'});
+  return JSON.stringify({ok: false, erro: 'não achei o botão Acessar do console'});
 })"""
 
 # posição na tela do campo de e-mail ou de senha do login do console (para clicar e digitar de verdade)
-JS_CONSOLE_ONDE = "(function(qual){" + _VUE_POR + r"""
-  var ins = [].filter.call(document.querySelectorAll('input'), _albiVis);
-  var s = ins.filter(function(i) { return i.type === 'password'; })[0];
-  var e = ins.filter(function(i) { return i.type === 'email' || /mail|usu[aá]rio|login|user/i.test((i.name || '') + ' ' + (i.id || '') + ' ' + (i.placeholder || '') + ' ' + (i.getAttribute('autocomplete') || '')); })[0]
-          || ins.filter(function(i) { return i !== s && /^(text|email|)$/i.test(i.type || ''); })[0];
-  var el = qual === 'senha' ? s : e;
+JS_CONSOLE_ONDE = "(function(qual){" + _CAMPOS_LOGIN + r"""
+  var c = _albiCampos(), el = qual === 'senha' ? c.senha : c.email;
   if (!el) return JSON.stringify({ok: false, erro: 'não achei o campo de ' + qual + ' do console'});
   el.scrollIntoView({block: 'center'});
   var r = el.getBoundingClientRect();
@@ -504,6 +520,8 @@ JS_CONSOLE_ONDE = "(function(qual){" + _VUE_POR + r"""
 JS_CONSOLE_SITE = "(function(nome, clicar){" + _VUE_POR + r"""
   function n(t) { return (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/º|°/g, 'o')
                     .replace(/\s+/g, ' ').trim().toLowerCase(); }
+  if (document.getElementById('login-page'))
+    return JSON.stringify({ok: false, erro: 'o console do Presto está na tela de login (não digito o tribunal no campo de e-mail)', parecidos: []});
   var filtro = [].filter.call(document.querySelectorAll('input.x-input, input[type=text]'), _albiVis)[0];
   if (filtro && !clicar) _albiPor(filtro, nome);
   var linhas = [].slice.call(document.querySelectorAll('tr')), alvo = null, nomes = [];
