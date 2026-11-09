@@ -395,8 +395,11 @@ JS_PRESTO_ONDE = "(function(qual, termo){var d=" + _DIALOGO + r""";
                          y: Math.round(window.screenY + (window.outerHeight - window.innerHeight) + r.top + r.height / 2)});
 })"""
 
-SEM_ACESSIBILIDADE = ("O macOS não deixou o Terminal mexer no mouse/teclado. Ajustes do Sistema > Privacidade e "
-                      "Segurança > Acessibilidade: ligue o app onde o bot roda (Terminal ou Visual Studio Code) e rode de novo.")
+_APP = {"Apple_Terminal": "Terminal", "vscode": "Visual Studio Code", "iTerm.app": "iTerm"}.get(
+    os.environ.get("TERM_PROGRAM", ""), "Terminal (ou o Visual Studio Code, se o bot roda nele)")
+SEM_ACESSIBILIDADE = (f"O macOS não deixou o {_APP} mexer no mouse/teclado. Ajustes do Sistema > Privacidade e "
+                      f"Segurança > Acessibilidade: ligue o {_APP} (se não estiver na lista, adicione pelo +), "
+                      f"feche o {_APP} com Cmd+Q, abra de novo e rode de novo.")
 
 
 def presto_onde(w, t, qual, termo=""):

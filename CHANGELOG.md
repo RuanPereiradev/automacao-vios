@@ -12,6 +12,14 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Albi/Presto: espera as credenciais no quadro e não pega aba errada (09/11/2026)
+- No Mac, o quadro "Credenciais Disponíveis" apareceu primeiro vazio e o robô parou com "nenhuma
+  credencial". Agora espera até 45 s as credenciais chegarem e avisa enquanto espera.
+- Depois do clique no tribunal, pegou uma janela interna do Chrome com id gigante, que o AppleScript
+  não aceita ("Não é possível obter tab id 1.26E+9"). Agora usa a própria aba quando ela já saiu do
+  console e só considera abas novas de site (http) com id válido.
+- O aviso de Acessibilidade diz o nome do app onde o bot está rodando (Terminal, VS Code ou iTerm).
+
 ### Corrigido — Albi/Presto: clique de verdade no número da credencial (09/11/2026)
 - O quadro "Credenciais Disponíveis" (v0.143.0) só abre o campo do PIN com clique de mouse de verdade
   no número (`a.prs-text-presto-blue`).

@@ -483,18 +483,26 @@ def login(w, t, cfg, destino, prefixo=""):
     if ja:
         print("Já estava logado:", ja)
         return ja
-    quadro = _esperar(lambda: CM.presto(w, t).get("ok") and CM.presto(w, t), 30)
+    print("Esperando o quadro do Presto com as credenciais (até 45 s)...")
+    # o quadro aparece primeiro vazio e as credenciais chegam depois: espera até elas aparecerem
+    quadro = _esperar(lambda: (lambda q: q.get("ok") and q.get("creds") and q)(CM.presto(w, t)), 45, passo=1.5)
+    if not quadro:
+        q = CM.presto(w, t)
+        quadro = q if q.get("ok") else None
     _salvar_captura(destino, f"{prefixo}1_login", CM.capturar(w, t))
     if not quadro:
         ja = logado(w, t)  # o tribunal pode ter levado direto para o painel
         if ja:
             print("Já estava logado:", ja)
             return ja
-        print("O quadro do Presto não apareceu na página em 30 s. Confira se o Presto está ativo nessa "
+        print("O quadro do Presto não apareceu na página em 45 s. Confira se o Presto está ativo nessa "
               "janela e se a página é a de login do tribunal.")
         return ""
     (destino / f"{prefixo}1_quadro.json").write_text(json.dumps(quadro, ensure_ascii=False, indent=1), encoding="utf-8")
     print("Quadro do Presto:", ", ".join(quadro["creds"]) or "(sem credenciais)")
+    if not quadro["creds"]:
+        print("  o quadro apareceu, mas sem nenhuma credencial em 45 s. Ele mostra:",
+              " ".join((quadro.get("texto") or "").split())[:200])
     termo = cfg.get("PRESTO_CREDENCIAL", "")
     r = CM.presto_credencial(w, t, termo)
     if not r.get("ok"):
@@ -630,13 +638,19 @@ def abrir_tribunal(cfg, chave, destino, direto=False):
     r = CM.console_site(w, t, SITES[chave], clicar=True)
     print(f"Console: cliquei em {r['nome']} ({r.get('link') or r.get('dominio')})")
     time.sleep(5)
-    novas = [a for a in CM.todas_abas() if (a[0], a[1]) not in antes]
-    if novas:  # o console abriu o tribunal numa aba nova (nesta janela ou numa janela nova)
-        w, t = novas[-1][0], novas[-1][1]
-        print("O tribunal abriu numa aba nova:", novas[-1][2][:90])
-    elif "presto.oystr" in CM.url(w, t):  # o clique não saiu do console: abre o login nesta aba
-        print("O clique não abriu o tribunal; abrindo o login do tribunal nesta aba.")
-        CM.ir(w, t, r.get("link") if (r.get("link") or "").startswith("http") else TRIBUNAIS[chave])
+    if "presto.oystr" not in CM.url(w, t):
+        pass  # o clique levou esta mesma aba para o tribunal (o normal)
+    else:
+        # o console abriu o tribunal numa aba nova (nesta janela ou noutra). Só conta aba de site (http) fora do
+        # console: janelas internas do Chrome/extensão têm ids enormes que o AppleScript não consegue usar
+        novas = [a for a in CM.todas_abas() if (a[0], a[1]) not in antes and a[2].startswith("http")
+                 and "presto.oystr" not in a[2] and a[0] < 2 ** 29 and a[1] < 2 ** 29]
+        if novas:
+            w, t = novas[-1][0], novas[-1][1]
+            print("O tribunal abriu numa aba nova:", novas[-1][2][:90])
+        else:  # o clique não saiu do console: abre o login nesta aba
+            print("O clique não abriu o tribunal; abrindo o login do tribunal nesta aba.")
+            CM.ir(w, t, r.get("link") if (r.get("link") or "").startswith("http") else TRIBUNAIS[chave])
     CM.esperar(w, t)
     return w, t
 
