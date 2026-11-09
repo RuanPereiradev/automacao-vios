@@ -102,6 +102,14 @@ certos; só mude se a tela do Sonar mudar.
 Log em `albi/logs/albi.log` (a senha e o CPF/CNPJ inteiro nunca aparecem; do CPF/CNPJ só
 os 2 últimos números). Se falhar, print da tela em `albi/logs/erro_*.png`.
 
+## Sonar com certificado vencido
+
+Se o certificado do Sonar vencer, o Chrome mostra "Sua conexão não é particular" no lugar do login.
+O Albi então clica em **Avançadas** > **Ir para sonar.lemeforense.com.br (não seguro)** e avisa no log
+(`albi/certificado.py`, o mesmo do Sam, do Orelha e do Jarvis). Ele só faz isso quando o erro é de
+certificado **vencido** e no endereço do `SONAR_URL`; outro erro de certificado continua bloqueando.
+O Presto usa o Chrome aberto da pessoa: lá o aviso continua sendo resolvido à mão.
+
 ## Pela página do Ultron (`/albi`) e na Vila 03
 
 No servidor do Ultron (`./rodar_envio.sh`), a página `http://<IP>:5001/albi` tem a Vila 03 no

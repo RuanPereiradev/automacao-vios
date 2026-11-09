@@ -1239,6 +1239,13 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `ALBI_PASTA` | não | Pasta do Albi (com `.venv` e `.env` dele); vazio = `albi/` deste repositório | `~/albi` |
 | `ORELHA_PASTA` | não | Pasta do Orelha, de onde o Sam lê o horário e os relatórios (`/orelha`); vazio = `orelha/` deste repositório | `~/orelha` |
 
+**Site com certificado vencido.** Se o certificado do VIOS (ou do Sonar, no Albi) vencer, o Chrome
+mostra "Sua conexão não é particular" no lugar do login. O Sam, o Orelha, o Jarvis e o Albi clicam
+em **Avançadas** > **Ir para ... (não seguro)** e avisam no log (`passar_aviso_certificado`, em
+`bot/navegador.py`, `orelha/nucleo/navegador.py`, `jarvis/nucleo/navegador.py` e `albi/certificado.py`).
+Só fazem isso com o erro `net::ERR_CERT_DATE_INVALID` (vencido) e no endereço do próprio site.
+Qualquer outro erro de certificado continua bloqueando o login.
+
 ---
 
 ## 6. Saída e logs

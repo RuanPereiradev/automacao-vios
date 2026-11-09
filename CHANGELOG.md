@@ -12,6 +12,17 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Albi: passa pelo aviso de certificado vencido do Sonar (09/11/2026)
+- Pedido do usuário: "faça isso pra todos os bots". O Sam, o Orelha e o Jarvis já passavam pelo aviso do
+  VIOS; o Albi (Sonar da Leme) ganhou o mesmo em `albi/certificado.py`, uma cópia do
+  `passar_aviso_certificado`, porque o Albi não importa nada de `bot/`. É chamado logo depois de abrir o
+  `SONAR_URL`.
+- Mesmas regras: só passa com `net::ERR_CERT_DATE_INVALID` e no endereço do Sonar.
+- Testado no Chrome headless: o certificado vencido de teste foi passado, o autoassinado recusado, e o
+  Sonar normal não foi mexido.
+- O Presto não entra: ele usa o Chrome aberto da pessoa pelo AppleScript, que não roda nada na página
+  de aviso.
+
 ### Adicionado — Sam, Orelha e Jarvis: passam pelo aviso de certificado vencido do VIOS (09/11/2026)
 - O certificado `*.vios.com.br` (GoGetSSL) venceu em 08/11/2026 às 23:59 GMT. Desde então, o Chrome
   dos robôs mostra "Sua conexão não é particular" no lugar do login. Foi isso que fez o Orelha de 09/11

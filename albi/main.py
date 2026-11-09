@@ -48,6 +48,7 @@ from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 from dotenv import load_dotenv
+import certificado
 import relatorio
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
@@ -149,6 +150,7 @@ def entrar(driver, cfg):
     "Encerrar a outra sessão" e, se voltar para a tela de login, entra de novo."""
     espera = WebDriverWait(driver, cfg["timeout"])
     driver.get(cfg["url"])
+    certificado.passar_aviso_certificado(driver, cfg["url"])  # certificado vencido: Avançadas > Ir para
     enviar_login(driver, cfg, espera)
     if pagina(driver) == "/login-conflito":
         log.info("Tela de conflito: encerrando a outra sessão")
