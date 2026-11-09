@@ -75,9 +75,12 @@ _BLOQUEIO = """
 _LIBERAR = "window.__orelhaPesquisaLiberada = true;"
 
 
-def criar_driver(headless=True, manter_aberto=False, pasta_downloads=None):
-    """Chrome (o Selenium Manager baixa o chromedriver compatível)."""
+def criar_driver(headless=True, manter_aberto=False, pasta_downloads=None, aceitar_certificado=False):
+    """Chrome (o Selenium Manager baixa o chromedriver compatível). aceitar_certificado=True: o VIOS está com
+    o certificado vencido e a impressão digital conferiu (certificado_vencido_aceito)."""
     opcoes = webdriver.ChromeOptions()
+    if aceitar_certificado:
+        opcoes.accept_insecure_certs = True
     if headless:
         opcoes.add_argument("--headless=new")
     if manter_aberto:
@@ -87,6 +90,46 @@ def criar_driver(headless=True, manter_aberto=False, pasta_downloads=None):
         opcoes.add_experimental_option("prefs", {"download.default_directory": str(pasta_downloads),
                                                  "download.prompt_for_download": False})
     return webdriver.Chrome(options=opcoes)
+
+
+# --- VIOS com certificado vencido (VIOS_CERTIFICADO_VENCIDO no .env) ---
+# Aceita SÓ o certificado cuja impressão digital SHA-256 está no .env: se o VIOS mostrar outro (renovado ou
+# falso), o Chrome confere normalmente. Tirar a linha do .env quando o VIOS renovar.
+def _impressao_do_servidor(url, timeout=10):
+    import hashlib
+    import socket
+    import ssl
+    from urllib.parse import urlparse
+    u = urlparse(url)
+    contexto = ssl.create_default_context()
+    contexto.check_hostname = False
+    contexto.verify_mode = ssl.CERT_NONE  # só para LER o certificado e comparar com o do .env
+    with socket.create_connection((u.hostname, u.port or 443), timeout) as s, \
+            contexto.wrap_socket(s, server_hostname=u.hostname) as t:
+        return hashlib.sha256(t.getpeercert(binary_form=True)).hexdigest()
+
+
+def certificado_vencido_aceito(url, impressao):
+    """True só se `impressao` (VIOS_CERTIFICADO_VENCIDO) for a do certificado que o VIOS mostra agora."""
+    import logging
+    import re
+    log = logging.getLogger(__name__)
+    alvo = re.sub(r"[^0-9a-f]", "", (impressao or "").lower())
+    if not alvo or not (url or "").startswith("https://"):
+        return False
+    try:
+        atual = _impressao_do_servidor(url)
+    except OSError as e:
+        log.warning("VIOS_CERTIFICADO_VENCIDO: não consegui ler o certificado do VIOS (%s); o Chrome confere "
+                    "normalmente", e.__class__.__name__)
+        return False
+    if atual == alvo:
+        log.warning("VIOS com certificado vencido: aceito só este (a impressão digital confere com "
+                    "VIOS_CERTIFICADO_VENCIDO). Tire a linha do .env quando o VIOS renovar.")
+        return True
+    log.warning("VIOS_CERTIFICADO_VENCIDO está no .env, mas o VIOS mostra outro certificado: o Chrome confere "
+                "normalmente (se o VIOS renovou, tire a linha do .env)")
+    return False
 
 
 def script_bloqueio(permitidos=(), proibidos=()):

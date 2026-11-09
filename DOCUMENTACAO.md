@@ -1201,6 +1201,7 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | Variável | Obrigatória | Uso | Valor atual (VIOS) |
 | --- | --- | --- | --- |
 | `SISTEMA_URL` | sim | Página de login | `https://roneely.vios.com.br/entrar.php?` |
+| `VIOS_CERTIFICADO_VENCIDO` | não | Só quando o VIOS está com o certificado vencido: a impressão digital SHA-256 desse certificado. O robô confere a do VIOS antes de abrir o Chrome e só aceita aquele certificado (outro = o Chrome confere normalmente). Vale para o Sam, o Orelha e o Jarvis. Tirar quando o VIOS renovar | vazio |
 | `SISTEMA_USUARIO` / `SISTEMA_SENHA` | sim | Credenciais | (no `.env`) |
 | `LOGIN_CAMPO_USUARIO` | sim | Campo de usuário | `css:input[name='form[usuario]']` |
 | `LOGIN_CAMPO_SENHA` | sim | Campo de senha | `css:input[name='form[senha]']` |

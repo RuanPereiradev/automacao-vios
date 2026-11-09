@@ -356,3 +356,11 @@ chega sozinha ao Jarvis. Se o VIOS mudar a tela de login, corrigir nos dois.
 
 Toda mudança neste robô é registrada no [CHANGELOG.md](CHANGELOG.md) **e** neste
 arquivo (passo a passo, tabelas, testes e próximos passos).
+
+## VIOS com certificado vencido
+
+Se o certificado do VIOS vencer, o Chrome mostra "Sua conexão não é particular" no lugar do login
+e o robô não entra. Para seguir até o VIOS renovar, ponha no `.env` a impressão digital do
+certificado vencido em `VIOS_CERTIFICADO_VENCIDO` (o comando para vê-la está no `.env.example`). O
+robô confere a impressão do certificado que o VIOS mostra antes de abrir o Chrome e só aceita aquele;
+se for outro, o Chrome confere normalmente. Tire a linha quando o VIOS renovar (o log avisa).

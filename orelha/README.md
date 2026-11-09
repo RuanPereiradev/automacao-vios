@@ -474,3 +474,11 @@ comparar o total do placar com a lista do VIOS no primeiro uso real.
   das Planilhas, o painel "Relatório do dia · Orelha" e se o seletor de vilas (01 a 05) cabe em tela
   estreita.
 - Conferir que o Orelha, rodando em outra máquina, consegue fazer `POST /eventos` no Ultron.
+
+## VIOS com certificado vencido
+
+Se o certificado do VIOS vencer, o Chrome mostra "Sua conexão não é particular" no lugar do login
+e o robô não entra. Para seguir até o VIOS renovar, ponha no `.env` a impressão digital do
+certificado vencido em `VIOS_CERTIFICADO_VENCIDO` (o comando para vê-la está no `.env.example`). O
+robô confere a impressão do certificado que o VIOS mostra antes de abrir o Chrome e só aceita aquele;
+se for outro, o Chrome confere normalmente. Tire a linha quando o VIOS renovar (o log avisa).
