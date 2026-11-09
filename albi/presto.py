@@ -521,7 +521,7 @@ def login(w, t, cfg, destino, prefixo=""):
                 CM.digitar_tela(pin)
     elif quadro2.get("ok"):
         print("Depois da credencial o quadro continua sem campo de PIN:", quadro2.get("texto", "")[:200])
-        print("Se o Terminal não está em Ajustes do Sistema > Privacidade e Segurança > Acessibilidade, "
+        print("Se o app onde o bot roda (Terminal ou Visual Studio Code) não está em Ajustes do Sistema > Privacidade e Segurança > Acessibilidade, "
               "ligue-o (o clique de verdade precisa disso) e rode de novo.")
     final = _esperar(lambda: logado(w, t), 60, passo=2)
     CM.esperar(w, t, maximo=20, folga=2)

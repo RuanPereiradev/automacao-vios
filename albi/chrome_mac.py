@@ -381,7 +381,7 @@ JS_PRESTO_ONDE = "(function(qual, termo){var d=" + _DIALOGO + r""";
 })"""
 
 SEM_ACESSIBILIDADE = ("O macOS não deixou o Terminal mexer no mouse/teclado. Ajustes do Sistema > Privacidade e "
-                      "Segurança > Acessibilidade: ligue o Terminal e rode de novo.")
+                      "Segurança > Acessibilidade: ligue o app onde o bot roda (Terminal ou Visual Studio Code) e rode de novo.")
 
 
 def presto_onde(w, t, qual, termo=""):

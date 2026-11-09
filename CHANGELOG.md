@@ -12,6 +12,10 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Albi/Presto: aviso de Acessibilidade cita o Visual Studio Code (09/11/2026)
+- Quando o clique de verdade precisa da permissão Acessibilidade do macOS, a mensagem agora diz para
+  ligar o app onde o bot roda (Terminal ou Visual Studio Code), e não só o Terminal.
+
 ### Corrigido — Orelha: aviso do certificado vencido vai para o `orelha.log` (09/11/2026)
 - Na execução das 09:13 no Mac, o aviso "VIOS com o certificado vencido..." saiu sem data e não entrou
   no `orelha/logs/orelha.log`, porque usava outro logger. Agora usa o logger `orelha`.
