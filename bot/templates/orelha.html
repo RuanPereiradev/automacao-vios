@@ -44,6 +44,11 @@
   .abas { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 4px 0 12px; }
   .abas .botao[aria-selected="true"] { background: var(--red); color: #1b130b; border-color: var(--red); }
   .abas .nova { margin-left: auto; }
+  .periodo { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .periodo label { display: inline-flex; gap: 6px; align-items: center; font-weight: 600; }
+  .periodo input[type="date"] { font: inherit; color: inherit; background: rgba(255, 255, 255, .06);
+    border: 1px solid var(--borda); border-radius: 8px; padding: 6px 8px; color-scheme: dark; }
+  .periodo input[type="date"]:focus { outline: 2px solid var(--red); outline-offset: 1px; }
   iframe.relatorio { width: 100%; height: 640px; border: 0; border-radius: 12px; background: #f4f7f6; display: block; }
 </style>
 </head>
@@ -96,8 +101,13 @@
   {% endif %}
   <div class="cartao">
     <h1>Painel semanal</h1>
-    <p class="suave">Peças e audiências da equipe, em PDF no papel timbrado do escritório. Aperte quando quiser o
-      relatório da semana; leva alguns minutos (o Orelha só lê o VIOS, nada é alterado lá).</p>
+    <p class="suave">Peças e audiências da equipe, em PDF no papel timbrado do escritório. Escolha o período e
+      aperte o botão; leva alguns minutos (o Orelha só lê o VIOS, nada é alterado lá).</p>
+    <p class="periodo">
+      <label>De <input type="date" id="painel-de"></label>
+      <label>Até <input type="date" id="painel-ate"></label>
+      <span class="suave">(as tarefas vencidas que continuam abertas entram sempre)</span>
+    </p>
     <p>
       <button class="botao primario" id="painel-botao" type="button" {% if not painel.configurado %}disabled{% endif %}>Gerar painel semanal</button>
       <span id="painel-msg" class="suave" style="margin-left: 8px"></span>
@@ -120,7 +130,8 @@
       <p class="suave">Nenhum painel gerado ainda.</p>
     {% endif %}
     <p class="suave">A 1ª edição não tem semana anterior para comparar: a taxa de resolução e as "não feitas"
-      aparecem a partir do 2º painel. Gerar mais de uma vez no mesmo dia só atualiza o painel do dia.</p>
+      aparecem a partir do 2º painel (só os painéis que começam no dia em que são pedidos entram na comparação).
+      Gerar mais de uma vez no mesmo dia só atualiza o painel do dia.</p>
   </div>
   <div class="cartao">
     <h1>Relatórios guardados</h1>
@@ -180,6 +191,16 @@
   const botao = document.getElementById('painel-botao');
   if (!botao) return;
   const msg = document.getElementById('painel-msg');
+  const campoDe = document.getElementById('painel-de'), campoAte = document.getElementById('painel-ate');
+  // padrão: de hoje até 7 dias depois (no fuso do computador de quem abre a página)
+  function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  const hoje = new Date(), daqui7 = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 7);
+  campoDe.value = iso(hoje); campoAte.value = iso(daqui7);
+  campoDe.addEventListener('change', () => {
+    if (campoDe.value && campoAte.value && campoAte.value < campoDe.value) {
+      const d = new Date(campoDe.value + 'T00:00'); d.setDate(d.getDate() + 7); campoAte.value = iso(d);
+    }
+  });
   let timer = null;
   function parar() { clearInterval(timer); timer = null; }
   async function consultar() {
@@ -195,10 +216,13 @@
   }
   function acompanhar() { if (!timer) { timer = setInterval(consultar, 4000); consultar(); } }
   botao.addEventListener('click', async () => {
+    if (!campoDe.value || !campoAte.value) { msg.textContent = 'Escolha as duas datas.'; return; }
+    if (campoAte.value < campoDe.value) { msg.textContent = 'A data "Até" não pode ser antes de "De".'; return; }
     botao.disabled = true; msg.textContent = 'Iniciando…';
     try {
       const r = await fetch('{{ url_for("orelha_painel_rodar") }}', { method: 'POST', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ de: campoDe.value, ate: campoAte.value }) });
       const s = await r.json();
       if (!r.ok && !s.rodando) { botao.disabled = false; msg.textContent = s.erro || 'Não foi possível iniciar.'; return; }
       acompanhar();

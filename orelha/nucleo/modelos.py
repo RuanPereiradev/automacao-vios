@@ -72,6 +72,8 @@ class Contexto:
     chave: str = ""                  # função que está rodando (preenchido pelo main.py)
     albi_saida: Path = None          # pasta dos resultados do Albi (--albi-saida ou ORELHA_ALBI_SAIDA)
     pdf: bool = True                 # False com --sem-pdf (funções que geram o próprio PDF, como o painel)
+    painel_de: date = None           # período escolhido para o painel semanal (--painel-de); None = hoje
+    painel_ate: date = None          # (--painel-ate); None = início + ORELHA_PAINEL_DIAS_FILA
 
     @property
     def pasta_fixtures(self):

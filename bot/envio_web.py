@@ -9,7 +9,7 @@ import re
 import threading
 import uuid
 import zipfile
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -675,8 +675,16 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         """Botão "Gerar painel semanal": abre o Orelha em segundo plano só com o painel (PDF no papel timbrado)."""
         if not _mesma_origem():
             return jsonify(erro="pedido recusado"), 403
+        # período escolhido na página (campos "De" e "Até", AAAA-MM-DD); vazio = o padrão do Orelha
+        dados = request.get_json(silent=True) or {}
         try:
-            info = orelha.rodar_painel(pasta_orelha)
+            de, ate = (date.fromisoformat(dados[k]) if dados.get(k) else None for k in ("de", "ate"))
+        except (TypeError, ValueError):
+            return jsonify(erro="data inválida", **orelha.painel_status(pasta_orelha)), 400
+        if de and ate and (ate - de).days > 120:
+            return jsonify(erro="escolha um período de até 120 dias", **orelha.painel_status(pasta_orelha)), 400
+        try:
+            info = orelha.rodar_painel(pasta_orelha, de, ate)
         except orelha.PainelErro as e:
             return jsonify(erro=str(e), **orelha.painel_status(pasta_orelha)), 409
         log.info("Painel semanal do Orelha disparado por %s", request.remote_addr)

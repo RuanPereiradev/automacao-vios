@@ -12,6 +12,17 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Orelha: escolher o período do painel semanal na página `/orelha` (09/11/2026)
+- Campos **De** e **Até** ao lado do botão "Gerar painel semanal". Já vêm de hoje a 7 dias depois; se
+  "De" passar de "Até", o "Até" vai para 7 dias depois. O Sam recusa data inválida e período de mais de
+  120 dias.
+- O Sam passa o período ao Orelha (`main.py --painel-de AAAA-MM-DD --painel-ate AAAA-MM-DD`, também pela
+  linha de comando). Sem período, vale o padrão (de hoje até `ORELHA_PAINEL_DIAS_FILA` dias).
+- O painel mostra "Semana de <De> a <Até>". A fila traz as tarefas com prazo no período e as vencidas
+  que continuam abertas. A agenda de audiências traz as do período.
+- Um painel que não começa no dia do pedido não vira base da comparação da semana seguinte (o PDF avisa).
+- 7 testes novos no Orelha (263 no total).
+
 ### Alterado — Orelha: painel semanal vai do dia do pedido até 7 dias depois (09/11/2026)
 - O painel semanal mostrava "Semana de" a semana anterior até hoje. Agora a semana começa no dia em
   que o painel é pedido e vai até 7 dias depois. Exemplo: pedido em 09/11 → "Semana de 09/11 a 16/11".

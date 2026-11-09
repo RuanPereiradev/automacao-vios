@@ -10,6 +10,7 @@ se a página não abrir com o bloqueio ativo, para tudo (nenhuma função roda).
 ORELHA_BLOQUEIO_NO_LOGIN=false volta a ligar o bloqueio logo depois do login, como o Zangão.
 
 uso: python main.py [--funcoes agenda,prazos,intimacoes,parados,planilhas,painel] [--simulado]
+                    [--painel-de AAAA-MM-DD] [--painel-ate AAAA-MM-DD]   (período do painel semanal)
                     [--data AAAA-MM-DD] [--sem-pdf] [--eventos] [--albi-saida PASTA] [--env ARQUIVO]
   padrão: todas menos parados e painel (ORELHA_FUNCOES no .env)
   painel       painel semanal em PDF no papel timbrado (painel-semanal.pdf); não entra no relatório do dia
@@ -92,7 +93,13 @@ def argumentos(argv):
     p.add_argument("--eventos", action="store_true", help='eventos da vila como "@evento {json}" na saída padrão')
     p.add_argument("--albi-saida", help="pasta dos resultados do Albi")
     p.add_argument("--env", help="arquivo .env (padrão: orelha/.env)")
-    return p.parse_args(argv)
+    p.add_argument("--painel-de", type=_data, help="painel semanal: primeiro dia do período, AAAA-MM-DD (padrão: hoje)")
+    p.add_argument("--painel-ate", type=_data,
+                   help="painel semanal: último dia do período, AAAA-MM-DD (padrão: início + ORELHA_PAINEL_DIAS_FILA)")
+    args = p.parse_args(argv)
+    if args.painel_de and args.painel_ate and args.painel_ate < args.painel_de:
+        p.error("--painel-ate não pode ser antes de --painel-de")
+    return args
 
 
 def escolher_funcoes(texto, padrao):
@@ -246,7 +253,7 @@ def main(argv=None):
     base = Contexto(driver=None, cfg=cfg, hoje=hoje, emitir=eventos.emitir, simulado=args.simulado,
                     fixtures=PASTA / "fixtures", saida=saida, historico=cfg.pasta_saida / "historico",
                     albi_saida=Path(args.albi_saida).expanduser().resolve() if args.albi_saida else cfg.albi_saida,
-                    pdf=not args.sem_pdf)
+                    pdf=not args.sem_pdf, painel_de=args.painel_de, painel_ate=args.painel_ate)
     log.info("Orelha: %s, funções %s%s", f"{hoje:%d/%m/%Y}", ", ".join(funcoes),
              " (SIMULADO: fixtures, sem VIOS)" if args.simulado else "")
     eventos.emitir("execucao_iniciada", funcoes=funcoes, simulado=args.simulado, data=hoje.isoformat())

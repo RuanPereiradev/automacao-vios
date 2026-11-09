@@ -249,9 +249,11 @@ rodapé, A4 e as margens do modelo, em todas as páginas). As três imagens do t
 `assets/timbrado/` (`nucleo/timbrado.py` as embute no HTML). Se o escritório trocar o timbrado, troque
 essas imagens.
 
-**Período**: a semana do painel começa no dia em que ele é pedido e vai até 7 dias depois (ex.: pedido em
-09/11 → "Semana de 09/11 a 16/11"). A fila pega as tarefas com prazo até esse fim (`ORELHA_PAINEL_DIAS_FILA`,
-padrão 7) e também as vencidas que continuam abertas.
+**Período**: na página `/orelha` do Sam, os campos **De** e **Até** (já vêm de hoje a 7 dias depois)
+escolhem o período do painel; pela linha de comando, `--painel-de AAAA-MM-DD --painel-ate AAAA-MM-DD`. Sem
+escolha, vai do dia do pedido até `ORELHA_PAINEL_DIAS_FILA` dias depois (padrão 7). A fila pega as tarefas com
+prazo dentro do período e também as vencidas que continuam abertas; a agenda de audiências mostra as do
+período escolhido. Só o painel que começa no dia do pedido vira base da comparação da semana seguinte.
 
 Partes do painel (`funcoes/painel.py`, desenho em `nucleo/painel.py`):
 - **Resumo executivo**: fila total, não feitas, novas, carga do advogado mais carregado e vencidas.

@@ -15,6 +15,7 @@ de audiências e a lista de tarefas com a situação em cores), e a moldura é o
   carga            [{"nome", "pecas", "audiencias", "total", "vencidas", "urgente", "destaque"}]
   agenda           [{"data", "hora", "advogado", "tipo", "processo"}]
   dias_agenda      int
+  agenda_titulo    str     título da agenda quando o período foi escolhido na página ("" = próximos N dias)
   lista_titulo     str     título da lista de tarefas
   lista            [{"processo", "faixa", "situacao", "responsavel", "tarefa"}]
   avisos           [str]
@@ -122,8 +123,16 @@ def _carga(dados):
             f'<th>Vencidas</th><th>Urgente ≤7d</th></tr></thead><tbody>{"".join(linhas)}</tbody></table>')
 
 
+def _titulo_agenda(dados):
+    """Período escolhido na página: "Agenda de audiências — 09/11 a 23/11 (...)"; sem escolha: próximos N dias."""
+    return dados.get("agenda_titulo") or (f'Agenda de audiências — próximos {dados["dias_agenda"]} dias '
+                                          "(comparecimento obrigatório)")
+
+
 def _agenda(dados):
     if not dados.get("agenda"):
+        if dados.get("agenda_titulo"):
+            return f'<p class="nota">Nenhuma audiência de {dados["inicio"]:%d/%m} a {dados["fim"]:%d/%m}.</p>'
         return f'<p class="nota">Nenhuma audiência nos próximos {_e(dados["dias_agenda"])} dias.</p>'
     linhas = "".join(
         f'<tr><td class="c">{_e(a["data"])}</td><td class="c">{_e(a["hora"])}</td><td>{_e(a["advogado"])}</td>'
@@ -158,7 +167,7 @@ def montar_html(dados):
     corpo += ["<h2>Resumo executivo — fila combinada</h2>", _cartoes(dados),
               "<h2>Diagnóstico comparativo — taxa de resolução semanal</h2>", _semanas(dados),
               "<h2>Carga combinada por advogado — peças + audiências</h2>", _carga(dados),
-              f'<h2>Agenda de audiências — próximos {_e(dados["dias_agenda"])} dias (comparecimento obrigatório)</h2>',
+              f'<h2>{_e(_titulo_agenda(dados))}</h2>',
               _agenda(dados),
               f'<h2 class="vermelho">{_e(dados["lista_titulo"])}</h2>', _lista(dados)]
     return timbrado.pagina(f"Painel semanal {periodo}", "\n".join(corpo), CSS)

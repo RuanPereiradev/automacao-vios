@@ -111,6 +111,30 @@ class TestFila(unittest.TestCase):
         self.assertFalse(c["Bruno Fictício"]["destaque"])
         self.assertEqual([x["nome"] for x in painel.carga(fila)], ["Ana Fictícia", "Bruno Fictício", "Sem responsável"])
 
+    def test_periodo_escolhido(self):
+        tarefas = [tarefa("MINUTAR VENCIDA", -2, n=1), tarefa("MINUTAR HOJE", 0, n=2), tarefa("MINUTAR D3", 3, n=3),
+                   tarefa("MINUTAR D10", 10, n=4), tarefa("MINUTAR D20", 20, n=5)]
+        # de hoje até daqui a 14 dias: a vencida (aberta) entra; a de 20 dias não
+        fila, _ = fila_de(tarefas, de=HOJE, ate=d(14))
+        self.assertEqual([e.tarefa for e in fila], ["MINUTAR VENCIDA", "MINUTAR HOJE", "MINUTAR D3", "MINUTAR D10"])
+        # de daqui a 5 dias até daqui a 12: as de hoje e de 3 dias ficam fora; a vencida continua
+        fila, _ = fila_de(tarefas, de=d(5), ate=d(12))
+        self.assertEqual([e.tarefa for e in fila], ["MINUTAR VENCIDA", "MINUTAR D10"])
+
+    def test_periodo_padrao_e_escolhido(self):
+        ctx, _ = contexto()
+        self.assertEqual(painel.periodo(ctx, 7), (HOJE, d(7)))
+        ctx.painel_ate = d(14)
+        self.assertEqual(painel.periodo(ctx, 7), (HOJE, d(14)))
+        ctx.painel_de, ctx.painel_ate = d(2), None
+        self.assertEqual(painel.periodo(ctx, 7), (d(2), d(9)))
+
+    def test_agenda_no_periodo_escolhido(self):
+        tarefas = [tarefa("AUDIÊNCIA UNA 2026", 3, n=1), tarefa("AUDIÊNCIA UNA 2026", 12, n=2)]
+        fila, _ = fila_de(tarefas, ate=d(14))
+        self.assertEqual(len(painel.agenda_audiencias(fila, HOJE, 7)), 1)
+        self.assertEqual(len(painel.agenda_audiencias(fila, HOJE, 7, HOJE, d(14))), 2)
+
     def test_agenda(self):
         tarefas = [tarefa("AUDIÊNCIA UNA/INSTRUÇÃO (CÍVEL) 2026", 1, n=1, hora="14:00"),
                    tarefa("AUDIÊNCIA DE CONCILIAÇÃO (TRABALHISTA) 2026", 1, n=2),                 # sem hora: depois
@@ -189,6 +213,21 @@ class TestExecutar(unittest.TestCase):
         self.assertEqual(secao.numeros_seguros(), secao.numeros)
         self.assertTrue(all(isinstance(v, (int, float)) for v in secao.numeros.values()))
 
+    def test_simulado_com_periodo_escolhido(self):
+        ctx, _ = contexto()
+        ctx.painel_de, ctx.painel_ate = HOJE, d(14)
+        painel.executar(ctx)
+        html = (ctx.saida / "painel-semanal.html").read_text(encoding="utf-8")
+        self.assertIn("Painel Semanal — Semana de 06/11 a 20/11/2026", html)
+        self.assertIn("Agenda de audiências — 06/11 a 20/11", html)
+
+    def test_periodo_que_nao_comeca_hoje_nao_vira_base(self):
+        ctx, _ = contexto()
+        ctx.painel_de, ctx.painel_ate = d(7), d(14)
+        secao = painel.executar(ctx)
+        self.assertFalse((ctx.historico / painel.nome_registro(HOJE, True)).exists())
+        self.assertTrue(any("não entra na comparação" in a for a in secao.avisos))
+
     def test_primeira_edicao_lista_a_fila_toda(self):
         ctx, _ = contexto()
         with mock.patch.object(painel, "ler_base", return_value=None):
@@ -203,9 +242,9 @@ class TestExecutar(unittest.TestCase):
         ctx, _ = contexto()
         original = painel._ler
 
-        def lendo(ctx_, dias, avisos):
+        def lendo(ctx_, dias, avisos, ate=None):
             avisos.append("a lista de tarefas não apareceu")
-            return original(ctx_, dias, avisos)
+            return original(ctx_, dias, avisos, ate)
         with mock.patch.object(painel, "_ler", side_effect=lendo):
             secao = painel.executar(ctx)
         self.assertFalse((ctx.historico / painel.nome_registro(HOJE, True)).exists())

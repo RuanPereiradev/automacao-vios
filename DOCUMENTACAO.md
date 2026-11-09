@@ -626,8 +626,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - Botão **Gerar painel semanal** na página `/orelha` do Sam (ou `./rodar.sh --funcoes painel` dentro de
   `orelha/`), sem agendamento, gera `saida/<data>/painel-semanal.pdf`:
   resumo executivo, taxa de resolução, carga por advogado, agenda de audiências e tarefas não feitas,
-  no papel timbrado do escritório. O período vai do dia do pedido até 7 dias depois
-  (`ORELHA_PAINEL_DIAS_FILA`, padrão 7). Não entra no relatório do dia. A 1ª edição não tem semana anterior; a
+  no papel timbrado do escritório. O período é escolhido nos campos **De** e **Até** da página (vêm de
+  hoje a 7 dias depois; até 120 dias); pela linha de comando, `--painel-de`/`--painel-ate`. Sem escolha,
+  vai do dia do pedido até `ORELHA_PAINEL_DIAS_FILA` dias depois (padrão 7). Não entra no relatório do dia. A 1ª edição não tem semana anterior; a
   comparação começa na 2ª. Detalhes e variáveis `ORELHA_PAINEL_*`: `orelha/README.md` e
   `orelha/.env.example`.
 
