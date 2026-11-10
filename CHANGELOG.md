@@ -12,6 +12,16 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Jarvis: gasto da IA por cliente (`gastos.py`) (10/11/2026)
+- `cd jarvis && .venv/bin/python gastos.py [--mes AAAA-MM]` lê o `logs/bot.log` e mostra, por Grupo
+  Cliente, os relatórios, os processos, o gasto e o gasto por processo, e depois cada relatório. Não
+  entra no VIOS nem chama a IA, e serve para os relatórios antigos.
+- O gasto do log é acumulado da execução: o script separa cada grupo pela diferença. Uma execução
+  nova é reconhecida pela linha nova "Execução iniciada" ou por mais de 20 min sem processo.
+- Corrigido: a aba Metadados mostrava em "Gasto estimado com IA" o acumulado da execução. Com vários
+  grupos, o 2º somava o do 1º. Agora mostra o gasto daquele grupo (e o da execução, se não for o
+  primeiro). O fim de cada grupo no log diz "gasto do grupo US$ X".
+
 ### Corrigido — Jarvis: `--grupos --salvar` com a linha PROCESSOS_GRUPOS repetida no `.env` (10/11/2026)
 - Se o `jarvis/.env` tinha duas linhas `PROCESSOS_GRUPOS=`, os grupos iam para a primeira. A página
   `/jarvis` lê a última, e só os grupos antigos apareciam.

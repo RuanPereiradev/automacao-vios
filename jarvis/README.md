@@ -162,6 +162,18 @@ completo fica no `jarvis/logs/bot.log` (procure "erro na IA").
 
 ---
 
+### Quanto gastou cada cliente
+
+```
+cd jarvis && .venv/bin/python gastos.py            # por cliente + cada relatório
+.venv/bin/python gastos.py --mes 2026-11           # só um mês
+```
+Lê o `logs/bot.log` (não entra no VIOS nem chama a IA) e mostra, por Grupo Cliente: quantos relatórios,
+quantos processos, o gasto e o gasto por processo. Vale também para os relatórios antigos. O gasto do
+log é acumulado da execução; o script separa cada grupo. A aba Metadados da planilha mostra o gasto
+daquele grupo (antes de 10/11/2026 mostrava o acumulado da execução). É uma estimativa pela tabela de
+preços do `nucleo/custo.py`; a fatura da Anthropic é o valor final.
+
 ## 5. Como rodar
 
 ### Pela plataforma (vila do Ultron, no Mac)

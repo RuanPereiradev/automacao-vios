@@ -331,7 +331,7 @@ def salvar_xlsx(arquivo, grupo, linhas, info):
         ("Colunas pela IA", "Resumo do caso, Motivação, Financeira, Justificativa da condenação, "
                             f"Pendência — documentos faltando (modelo {info['modelo']})"),
         ("Processos com erro na IA", info["erros_ia"]),
-        ("Gasto estimado com IA", info["gasto"]),
+        ("Gasto estimado com IA", info["gasto"]),  # deste grupo (a execução pode ter vários)
     ):
         md.append(list(item))
     md.column_dimensions["A"].width = 30

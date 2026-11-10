@@ -60,6 +60,7 @@ def gerar_grupo(driver, cfg, grupo, valor, pasta, agente, gasto, modelo, limite,
     vila.emitir("grupo", grupo=ordem, grupos=grupos, processos=len(itens))
 
     linhas, brutos, erros_ia = [], [], 0
+    gasto_antes = gasto.total  # o gasto da execução é acumulado: o do grupo é a diferença
     for n, item in enumerate(itens, 1):
         try:
             proc = ler_processo(driver, item["ci"], cfg.timeout)
@@ -77,10 +78,14 @@ def gerar_grupo(driver, cfg, grupo, valor, pasta, agente, gasto, modelo, limite,
         vila.emitir("processo", grupo=ordem, grupos=grupos, feito=n, total=len(itens), gasto=round(gasto.total, 2))
 
     arquivo = pasta / nome_arquivo(grupo)
+    do_grupo = gasto.total - gasto_antes
     salvar_xlsx(arquivo, grupo, linhas, {
-        "gerado_em": datetime.now(), "modelo": modelo, "gasto": gasto.resumo(), "erros_ia": erros_ia})
+        "gerado_em": datetime.now(), "modelo": modelo, "erros_ia": erros_ia,
+        "gasto": f"US$ {do_grupo:.2f} neste grupo ({len(linhas)} processos)"
+                 + (f"; US$ {gasto.total:.2f} na execução até aqui" if gasto_antes else "")})
     arquivo.with_suffix(".json").write_text(json.dumps(brutos, ensure_ascii=False, indent=1), encoding="utf-8")
-    log.info("%s: %d processos, %d com erro na IA -> %s", grupo, len(linhas), erros_ia, arquivo)
+    log.info("%s: %d processos, %d com erro na IA, gasto do grupo US$ %.2f -> %s", grupo, len(linhas), erros_ia,
+             do_grupo, arquivo)
     vila.emitir("grupo_fim", grupo=ordem, grupos=grupos, processos=len(linhas), erros_ia=erros_ia)
     return erros_ia
 
@@ -174,6 +179,7 @@ def main(*args):
         log.error(e)
         return 1
     gasto = Gasto.do_env()
+    log.info("Execução iniciada: %d grupo(s), modelo %s", len(pedidos), modelo)  # o gastos.py separa as execuções por aqui
     pasta = Path(os.getenv("RELATORIO_PASTA", "").strip() or cfg.pasta_saida / "relatorios") / f"{datetime.now():%Y-%m}"
     if limite:
         pasta = pasta / "teste"  # teste com poucos processos não substitui a planilha do mês
