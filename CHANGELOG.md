@@ -12,6 +12,12 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Jarvis: `--grupos --salvar` com a linha PROCESSOS_GRUPOS repetida no `.env` (10/11/2026)
+- Se o `jarvis/.env` tinha duas linhas `PROCESSOS_GRUPOS=`, os grupos iam para a primeira. A página
+  `/jarvis` lê a última, e só os grupos antigos apareciam.
+- Agora o `--salvar` deixa uma linha só, com a lista completa. Também regrava quando não há grupo novo
+  mas há linha repetida.
+
 ### Corrigido — Jarvis: data "DD/01/YYYY" e motivo do erro da IA na planilha (10/11/2026)
 - A coluna "Data da distribuição" usava o formato `DD/MM/YYYY` (maiúsculo). O Excel entende, mas o
   Numbers (Mac) e o Google Planilhas mostravam "DD/01/YYYY". Agora usa `dd/mm/yyyy`.
