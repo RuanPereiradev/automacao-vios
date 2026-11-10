@@ -195,6 +195,23 @@ def _justificativa(ia):
     return ia["condenacao_situacao"]
 
 
+def motivo_erro(erro):
+    """Motivo curto do erro da IA para a célula ("teto de gasto", "sem crédito", ...). Nunca o texto do processo."""
+    t = str(erro or "")
+    baixo = t.lower()
+    for trecho, motivo in (("teto de gasto", "teto de gasto da execução atingido (LLM_LIMITE_US)"),
+                           ("credit balance", "sem crédito na conta da Anthropic"),
+                           ("insufficient_quota", "sem crédito na conta da OpenAI"),
+                           ("api_key", "chave da IA ausente ou inválida"), ("authentication", "chave da IA inválida"),
+                           ("error code: 401", "chave da IA inválida"), ("not_found", "modelo da IA não existe (LLM_MODELO)"),
+                           ("rate_limit", "limite de uso da IA por minuto (tente de novo)"), ("overloaded", "IA sobrecarregada (tente de novo)"),
+                           ("timeout", "a IA demorou demais"), ("timed out", "a IA demorou demais"),
+                           ("json", "resposta da IA fora do formato")):
+        if trecho in baixo:
+            return motivo
+    return re.sub(r"\s+", " ", t)[:90] or "motivo não informado"
+
+
 def montar_linha(item, proc, ia):
     """item = linha da lista de processos; proc = lupa; ia = resposta da IA (ou {"erro": ...})."""
     d = proc["dados"]
@@ -202,8 +219,9 @@ def montar_linha(item, proc, ia):
     motivacao = "" if erro else ia["motivacao_categoria"] + (f" — {ia['motivacao_detalhe']}" if ia["motivacao_detalhe"] else "")
     faltando = [] if erro else ia["documentos_faltando"]
     docs = ""
+    aviso = f"ERRO NA IA: conferir ({motivo_erro(erro)})" if erro else ""
     if erro:
-        docs = "ERRO NA IA: conferir"
+        docs = aviso
     elif faltando:
         docs = "; ".join(faltando) + (f" (entrega: {ia['documentos_quem_entrega']})" if ia["documentos_quem_entrega"] else "")
     return {
@@ -218,10 +236,10 @@ def montar_linha(item, proc, ia):
         "Data da distribuição": _br(d.get("Data da ação / Distribuição", "")),
         "Valor da ação": _valor(d.get("Valor da ação", "")),
         "Cidade/UF": d.get("Cidade / UF", ""),
-        "Resumo do caso": "ERRO NA IA: conferir" if erro else ia["resumo_caso"],
+        "Resumo do caso": aviso if erro else ia["resumo_caso"],
         "Motivação do processo": motivacao,
         "Financeira": "" if erro else ia["financeira"],
-        "Justificativa da condenação": "ERRO NA IA: conferir" if erro else _justificativa(ia),
+        "Justificativa da condenação": aviso if erro else _justificativa(ia),
         "Pendência — documentos faltando": docs,
         # só para a aba Resumo (não vira coluna)
         "_condenacao": "" if erro else ia["condenacao_situacao"],
@@ -252,7 +270,8 @@ def salvar_xlsx(arquivo, grupo, linhas, info):
     for row in ws.iter_rows(min_row=2):
         for cel in row:
             cel.alignment = quebra
-        row[NOMES.index("Data da distribuição")].number_format = "DD/MM/YYYY"
+        # minúsculo: "DD/MM/YYYY" o Excel entende, mas o Numbers (Mac) e o Google Planilhas mostram "DD/01/YYYY"
+        row[NOMES.index("Data da distribuição")].number_format = "dd/mm/yyyy"
         row[NOMES.index("Valor da ação")].number_format = '"R$" #,##0.00'
     ws.freeze_panes = "C2"
     ws.auto_filter.ref = ws.dimensions

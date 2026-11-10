@@ -12,6 +12,13 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Jarvis: data "DD/01/YYYY" e motivo do erro da IA na planilha (10/11/2026)
+- A coluna "Data da distribuição" usava o formato `DD/MM/YYYY` (maiúsculo). O Excel entende, mas o
+  Numbers (Mac) e o Google Planilhas mostravam "DD/01/YYYY". Agora usa `dd/mm/yyyy`.
+- As células da IA que falharam mostram o motivo: `ERRO NA IA: conferir (sem crédito na conta da
+  Anthropic)`, teto de gasto, chave inválida, modelo inexistente, limite por minuto, demora. Nunca
+  levam o texto do processo. O erro completo continua no `jarvis/logs/bot.log`.
+
 ### Adicionado — Orelha: escolher o período do painel semanal na página `/orelha` (09/11/2026)
 - Campos **De** e **Até** ao lado do botão "Gerar painel semanal". Já vêm de hoje a 7 dias depois; se
   "De" passar de "Até", o "Até" vai para 7 dias depois. O Sam recusa data inválida e período de mais de

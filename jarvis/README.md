@@ -132,7 +132,9 @@ arquivos enviados). Conferir antes de mandar ao cliente.
 | Metadados | Grupo, data, origem dos dados, modelo de IA, erros e gasto |
 
 Campo vazio no VIOS fica vazio na planilha. Erro na IA aparece como
-`ERRO NA IA: conferir` e é contado na aba Metadados.
+`ERRO NA IA: conferir (<motivo>)` e é contado na aba Metadados. O motivo é curto: teto de gasto, sem
+crédito na conta da IA, chave inválida, modelo inexistente, limite por minuto, IA demorou etc. O erro
+completo fica no `jarvis/logs/bot.log` (procure "erro na IA").
 
 ---
 
