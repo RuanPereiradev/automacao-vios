@@ -309,10 +309,27 @@ def _registro(pasta):
     return arquivo, dados
 
 
+RESULTADOS = "automatico_resultados.json"  # resultado de cada CI no lançamento (tela /automatico)
+
+
+def anotar_resultado(pasta_saida, ci, estado, mensagem=""):
+    """Guarda o que aconteceu com a CI no lançamento: gravada, bloqueada, duplicada, ja_no_vios,
+    conferencia (pede humano), erro ou retirada (tirada da lista antes de lançar)."""
+    arquivo = Path(pasta_saida) / RESULTADOS
+    dados = json.loads(arquivo.read_text(encoding="utf-8")) if arquivo.exists() else {}
+    dados[ci] = {"estado": estado, "mensagem": mensagem, "quando": f"{datetime.now():%d/%m/%Y %H:%M}"}
+    arquivo.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=False, hoje=None):
-    """Lança as tarefas das CIs pedidas. Devolve (lancadas, erros)."""
+    """Lança as tarefas das CIs pedidas. Devolve (lancadas, erros).
+    Gravando (confirmar=True), anota o resultado de cada CI em saida/automatico_resultados.json."""
     hoje = hoje or date.today()
     arquivo_reg, registro = _registro(pasta_saida)
+
+    def anotar(ci, estado, mensagem=""):
+        if confirmar:
+            anotar_resultado(pasta_saida, ci, estado, mensagem)
     if cis == ["todas"]:
         cis = [r["ci"] for r in resultados if r.get("ci")]
     escolhidos = [r for r in resultados if r.get("ci") in cis]
@@ -325,32 +342,38 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
         ci = r["ci"]
         if r.get("erro"):
             log.error("CI %s: análise com erro, nada lançado", ci)
+            anotar(ci, "erro", "A análise da IA deu erro: nada lançado.")
             erros += 1
             continue
         if r.get("duplicada_de"):
             log.info("CI %s: duplicada da CI %s, ignorada (vale a tarefa da original)", ci, r["duplicada_de"])
+            anotar(ci, "duplicada", f"Cópia da CI {r['duplicada_de']}: vale a tarefa da original.")
             continue
         if confirmar and ci in registro:
             log.warning("CI %s já foi lançada em %s: pulando", ci, registro[ci]["quando"])
             continue
         if not r.get("link_lancar"):
             log.error("CI %s: sem link 'Lançar Intimação'", ci)
+            anotar(ci, "erro", "Sem o link 'Lançar Intimação' do VIOS.")
             erros += 1
             continue
         if r.get("bloqueios"):
             log.warning("CI %s: falta informação, nada lançado (conferir no PJe e lançar manualmente): %s",
                         ci, "; ".join(r["bloqueios"]))
+            anotar(ci, "bloqueada", "; ".join(r["bloqueios"]))
             erros += 1
             continue
         especiais = [t["nome"] for t in r["tarefas"] if t["nome"] in skill.ESPECIAIS]
         if especiais or not r["tarefas"]:
             log.warning("CI %s: análise pede conferência humana (%s): nada lançado", ci, "; ".join(especiais) or "sem tarefa")
+            anotar(ci, "conferencia", "A análise pede conferência humana: " + ("; ".join(especiais) or "sem tarefa"))
             erros += 1
             continue
         # só tarefa sem prazo (ciência) pode ficar sem data; prazo "PENDENTE" não vira a data de hoje
         sem_data = [t["nome"] for t in r["tarefas"] if not _data_valida(t["data_tarefa"]) and t["tipo_data"] != "SEM_DATA"]
         if sem_data:
             log.warning("CI %s: data não calculada para %s: nada lançado (conferir manualmente)", ci, "; ".join(sem_data))
+            anotar(ci, "bloqueada", "Data não calculada para " + "; ".join(sem_data))
             erros += 1
             continue
 
@@ -358,6 +381,7 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
         if ja:
             log.warning("CI %s já tem tarefa no VIOS (%s): nada lançado",
                         ci, "; ".join(f"{t['tarefa']} {t['data']}" for t in ja))
+            anotar(ci, "ja_no_vios", "Já tinha tarefa no VIOS: " + "; ".join(f"{t['tarefa']} {t['data']}" for t in ja))
             continue
 
         # 1) Adicionar cada tarefa: vai para o quadro "Tarefas" (provisório, só nesta sessão)
@@ -406,8 +430,10 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
                             for t in adicionadas],
             }
             arquivo_reg.write_text(json.dumps(registro, ensure_ascii=False, indent=2), encoding="utf-8")
-        except Exception:
+            anotar(ci, "gravada")
+        except Exception as e:
             erros += 1
             log.exception("CI %s: falha ao lançar", ci)
+            anotar(ci, "erro", str(e))
             driver.save_screenshot(str(Path(pasta_logs) / f"erro_lancamento_ci{ci}_{datetime.now():%H%M%S}.png"))
     return lancadas, erros

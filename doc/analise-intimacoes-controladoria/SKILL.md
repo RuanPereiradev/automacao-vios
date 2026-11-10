@@ -1,11 +1,15 @@
 ---
 name: analise-intimacoes-controladoria
-description: Analisar e revisar intimações DJEN/VIOS, identificar duplicidades e erros, definir tarefas oficiais, responsáveis, prazos jurídicos e datas operacionais da Controladoria. Usar para planilhas de intimações, ciência, despacho, decisão, sentença, acórdão, audiência, perícia, laudo, emenda, recursos, contrarrazões, sustentação oral, RPV/precatório, guias, depósitos e providências da Controladoria Jurídica.
+description: Analisar e revisar intimações DJEN/VIOS, identificar duplicidades e erros, definir tarefas oficiais, responsáveis, prazos jurídicos e datas operacionais da Controladoria. Usar para planilhas de intimações, ciência, despacho, decisão, sentença, acórdão, audiência, perícia, laudo, emenda, recursos, contrarrazões, sustentação oral, RPV/precatório, guias, depósitos e providências da Controladoria Jurídica. Receber CSV/Excel do VIOS e gerar um único TXT para bot de automação no modelo institucional, com pendências de consulta manual fora do arquivo.
 ---
 
 # Análise de Intimações da Controladoria
 
 Analisar todas as CIs, sem pular nenhuma. Distinguir providência jurídica, departamento interno, auxiliar, vencimento jurídico e data da tarefa. Não inventar dados nem presumir conferência nos autos.
+
+## Entrega padrão — CSV/Excel VIOS para TXT do bot
+
+Ao receber exportação CSV/Excel do VIOS para análise, entregar automaticamente **um único arquivo `.txt` em UTF-8**, no modelo institucional de `pedido-arquivo-robo(2).txt`, sem exigir que a usuária repita essa orientação. Ler [saida-txt-bot.md](references/saida-txt-bot.md) e usar [pedido-arquivo-robo.txt](assets/pedido-arquivo-robo.txt) como referência de estrutura. O arquivo contém somente tarefas completas e prontas para automação. Apresentar as CIs que exigem consulta manual **na conversa, fora do TXT**, no padrão habitual com CI e número do processo. O TXT é um arquivo de comandos para cadastro automático: usar exclusivamente os campos CI, TAREFA, DATA, HORA, RESPONSÁVEIS e DESCRIÇÃO, nessa ordem, um bloco por tarefa separado por `---`, sem relatório ou comentários dentro dele. O modelo antigo `assets/modelo-analise-vios.md` não é o formato do bot. Esta regra prevalece sobre o formato geral de análise abaixo; pedidos apenas de revisão/duplicidades conservam a saída específica.
 
 ## Fontes e referências obrigatórias
 
@@ -22,11 +26,11 @@ Privilegiar o documento atual para os fatos do caso. Não tratar uma análise au
 ## Fluxo de trabalho
 
 1. Identificar CI, processo, cliente, partes, posição processual, destinatário, órgão, fase, departamento e auxiliar. O cliente costuma estar na quarta ou quinta coluna: conferir pelo conteúdo.
-2. Reconhecer que AVANTTI SOLUCOES PRESTADORA DE SERVICOS LTDA (MATRIZ), inclusive com a indicação PRESTADORA, e FAMOL COMERCIO DE MOVEIS LTDA (MATRIZ) são a mesma empresa conforme orientação institucional. Não estender essa equivalência a outras empresas sem prova. Se o cliente indicado não constar da publicação, registrar a divergência.
-3. Classificar o ato e identificar a providência concreta. Separar ordem para o cliente de ordem para a parte contrária. Não atribuir ao cliente prazo da parte contrária.
+2. Reconhecer que AVANTTI SOLUCOES PRESTADORA DE SERVICOS LTDA (MATRIZ), inclusive com a indicação PRESTADORA, e FAMOL COMERCIO DE MOVEIS LTDA (MATRIZ) são a mesma empresa conforme orientação institucional. Reconhecer também ITBN TELEFONIA LTDA (MATRIZ), A M AGUIAR TELEFONIA LTDA e RAV HOLDING LTDA como identificações do mesmo cliente para vínculo operacional, conforme confirmação expressa da usuária em 03/11/2026. Não repetir pendência por essas diferenças; preservar a denominação e posição processual que constam do expediente, sem afirmar identidade de CNPJ ou fusão societária. Não estender a equivalência a outras empresas sem prova. Incorporar correções expressas da usuária sobre cliente, polo e setor; em inventário, não presumir que o inventariado seja cliente. Se o cliente indicado não constar da publicação e não houver equivalência/correção confirmada, registrar a divergência. Reconhecer também as equivalências confirmadas em 04/11/2026: Casa do Celular MG/SP = LM Tech Store Ltda.; Vieira de Araujo e Cia. Ltda. = Araujo & Salomão Ltda. – ME/Funerária Plasfran. Não repetir pendência por essas denominações; consultar o roteamento para preservar o responsável e a identificação documental.
+3. Atribuir as demandas da carteira Casa no Celular/Casa do Celular a Ianna (Ianna Brena/IANN), conforme mapeamento institucional, corrigindo auxiliar antigo sem nova confirmação. Classificar o ato e identificar a providência concreta. Separar ordem para o cliente de ordem para a parte contrária. Não atribuir ao cliente prazo da parte contrária.
 4. Comparar CIs do mesmo processo pelo teor, ID da decisão, dispositivo, objeto, publicação e destinatário. Verificar duplicidade mesmo se o programa disser “ato diferente”. Não deduplicar apenas por assunto, nome ou redação padronizada.
 5. Definir tarefa oficial principal e cada complementar obrigatória, com finalidade, responsável, data e resumo próprios.
-6. Identificar todo prazo: manifestação, emenda, pagamento, depósito, preparo, laudo, quesitos, provas, contrarrazões, embargos e recurso. Não omitir prazo porque não cabe recurso.
+6. Aplicar o prazo expresso do ato à obrigação correspondente. Se ausente, indicar o prazo legal aplicável ao rito/providência; não bloquear apenas por ausência de prazo expresso. Não inventar termo inicial nem substituir prazo expresso por subsidiário. Identificar todo prazo: manifestação, emenda, pagamento, depósito, preparo, laudo, quesitos, provas, contrarrazões, embargos e recurso. Não omitir prazo porque não cabe recurso.
 7. Identificar o meio e o prazo legal de referência sem decidir pelo advogado nem suprimir controles preventivos; conferir publicação efetiva, duração e regras especiais; aplicar a contagem simplificada abaixo. Distinguir a contagem simplificada solicitada de vencimento jurídico oficialmente validado.
 8. Aplicar a data operacional correta, inclusive exceções a D-2. Não relançar para data já passada: manter a data original de referência e indicar urgência/atraso à Controladoria.
 9. Elaborar resumo curto que permita lançar a tarefa sem reconstruir os dados.
@@ -34,12 +38,22 @@ Privilegiar o documento atual para os fatos do caso. Não tratar uma análise au
 
 ## Escolha entre análise, minuta e ciência
 
+### Verificar primeiro se há providência concreta para o cliente
+
+Antes de escolher a tarefa, identificar: (1) o que o ato determina; (2) quem deve agir; (3) se há obrigação, prejuízo, vício aparente ou questão jurídica concreta a avaliar pelo advogado agora. Não presumir necessidade de análise apenas porque o ato defere um pedido, altera o andamento ou tem conteúdo decisório. A ausência de prazo, isoladamente, também não basta para escolher ciência.
+
+Para despacho que apenas suspende o prazo de obrigação, determina consulta/diligência pela secretaria ou pelo próprio juízo e manda aguardar resultado/nova intimação, indicar **CIÊNCIA da área**, quando não houver providência atual do cliente nem questão jurídica concreta identificada. Não abrir análise, minuta ou controles preventivos de embargos/recurso apenas por cautela abstrata. Esta regra prevalece sobre referências genéricas a decisões favoráveis ou efeitos sobre o cliente; preservar as análises obrigatórias de sentença, acórdão, homologação, RPV e demais hipóteses específicas desta skill.
+
+Se houver ordem dirigida ao cliente, indeferimento/prejuízo, obrigação ainda exigível, vício aparente ou questão jurídica concreta, indicar a tarefa adequada e explicar a providência. Não transformar todo ato denominado “despacho” em ciência. Preservar a denominação documental no resumo (ex.: DESPACHO); o título sozinho não define a tarefa.
+
+Exemplo confirmado — processo 0000539-19.2024.5.07.0029, despacho ID fc972df: suspende o prazo da obrigação de fazer até identificar dependentes do falecido e determina consulta ao Prevjud pela unidade judicial. Sem providência atual para os reclamados: `CIÊNCIA (TRABALHISTA) 2026`, sem prazos recursais. Resumo: “CIÊNCIA — Suspenso o prazo para cumprimento da obrigação de fazer até a identificação dos dependentes do falecido. Determinada consulta ao Prevjud pela unidade judicial. Aguardar nova intimação.”
+
 - Indicar sempre análise da área para sentença, acórdão ou decisão que exija avaliação jurídica, inclusive favorável. Reservar ao advogado a escolha da providência seguinte; não abrir minuta recursal antes dessa análise.
 - Para sentença que encerre o processo/fase ou homologue acordo envolvendo o cliente, indicar sempre análise, mesmo favorável, cumprida, com renúncia recursal ou arquivamento. Não substituir por ciência.
 - Conferir sentença e acordo/aditivos quanto a partes, valores, parcelas, vencimentos, multas, quitação, obrigações, custas, honorários e alcance da extinção. Se faltar instrumento, registrar `PENDENTE – CONFERIR A SENTENÇA COM O ACORDO E DOCUMENTOS DOS AUTOS`. Não afirmar que a homologação está correta apenas pelo relato da sentença.
 - Incluir na finalidade e no resumo da análise a conferência jurídica e o prosseguimento do contato com o cliente para informar o resultado, explicar o encerramento e esclarecer providências. A tarefa de análise já gera o contato com o cliente no fluxo do VIOS. Não indicar nem criar tarefa separada de contato para duplicar essa providência.
 - Indicar minuta diretamente quando a ordem já definir a manifestação objetiva a apresentar. Não abrir recurso automaticamente quando depender de análise do advogado. Contrarrazões expressamente determinadas admitem minuta direta.
-- Indicar ciência para distribuição simples, mero aviso ou ato sem prazo/providência/conferência jurídica para o cliente. Na Execução, mero aviso de movimentação sem avaliação jurídica nem efeito sobre o cliente pode gerar ciência; sentença/acórdão/decisão para avaliação jurídica exige análise.
+- Indicar ciência para distribuição simples, mero aviso ou despacho abrangido pelo filtro acima, sem providência atual nem conferência jurídica concreta para o cliente. Na Execução, mero aviso de movimentação sem avaliação jurídica concreta pode gerar ciência; sentença/acórdão/decisão para avaliação jurídica exige análise.
 - Não usar ciência para compensar falta do teor, falta de identificação de quem recorreu ou dúvida de área/cliente.
 
 ## Datas das tarefas — aplicar a exceção antes da regra geral
@@ -72,20 +86,21 @@ Guardar vencimentos de referência, fundamento, duração e o critério simplifi
 
 ```text
 PRAZO FATAL: [data de controle D-2]
-PRIORIDADE RPV
 [resumo breve da providência ou do ato]
 ```
 
-Usar `PRIORIDADE RPV` somente em RPV/precatório. Para outra prioridade da Suhiane, identificar a prioridade pertinente sem chamá-la de RPV. Na minuta de dados de requisitórios, seguir o exemplo específico do usuário: `PRAZO FATAL: [D-2]`, título da minuta e breve despacho, sem linhas de responsável, auxiliar ou marcador final de prioridade. Registrar a prioridade nos campos de controle. Na análise jurídica de sentença/acórdão/decisão ligada a RPV, manter as duas linhas recursais e o marcador de prioridade abaixo, sem terceira linha de prazo fatal.
+No TXT, não escrever marcadores `PRIORIDADE ...` na descrição; refletir a prioridade na DATA e guardar o motivo no controle externo. Na minuta de dados de requisitórios, seguir o exemplo específico do usuário: `PRAZO FATAL: [D-2]`, título da minuta e breve despacho, sem linhas de responsável, auxiliar ou marcador final de prioridade. Registrar a prioridade nos campos de controle. Na análise jurídica de sentença/acórdão/decisão ligada a RPV, manter as duas linhas recursais, sem terceira linha de prazo fatal nem marcador de prioridade na descrição.
 
 
 ## Prazos para embargos e recurso
 
+Aplicar estes controles somente após definir que o ato exige análise jurídica. Despacho classificado como CIÊNCIA pelo filtro anterior não recebe datas de embargos/recurso nem prazo fatal inventado.
+
 - Para toda análise jurídica de sentença, acórdão ou decisão, apresentar obrigatoriamente as duas datas abaixo, em D-2, nesta ordem, sem acrescentar `PRAZO FATAL`:
 
 ```text
-PRAZO DE EMBARGOS: DD/MM/AAAA
-PRAZO DE RECURSO: DD/MM/AAAA
+PRAZO PARA EMBARGOS: DD/MM/AAAA
+PRAZO PARA RECURSO: DD/MM/AAAA
 [SENTENÇA/ACÓRDÃO/DECISÃO e resumo breve]
 ```
 
@@ -103,17 +118,17 @@ PRAZO DE RECURSO: DD/MM/AAAA
 - Perícia médica previdenciária: indicar `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026` e `MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026` para quesitos e assistente técnico. Preservar prazo específico ou marcar pendência, sem presumir prazo não confirmado. Laudo já juntado, sem nova perícia, não gera tarefa de comparecimento nem de quesitos automaticamente.
 - Perícia social previdenciária: indicar `AVISAR PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026`, para Leticya, e `INSTRUÇÃO PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026` na mesma data operacional. Confirmar responsável pela instrução, sem presumir que seja o do aviso. Se a visita for expressamente sem agendamento, indicar ambas sem inventar data/hora de comparecimento; se os dados existirem em ID/evento/expediente ainda não lido, bloquear e listar a pendência fora do arquivo. Se solicitar dados/documentos, acrescentar minuta previdenciária para Suhiane, com prazo e data operacional próprios, preservando o prazo jurídico. Não substituir uma tarefa pela outra.
 - No aviso social, usar o aviso padrão em negrito e sublinhado e, abaixo, breve trecho principal entre aspas. Consultar o POP para o texto.
-- Manifestação sobre laudo previdenciário ou proposta de acordo do INSS: usar a tarefa oficial de petição intermediária/réplica/impugnação laudo. Conferir eventual prazo específico nos autos antes de validar prazo legal subsidiário.
+- Manifestação sobre laudo previdenciário ou proposta de acordo do INSS: usar a tarefa oficial de petição intermediária/réplica/impugnação laudo. Usar o prazo expresso; se o expediente não trouxer prazo, aplicar o legal subsidiário pertinente (laudo: art. 477, §1º, CPC, 15 dias, quando aplicável), identificando a premissa fora do resumo. Não exigir consulta manual unicamente porque o expediente completo omitiu prazo; manter pendência se houver indicação concreta de prazo especial ainda não disponível.
 - Pagamento pelo cliente no Trabalhista: indicar primeiro análise da área; não gerar guia nem minuta inicial. A análise gera contato para avisar e consultar o cliente antes da guia. Após autorização e pagamento, seguir a comprovação nos autos.
 - Pagamento pelo cliente no Cível: indicar somente análise e minuta cível para comprovar pagamento/depósito/recolhimento. A análise já gera automaticamente o contato com o cliente; não indicar `ENTRAR EM CONTATO COM O CLIENTE 2026` como tarefa adicional. Aplicar a custas, honorários e parcelamento; não substituir por ciência ou guia isolada.
 - Petições intermediárias da Execução da Tamira, inclusive opções equivalentes a `MINUTAR PETIÇÃO (EXECUÇÃO)`: informar Tamira como auxiliar e Breno como responsável nos campos próprios, fora da descrição. Não estender automaticamente a recursos, análise, cálculos ou outras tarefas especializadas.
-- Audiência: identificar tipo, data, horário, formato, local/link, ID e senha. Sempre que a intimação fornecer link encurtado, usar esse link no campo LINK/LOCAL e na descrição da audiência, conforme o POP. Não tratar audiência inicial automaticamente como UNA. Em audiência cível com cliente réu, conferir contestação; se ausente, indicar também `MINUTAR INICIAL/CONTESTAÇÃO/EMBARGOS À EXECUÇÃO (CÍVEL) 2026` para defesa.
+- Audiência: exigir somente tipo/modelo, data, horário, formato e link ou local. ID da reunião, senha e demais dados complementares são opcionais: inserir quando informados e omitir quando ausentes, sem bloquear por sua falta. Ausência desses campos não prova acesso livre. Para sustentação oral e sua viabilidade, link/local são opcionais: inserir quando informados e omitir quando ausentes, sem bloquear o TXT nem exigir dispensa a cada caso. Preservar data e horário confirmados, sem inventar endereço ou afirmar acesso livre. A ausência de link/local não confirma cabimento nem inscrição; a viabilidade permanece sujeita à avaliação do advogado. Sempre que a intimação fornecer link encurtado, usar esse link no campo LINK/LOCAL e na descrição da audiência, conforme o POP. Não tratar audiência inicial automaticamente como UNA. Em audiência cível com cliente réu, conferir contestação; se ausente, indicar também `MINUTAR INICIAL/CONTESTAÇÃO/EMBARGOS À EXECUÇÃO (CÍVEL) 2026` para defesa.
 - Cálculos trabalhistas: usar `MINUTAR PETIÇÃO INTERMEDIÁRIA DIVERSA (TRABALHISTA) 2026` quando não houver opção específica.
 - Recurso/agravo trabalhista genérico: verificar quem recorreu e se há abertura de resposta. Parte contrária com resposta exigida: minuta; recurso só do cliente e sem providência: ciência. Se não identificável, usar `NÃO ABRIR TAREFA AINDA - CONFERIR NO PJE QUEM INTERPÔS O AGRAVO/RECURSO PARA DEFINIR SE É MINUTAR OU CIÊNCIA`. Não criar tarefa apenas para o advogado buscar essa informação.
 
 ## Saída para análise de arquivo VIOS
 
-Apresentar uma CI por bloco, na ordem e numeração originais, mesmo quando duplicada. Nunca fundir cabeçalhos. Separar campos e tarefas com linhas em branco. Repetir dados próprios de cada processo, sem misturar clientes, IDs, valores ou datas.
+Na análise humana, apresentar uma CI por bloco, na ordem e numeração originais, mesmo quando duplicada. No TXT do bot, aplicar a seleção e o modelo de `references/saida-txt-bot.md`: excluir duplicadas e pendências, preservando a ordem e a numeração de origem das CIs incluídas. No TXT, não incluir cabeçalhos humanos, numeração de itens nem campo de processo: a CI é a chave. Usar os seis campos em linhas consecutivas e separar tarefas por uma linha contendo somente `---`. No chat, usar o padrão humano abaixo para as pendências. Repetir dados próprios de cada processo, sem misturar clientes, IDs, valores ou datas.
 
 ```text
 ## [n]. CI [número] — Processo [número]
@@ -130,8 +145,8 @@ Prazo fatal: [vencimento jurídico da obrigação/meio identificado, ou pendênc
 [Cabeçalho de prazo conforme a tabela; separar data prioritária do controle D-2]
 
 Cabe recurso? [meio e análise de cabimento]
-[PRAZO DE EMBARGOS: data D-2, nas análises jurídicas]
-[PRAZO DE RECURSO: data D-2, nas análises jurídicas]
+[PRAZO PARA EMBARGOS: data D-2, nas análises jurídicas]
+[PRAZO PARA RECURSO: data D-2, nas análises jurídicas]
 
 Resumo para tarefa 1:
 [Linhas operacionais apropriadas e texto curto pronto para copiar]
@@ -162,6 +177,6 @@ Conferir uma linha interna por CI: cliente, destinatário, ato/ID, natureza, fas
 
 ## Arquivo de lançamento e pendências fora do arquivo
 
-Respeitar o modelo de arquivo fornecido pelo usuário; entregar somente um arquivo quando solicitado. Incluir nesse arquivo apenas tarefas completas e prontas. Não criar tarefa para mandar o advogado descobrir informação necessária à triagem. Quando faltar leitura de ID, evento ou expediente, data/horário/local, responsável ou outro dado indispensável, excluir a tarefa afetada do arquivo e listar no chat, fora dele: CI, processo, tarefa bloqueada, dado faltante e conferência exata a realizar no sistema. Informar totais de CIs conferidas, tarefas prontas, duplicidades e pendências, sem confundir quantidade de tarefas com quantidade de CIs. Preservar todas as CIs na conferência interna e explicar qualquer exclusão.
+Respeitar o modelo institucional anexado e entregar por padrão somente um TXT UTF-8 para o bot ao analisar exportações CSV/Excel do VIOS, conforme `references/saida-txt-bot.md`. Não entregar `.md`, `.csv`, `.docx` ou `.zip` em substituição ao TXT, salvo pedido expresso. Incluir nesse arquivo apenas tarefas completas e prontas. Não criar tarefa para mandar o advogado descobrir informação necessária à triagem. Quando faltar leitura de ID, evento ou expediente, data/horário/local, responsável ou outro dado indispensável, excluir a tarefa afetada do arquivo e listar no chat, fora dele: CI, processo, tarefa bloqueada, dado faltante e conferência exata a realizar no sistema. Informar totais de CIs conferidas, tarefas prontas, duplicidades e pendências, sem confundir quantidade de tarefas com quantidade de CIs. Preservar todas as CIs na conferência interna e explicar qualquer exclusão.
 
 Manter a descrição breve, pronta para copiar, sem responsáveis/auxiliares, fundamentos extensos, transcrição longa, instruções de cadastro ou OBS genérica. Consultar os modelos curtos de audiência e sustentação no POP. Confirmar responsável e auxiliar nos campos próprios; nunca atribuir tarefa a Sarah Pontes/Controladoria, nem usar seu nome como alternativa à falta de responsável.

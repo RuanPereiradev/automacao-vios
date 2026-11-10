@@ -17,7 +17,7 @@ from flask import (Flask, Response, abort, jsonify, redirect, render_template, r
                    send_from_directory, url_for)
 
 from bot import albi, config, duplicidade, envio_txt, eventos, jarvis, orelha, skill, zangao
-from bot.lancamento import REGISTRO, lancar, ler_intimacao
+from bot.lancamento import REGISTRO, RESULTADOS, lancar, ler_intimacao
 from bot.login import fazer_login
 from bot.navegador import criar_driver
 
@@ -246,6 +246,60 @@ def conferir_duplicatas_no_vios(driver, aptas, capturas, lancadas, timeout):
     return seguir
 
 
+# tela "Envio automático": o que aconteceu com cada CI (rótulo e classe do selo)
+RESULTADO_ROTULO = {
+    "gravada": ("s-ok", "Lançada no VIOS"), "bloqueada": ("s-erro", "Não lançada — falta informação"),
+    "erro": ("s-erro", "Não lançada — erro"), "duplicada": ("s-ja", "Duplicada (não lançada)"),
+    "ja_no_vios": ("s-ja", "Já tinha tarefa no VIOS"), "conferencia": ("s-erro", "Não lançada — conferência humana"),
+    "retirada": ("s-erro", "Não lançada — tirada da lista"), "aguardando": ("s-andamento", "Ainda não enviada"),
+}
+
+
+def _dias_analisados(pasta_saida):
+    """Análises do dia inteiro (saida/analise_<dia>.json, sem as de CIs avulsas), da mais nova para a mais antiga."""
+    arquivos = [a for a in Path(pasta_saida).glob("analise_*.json") if "_ci-" not in a.name]
+    return [a.stem[len("analise_"):] for a in sorted(arquivos, key=lambda a: a.stat().st_mtime, reverse=True)]
+
+
+def montar_automatico(pasta_saida, dia):
+    """Uma linha por intimação analisada no dia: intimação -> análise -> resultado do lançamento."""
+    pasta = Path(pasta_saida)
+    analises = json.loads((pasta / f"analise_{dia}.json").read_text(encoding="utf-8"))
+    capturas = _capturas(pasta)
+    registro = json.loads((pasta / REGISTRO).read_text(encoding="utf-8")) if (pasta / REGISTRO).exists() else {}
+    anotados = json.loads((pasta / RESULTADOS).read_text(encoding="utf-8")) if (pasta / RESULTADOS).exists() else {}
+    linhas = []
+    for a in analises:
+        ci = a.get("ci", "")
+        item = capturas.get(ci, {})
+        link = a.get("link_lancar") or item.get("link_lancar", "")
+        if ci in registro:
+            estado, mensagem, quando = "gravada", "", registro[ci].get("quando", "")
+        elif ci in anotados:
+            estado, mensagem, quando = anotados[ci]["estado"], anotados[ci].get("mensagem", ""), anotados[ci].get("quando", "")
+        elif a.get("duplicada_de"):
+            estado, mensagem, quando = "duplicada", f"Cópia da CI {a['duplicada_de']}: vale a tarefa da original.", ""
+        elif a.get("bloqueios"):
+            estado, mensagem, quando = "bloqueada", "; ".join(a["bloqueios"]), ""
+        else:
+            estado, mensagem, quando = "aguardando", "", ""
+        classe, rotulo = RESULTADO_ROTULO.get(estado, ("s-ja", estado))
+        linhas.append({
+            "ci": ci, "processo": a.get("processo", ""), "cliente": a.get("cliente") or item.get("cliente", ""),
+            "posicao": a.get("posicao_cliente", ""), "auxiliar": a.get("auxiliar", ""),
+            "disponibilizacao": a.get("disponibilizacao", ""), "publicacao": a.get("publicacao", ""),
+            "teor": item.get("texto", ""), "ato": a.get("ato", ""), "area": a.get("area", ""),
+            "do_que_se_trata": a.get("do_que_se_trata", ""), "tarefas": a.get("tarefas", []),
+            "alertas": a.get("alertas", []), "bloqueios": a.get("bloqueios", []), "modelo": a.get("modelo", ""),
+            "custo": a.get("custo_us") or 0, "estado": estado, "lancada": estado == "gravada",
+            "classe": classe, "rotulo": rotulo, "mensagem": mensagem, "quando": quando,
+            "gravadas": registro.get(ci, {}).get("tarefas", []),
+            "link_lancar": link,
+            "link_conferencia": link.replace("int-lanca.php", "confere-intimacao-lancada.php") if link else "",
+        })
+    return linhas
+
+
 def _cis_do_form(form):
     """CIs e tarefas da tela de edição. Campos: g{n}_ci e g{n}_t{m}_{campo}; tarefa marcada
     para remover sai; linhas fora do formato (soltas) continuam até a pessoa apagar."""
@@ -354,6 +408,24 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         return render_template("envio.html", tela="historico", envios_todos=todos, resumo=resumo_envio,
                                gravadas=gravadas, total_tarefas=sum(len(r.get("tarefas", [])) for r in registro.values()),
                                ocupado=trava.locked())
+
+    @app.route("/automatico")
+    @app.route("/automatico/<dia>")
+    def automatico(dia=None):
+        """Envio automático: cada intimação do dia -> análise da IA -> o que foi lançado (ou por que não)."""
+        dias = _dias_analisados(pasta_saida)
+        if not dias:
+            return render_template("automatico.html", dias=[], dia="", linhas=[], ocupado=trava.locked())
+        if dia not in dias:
+            if dia:
+                abort(404)
+            dia = dias[0]
+        linhas = montar_automatico(pasta_saida, dia)
+        return render_template("automatico.html", dias=dias, dia=dia, linhas=linhas, ocupado=trava.locked(),
+                               lancadas=sum(l["lancada"] for l in linhas),
+                               tarefas=sum(len(l["gravadas"]) for l in linhas),
+                               custo=sum(l["custo"] for l in linhas),
+                               modelos=sorted({l["modelo"] for l in linhas if l["modelo"]}))
 
     @app.route("/ler", methods=["POST"])
     def ler():

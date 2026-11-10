@@ -8,7 +8,7 @@ Identificar cliente destinatário, meio/providência, rito, órgão que praticou
 
 Distinguir disponibilização, publicação e ciência eletrônica. Não tratar data de captura/geração do relatório como publicação. No DJEN, confirmar a publicação efetiva e contar do primeiro dia útil subsequente, conforme as regras aplicáveis. Intimação pessoal/portal pode ter regra distinta: verificar a modalidade antes de substituir o termo inicial.
 
-Aplicar prazo expresso confirmado para a providência; se divergir da regra legal, registrar a divergência e a necessidade de conferência, sem alongar silenciosamente o controle. Se faltar prazo no texto, usar o legal apenas quando confirmada sua aplicação ao rito e inexistir prazo específico pertinente nos autos. Preservar controle preventivo identificado se a validação ainda estiver pendente.
+Aplicar prazo expresso confirmado para a providência; se divergir da regra legal, registrar a divergência e a necessidade de conferência, sem alongar silenciosamente o controle. Se faltar prazo no expediente completo, indicar o prazo legal aplicável ao rito/providência, identificando eventual aplicação subsidiária. A ausência de prazo expresso, por si só, não bloqueia a tarefa nem exige consulta. Exigir conferência apenas se faltar termo inicial, não houver regra aplicável identificável ou existir indicação concreta de prazo especial ainda não disponível. Preservar controle preventivo identificado se a validação ainda estiver pendente.
 
 ## Prazos legais de referência
 
@@ -55,6 +55,8 @@ Antes de sugerir omissão ou majoração do art. 85, §11, CPC, conferir honorá
 A tarefa é de manifestação sobre laudo, não de comparecimento a perícia ou de análise de sentença. Usar quinze dias do art. 477, §1º, CPC apenas sob premissa de aplicação subsidiária adequada e inexistência de prazo específico no expediente/decisão. Identificar essa premissa quando só houver trecho resumido.
 
 ## Apresentar os resultados
+
+Definir primeiro a tarefa pelo filtro de providência concreta do SKILL.md. Se o despacho resultar apenas em CIÊNCIA, sem providência atual do cliente nem questão jurídica concreta, não calcular nem inserir controles de embargos/recurso. A exigência de duas datas aplica-se às tarefas de análise jurídica, não a todo expediente intitulado despacho.
 
 Aplicar integralmente os cabeçalhos e datas do SKILL.md. Em análise jurídica de sentença/acórdão/decisão, calcular e mostrar ambas as datas em D-2, inclusive como controle preventivo quando houver restrição de cabimento; reservar a decisão ao advogado. Não substituir datas por `NÃO CABE`. Indicar a ressalva jurídica nos campos externos, sem afirmar admissibilidade. Na homologação de conciliação em JEC, conservar a ressalva do art. 41 fora da descrição e não chamar o controle preventivo de recurso validado.
 

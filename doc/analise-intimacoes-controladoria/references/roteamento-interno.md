@@ -14,11 +14,30 @@ Conferir em conjunto departamento, responsável atual, auxiliar e providência; 
 | Joana/JOAN | Cível | Validar eventual transferência para Execução/Tamira |
 | Lili/LILI | Cível | Validar eventual transferência para Execução/Tamira |
 | Suhiane/SUH | Trabalhista Reclamante ou Previdenciário | Diferenciar por partes, teor, órgão e CNJ |
+| Ianna/IANN (Ianna Brena) | Cível — demandas da Casa no Celular/Casa do Celular | Responsável confirmada pela usuária para todas as demandas dessa carteira; corrigir auxiliares antigos sem repetir consulta |
 | Tamira/TAMI | Execução | Se efetivamente responsável, usar tarefa de Execução; se o caso/tarefa for previdenciário, corrigir para Suhiane |
 | Johnys/JOHN | Trabalhista Reclamada | Substituir Carlos/CARL em tarefa trabalhista; Carlos não integra mais o Trabalhista |
 | Breno | Petições intermediárias da Execução da Tamira | Marcar como responsável operacional, preservando Tamira como auxiliar |
 
 SUH em processo da Justiça do Trabalho: usar Trabalhista Reclamante, inclusive na fase executiva, salvo transferência interna confirmada. SUH em benefício/INSS: Previdenciário, ressalvada a mesma confirmação. Palavra “execução” ou classe judicial não basta para mudar o setor.
+
+## Equivalências e correções confirmadas
+
+Atribuir todas as demandas da carteira Casa no Celular/Casa do Celular a Ianna (Ianna Brena, código IANN), conforme orientação expressa de 03/11/2026, inclusive quando a exportação trouxer auxiliar anterior. Nas CIs 42629, 42630, 42626 e 42631 deste lote, aplicar Ianna; conservar nomes e posições das partes. O responsável confirmado não dispensa o teor do ato para definir a tarefa. Não criar tarefa genérica se houver apenas “Proferido despacho. Intimem-se.” sem o documento.
+
+Reconhecer ITBN TELEFONIA LTDA (MATRIZ), A M AGUIAR TELEFONIA LTDA e RAV HOLDING LTDA como identificações do mesmo cliente para vínculo operacional, por confirmação expressa da usuária em 03/11/2026. Não perguntar novamente por essas diferenças; preservar o nome documental e não inferir identidade cadastral de CNPJ. Correções expressas de cliente/polo/setor prevalecem sobre coluna desatualizada do CSV. Não considerar o inventariado cliente apenas por aparecer nessa coluna. Não inferir o nome completo de auxiliares sem mapeamento confirmado.
+
+### Equivalências confirmadas em 04/11/2026
+
+- Reconhecer Casa do Celular MG/SP e LM Tech Store Ltda. como o mesmo cliente para vínculo operacional; atribuir a carteira a Ianna (IANN), inclusive na CI 42682. Não repetir consulta de vínculo entre essas denominações.
+- Reconhecer Vieira de Araujo e Cia. Ltda. e Araujo & Salomão Ltda. – ME/Funerária Plasfran como a mesma empresa para vínculo operacional, inclusive na CI 42677. No Trabalhista, corrigir Carlos para Johnys.
+- Preservar a denominação e posição processual do expediente; não inferir identidade de CNPJ, fusão ou equivalência com outras empresas.
+
+### Equivalências confirmadas em 09/11/2026
+
+- Reconhecer FR INFORMÁTICA LTDA (MATRIZ) e ANTONIO B DE PAIVA SOUSA INFORMÁTICA - ME como o mesmo cliente para vínculo operacional, inclusive na CI 42793, processo 0000806-25.2023.5.07.0029. Não repetir pendência por essas denominações; preservar a denominação documental e o polo do cliente.
+- Reconhecer RAV HOLDING LTDA e R V COMÉRCIO DE TELEFONIA LTDA como o mesmo cliente para vínculo operacional, inclusive na CI 42771, processo 0005947-23.2026.8.05.0256. Aplicar em conjunto com as equivalências já confirmadas de RAV Holding. A confirmação do vínculo não dispensa a leitura do teor do ato para definir a tarefa.
+- Não inferir identidade de CNPJ, fusão societária ou equivalência com outras empresas sem confirmação.
 
 ## Divergências e informações ausentes
 
@@ -50,7 +69,7 @@ Tratar como prioritários determinação de expedição, minuta, cálculos vincu
 
 Data: primeiro dia de expediente do escritório seguinte à publicação/recebimento válido. Preservar prazo jurídico e nunca adiá-lo por causa da rotina interna. Essa prioridade prevalece sobre D-2 e sobre a data genérica de análise, salvo providência mais urgente justificada.
 
-Seguir os cabeçalhos do SKILL.md: prazo único em D-2, depois `PRIORIDADE RPV`, depois resumo. Para análise jurídica, usar as duas datas recursais sem terceira linha. Na minuta de dados de requisitório, usar o exemplo específico sem nomes ou marcador final na descrição. O agendamento permanece no próximo dia de expediente do escritório; a data do cabeçalho não se torna vencimento jurídico.
+Seguir os cabeçalhos do SKILL.md: prazo único em D-2, depois resumo; no TXT, não inserir marcador de prioridade na descrição. Para análise jurídica, usar as duas datas recursais sem terceira linha. Na minuta de dados de requisitório, usar o exemplo específico sem nomes ou marcador final na descrição. O agendamento permanece no próximo dia de expediente do escritório; a data do cabeçalho não se torna vencimento jurídico.
 
 | Etapa | Tarefa |
 | --- | --- |

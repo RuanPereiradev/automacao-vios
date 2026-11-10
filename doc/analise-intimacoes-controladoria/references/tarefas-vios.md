@@ -10,7 +10,7 @@ Aplicar obrigatoriamente as datas, cabeçalhos exclusivos e modelos curtos do SK
 
 | Tarefa VIOS | Modelo de descrição |
 | --- | --- |
-| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (TRABALHISTA) 2026 | PRAZO DE EMBARGOS: DD/MM/AAAA<br>PRAZO DE RECURSO: DD/MM/AAAA<br>SENTENÇA/DECISÃO/ACÓRDÃO<br>[inserir se é sentença, decisão ou acórdão e abaixo colocar o dispositivo] |
+| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (TRABALHISTA) 2026 | PRAZO PARA EMBARGOS: DD/MM/AAAA<br>PRAZO PARA RECURSO: DD/MM/AAAA<br>SENTENÇA/DECISÃO/ACÓRDÃO<br>[inserir se é sentença, decisão ou acórdão e abaixo colocar o dispositivo] |
 | CIÊNCIA (TRABALHISTA) 2026 | CIÊNCIA<br>[inserir a parte principal da intimação] |
 | MINUTAR RECURSO/CONTRARRAZÕES AO RECURSO (TRABALHISTA) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES |
 | MINUTAR EMBARGOS DE DECLARAÇÃO/CONTRARRAZÕES (TRABALHISTA) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES |
@@ -30,7 +30,7 @@ Aplicar obrigatoriamente as datas, cabeçalhos exclusivos e modelos curtos do SK
 
 | Tarefa VIOS | Modelo de descrição |
 | --- | --- |
-| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (PREVIDENCIÁRIO) 2026 | PRAZO DE EMBARGOS: DD/MM/AAAA<br>PRAZO DE RECURSO: DD/MM/AAAA<br>SENTENÇA/DECISÃO/ACÓRDÃO<br>[inserir se é sentença, decisão ou acórdão e abaixo colocar o dispositivo] |
+| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (PREVIDENCIÁRIO) 2026 | PRAZO PARA EMBARGOS: DD/MM/AAAA<br>PRAZO PARA RECURSO: DD/MM/AAAA<br>SENTENÇA/DECISÃO/ACÓRDÃO<br>[inserir se é sentença, decisão ou acórdão e abaixo colocar o dispositivo] |
 | CIÊNCIA (PREVIDENCIÁRIO) 2026 | CIÊNCIA<br>[inserir a parte principal da intimação] |
 | MINUTAR EMBARGOS/RECURSO/CONTRARRAZÕES (PREVIDENCIÁRIO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES |
 | MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR MANIFESTAÇÃO AO LAUDO PERICIAL |
@@ -46,7 +46,7 @@ Aplicar obrigatoriamente as datas, cabeçalhos exclusivos e modelos curtos do SK
 
 | Tarefa VIOS | Modelo de descrição |
 | --- | --- |
-| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (EXECUÇÃO) 2026 | PRAZO DE EMBARGOS: DD/MM/AAAA<br>PRAZO DE RECURSO: DD/MM/AAAA<br>SENTENÇA/DECISÃO/ACÓRDÃO<br>[inserir se é sentença, decisão ou acórdão e abaixo colocar o dispositivo] |
+| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (EXECUÇÃO) 2026 | PRAZO PARA EMBARGOS: DD/MM/AAAA<br>PRAZO PARA RECURSO: DD/MM/AAAA<br>SENTENÇA/DECISÃO/ACÓRDÃO<br>[inserir se é sentença, decisão ou acórdão e abaixo colocar o dispositivo] |
 | MINUTAR EXECUÇÃO DE SENTENÇA (EXECUÇÃO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR CUMPRIMENTO DE SENTENÇA |
 | MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO) 2026) | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR [indicar petição, ex.: dados bancários] |
 | MINUTAR EMBARGOS À EXECUÇÃO (EXECUÇÃO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR EMBARGOS |
@@ -57,14 +57,14 @@ Aplicar obrigatoriamente as datas, cabeçalhos exclusivos e modelos curtos do SK
 | CIÊNCIA (EXECUÇÃO) 2026 | CIÊNCIA<br>[inserir a parte principal da intimação] |
 | MINUTAR PETIÇÃO EXECUÇÃO 2026 (MINUTAR PETIÇÃO (EXECUÇÃO) 2026) | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR PETIÇÃO [inserir a parte principal da intimação] |
 | AUDIÊNCIA DE CONCILIAÇÃO (EXECUÇÃO) 2026 | AUDIÊNCIA DE CONCILIAÇÃO<br>DATA:<br>HORA:<br>LINK/LOCAL: |
-| ANALISAR MINUTA PRECATORIO/RPV (EXECUCÃO) 2026 | PRAZO FATAL: DD/MM/AAAA<br>PRIORIDADE RPV<br>[inserir informação importante da intimação] |
+| ANALISAR MINUTA PRECATORIO/RPV (EXECUCÃO) 2026 | PRAZO FATAL: DD/MM/AAAA<br>[inserir informação importante da intimação] |
 | MINUTAR PETIÇÃO (EXECUÇÃO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR PETIÇÃO [informar qual petição e destacar a parte principal da intimação] |
 
 ### Cível
 
 | Tarefa VIOS | Modelo de descrição |
 | --- | --- |
-| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026 | PRAZO DE EMBARGOS: DD/MM/AAAA<br>PRAZO DE RECURSO: DD/MM/AAAA<br>SENTENÇA/DECISÃO/ACÓRDÃO<br>[inserir se é sentença, decisão ou acórdão e abaixo colocar o dispositivo] |
+| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026 | PRAZO PARA EMBARGOS: DD/MM/AAAA<br>PRAZO PARA RECURSO: DD/MM/AAAA<br>SENTENÇA/DECISÃO/ACÓRDÃO<br>[inserir se é sentença, decisão ou acórdão e abaixo colocar o dispositivo] |
 | CIÊNCIA (CÍVEL) 2026 | CIÊNCIA<br>[inserir a parte principal da intimação] |
 | MINUTAR RECURSO/CONTRARRAZÕES (CÍVEL) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES<br>Observação: recursos são na tarefa de analisar. |
 | MINUTAR EMBARGOS DE DECLARAÇÃO/CONTRARRAZÕES (CÍVEL) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR CONTRARRAZÕES<br>Observação: recursos são na tarefa de analisar. |

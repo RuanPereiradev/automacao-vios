@@ -134,6 +134,10 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 
 - **Trocar de IA:** `LLM_PROVEDOR=openai` ou `anthropic` no `.env` (+ a chave).
   Cada provedor fica num arquivo em `bot/ia/`; os dois devolvem o mesmo JSON.
+- **Modelo mais barato (10/11/2026):** `LLM_MODELO=claude-haiku-5-5` e `LLM_MODELO_SIMPLES=`
+  vazio (um modelo só). Custo estimado com os tokens reais de 26–27/10, em lote: ~US$ 0,0013
+  por intimação (~US$ 0,70 por mês), contra ~US$ 0,05 do Opus. O Haiku não tem fallback de
+  recusa no servidor: o bot manda o pedido sem esse campo.
 - **Disponibilização × publicação:** os arquivos `intimacoes_*`/`analise_*` levam
   a data de **disponibilização** pesquisada no VIOS; a publicação é o 1º dia útil
   seguinte (Lei 11.419/2006, art. 4º, § 3º). O relatório mostra as duas datas no
@@ -524,10 +528,50 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `regras-do-programa.md`, `arquivo-para-o-robo.md` e `pedido-arquivo-robo.txt`
   foram reescritos para as regras novas (exemplos conferidos pelo leitor do
   robô) e a skill única foi regerada.
-- **Pendente:** a análise pela API (`./rodar_analise.sh`, `bot/prazos.py` e
-  `bot/analise.py`) ainda calcula as datas e monta a descrição pelas regras
-  antigas (feriados, `NÃO CABE`, rótulos antigos). O fluxo em uso (análise no
-  chat + página de envio) já segue a skill nova.
+- ~~Pendente: a análise pela API ainda monta a descrição pelas regras antigas~~ —
+  resolvido no Passo 37 (10/11/2026).
+- **Feriado é dia útil no código (10/11/2026):** `bot/prazos.py` passou a usar a
+  contagem simplificada (`PRAZO_CONTAGEM=simplificada`, o padrão): só sábado e
+  domingo ficam de fora; feriados, pontos facultativos, **recesso de 20/12 a 20/01**
+  e suspensões contam como dia útil. Vale para prazo fatal, D-2, próximo dia útil
+  (prioridade RPV/emenda, aviso de perícia social) e para as datas refeitas na
+  página de revisão. Exemplo da skill: publicação 29/10/2026 + 5 dias = 05/11/2026,
+  D-2 = 03/11/2026. O relatório mostra no lugar do calendário a frase "Contagem
+  solicitada: segunda a sexta, incluindo feriados; vencimentos sem validação do
+  calendário judicial oficial." Com a contagem simplificada, a pesquisa de feriados
+  na internet (Passo 13) não roda e não há mais alerta de feriado municipal não
+  cadastrado. Para voltar ao calendário antigo: `PRAZO_CONTAGEM=feriados` no `.env`.
+
+### Passo 37 — Skill de 10/11/2026 na análise pela API (Claude Haiku 5.5)
+- A Controladoria mandou a skill revisada (`doc/skill-original/7_2026-11-10_txt-bot-duplicadas/`),
+  que passou a ser a skill do projeto (`doc/analise-intimacoes-controladoria/`). Ela traz
+  `references/saida-txt-bot.md` (formato do `.txt` do chat), que o bot não usa no prompt.
+- A análise pela API (`./rodar_analise.sh`) segue as regras novas:
+
+| Tarefa | DATA no VIOS | Linha de prazo na descrição |
+| --- | --- | --- |
+| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO | mesmo dia (corte das 12h no lançamento) | `PRAZO PARA EMBARGOS:` e `PRAZO PARA RECURSO:`, sempre os dois, em D-2 (nunca `NÃO CABE` nem `PRAZO FATAL`) |
+| Minutas e demais tarefas com prazo | D-2 | `PRAZO FATAL D -2:` |
+| RPV/precatório (prioridade) | próximo dia útil após a publicação | `PRAZO FATAL:` com o D-2 do prazo |
+| Emenda da Suhiane (prioridade) | próximo dia útil após a publicação | `PRAZO FATAL D -2:` com o D-2 do prazo |
+
+- Análise sem prazo para calcular embargos ou recurso, ou tarefa com prazo sem data para a
+  linha, não é lançada (bloqueio). Linhas `PRIORIDADE ...` saem da descrição.
+- Modelo: `LLM_MODELO=claude-haiku-5-5`, `LLM_MODELO_SIMPLES=` vazio (ver Passo 12).
+
+### Passo 38 — Tela "Envio automático" (`/automatico`)
+- Na página do Sam (`./rodar_envio.sh`), botão **Envio automático** ou
+  `http://<IP>:5001/automatico` (escolher outro dia: `/automatico/2026-11-09`).
+- Uma linha por intimação analisada no dia: **Intimação → Análise → O que foi**.
+
+| O que foi | De onde vem |
+| --- | --- |
+| Lançada no VIOS (tarefas, data, responsáveis, link "Ver no VIOS") | `saida/lancamentos.json` |
+| Não lançada — falta informação / erro / duplicada / já tinha tarefa / conferência humana / tirada da lista | `saida/automatico_resultados.json` (o lançamento com `--confirmar` grava o motivo de cada CI) |
+| Ainda não enviada | análise feita, lançamento ainda não rodou |
+
+- A página lê a pasta `saida/` do computador onde roda: o que foi analisado e lançado em outro
+  computador não aparece nela.
 
 ### Passo 21 — Rodar no Mac e no Linux
 - O projeto roda nos dois sistemas com os mesmos arquivos e comandos.
@@ -570,7 +614,7 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   (log em `logs/servidor.log`).
 - `instalar` também serve para reiniciar (ex.: depois de mudar o `.env`). Se a
   porta 5001 estiver ocupada (um `./rodar_envio.sh` aberto), ele avisa e para.
-- A `saida/` **não vai para o GitHub** (o repositório é público e ela tem dados
+- A `saida/` **não vai para o GitHub** (o repositório é privado, mas ela tem dados
   de clientes): copiar com `rsync` ou pendrive (Passo 21).
 - Para funcionar sem ninguém por perto:
   - o Mac precisa estar **com o usuário logado** (o serviço roda na sessão
@@ -1238,7 +1282,8 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `LLM_MODELO_FERIADOS` | não | Modelo da pesquisa de feriados (vazio = `LLM_MODELO`) | vazio |
 | `LLM_LIMITE_US` | não | Teto de gasto com IA por execução, em US$ (vazio/0 = sem teto) | vazio |
 | `LLM_PRECOS` | não | Corrige preços da tabela: `modelo=entrada/saída` por milhão de tokens, separados por vírgula | vazio |
-| `FERIADOS_PESQUISA` | não | Pesquisa feriados na internet antes da análise (`true`/`false`) | `true` |
+| `FERIADOS_PESQUISA` | não | Pesquisa feriados na internet antes da análise (`true`/`false`); só roda com `PRAZO_CONTAGEM=feriados` | `true` |
+| `PRAZO_CONTAGEM` | não | `simplificada` = só sábado e domingo ficam de fora (feriados e recesso contam como dia útil); `feriados` = calendário antigo por tribunal (Passo 13) | `simplificada` |
 | `SAIDA_PASTA` | não | Pasta dos `.txt` | `saida` |
 | `HEADLESS` | não | Chrome sem janela | `false` |
 | `TIMEOUT` | não | Espera máxima (s) | `20` |

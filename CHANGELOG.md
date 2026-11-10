@@ -12,6 +12,59 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Tela "Envio automático" na página do Sam (`/automatico`) (10/11/2026)
+- Mostra, para cada dia analisado (`saida/analise_<dia>.json`), cada intimação em três colunas:
+  **Intimação** (cliente, auxiliar, datas, teor) → **Análise** (ato, área, tarefas com data e
+  descrição, alertas, modelo da IA) → **O que foi** (lançada, com as tarefas gravadas e o link
+  "Ver no VIOS" para a Conferência; ou não lançada, com o motivo e o link "Lançar no VIOS").
+- Resumo no topo (intimações, lançadas, não lançadas, gasto da IA), filtro Todas/Lançadas/Não
+  lançadas, busca e escolha do dia. Botão "Envio automático" no topo da página de envio.
+- `bot/lancamento.py` grava o resultado de cada CI em `saida/automatico_resultados.json` quando
+  lança com `--confirmar` (gravada, bloqueada, duplicada, já no VIOS, conferência, erro com a mensagem).
+  O dia 09/11/2026 foi preenchido a partir do log do lançamento.
+
+### Corrigido — Primeira análise com o Haiku (09/11/2026, 38 intimações, US$ 0,12) (10/11/2026)
+- A IA às vezes escreve a linha de prazo no resumo ("PRAZO FATAL D -2 PENDENTE DE CÁLCULO PELO
+  PROGRAMA; ..."): o programa tira essas linhas, porque insere as suas com as datas calculadas.
+- Auxiliar CARL em tarefa trabalhista: responsável vai para FRANCISCO JOHNYS VASCONCELOS BARBOSA
+  (a skill diz que Carlos não está mais no Trabalhista), com alerta no relatório.
+- O lote da Batch API ficou 7 min em 0 de 38; a análise foi refeita uma a uma (~18 s por intimação).
+- Lançamento real (`--confirmar`) de 26 CIs: 21 tarefas gravadas e conferidas no VIOS; 5 não
+  lançadas (42807, 42805, 42808, 42810, 42811) porque o VIOS trocou a tarefa
+  "MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026" por
+  "MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026" e "MINUTAR PETIÇÃO INTERMEDIÁRIA
+  (PREVIDENCIÁRIO)". CIs 42825 e 42820 ficaram para a Controladoria (o Haiku indicou análise; a
+  skill pede CIÊNCIA para despacho que só manda aguardar).
+
+### Alterado — Skill de 10/11/2026 instalada e análise pela API nas regras novas (10/11/2026)
+- Skill nova da Controladoria em `doc/analise-intimacoes-controladoria/` (cópia em
+  `doc/skill-original/7_2026-11-10_txt-bot-duplicadas/`).
+- `bot/analise.py`: análise de sentença/acórdão/decisão sempre com `PRAZO PARA EMBARGOS:` e
+  `PRAZO PARA RECURSO:` em D-2 (sem `NÃO CABE`, sem `PRAZO FATAL` junto); minutas com
+  `PRAZO FATAL D -2:`; RPV no próximo dia útil com `PRAZO FATAL:` = D-2 do prazo; emenda da
+  Suhiane no próximo dia útil com `PRAZO FATAL D -2:`. Sem linhas `PRIORIDADE ...` na descrição.
+- Bloqueia (não lança) a análise sem prazo de embargos ou de recurso e a tarefa com prazo sem data.
+- Instruções do modo automático (prompt) atualizadas para a contagem simplificada e os rótulos novos.
+- `.env` deste computador: `LLM_MODELO=claude-haiku-5-5`, `LLM_MODELO_SIMPLES` e `LLM_MODELO_FERIADOS` vazios.
+
+### Corrigido — Análise pela API com o Claude Haiku 5.5 (10/11/2026)
+- A chamada uma a uma (`bot/ia/anthropic_ia.py`) pedia o fallback de recusa do servidor
+  (`fallbacks: "default"`), que o Haiku 5.5 não tem. Com modelo Haiku o pedido vai sem esse campo;
+  Opus e Sonnet continuam com o fallback.
+
+### Alterado — Feriado passa a contar como dia útil nos prazos do código (10/11/2026)
+- `bot/prazos.py` usa a contagem simplificada da skill (`PRAZO_CONTAGEM=simplificada`, padrão):
+  só sábado e domingo ficam de fora; feriados, pontos facultativos, recesso (20/12 a 20/01) e
+  suspensões contam como dia útil. Vale para prazo fatal, D-2 e próximo dia útil na análise pela
+  API (`./rodar_analise.sh`) e nas datas refeitas na página de revisão.
+- Conferido com o exemplo da skill: publicação 29/10/2026 + 5 dias = 05/11/2026, D-2 = 03/11/2026
+  (o calendário antigo dava 06/11 por causa de Finados).
+- No relatório, o calendário vira "Contagem solicitada: segunda a sexta, incluindo feriados;
+  vencimentos sem validação do calendário judicial oficial." Sem lista de feriados considerados.
+- Com a contagem simplificada, a pesquisa de feriados na internet não roda (sem gasto) e sai o
+  alerta de feriado municipal não cadastrado.
+- Voltar ao calendário antigo: `PRAZO_CONTAGEM=feriados` no `.env`.
+
 ### Adicionado — Jarvis: PDF do relatório no timbrado entra na main (10/11/2026)
 - A branch `relatorio-processos` (PDF no papel timbrado, "Resumo do mês" pela IA, tipo de processo
   pela Área) foi juntada à `main`. Até aqui o PDF só existia nessa branch, e o Jarvis do Mac gerava só

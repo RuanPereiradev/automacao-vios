@@ -1,0 +1,60 @@
+Com as tarefas da análise já ajustadas, gere o ARQUIVO PARA O ROBÔ: um único bloco de texto, sem nenhum comentário dentro dele, seguindo exatamente o padrão abaixo. Ele será salvo como .txt e enviado ao VIOS como está.
+
+PADRÃO (um bloco por tarefa; entre um bloco e outro, uma linha só com ---):
+
+CI: [número da CI]
+TAREFA: [nome exato da lista oficial do VIOS]
+DATA: [DD/MM/AAAA]
+HORA: [HH:MM ou vazio]
+RESPONSÁVEIS: [automático ou nomes completos separados por vírgula]
+DESCRIÇÃO:
+[texto da tarefa, quantas linhas precisar]
+---
+
+REGRAS:
+1. Os campos vêm sempre nesta ordem, um por linha: CI, TAREFA, DATA, HORA, RESPONSÁVEIS, DESCRIÇÃO. A DESCRIÇÃO é sempre o último campo; tudo abaixo dela até o --- vai para a Observação da tarefa, exatamente como escrito.
+2. CI: só o número.
+3. TAREFA: o nome exatamente como está na lista oficial de tarefas do VIOS.
+4. DATA: a data da tarefa no VIOS (já com D-2, prioridade de RPV/emenda da Suhiane, mesmo dia ou data do ato, conforme as regras). Só CIÊNCIA pode ficar com DATA vazia.
+5. HORA: obrigatória em audiência, perícia e sustentação oral (na sessão virtual, o horário de início). Nas demais tarefas, deixar vazia.
+6. RESPONSÁVEIS: "automático" (o VIOS marca o auxiliar) ou os nomes completos como estão no VIOS. Na petição da Execução da Tamira: TAMIRA LOIOLA, BRENO SILVA MOTA.
+7. DESCRIÇÃO: primeiro as linhas de prazo (PRAZO FATAL: / PRAZO FATAL (D-2): / PRAZO PARA EMBARGOS: e PRAZO PARA RECURSO: na análise), depois o texto do modelo da tarefa. Não escrever "Responsável a marcar na tarefa", "Advogada auxiliar" nem "PRIORIDADE ...". Audiência no padrão: AUDIÊNCIA [TIPO] / DATA / HORA / FORMATO / LINK/LOCAL / ID da reunião / SENHA, uma informação por linha, sem OBS.
+8. Duas tarefas da mesma CI: dois blocos seguidos com o mesmo número de CI.
+9. NÃO colocar no arquivo: CI duplicada, CI que não deve ser lançada (falta informação, evento sem teor, área diferente do auxiliar, tarefa pendente de definição). Depois do bloco, listar essas CIs com o motivo.
+10. Usar as tarefas e textos como ficaram depois dos meus ajustes; não refazer a análise.
+
+EXEMPLO:
+
+CI: 42484
+TAREFA: MINUTAR PETIÇÃO (EXECUÇÃO) 2026
+DATA: 29/10/2026
+HORA:
+RESPONSÁVEIS: TAMIRA LOIOLA, BRENO SILVA MOTA
+DESCRIÇÃO:
+PRAZO FATAL: 29/10/2026
+MINUTAR PETIÇÃO PARA INFORMAR OS DEMAIS DADOS NECESSÁRIOS PARA A CONFECÇÃO DOS REQUISITÓRIOS (RPV/PRECATÓRIO)
+Despacho: considerando a certidão de ID 192859275, intime-se a parte exequente para, no prazo de 5 dias, informar os demais dados necessários para a confecção dos requisitórios.
+---
+CI: 42502
+TAREFA: AUDIÊNCIA UNA/INSTRUÇÃO (TRABALHISTA) 2026
+DATA: 22/01/2027
+HORA: 08:20
+RESPONSÁVEIS: automático
+DESCRIÇÃO:
+AUDIÊNCIA UNA
+DATA: 22/01/2027
+HORA: 08:20
+FORMATO: TELEPRESENCIAL (ZOOM)
+LINK/LOCAL: https://trt7-jus-br.zoom.us/j/85164513045
+ID da reunião: 851 6451 3045
+SENHA: 355957
+---
+CI: 42491
+TAREFA: ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026
+DATA: 28/10/2026
+HORA:
+RESPONSÁVEIS: automático
+DESCRIÇÃO:
+PRAZO PARA EMBARGOS: 04/11/2026
+PRAZO PARA RECURSO: 18/11/2026
+[texto da análise]

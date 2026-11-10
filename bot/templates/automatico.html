@@ -1,0 +1,173 @@
+{% from "_ultron.html" import ultron, ultron_icone %}
+{% macro data_br(d) %}{{ d[8:10] }}/{{ d[5:7] }}/{{ d[0:4] }}{% endmacro %}
+{% macro rotulo_dia(d) %}{% set p = d.split("_a_") %}{{ data_br(p[0]) }}{% if p | length > 1 %} a {{ data_br(p[1]) }}{% endif %}{% endmacro %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sam — envio automático</title>
+{{ ultron_icone() }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
+{% include "_estilo.html" %}
+<style>
+  .resumo { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 4px; }
+  .ok { color: var(--verde); }
+  .num { background: var(--cartao2); border: 1px solid var(--borda); border-radius: 10px; padding: 8px 14px; min-width: 120px; }
+  .num b { display: block; font-size: 22px; line-height: 1.2; }
+  .num.ok b { color: var(--verde); }
+  .num.nao b { color: #ff7b72; }
+  .filtros { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
+  .filtro { background: var(--cartao2); border: 1px solid var(--borda); color: var(--texto); border-radius: 999px;
+            padding: 5px 14px; cursor: pointer; font: inherit; font-size: 14px; }
+  .filtro[aria-pressed="true"] { border-color: var(--metal); background: #232a37; }
+  .fluxo { display: grid; grid-template-columns: 1fr 26px 1.25fr 26px 1fr; gap: 6px; align-items: start; }
+  .fluxo > .seta { align-self: center; text-align: center; color: var(--suave); font-size: 20px; }
+  .etapa { background: var(--cartao2); border: 1px solid var(--borda); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+  .etapa h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--suave); }
+  .etapa p { margin: 4px 0; }
+  .ci-cab { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 10px; }
+  .ci-cab .ci { font-family: Orbitron, system-ui, sans-serif; font-weight: 800; letter-spacing: .08em; }
+  .tarefa-a { border-top: 1px dashed var(--borda); padding-top: 8px; margin-top: 8px; }
+  .tarefa-a:first-of-type { border-top: 0; padding-top: 0; }
+  .tarefa-a .nome { font-weight: 600; }
+  .etapa pre { max-height: 220px; overflow: auto; }
+  details summary { cursor: pointer; color: var(--metal); font-size: 14px; margin-top: 6px; }
+  .teor { max-height: 320px; overflow: auto; font-size: 13px; white-space: pre-wrap; color: var(--metal);
+          background: #0d1017; border: 1px solid var(--borda); border-radius: 8px; padding: 10px; margin-top: 6px; }
+  .motivo { color: #ffb4ad; }
+  .resultado.ok { border-color: rgba(63, 185, 80, .5); }
+  .resultado.nao { border-color: rgba(255, 123, 114, .45); }
+  .link-vios { display: inline-block; margin-top: 8px; }
+  .alertas li { color: var(--ambar); font-size: 13px; }
+  select.dia { background: var(--cartao2); color: var(--texto); border: 1px solid var(--borda); border-radius: 8px;
+               padding: 6px 10px; font: inherit; font-size: 14px; max-width: 100%; }
+  .topo-hist { flex-wrap: wrap; gap: 10px; }
+  .etapa, .etapa pre, .teor { overflow-wrap: anywhere; }
+  @media (max-width: 860px) {
+    .fluxo { grid-template-columns: 1fr; }
+    .fluxo > .seta { transform: rotate(90deg); }
+    header { flex-wrap: wrap; padding: 10px 16px; }
+    header .acoes { margin-left: 0 !important; flex-wrap: wrap; }
+    .cartao { padding: 16px; }
+    .num { min-width: 0; flex: 1 1 40%; }
+    #busca { margin-left: 0 !important; width: 100%; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <a href="{{ url_for('inicio') }}">{{ ultron("parado", 48, "ultron-topo") }}
+    <span><span class="marca marca-sam"><b>S</b>AM</span><br><span class="sub">envio automático ao VIOS</span></span></a>
+  <span class="acoes" style="margin-left: auto">
+    <a class="botao secundario" href="{{ url_for('vila_dos_bots') }}">Vila dos Bots</a>
+    <a class="botao secundario" href="{{ url_for('inicio') }}">Enviar um .txt</a>
+    <a class="botao secundario" href="{{ url_for('historico') }}">Histórico</a>
+  </span>
+</header>
+<main>
+{% if not dias %}
+  <div class="cartao"><h1>Envio automático</h1>
+    <p class="suave">Nenhuma análise do dia ainda. O Sam captura (<code>./rodar.sh</code>), analisa
+    (<code>./rodar_analise.sh</code>) e lança (<code>./rodar_lancamento.sh --ci todas --confirmar</code>).</p></div>
+{% else %}
+  {% set nao = linhas | length - lancadas %}
+  <div class="cartao">
+    <div class="topo-hist">
+      <h1>Envio automático · intimações de {{ rotulo_dia(dia) }}</h1>
+      <select class="dia" id="dia" aria-label="Escolher o dia">
+        {% for d in dias %}<option value="{{ url_for('automatico', dia=d) }}"{% if d == dia %} selected{% endif %}>{{ rotulo_dia(d) }}</option>{% endfor %}
+      </select>
+    </div>
+    <p class="suave">Cada intimação que o Sam capturou: o que a IA analisou e o que foi lançado no VIOS
+      (ou por que não foi). Datas pela contagem simplificada: só sábado e domingo ficam de fora.</p>
+    <div class="resumo">
+      <div class="num"><b>{{ linhas | length }}</b>intimações</div>
+      <div class="num ok"><b>{{ lancadas }}</b>lançadas ({{ tarefas }} tarefa{{ "s" if tarefas != 1 }})</div>
+      <div class="num nao"><b>{{ nao }}</b>não lançadas</div>
+      <div class="num"><b>US$ {{ "%.2f" | format(custo) }}</b>{{ modelos | join(", ") or "IA" }}</div>
+    </div>
+    <div class="filtros" role="group" aria-label="Filtrar">
+      <button class="filtro" data-f="todas" aria-pressed="true">Todas ({{ linhas | length }})</button>
+      <button class="filtro" data-f="ok" aria-pressed="false">Lançadas ({{ lancadas }})</button>
+      <button class="filtro" data-f="nao" aria-pressed="false">Não lançadas ({{ nao }})</button>
+      <input class="busca" id="busca" placeholder="Buscar CI, cliente, processo, tarefa…" autocomplete="off" style="margin-left: auto">
+    </div>
+  </div>
+
+  {% for l in linhas %}
+  <div class="cartao ci-linha" data-f="{{ 'ok' if l.lancada else 'nao' }}">
+    <div class="ci-cab">
+      <span class="ci">CI {{ l.ci }}</span>
+      <span class="mono">{{ l.processo }}</span>
+      <span class="selo {{ l.classe }}">{{ l.rotulo }}</span>
+    </div>
+    <div class="fluxo">
+      <div class="etapa">
+        <h3>Intimação</h3>
+        <p><b>{{ l.cliente }}</b>{% if l.posicao %} <span class="suave">· {{ l.posicao }}</span>{% endif %}</p>
+        <p class="suave">Auxiliar {{ l.auxiliar or "—" }} · disponibilizada {{ l.disponibilizacao or "—" }} · publicada {{ l.publicacao or "—" }}</p>
+        {% if l.teor %}<details><summary>Ler o teor</summary><div class="teor">{{ l.teor }}</div></details>{% endif %}
+      </div>
+      <div class="seta" aria-hidden="true">→</div>
+      <div class="etapa">
+        <h3>Análise{% if l.modelo %} · {{ l.modelo }}{% endif %}</h3>
+        <p><b>{{ l.ato }}</b>{% if l.area %} · {{ l.area }}{% endif %}</p>
+        <p>{{ l.do_que_se_trata }}</p>
+        {% for t in l.tarefas %}
+        <div class="tarefa-a">
+          <div class="nome">{{ t.nome }}</div>
+          <div class="suave">Data {{ t.data_tarefa or "sem data" }}{% if t.hora %} · {{ t.hora }}{% endif %}</div>
+          {% if t.descricao %}<pre>{{ t.descricao }}</pre>{% endif %}
+        </div>
+        {% endfor %}
+        {% if l.alertas %}<details><summary>{{ l.alertas | length }} alerta(s)</summary>
+          <ul class="alertas">{% for a in l.alertas %}<li>{{ a }}</li>{% endfor %}</ul></details>{% endif %}
+      </div>
+      <div class="seta" aria-hidden="true">→</div>
+      <div class="etapa resultado {{ 'ok' if l.lancada else 'nao' }}">
+        <h3>O que foi</h3>
+        {% if l.lancada %}
+          <p class="ok"><b>Lançada</b> em {{ l.quando }}</p>
+          {% for g in l.gravadas %}
+          <div class="tarefa-a">
+            <div class="nome">{{ g.tarefa }}</div>
+            <div class="suave">Data {{ g.data }} · {{ (g.responsaveis or []) | join(", ") or "automático" }}</div>
+          </div>
+          {% endfor %}
+          {% if l.link_conferencia %}<a class="botao secundario link-vios" href="{{ l.link_conferencia }}" target="_blank" rel="noopener">Ver no VIOS ↗</a>{% endif %}
+        {% else %}
+          <p><b>{{ l.rotulo }}</b>{% if l.quando %} <span class="suave">· {{ l.quando }}</span>{% endif %}</p>
+          {% if l.mensagem %}<p class="motivo">{{ l.mensagem }}</p>{% endif %}
+          {% if l.link_lancar %}<a class="botao secundario link-vios" href="{{ l.link_lancar }}" target="_blank" rel="noopener">Lançar no VIOS ↗</a>{% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  <p class="suave" id="vazio" hidden>Nenhuma intimação com esse filtro.</p>
+{% endif %}
+</main>
+<script>
+  const dia = document.getElementById('dia');
+  if (dia) dia.addEventListener('change', () => { location.href = dia.value; });
+  let filtro = 'todas';
+  function aplicar() {
+    const q = (document.getElementById('busca') || {value: ''}).value.toLowerCase();
+    let vistos = 0;
+    document.querySelectorAll('.ci-linha').forEach(c => {
+      const ok = (filtro === 'todas' || c.dataset.f === filtro) && (!q || c.textContent.toLowerCase().includes(q));
+      c.hidden = !ok; if (ok) vistos++;
+    });
+    const vazio = document.getElementById('vazio'); if (vazio) vazio.hidden = vistos > 0;
+  }
+  document.querySelectorAll('.filtro').forEach(b => b.addEventListener('click', () => {
+    filtro = b.dataset.f;
+    document.querySelectorAll('.filtro').forEach(x => x.setAttribute('aria-pressed', x === b));
+    aplicar();
+  }));
+  const busca = document.getElementById('busca'); if (busca) busca.addEventListener('input', aplicar);
+</script>
+</body>
+</html>
