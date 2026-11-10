@@ -12,6 +12,12 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Detector de duplicadas desligado (10/11/2026)
+- A Controladoria já tira as duplicadas na tela de intimações do VIOS, e o detector marcava como
+  cópia CIs que não eram. Novo `DUPLICIDADE_ATIVA` no `.env` (padrão `false`): desligado, nenhuma CI
+  é cópia na captura, na análise, na página de revisão, no envio do `.txt` (sem ler o teor no VIOS
+  antes de gravar) e no lançamento. Religar: `DUPLICIDADE_ATIVA=true`.
+
 ### Adicionado — Tela "Envio automático" na página do Sam (`/automatico`) (10/11/2026)
 - Mostra, para cada dia analisado (`saida/analise_<dia>.json`), cada intimação em três colunas:
   **Intimação** (cliente, auxiliar, datas, teor) → **Análise** (ato, área, tarefas com data e

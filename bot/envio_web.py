@@ -194,7 +194,9 @@ def _processos_capturados(pasta_saida):
 
 def _duplicadas(pasta_saida):
     """{ci: CI original}: cópias marcadas na captura ou na análise do bot e as que o detector
-    acha nas capturas salvas (1ª conferência, na subida do .txt)."""
+    acha nas capturas salvas (1ª conferência, na subida do .txt). Detector desligado: nenhuma."""
+    if not duplicidade.ligado():
+        return {}
     dup = {}
     for arquivo in Path(pasta_saida).glob("analise_*.json"):
         for r in json.loads(arquivo.read_text(encoding="utf-8")):
@@ -209,7 +211,9 @@ def _duplicadas(pasta_saida):
 def conferir_duplicatas_no_vios(driver, aptas, capturas, lancadas, timeout):
     """2ª conferência, na hora do envio: lê no VIOS o teor de cada CI do arquivo e compara
     com as outras do arquivo e com as capturas. Marca resultado/mensagens nas cópias e
-    devolve as CIs que podem ser lançadas."""
+    devolve as CIs que podem ser lançadas. Detector desligado: todas seguem, sem ler o VIOS."""
+    if not duplicidade.ligado():
+        return list(aptas)
     lidas = {}
     for c in aptas:
         c["resultado"] = "conferindo"
@@ -277,7 +281,7 @@ def montar_automatico(pasta_saida, dia):
             estado, mensagem, quando = "gravada", "", registro[ci].get("quando", "")
         elif ci in anotados:
             estado, mensagem, quando = anotados[ci]["estado"], anotados[ci].get("mensagem", ""), anotados[ci].get("quando", "")
-        elif a.get("duplicada_de"):
+        elif a.get("duplicada_de") and duplicidade.ligado():
             estado, mensagem, quando = "duplicada", f"Cópia da CI {a['duplicada_de']}: vale a tarefa da original.", ""
         elif a.get("bloqueios"):
             estado, mensagem, quando = "bloqueada", "; ".join(a["bloqueios"]), ""

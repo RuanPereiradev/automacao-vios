@@ -18,7 +18,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from bot.navegador import POLL
 
-from bot import skill
+from bot import duplicidade, skill
 
 log = logging.getLogger(__name__)
 
@@ -345,7 +345,7 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
             anotar(ci, "erro", "A análise da IA deu erro: nada lançado.")
             erros += 1
             continue
-        if r.get("duplicada_de"):
+        if r.get("duplicada_de") and duplicidade.ligado():
             log.info("CI %s: duplicada da CI %s, ignorada (vale a tarefa da original)", ci, r["duplicada_de"])
             anotar(ci, "duplicada", f"Cópia da CI {r['duplicada_de']}: vale a tarefa da original.")
             continue

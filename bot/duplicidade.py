@@ -11,6 +11,7 @@ a outra é ignorada (não gera tarefa). Ordem para escolher a original:
 3. a de número de CI menor.
 """
 import difflib
+import os
 import re
 import unicodedata
 
@@ -66,8 +67,17 @@ def _do_cliente(trecho, cliente):
     return pontos
 
 
+def ligado():
+    """DUPLICIDADE_ATIVA no .env. Desligado por padrão desde 10/11/2026: a Controladoria já tira
+    as duplicadas no VIOS (tela de intimações), e o detector marcava como cópia CIs que não eram."""
+    return os.getenv("DUPLICIDADE_ATIVA", "false").strip().lower() in ("true", "1", "sim")
+
+
 def detectar(itens):
-    """itens = capturas do VIOS. Devolve {ci_duplicada: {...}} com a original de cada uma."""
+    """itens = capturas do VIOS. Devolve {ci_duplicada: {...}} com a original de cada uma.
+    Com o detector desligado (DUPLICIDADE_ATIVA=false, padrão), devolve {}: nada é cópia."""
+    if not ligado():
+        return {}
     por_processo = {}
     for i in itens:
         achado = CNJ.search(i.get("numeros", ""))

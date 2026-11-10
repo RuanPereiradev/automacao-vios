@@ -383,6 +383,12 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - A página só escuta em 127.0.0.1 (sem login ainda).
 
 ### Passo 17 — Duplicatas
+> **Desligado desde 10/11/2026** (`DUPLICIDADE_ATIVA=false`, o padrão): a Controladoria já tira as
+> duplicadas na tela de intimações do VIOS, e o detector marcava como cópia CIs que não eram.
+> Desligado, nenhuma CI é tratada como cópia: nem na captura, nem na análise, nem no envio do
+> `.txt` (o robô também deixa de ler o teor no VIOS antes de gravar). Religar:
+> `DUPLICIDADE_ATIVA=true` no `.env`.
+
 - Antes do robô, a advogada pedia o CSV das intimações, perguntava ao ChatGPT
   se havia duplicatas e apagava no VIOS a que não estava no nome do cliente.
 - Agora o código detecta (`bot/duplicidade.py`): mesmo processo e texto
@@ -1283,6 +1289,7 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `LLM_LIMITE_US` | não | Teto de gasto com IA por execução, em US$ (vazio/0 = sem teto) | vazio |
 | `LLM_PRECOS` | não | Corrige preços da tabela: `modelo=entrada/saída` por milhão de tokens, separados por vírgula | vazio |
 | `FERIADOS_PESQUISA` | não | Pesquisa feriados na internet antes da análise (`true`/`false`); só roda com `PRAZO_CONTAGEM=feriados` | `true` |
+| `DUPLICIDADE_ATIVA` | não | `true` liga o detector de duplicadas (Passo 17); `false` = desligado (a Controladoria tira as duplicadas no VIOS) | `false` |
 | `PRAZO_CONTAGEM` | não | `simplificada` = só sábado e domingo ficam de fora (feriados e recesso contam como dia útil); `feriados` = calendário antigo por tribunal (Passo 13) | `simplificada` |
 | `SAIDA_PASTA` | não | Pasta dos `.txt` | `saida` |
 | `HEADLESS` | não | Chrome sem janela | `false` |
