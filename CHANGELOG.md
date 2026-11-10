@@ -12,6 +12,14 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Jarvis: PDF do relatório no timbrado entra na main (10/11/2026)
+- A branch `relatorio-processos` (PDF no papel timbrado, "Resumo do mês" pela IA, tipo de processo
+  pela Área) foi juntada à `main`. Até aqui o PDF só existia nessa branch, e o Jarvis do Mac gerava só
+  a planilha.
+- Cada relatório gera `<GRUPO>.xlsx` + `<GRUPO>.pdf` (+ `.json`), e a página `/jarvis` lista os dois.
+- O "Resumo do mês" (uma chamada à IA por grupo) entra no gasto do grupo na aba Metadados.
+- No Mac: `cd jarvis && ./instalar.sh` uma vez, para instalar reportlab, pillow e chardet.
+
 ### Adicionado — Jarvis: gasto da IA por cliente (`gastos.py`) (10/11/2026)
 - `cd jarvis && .venv/bin/python gastos.py [--mes AAAA-MM]` lê o `logs/bot.log` e mostra, por Grupo
   Cliente, os relatórios, os processos, o gasto e o gasto por processo, e depois cada relatório. Não
@@ -99,6 +107,36 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 ### Alterado — Albi/Presto: aviso de Acessibilidade cita o Visual Studio Code (09/11/2026)
 - Quando o clique de verdade precisa da permissão Acessibilidade do macOS, a mensagem agora diz para
   ligar o app onde o bot roda (Terminal ou Visual Studio Code), e não só o Terminal.
+
+### Alterado — Branch relatorio-processos atualizada com a main: PDF dentro de `jarvis/` (09/11/2026)
+- Com o Jarvis na pasta própria, o PDF foi junto: `bot/relatorio_pdf.py` → `jarvis/nucleo/relatorio_pdf.py`
+  e `bot/timbrado/` → `jarvis/nucleo/timbrado/` (o Jarvis não importa nada de `bot/`).
+- reportlab, pillow e chardet saem do `requirements.txt` da raiz e entram no `jarvis/requirements.txt`
+  (quem já tem a `jarvis/.venv`: rodar `./instalar.sh` de novo).
+- A garagem da Vila 04 fica como está na main (`ligar_vila04_garagem.py`, já com as 5 vilas).
+
+### Alterado — PDF do relatório: sem a soma dos valores e sem a frase do rodapé (05/11/2026)
+- A capa não mostra mais a "Soma dos valores das ações" (a soma continua na aba Resumo da planilha).
+- Saiu a frase "Relatório de processos · <grupo> · <mês>" do pé de todas as páginas; fica só o
+  número da página.
+
+### Corrigido — Tipo de processo "não informado" (05/11/2026)
+- 5 processos (1 da MG/SP e 4 da Casa do Celular, quase todos de PROCON) estavam com o campo
+  "Processo" vazio no VIOS. Agora o tipo sai da "Área", como a equipe cadastra os demais (Cível
+  Consumidor, Administrativo e Contratos → CÍVEL; Trabalhista; Tributário). Vale para a planilha,
+  o PDF e o resumo da IA; esses processos continuam na aba "Cadastro incompleto" para corrigir no VIOS.
+
+### Adicionado — Relatório de processos em PDF no timbrado (05/11/2026)
+- Cada grupo gera `<GRUPO>.pdf` junto com a planilha (`jarvis/nucleo/relatorio_pdf.py`), no timbrado do
+  escritório (cabeçalho, rodapé com os 5 escritórios e marca d'água, nas posições e margens do
+  `Timbrado_RFeitosa_Advogados_COM_MARCADOR.docx`; imagens em `jarvis/nucleo/timbrado/`), em Garamond.
+- Conteúdo: capa com os números do mês (total, soma dos valores e contagens), página "Resumo do
+  mês" escrita pela IA (uma chamada por grupo; US$ 0,04 num grupo de 26 processos) e uma ficha
+  por processo com os textos da planilha. Campos vazios e "ERRO NA IA" ficam de fora.
+- A página `/jarvis` lista o PDF para baixar. Falha no PDF não impede a planilha.
+- `jarvis/requirements.txt`: reportlab 4.2.5, pillow 10.4.0 e chardet 5.2.0 (compatíveis com Python 3.8).
+- Testado: PDF da Casa do Celular MG/SP (26 processos, 21 páginas) e execução completa da
+  Plasfran Itapipoca (teste, 2 processos: planilha + PDF, US$ 0,06).
 
 ### Corrigido — Orelha: aviso do certificado vencido vai para o `orelha.log` (09/11/2026)
 - Na execução das 09:13 no Mac, o aviso "VIOS com o certificado vencido..." saiu sem data e não entrou

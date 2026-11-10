@@ -100,7 +100,7 @@ no mesmo mês sobrescreve.
 | Cliente | lupa: `Cliente` | — |
 | Polo do cliente | lupa: `Polo do cliente` | — |
 | Parte ativa / Parte passiva | lista | várias partes separadas por `;` |
-| Tipo de processo | lupa: `Processo` | em maiúsculas |
+| Tipo de processo | lupa: `Processo`; vazio → pela `Área` (Cível Consumidor, Administrativo e Contratos → CÍVEL; Trabalhista; Tributário), como a equipe cadastra os demais | em maiúsculas; o processo continua em "Cadastro incompleto" |
 | Órgão | lupa: `Comarcas / Tribunais / Órgãos adm.` | — |
 | Data da distribuição | lupa: `Data da ação / Distribuição` | data |
 | Valor da ação | lupa: `Valor da ação` | número (R$) |
@@ -138,6 +138,28 @@ completo fica no `jarvis/logs/bot.log` (procure "erro na IA").
 
 ---
 
+### PDF no timbrado (sai junto com a planilha)
+
+Para cada grupo, `<GRUPO>.pdf` ao lado da `<GRUPO>.xlsx` (`jarvis/nucleo/relatorio_pdf.py`), no timbrado do
+escritório: cabeçalho, rodapé com os 5 escritórios e marca d'água "RF" nas mesmas posições e
+margens do `Timbrado_RFeitosa_Advogados_COM_MARCADOR.docx` (imagens em `jarvis/nucleo/timbrado/`), fonte
+Garamond (sem Garamond no computador, Times). Embaixo de cada página, só o número da página.
+
+1. **Capa e números do mês**: grupo, mês, data, total de processos e as contagens por resultado
+   da decisão, tipo, motivação e polo (as da aba Resumo). Sem a soma dos valores das ações
+   (pedido de 05/11/2026; a soma continua na aba Resumo da planilha).
+2. **Resumo do mês**: 2 a 4 parágrafos escritos pela IA para o cliente (uma chamada por grupo,
+   com as fichas do grupo; mesmas regras: só fatos, sem nomes de pessoas, CPF, número de
+   processo, equipe ou opiniões internas). Se a IA falhar, o PDF sai sem essa página.
+3. **Processos**: uma ficha por processo com o cadastro e os textos da planilha (campos vazios
+   e "ERRO NA IA" ficam de fora). Não traz a aba "Cadastro incompleto" (é para a equipe).
+
+O PDF não lê o VIOS de novo nem refaz a IA dos processos: usa as mesmas linhas da planilha.
+A página `/jarvis` lista o PDF para baixar junto com a planilha. Com `--limite` (teste), vai
+para `AAAA-MM/teste/` como a planilha. Falha no PDF não impede a planilha (fica no log).
+
+---
+
 ## 4. IA
 
 - Provedor e chave no `.env` (`LLM_PROVEDOR=anthropic`,
@@ -156,6 +178,9 @@ completo fica no `jarvis/logs/bot.log` (procure "erro na IA").
   equipe registra nas tarefas não vão para a planilha. Motivo: no CI 28667 a
   justificativa repetiu um comentário interno ("a condenação já está acima da
   média", da tarefa sobre dispensar a sustentação oral por economia).
+- **Resumo do mês do PDF**: mais uma chamada por grupo, com as fichas do grupo (até 60.000
+  caracteres): US$ 0,04 na Casa do Celular MG/SP (26 processos, 05/11/2026); cerca de US$ 0,25
+  por mês para os 6 grupos.
 - **Custo**: ~US$ 0,013 por processo (teste de 03/11/2026). Teto por execução
   em `LLM_LIMITE_US` (no `.env`: 5); passou do teto, os processos que
   faltam saem com erro na IA.
@@ -292,10 +317,12 @@ automacao-vios/
 │   ├── relatorio_processos.py       # entrada: login → grupos → lupa de cada processo → IA → .xlsx
 │   ├── instalar.sh / rodar.sh       # Mac/Linux: cria a .venv / roda (aceita --grupo e --limite)
 │   ├── rodar.bat                    # atalho no Windows (aceita --grupo e --limite)
-│   ├── requirements.txt             # selenium, python-dotenv, anthropic, openai, openpyxl
+│   ├── requirements.txt             # selenium, python-dotenv, anthropic, openai, openpyxl, reportlab
 │   ├── nucleo/processos_grupo.py    # filtro Grupo Cliente, pesquisa e leitura da lista
 │   ├── nucleo/processos_detalhe.py  # lupa: Dados do Processo + tarefas
 │   ├── nucleo/relatorio_planilha.py # regras fixas, instruções da IA e gravação da .xlsx
+│   ├── nucleo/relatorio_pdf.py      # PDF no timbrado + "Resumo do mês" pela IA
+│   ├── nucleo/timbrado/             # cabeçalho, rodapé e marca d'água do timbrado (do .docx)
 │   ├── nucleo/vila_aviso.py         # andamento para a vila (POST /eventos, bot "jarvis")
 │   ├── nucleo/config.py, login.py, navegador.py, navegacao.py, extracao.py, custo.py, ia/,
 │   │   registro.py                  # cópias próprias (antes vinham de bot/ e do main.py do Sam)

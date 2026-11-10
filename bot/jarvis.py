@@ -114,15 +114,16 @@ def pasta_relatorios(pasta):
 
 
 def planilhas(pasta):
-    """[{"mes": "2026-11", "teste": False, "arquivo": "CASA DO CELULAR.xlsx", "tamanho": ..., "gerada": ...}],
+    """[{"mes": "2026-11", "teste": False, "arquivo": "CASA DO CELULAR.xlsx" (ou .pdf), "tamanho": ..., "gerada": ...}],
     da mais nova para a mais antiga."""
     if not configurado(pasta):
         return []
     raiz, lista = pasta_relatorios(pasta), []
-    for xlsx in raiz.glob("*/*.xlsx"):
-        lista.append((xlsx, xlsx.parent.name, False))
-    for xlsx in raiz.glob("*/teste/*.xlsx"):
-        lista.append((xlsx, xlsx.parent.parent.name, True))
+    for extensao in ("xlsx", "pdf"):  # planilha e o PDF no timbrado
+        for x in raiz.glob(f"*/*.{extensao}"):
+            lista.append((x, x.parent.name, False))
+        for x in raiz.glob(f"*/teste/*.{extensao}"):
+            lista.append((x, x.parent.parent.name, True))
     saida = [{"mes": mes, "teste": teste, "arquivo": x.name, "tamanho": x.stat().st_size,
               "gerada": datetime.fromtimestamp(x.stat().st_mtime).strftime("%d/%m/%Y %H:%M")}
              for x, mes, teste in lista]

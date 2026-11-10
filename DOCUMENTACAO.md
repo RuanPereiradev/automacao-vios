@@ -1199,7 +1199,8 @@ O chromedriver é baixado automaticamente pelo Selenium Manager.
 
 ### Segundo usuário do VIOS — Relatório de processos por Grupo Cliente
 
-O Jarvis, com outro login do VIOS, gera uma planilha .xlsx por grupo de clientes. Fica na pasta
+O Jarvis, com outro login do VIOS, gera por grupo de clientes uma planilha .xlsx e um PDF no papel
+timbrado (com o "Resumo do mês" feito pela IA). Fica na pasta
 própria `jarvis/`; documentação em [jarvis/README.md](jarvis/README.md).
 
 ---
