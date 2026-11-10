@@ -29,6 +29,10 @@ def carregar_texto(pasta):
     return "\n\n".join(partes)
 
 
+# tarefas que já existem no VIOS e ainda não estão na skill (o VIOS dividiu a de laudo em 10/11/2026)
+NOVAS_NO_VIOS = ["MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026", "MINUTAR PETIÇÃO INTERMEDIÁRIA (PREVIDENCIÁRIO)"]
+
+
 def tarefas_oficiais(pasta):
     """Nomes da 1ª coluna das tabelas de references/tarefas-vios.md."""
     texto = (Path(pasta) / "references" / "tarefas-vios.md").read_text(encoding="utf-8")
@@ -38,5 +42,8 @@ def tarefas_oficiais(pasta):
             continue
         nome = linha.split("|")[1].strip()
         if nome and nome not in nomes:
+            nomes.append(nome)
+    for nome in NOVAS_NO_VIOS:
+        if nome not in nomes:
             nomes.append(nome)
     return nomes

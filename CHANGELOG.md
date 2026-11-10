@@ -12,6 +12,16 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Nomes novos da tarefa de laudo previdenciário no VIOS (10/11/2026)
+- O VIOS dividiu "MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026" (nome
+  que a skill ainda usa) em duas. A análise troca sozinha: laudo -> "MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO
+  (PREVIDENCIÁRIO) 2026"; outro ato (ex.: proposta de acordo do INSS) -> "MINUTAR PETIÇÃO INTERMEDIÁRIA
+  (PREVIDENCIÁRIO)". No `.txt` do chat o nome antigo vira o de laudo (`APELIDOS` em `bot/lancamento.py`).
+  Os dois nomes novos entram na lista oficial (`NOVAS_NO_VIOS` em `bot/skill.py`).
+- 09/11/2026 fechado: as 5 CIs com esse nome e as 2 corrigidas para CIÊNCIA (EXECUÇÃO) (42825 e 42820,
+  correção registrada no alerta da análise) foram lançadas — 28 de 38 no total; 10 ficam para a
+  Controladoria por falta de informação que só o PJe tem.
+
 ### Alterado — Detector de duplicadas desligado (10/11/2026)
 - A Controladoria já tira as duplicadas na tela de intimações do VIOS, e o detector marcava como
   cópia CIs que não eram. Novo `DUPLICIDADE_ATIVA` no `.env` (padrão `false`): desligado, nenhuma CI

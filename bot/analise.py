@@ -44,7 +44,12 @@ SO_EVENTO = re.compile(r"refere-se ao seguinte evento: *(Evento \d+[^|]*)", re.I
 FORA_DA_DESCRICAO = re.compile(r"^\s*(RESPONSÁVEL A MARCAR NA TAREFA|ADVOGADA? AUXILIAR|PRIORIDADE)\b", re.I)
 # rótulos das linhas de prazo da descrição (skill de 10/11/2026)
 ROTULO_D2 = "PRAZO FATAL D -2"
-JOHNYS = "FRANCISCO JOHNYS VASCONCELOS BARBOSA"  # substitui Carlos (CARL) nas tarefas trabalhistas
+JOHNYS = "FRANCISCO JOHNYS VASCONCELOS BARBOSA"
+# Em 10/11/2026 o VIOS dividiu a tarefa da skill em duas (a skill ainda usa o nome antigo):
+# laudo -> "MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO"; o resto (ex.: proposta de acordo do INSS) -> petição intermediária
+LAUDO_PREV_ANTIGA = "MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026"
+LAUDO_PREV = "MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026"
+INTERMEDIARIA_PREV = "MINUTAR PETIÇÃO INTERMEDIÁRIA (PREVIDENCIÁRIO)"  # substitui Carlos (CARL) nas tarefas trabalhistas
 # sentença e acórdão sempre geram ANALISAR (o advogado decide se recorre)
 ATOS_DE_ANALISE = {"SENTENÇA", "ACÓRDÃO"}
 
@@ -321,6 +326,10 @@ class Agente:
                 "marcar_breno": "MINUTAR PETIÇÃO EXECUÇÃO" in t["nome"],
             })
 
+        for t in tarefas:
+            if t["nome"] == LAUDO_PREV_ANTIGA:
+                laudo = r["ato"] in ("LAUDO", "PERÍCIA") or "LAUDO" in prazos.normalizar(t["finalidade"] + " " + t["resumo"])
+                t["nome"] = LAUDO_PREV if laudo and r["ato"] != "PROPOSTA DE ACORDO" else INTERMEDIARIA_PREV
         if [a.strip().upper() for a in re.split(r"[/,;]", item.get("auxiliares", "")) if a.strip()] == ["CARL"]:
             for t in tarefas:
                 if "(TRABALHISTA)" in t["nome"]:

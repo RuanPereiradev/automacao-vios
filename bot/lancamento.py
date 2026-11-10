@@ -29,6 +29,8 @@ REGISTRO = "lancamentos.json"  # CIs já lançadas (evita lançar duas vezes)
 APELIDOS = {
     "MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO) 2026)": "MINUTAR PETIÇÃO (EXECUÇÃO) 2026",
     "SUSTENTAÇÃO ORAL PPREVIDENCIÁRIO) 2026": "SUSTENTAÇÃO ORAL (PREVIDENCIÁRIO) 2026",
+    # o VIOS dividiu esta em 10/11/2026; no .txt do chat (skill antiga) vale a de laudo
+    "MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026": "MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026",
 }
 
 
