@@ -12,6 +12,11 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Fortaleza do Dragão também na Vila dos Bots (11/11/2026)
+- Na página inicial (`/`) e em `/vila`, a aba **01 · Sam** mostra a Fortaleza do Dragão por cima da
+  Vila 01 antiga; a barra de abas fica por cima e as abas 02 a 05 não mudam. Patch novo
+  `doc/vila/ligar_vila01_fortaleza.py`, aplicado em `bot/vila/vila.html`.
+
 ### Alterado — Vila do Sam vira a Fortaleza do Dragão, no estilo Senhor dos Anéis (11/11/2026)
 - Novo design (`doc/desing_sam/fortaleza-dragao.html`) instalado em `bot/vila/fortaleza.html`, servido
   em `/vila/sam` e mostrado no topo do `/sam` e da página de cada envio, no lugar da Vila 01.

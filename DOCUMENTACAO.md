@@ -637,7 +637,11 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - As páginas do Sam (`/sam`, histórico, envio, envio automático) seguem o estilo da fortaleza pela
   classe `tema-vila` de `bot/templates/_estilo.html`: noite azul sobre fundo escuro, quadros escuros com
   moldura dourada, botões dourados, fontes Lora (texto) e Silkscreen (marca e dias do relatório).
-- Não mudam: a Vila dos Bots (`/`, com a vila antiga e as abas 01 a 05) e as páginas dos outros bots.
+- **Na Vila dos Bots** (página inicial `/` e `/vila`): a aba **01 · Sam** também mostra a Fortaleza,
+  por cima da Vila 01 antiga; a barra do topo (Órbita, status, abas 01 a 05) continua por cima e as
+  outras abas não mudam. Patch: `doc/vila/ligar_vila01_fortaleza.py bot/vila/vila.html` (rodar de
+  novo não repete; rodar outra vez se `bot/vila/vila.html` for baixado de novo).
+- As páginas dos outros bots não mudam.
 - Para atualizar o design: trocar o desenho em `bot/vila/fortaleza.html` mantendo o bloco
   "eventos reais do Sam" do fim do script e os ganchos `emEnvio()` (o dragão não acorda nem recua
   sozinho durante um envio). Não precisa reiniciar a página.
