@@ -1,62 +1,181 @@
 {% from "_ultron.html" import ultron, ultron_icone %}
+{# Envio automático: relatório de conferência de um dia de envio (bot/conferencia.py), com foco nos prazos.
+   Página no tema da vila do Sam; o relatório fica num pergaminho claro (também sai bom impresso). #}
 {% macro data_br(d) %}{{ d[8:10] }}/{{ d[5:7] }}/{{ d[0:4] }}{% endmacro %}
-{% macro rotulo_dia(d) %}{% set p = d.split("_a_") %}{{ data_br(p[0]) }}{% if p | length > 1 %} a {{ data_br(p[1]) }}{% endif %}{% endmacro %}
+{% macro rotulo_analise(d) %}{% set p = d.split("_a_") %}{{ data_br(p[0]) }}{% if p | length > 1 %} a {{ data_br(p[1]) }}{% endif %}{% endmacro %}
+{% macro dt(txt) %}{% if cf.data(txt) %}<span class="nw">{{ txt }}</span> <span class="sem">{{ cf.semana(txt) }}</span>{% else %}{{ txt or "—" }}{% endif %}{% endmacro %}
+{% macro cel(txt) %}{% if cf.data(txt) %}{{ dt(txt) }}{% else %}<span class="sub">{{ {"NÃO HOUVE ABERTURA DE PRAZO": "não abriu", "NÃO CABE": "não cabe"}.get(txt, (txt or "—") | lower) }}</span>{% endif %}{% endmacro %}
+{% macro selo(l) %}<span class="pill {{ 'ok' if l.lancada else ('bloq' if l.classe == 's-erro' else 'neutro') }}">{{ "Lançada" if l.lancada else ("Não lançada" if l.classe == "s-erro" else l.rotulo) }}</span>{% endmacro %}
+{% macro descricao(txt) %}{% for ln in (txt or "").splitlines() if ln.strip() %}<div{% if ln.strip().upper().startswith("PRAZO") %} class="vermelho"{% endif %}>{{ ln }}</div>{% endfor %}{% endmacro %}
+{% macro cartao(l) %}
+<section class="ci" id="ci{{ l.ci }}" data-f="{{ 'ok' if l.lancada else 'nao' }}" data-a="{{ 'sim' if l.atencao else 'nao' }}">
+  <div class="ci-cab"><h3>CI {{ l.ci }} · {{ l.ato }}{% if l.area %} · {{ l.area }}{% endif %}</h3>{{ selo(l) }}</div>
+  <div class="meta">
+    <span><b>Processo</b> {{ l.processo or "—" }}</span><span><b>Cliente</b> {{ l.cliente or "—" }}</span>
+    <span><b>Auxiliar</b> {{ l.auxiliar or "—" }}</span><span><b>Disponibilização</b> {{ dt(l.disponibilizacao) }}</span>
+    <span><b>Publicação</b> {{ dt(l.publicacao) }}</span>
+  </div>
+  {% if l.atencao %}<div class="caixa atencao"><h4>Pontos de atenção</h4><ul>{% for x in l.atencao %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+  {% if not l.lancada %}<div class="caixa bloq"><h4>{{ l.rotulo }}</h4><p>{{ l.mensagem or (l.bloqueios | join("; ")) or "Sem motivo registrado." }}</p>
+    {% if l.quando %}<p class="sub">{{ l.quando }}</p>{% endif %}</div>{% endif %}
+
+  <div class="bloco"><h4>Prazos</h4>
+    <table class="kv">
+      <tr><th>Prazo no texto</th><td>{{ l.prazo_trecho or "" }}{% if not l.prazo_trecho %}<span class="sub">nenhum</span>{% endif %}
+        {% if l.prazo.dias %}<div class="sub">{{ l.prazo.dias }} dias {{ "corridos" if l.prazo.contagem == "CORRIDOS" else "úteis" }} (lido pela IA)</div>{% endif %}</td></tr>
+      <tr><th>Prazo fatal</th><td>{{ dt(l.prazo_fatal) }}</td></tr>
+      <tr><th>D-2</th><td>{{ dt(l.prazo_d2) }}</td></tr>
+      <tr><th>Embargos</th><td>{{ dt(l.embargos) }}{% if cf.data(l.embargos) and l.embargos_dias %} <span class="sub">({{ l.embargos_dias }} dias úteis, em D-2)</span>{% endif %}</td></tr>
+      <tr><th>Recurso</th><td>{{ dt(l.recurso) }}{% if cf.data(l.recurso) and l.recurso_dias %} <span class="sub">{{ l.recurso_nome }} ({{ l.recurso_dias }} dias úteis, em D-2)</span>{% endif %}</td></tr>
+      {% if l.cabe_recurso %}<tr><th>Cabimento</th><td>{{ l.cabe_recurso }}</td></tr>{% endif %}
+      {% if l.calendario %}<tr><th>Contagem</th><td class="sub">{{ l.calendario }}</td></tr>{% endif %}
+    </table>
+    {% if l.contas %}<h5>Conferência da conta (refeita à parte)</h5>
+      <ul class="contas">{% for ok, t in l.contas %}<li class="{{ 'ok' if ok else 'erro' }}">{{ "✓" if ok else "✗" }} {{ t }}</li>{% endfor %}</ul>{% endif %}
+  </div>
+
+  <div class="bloco"><h4>Tarefas</h4>
+    {% for t, v in l.pares %}
+    <div class="tarefa-c">
+      <div class="tnome">{{ t.nome }}</div>
+      <table class="kv">
+        <tr><th>Data (análise)</th><td>{% if t.data_tarefa %}{{ dt(t.data_tarefa) }}{% else %}sem data{% endif %}
+          {% if t.tipo_data %}<span class="sub">· {{ t.tipo_data }}{% if t.rotulo_data %} · {{ t.rotulo_data }}{% endif %}{% if t.data_rotulo %} · prazo da observação {{ t.data_rotulo }}{% endif %}</span>{% endif %}</td></tr>
+        {% if v %}
+        <tr><th>Data no VIOS</th><td><b>{{ dt(v.data) }}</b>{% if t.hora %} · {{ t.hora }}{% endif %}</td></tr>
+        <tr><th>Responsáveis</th><td>{{ (v.responsaveis or []) | join(", ") or "automático" }}</td></tr>
+        {% endif %}
+        {% if t.finalidade %}<tr><th>Finalidade</th><td>{{ t.finalidade }}</td></tr>{% endif %}
+      </table>
+      {% if t.descricao %}<div class="obs"><div class="sub">Observação {{ "gravada no VIOS" if v else "que seria gravada" }}</div>{{ descricao(t.descricao) }}</div>{% endif %}
+    </div>
+    {% else %}<p class="sub">A análise não sugeriu tarefa.</p>{% endfor %}
+    {% if l.lancada %}<p class="sub">Gravada e conferida no VIOS em {{ l.quando }}.</p>{% endif %}
+  </div>
+
+  <div class="bloco"><h4>O que a IA entendeu</h4>
+    <p>{{ l.do_que_se_trata }}</p>
+    {% if l.posicao %}<p class="sub"><b>Posição do cliente:</b> {{ l.posicao }}</p>{% endif %}
+    {% if l.pendencias %}<h5>Pendências</h5><ul>{% for p in l.pendencias %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
+    {% if l.modelo %}<p class="sub">Modelo {{ l.modelo }}{% if l.custo %} · US$ {{ "%.3f" | format(l.custo) }}{% endif %}</p>{% endif %}
+  </div>
+  {% if l.teor %}<details><summary>Teor da intimação</summary><pre>{{ l.teor }}</pre></details>{% endif %}
+  <p class="links">{% if l.lancada and l.link_conferencia %}<a href="{{ l.link_conferencia }}" target="_blank" rel="noopener">Ver no VIOS ↗</a>
+    {% elif l.link_lancar %}<a href="{{ l.link_lancar }}" target="_blank" rel="noopener">Lançar no VIOS ↗</a>{% endif %}
+    <a href="#topo-relatorio">↑ topo</a></p>
+</section>
+{% endmacro %}
 <!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sam — envio automático</title>
+<title>Sam — envio automático{% if dia %} de {{ data_br(dia) }}{% endif %}</title>
 {{ ultron_icone() }}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
 {% include "_estilo.html" %}
 <style>
-  .resumo { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 4px; }
-  .ok { color: var(--verde); }
-  .num { background: var(--cartao2); border: 1px solid var(--borda); border-radius: 10px; padding: 8px 14px; min-width: 120px; }
-  .num b { display: block; font-size: 22px; line-height: 1.2; }
-  .num.ok b { color: var(--verde); }
-  .num.nao b { color: #ff7b72; }
+  /* barra de controle (cartão escuro do tema) */
+  .controle h1 { font-family: "Cormorant Garamond", Georgia, serif; font-size: 28px; margin: 0; letter-spacing: .02em; }
+  .dias { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 4px; }
+  .dia-envio { display: flex; flex-direction: column; text-decoration: none; color: var(--texto); background: #2b2925;
+               border: 1.5px solid #4f4430; padding: 7px 12px; min-width: 128px; line-height: 1.25; }
+  .dia-envio b { font: 700 16px "Cormorant Garamond", Georgia, serif; letter-spacing: .04em; }
+  .dia-envio small { color: var(--suave); font-size: 12px; }
+  .dia-envio:hover { border-color: #c98a2e; }
+  .dia-envio.nao-enviado { border-style: dashed; opacity: .8; }
+  .dia-envio[aria-current="page"] { border-color: #f0c46a; background: #3a3020; box-shadow: inset 0 -3px 0 #c98a2e; }
   .filtros { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
-  .filtro { background: var(--cartao2); border: 1px solid var(--borda); color: var(--texto); border-radius: 999px;
-            padding: 5px 14px; cursor: pointer; font: inherit; font-size: 14px; }
-  .filtro[aria-pressed="true"] { border-color: var(--metal); background: #232a37; }
-  .fluxo { display: grid; grid-template-columns: 1fr 26px 1.25fr 26px 1fr; gap: 6px; align-items: start; }
-  .fluxo > .seta { align-self: center; text-align: center; color: var(--suave); font-size: 20px; }
-  .etapa { background: var(--cartao2); border: 1px solid var(--borda); border-radius: 10px; padding: 12px 14px; min-width: 0; }
-  .etapa h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--suave); }
-  .etapa p { margin: 4px 0; }
-  .ci-cab { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 10px; }
-  .ci-cab .ci { font-family: Orbitron, system-ui, sans-serif; font-weight: 800; letter-spacing: .08em; }
-  .tarefa-a { border-top: 1px dashed var(--borda); padding-top: 8px; margin-top: 8px; }
-  .tarefa-a:first-of-type { border-top: 0; padding-top: 0; }
-  .tarefa-a .nome { font-weight: 600; }
-  .etapa pre { max-height: 220px; overflow: auto; }
-  details summary { cursor: pointer; color: var(--metal); font-size: 14px; margin-top: 6px; }
-  .teor { max-height: 320px; overflow: auto; font-size: 13px; white-space: pre-wrap; color: var(--metal);
-          background: #0d1017; border: 1px solid var(--borda); border-radius: 8px; padding: 10px; margin-top: 6px; }
-  .motivo { color: #ffb4ad; }
-  .resultado.ok { border-color: rgba(63, 185, 80, .5); }
-  .resultado.nao { border-color: rgba(255, 123, 114, .45); }
-  .link-vios { display: inline-block; margin-top: 8px; }
-  .alertas li { color: var(--ambar); font-size: 13px; }
-  select.dia { background: var(--cartao2); color: var(--texto); border: 1px solid var(--borda); border-radius: 8px;
-               padding: 6px 10px; font: inherit; font-size: 14px; max-width: 100%; }
-  .topo-hist { flex-wrap: wrap; gap: 10px; }
-  .etapa, .etapa pre, .teor { overflow-wrap: anywhere; }
-  @media (max-width: 860px) {
-    .fluxo { grid-template-columns: 1fr; }
-    .fluxo > .seta { transform: rotate(90deg); }
+  .filtro { background: #2b2925; border: 1px solid #4f4430; color: var(--texto); border-radius: 999px; padding: 5px 14px;
+            cursor: pointer; font: inherit; font-size: 14px; font-weight: 500; }
+  .filtro[aria-pressed="true"] { border-color: #f0c46a; background: #3a3020; }
+  .filtros .busca { margin: 0 0 0 auto; max-width: 250px; }
+  .filtros .botao { padding: 6px 14px; font-size: 14px; }
+
+  /* o relatório: pergaminho como a caixa de fala da vila */
+  .relatorio { --tx: #201f1d; --sub: #6b6458; --bd: #ddd3bf; --papel: #f6f1e6; --suave2: #efe7d6; --ok: #2f7a3a; --okbg: #e3f0dc;
+               --er: #a5432f; --erbg: #f8e2dc; --at: #8a5a1c; --atbg: #fbefd2; --ac: #2f6b34;
+               background: var(--papel); color: var(--tx); border: 3px solid #201f1d;
+               box-shadow: inset 0 0 0 3px var(--papel), inset 0 0 0 4px #201f1d, 0 6px 0 rgba(28, 24, 18, .45);
+               padding: 28px 28px 36px; margin-bottom: 24px; font-size: 14px; line-height: 1.5; }
+  .relatorio a { color: var(--ac); }
+  .relatorio h2 { font: 700 21px "Cormorant Garamond", Georgia, serif; letter-spacing: .03em; margin: 34px 0 12px;
+                  padding-bottom: 6px; border-bottom: 2px solid var(--tx); }
+  .relatorio h2:first-child { margin-top: 0; }
+  .relatorio h3 { font-size: 16px; margin: 0; }
+  .relatorio h4 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; margin: 0 0 8px; color: var(--sub); }
+  .relatorio h5 { font-size: 13px; margin: 12px 0 4px; }
+  .relatorio .sub { color: var(--sub); font-size: 12.5px; }
+  .relatorio .sem { color: var(--sub); font-size: 11.5px; }
+  .relatorio .nw { white-space: nowrap; }
+  .relatorio ul { margin: 4px 0; padding-left: 18px; }
+  .relatorio .vermelho { color: #d40000; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 0 0 16px; }
+  .kpi { border: 1.5px solid var(--bd); background: #fbf8f1; padding: 10px 12px; }
+  .kpi b { display: block; font-size: 24px; line-height: 1.2; }
+  .kpi.ok b { color: var(--ok); } .kpi.nao b { color: var(--er); } .kpi.at b { color: var(--at); }
+  .nota { background: var(--suave2); padding: 12px 16px; margin: 10px 0; }
+  .nota ul { margin: 6px 0 0; }
+  .tw { overflow-x: auto; }
+  table.lista-ci { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  .lista-ci th { text-align: left; font-weight: 600; border-bottom: 2px solid var(--bd); padding: 6px; white-space: nowrap; vertical-align: bottom; }
+  .lista-ci td { border-bottom: 1px solid var(--bd); padding: 6px; vertical-align: top; }
+  .lista-ci .dt { white-space: nowrap; }
+  .lista-ci .dt .sem { display: block; }
+  .lista-ci .tar { min-width: 170px; }
+  .pill { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+  .pill.ok { background: var(--okbg); color: var(--ok); } .pill.bloq { background: var(--erbg); color: var(--er); }
+  .pill.neutro { background: var(--suave2); color: var(--sub); }
+  .flag { display: inline-block; width: 16px; height: 16px; line-height: 16px; text-align: center; border-radius: 50%;
+          background: var(--atbg); color: var(--at); font-weight: 800; font-size: 11px; }
+  section.ci { border: 1.5px solid var(--bd); background: #fffdf8; padding: 16px; margin: 16px 0; overflow-wrap: anywhere; }
+  .ci-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .meta { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 8px 0 4px; font-size: 13px; }
+  .meta b { color: var(--sub); font-weight: 500; margin-right: 4px; }
+  .bloco { border-top: 1px solid var(--bd); padding-top: 10px; margin-top: 12px; }
+  .bloco p { margin: 4px 0; }
+  .caixa { padding: 10px 14px; margin-top: 12px; }
+  .caixa p { margin: 2px 0; }
+  .caixa.atencao { background: var(--atbg); } .caixa.atencao h4 { color: var(--at); }
+  .caixa.bloq { background: var(--erbg); } .caixa.bloq h4 { color: var(--er); }
+  table.kv { border-collapse: collapse; width: 100%; }
+  .kv th { text-align: left; font-weight: 500; color: var(--sub); width: 150px; padding: 3px 10px 3px 0; vertical-align: top; font-size: 13px; }
+  .kv td { padding: 3px 0; }
+  ul.contas { list-style: none; padding: 0; }
+  .contas li { padding: 2px 0; font-size: 13px; } .contas .ok { color: var(--ok); } .contas .erro { color: var(--er); font-weight: 700; }
+  .tarefa-c { background: var(--suave2); padding: 10px 12px; margin: 8px 0; }
+  .tnome { font-weight: 700; margin-bottom: 4px; }
+  .obs { background: #fffdf8; border: 1px solid var(--bd); padding: 8px 10px; margin-top: 8px; font-size: 13px; font-weight: 600; }
+  .relatorio details { margin-top: 12px; }
+  .relatorio details summary { color: var(--ac); font-size: 13px; }
+  .relatorio pre { background: var(--suave2); color: var(--tx); border: 0; font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace;
+                   max-height: 420px; overflow: auto; overflow-wrap: anywhere; }
+  .links { display: flex; gap: 16px; margin: 10px 0 0; font-size: 13px; }
+  .links a:last-child { margin-left: auto; color: var(--sub); }
+  .relatorio [hidden] { display: none !important; }
+  @media (max-width: 760px) {
+    .relatorio { padding: 18px 14px 24px; }
+    .kv th { width: 110px; }
+    .filtros .busca { margin-left: 0; max-width: none; width: 100%; }
     header { flex-wrap: wrap; padding: 10px 16px; }
     header .acoes { margin-left: 0 !important; flex-wrap: wrap; }
-    .cartao { padding: 16px; }
-    .num { min-width: 0; flex: 1 1 40%; }
-    #busca { margin-left: 0 !important; width: 100%; }
+  }
+  @media print {
+    body.tema-vila { background: #fff; }
+    header, .controle, .links { display: none !important; }
+    main { margin: 0; max-width: none; padding: 0; }
+    .relatorio { border: 0; box-shadow: none; padding: 0; background: #fff; }
+    section.ci { break-inside: avoid-page; background: #fff; }
+    .relatorio pre { max-height: none; }
+    .relatorio a { color: inherit; text-decoration: none; }
+    .tw { overflow: visible; }
+    table.lista-ci { font-size: 9.5px; }
+    .lista-ci .tar { min-width: 0; }
   }
 </style>
 </head>
-<body>
+<body class="tema-vila">
 <header>
   <a href="{{ url_for('inicio') }}">{{ ultron("parado", 48, "ultron-topo") }}
     <span><span class="marca marca-sam"><b>S</b>AM</span><br><span class="sub">envio automático ao VIOS</span></span></a>
@@ -69,96 +188,104 @@
 <main>
 {% if not dias %}
   <div class="cartao"><h1>Envio automático</h1>
-    <p class="suave">Nenhuma análise do dia ainda. O Sam captura (<code>./rodar.sh</code>), analisa
+    <p class="suave">Nenhum envio automático ainda. O Sam captura (<code>./rodar.sh</code>), analisa
     (<code>./rodar_analise.sh</code>) e lança (<code>./rodar_lancamento.sh --ci todas --confirmar</code>).</p></div>
 {% else %}
   {% set nao = linhas | length - lancadas %}
-  <div class="cartao">
-    <div class="topo-hist">
-      <h1>Envio automático · intimações de {{ rotulo_dia(dia) }}</h1>
-      <select class="dia" id="dia" aria-label="Escolher o dia">
-        {% for d in dias %}<option value="{{ url_for('automatico', dia=d) }}"{% if d == dia %} selected{% endif %}>{{ rotulo_dia(d) }}</option>{% endfor %}
-      </select>
-    </div>
-    <p class="suave">Cada intimação que o Sam capturou: o que a IA analisou e o que foi lançado no VIOS
-      (ou por que não foi). Datas pela contagem simplificada: só sábado e domingo ficam de fora.</p>
-    <div class="resumo">
-      <div class="num"><b>{{ linhas | length }}</b>intimações</div>
-      <div class="num ok"><b>{{ lancadas }}</b>lançadas ({{ tarefas }} tarefa{{ "s" if tarefas != 1 }})</div>
-      <div class="num nao"><b>{{ nao }}</b>não lançadas</div>
-      <div class="num"><b>US$ {{ "%.2f" | format(custo) }}</b>{{ modelos | join(", ") or "IA" }}</div>
-    </div>
+  <div class="cartao controle">
+    <h1>Envio automático</h1>
+    <p class="suave" style="margin: 4px 0 0">Escolha o dia do envio (quando as tarefas foram gravadas no VIOS).</p>
+    <nav class="dias" aria-label="Dias de envio">
+      {% for d, e in dias.items() %}
+      <a class="dia-envio{{ ' nao-enviado' if not e.enviado }}" href="{{ url_for('automatico', dia=d) }}"{% if d == dia %} aria-current="page"{% endif %}>
+        <b>{{ data_br(d) }} · {{ cf.semana(data_br(d)) }}</b>
+        <small>{% if not e.enviado %}não enviada · {% endif %}intimações de {% for a in e.analises %}{{ rotulo_analise(a) }}{{ ", " if not loop.last }}{% endfor %}</small></a>
+      {% endfor %}
+    </nav>
     <div class="filtros" role="group" aria-label="Filtrar">
       <button class="filtro" data-f="todas" aria-pressed="true">Todas ({{ linhas | length }})</button>
-      <button class="filtro" data-f="ok" aria-pressed="false">Lançadas ({{ lancadas }})</button>
       <button class="filtro" data-f="nao" aria-pressed="false">Não lançadas ({{ nao }})</button>
-      <input class="busca" id="busca" placeholder="Buscar CI, cliente, processo, tarefa…" autocomplete="off" style="margin-left: auto">
+      <button class="filtro" data-f="ok" aria-pressed="false">Lançadas ({{ lancadas }})</button>
+      <button class="filtro" data-f="atencao" aria-pressed="false">Com atenção ({{ com_atencao }})</button>
+      <input class="busca" id="busca" placeholder="Buscar CI, cliente, processo, tarefa…" autocomplete="off">
+      <button class="botao secundario" type="button" onclick="window.print()">Imprimir / PDF</button>
     </div>
   </div>
 
-  {% for l in linhas %}
-  <div class="cartao ci-linha" data-f="{{ 'ok' if l.lancada else 'nao' }}">
-    <div class="ci-cab">
-      <span class="ci">CI {{ l.ci }}</span>
-      <span class="mono">{{ l.processo }}</span>
-      <span class="selo {{ l.classe }}">{{ l.rotulo }}</span>
+  <article class="relatorio" id="topo-relatorio">
+    <h2>{% if dias[dia].enviado %}Conferência do envio de {{ data_br(dia) }}{% else %}Análise de {{ data_br(dia) }} (não enviada){% endif %}</h2>
+    <p class="sub" style="margin-top: -4px">Intimações de {% for a in dias[dia].analises %}{{ rotulo_analise(a) }}{{ ", " if not loop.last }}{% endfor %}
+      (disponibilização), analisadas pela IA{% if dias[dia].enviado %} e enviadas ao VIOS em {{ data_br(dia) }}{% else %} em {{ data_br(dia) }} e <b>não enviadas</b> ao VIOS{% endif %}. Gerado em {{ gerado.strftime("%d/%m/%Y %H:%M") }}.</p>
+    <div class="kpis">
+      <div class="kpi"><b>{{ linhas | length }}</b><span class="sub">intimações vistas pelo bot</span></div>
+      <div class="kpi ok"><b>{{ lancadas }}</b><span class="sub">lançadas ({{ tarefas }} tarefa{{ "s" if tarefas != 1 }})</span></div>
+      <div class="kpi nao"><b>{{ nao }}</b><span class="sub">não lançadas</span></div>
+      <div class="kpi{{ ' nao' if contas_ok < contas }}"><b>{{ contas_ok }}/{{ contas }}</b><span class="sub">contas de prazo conferidas sem divergência</span></div>
+      <div class="kpi at"><b>{{ com_atencao }}</b><span class="sub">com ponto de atenção</span></div>
+      <div class="kpi"><b>US$ {{ "%.2f" | format(custo) }}</b><span class="sub">{{ modelos | join(", ") or "IA" }}</span></div>
     </div>
-    <div class="fluxo">
-      <div class="etapa">
-        <h3>Intimação</h3>
-        <p><b>{{ l.cliente }}</b>{% if l.posicao %} <span class="suave">· {{ l.posicao }}</span>{% endif %}</p>
-        <p class="suave">Auxiliar {{ l.auxiliar or "—" }} · disponibilizada {{ l.disponibilizacao or "—" }} · publicada {{ l.publicacao or "—" }}</p>
-        {% if l.teor %}<details><summary>Ler o teor</summary><div class="teor">{{ l.teor }}</div></details>{% endif %}
-      </div>
-      <div class="seta" aria-hidden="true">→</div>
-      <div class="etapa">
-        <h3>Análise{% if l.modelo %} · {{ l.modelo }}{% endif %}</h3>
-        <p><b>{{ l.ato }}</b>{% if l.area %} · {{ l.area }}{% endif %}</p>
-        <p>{{ l.do_que_se_trata }}</p>
-        {% for t in l.tarefas %}
-        <div class="tarefa-a">
-          <div class="nome">{{ t.nome }}</div>
-          <div class="suave">Data {{ t.data_tarefa or "sem data" }}{% if t.hora %} · {{ t.hora }}{% endif %}</div>
-          {% if t.descricao %}<pre>{{ t.descricao }}</pre>{% endif %}
-        </div>
-        {% endfor %}
-        {% if l.alertas %}<details><summary>{{ l.alertas | length }} alerta(s)</summary>
-          <ul class="alertas">{% for a in l.alertas %}<li>{{ a }}</li>{% endfor %}</ul></details>{% endif %}
-      </div>
-      <div class="seta" aria-hidden="true">→</div>
-      <div class="etapa resultado {{ 'ok' if l.lancada else 'nao' }}">
-        <h3>O que foi</h3>
-        {% if l.lancada %}
-          <p class="ok"><b>Lançada</b> em {{ l.quando }}</p>
-          {% for g in l.gravadas %}
-          <div class="tarefa-a">
-            <div class="nome">{{ g.tarefa }}</div>
-            <div class="suave">Data {{ g.data }} · {{ (g.responsaveis or []) | join(", ") or "automático" }}</div>
-          </div>
-          {% endfor %}
-          {% if l.link_conferencia %}<a class="botao secundario link-vios" href="{{ l.link_conferencia }}" target="_blank" rel="noopener">Ver no VIOS ↗</a>{% endif %}
-        {% else %}
-          <p><b>{{ l.rotulo }}</b>{% if l.quando %} <span class="suave">· {{ l.quando }}</span>{% endif %}</p>
-          {% if l.mensagem %}<p class="motivo">{{ l.mensagem }}</p>{% endif %}
-          {% if l.link_lancar %}<a class="botao secundario link-vios" href="{{ l.link_lancar }}" target="_blank" rel="noopener">Lançar no VIOS ↗</a>{% endif %}
-        {% endif %}
-      </div>
-    </div>
-  </div>
-  {% endfor %}
-  <p class="suave" id="vazio" hidden>Nenhuma intimação com esse filtro.</p>
+
+    <div class="nota"><b>Como ler os prazos</b><ul>
+      <li>O prazo começa no 1º dia útil depois da <b>publicação</b>.{% if simplificada %} A contagem configurada é a
+        <b>simplificada</b>: só sábado e domingo ficam de fora e <b>feriado conta como dia útil</b>, então a data fica
+        igual ou antes do vencimento real.{% endif %}</li>
+      <li><b>D-2</b> é a data da tarefa: dois dias úteis antes do prazo fatal. As linhas
+        <b class="vermelho">PRAZO PARA EMBARGOS / RECURSO</b> da observação também estão em D-2.</li>
+      <li>Análise de sentença/decisão e ciência: a data é o dia do lançamento. Lançadas depois das 12h, vão para o
+        próximo dia útil (corte das 12h).</li>
+      {% for f in feriados %}<li><b>{{ f[0] }} ({{ f[1] }}) é feriado nacional</b> ({{ f[2] }}). Pela contagem simplificada ele contou
+        como dia útil: prazo que passa por ele ficou <b>1 dia útil antes</b> do vencimento real (lado seguro). Tarefa marcada
+        <b>para</b> esse dia aparece como ponto de atenção.</li>{% endfor %}
+      {% if simplificada %}<li>"Conferência da conta" refaz cada data por fora, a partir dos dias que a IA leu no texto: ✓ = a data bate.</li>
+      {% else %}<li>A contagem com feriados por tribunal está ligada (<code>PRAZO_CONTAGEM=feriados</code>): a conta refeita fica de fora.</li>{% endif %}
+      <li>As <b>não lançadas</b> vêm primeiro, depois as lançadas, cada grupo pela data mais próxima.</li>
+    </ul></div>
+
+    <h2>Visão geral</h2>
+    <div class="tw"><table class="lista-ci">
+      <thead><tr><th>CI</th><th>Ato</th><th>Tarefa</th><th>Data da tarefa<div class="sub">VIOS ou análise</div></th>
+        <th>Prazo fatal</th><th>D-2</th><th>Embargos</th><th>Recurso</th></tr></thead>
+      <tbody>
+      {% for l in linhas %}
+      <tr data-f="{{ 'ok' if l.lancada else 'nao' }}" data-a="{{ 'sim' if l.atencao else 'nao' }}">
+        <td><a href="#ci{{ l.ci }}">{{ l.ci }}</a>{% if l.atencao %} <span class="flag" title="pontos de atenção">!</span>{% endif %}<div>{{ selo(l) }}</div></td>
+        <td>{{ l.ato | title }}<div class="sub">{{ l.area | title }}</div></td>
+        <td class="tar">{% for t, v in l.pares %}{{ cf.curto(t.nome) }}{{ "<br>" | safe if not loop.last }}{% endfor %}</td>
+        <td class="dt">{% for t, v in l.pares %}{{ dt(v.data if v else t.data_tarefa) if (v or t.data_tarefa) else "—" }}{{ "<br>" | safe if not loop.last }}{% endfor %}</td>
+        <td class="dt">{{ cel(l.prazo_fatal) }}</td><td class="dt">{{ cel(l.prazo_d2) }}</td>
+        <td class="dt">{{ cel(l.embargos) }}</td><td class="dt">{{ cel(l.recurso) }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    <p class="sub" id="vazio" hidden>Nenhuma intimação com esse filtro.</p>
+
+    {% set nao_lancadas = linhas | rejectattr("lancada") | list %}
+    {% if nao_lancadas %}<h2 class="grupo">Não lançadas ({{ nao_lancadas | length }})</h2>
+    {% for l in nao_lancadas %}{{ cartao(l) }}{% endfor %}{% endif %}
+    {% set lancadas_l = linhas | selectattr("lancada") | list %}
+    {% if lancadas_l %}<h2 class="grupo">Lançadas ({{ lancadas_l | length }})</h2>
+    {% for l in lancadas_l %}{{ cartao(l) }}{% endfor %}{% endif %}
+  </article>
 {% endif %}
 </main>
 <script>
-  const dia = document.getElementById('dia');
-  if (dia) dia.addEventListener('change', () => { location.href = dia.value; });
   let filtro = 'todas';
   function aplicar() {
     const q = (document.getElementById('busca') || {value: ''}).value.toLowerCase();
+    const passa = el => (filtro === 'todas' || (filtro === 'atencao' ? el.dataset.a === 'sim' : el.dataset.f === filtro));
     let vistos = 0;
-    document.querySelectorAll('.ci-linha').forEach(c => {
-      const ok = (filtro === 'todas' || c.dataset.f === filtro) && (!q || c.textContent.toLowerCase().includes(q));
+    // o cartão decide (a busca olha o cartão inteiro); a linha da tabela acompanha o cartão da mesma CI
+    document.querySelectorAll('section.ci').forEach(c => {
+      const ok = passa(c) && (!q || c.textContent.toLowerCase().includes(q));
       c.hidden = !ok; if (ok) vistos++;
+      const linha = document.querySelector(`tr a[href="#${c.id}"]`);
+      if (linha) linha.closest('tr').hidden = !ok;
+    });
+    document.querySelectorAll('h2.grupo').forEach(h => {
+      let el = h.nextElementSibling, algum = false;
+      while (el && el.tagName === 'SECTION') { if (!el.hidden) algum = true; el = el.nextElementSibling; }
+      h.hidden = !algum;
     });
     const vazio = document.getElementById('vazio'); if (vazio) vazio.hidden = vistos > 0;
   }

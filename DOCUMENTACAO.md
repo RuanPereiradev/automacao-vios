@@ -571,10 +571,31 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   linha, não é lançada (bloqueio). Linhas `PRIORIDADE ...` saem da descrição.
 - Modelo: `LLM_MODELO=claude-haiku-5-5`, `LLM_MODELO_SIMPLES=` vazio (ver Passo 12).
 
-### Passo 38 — Tela "Envio automático" (`/automatico`)
-- Na página do Sam (`./rodar_envio.sh`), botão **Envio automático** ou
-  `http://<IP>:5001/automatico` (escolher outro dia: `/automatico/2026-11-09`).
-- Uma linha por intimação analisada no dia: **Intimação → Análise → O que foi**.
+### Passo 38 — Tela "Envio automático" (`/automatico`): relatório de conferência
+- Na página do Sam (`./rodar_envio.sh`): cartão **Envio automático** (último envio com os números e os
+  outros dias) e botão **Envio automático** no topo. Endereço: `http://<IP>:5001/automatico`.
+- **Filtro por dia de envio**: o dia em que as tarefas foram gravadas (ou barradas) no VIOS, não o dia
+  das intimações. Cada análise do dia inteiro (`saida/analise_<dia>.json`) entra no dia de envio da
+  maioria das CIs dela (o "quando" de `lancamentos.json` / `automatico_resultados.json`); duas análises
+  enviadas no mesmo dia aparecem juntas. Análise que nunca foi enviada fica no dia em que foi feita,
+  marcada **não enviada**. Outro dia: `/automatico/2026-11-10`.
+- O relatório (`bot/conferencia.py`), com foco nos prazos:
+  - números do dia: intimações, lançadas, não lançadas, contas de prazo conferidas, com ponto de
+    atenção, gasto da IA;
+  - "Como ler os prazos": contagem simplificada, D-2, corte das 12h e os **feriados nacionais** do
+    período, que contaram como dia útil (a data fica 1 dia útil antes do vencimento real);
+  - visão geral: uma linha por CI com tarefa, data da tarefa, prazo fatal, D-2, embargos e recurso;
+  - um cartão por CI: prazos (trecho, dias lidos pela IA, fatal, D-2, embargos, recurso, cabimento),
+    **conferência da conta** (cada data refeita por fora a partir dos dias que a IA leu: ✓ bate,
+    ✗ diverge), tarefas (data da análise × data no VIOS, responsáveis, observação com as linhas de
+    prazo em vermelho), o que a IA entendeu, pendências e o teor da intimação;
+  - **pontos de atenção**: não lançada (com a data de prazo mais próxima, para conferir se a
+    Controladoria lançou à mão), tarefa em feriado nacional ou depois do prazo fatal, CIÊNCIA com
+    prazo calculado, prazo no texto sem data, data no VIOS diferente da análise (fora o corte das 12h)
+    e os alertas da análise.
+- Não lançadas primeiro, depois as lançadas, cada grupo pela data mais próxima. Filtros: todas, não
+  lançadas, lançadas, com atenção, e busca. **Imprimir / PDF** sai só o relatório, em papel claro.
+- Com `PRAZO_CONTAGEM=feriados` a conta refeita fica de fora (ela segue a contagem simplificada).
 
 | O que foi | De onde vem |
 | --- | --- |
@@ -584,6 +605,10 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 
 - A página lê a pasta `saida/` do computador onde roda: o que foi analisado e lançado em outro
   computador não aparece nela.
+- Visual: as páginas do Sam (`/sam`, histórico, envio, envio automático) usam as cores da vila 01
+  (grama, mata nas bordas, cabeçalho de mata com a estrada de terra, placas escuras, dourado), pela
+  classe `tema-vila` do `bot/templates/_estilo.html`; o relatório fica num pergaminho claro, como a
+  caixa de fala da vila. As outras páginas (vila, Bumblebee, Albi, Jarvis, Orelha) não mudam.
 
 ### Passo 21 — Rodar no Mac e no Linux
 - O projeto roda nos dois sistemas com os mesmos arquivos e comandos.

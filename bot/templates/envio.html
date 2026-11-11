@@ -31,7 +31,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
 {% include "_estilo.html" %}
 </head>
-<body>
+<body class="tema-vila">
 <header>
   <a href="{{ url_for('inicio') }}">{{ ultron("parado", 48, "ultron-topo") }}
     <span><span class="marca marca-sam"><b>S</b>AM</span><br><span class="sub">envio de tarefas ao VIOS</span></span></a>
@@ -57,6 +57,22 @@
       </label>
     </form>
     {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+  </div>
+  <div class="cartao automatico">
+    <div class="topo-hist"><h2>Envio automático</h2>
+      {% if automaticos %}<a class="botao primario" href="{{ url_for('automatico') }}">Abrir o relatório</a>{% endif %}</div>
+    {% if automaticos %}{% set u = automaticos[0] %}
+      <p class="suave">O que o Sam capturou, o que a IA analisou e o que foi lançado no VIOS, com os prazos conferidos.</p>
+      <div class="numeros">
+        <div class="numero"><b>{{ u.dia[8:10] }}/{{ u.dia[5:7] }}</b><span class="suave">{{ "último envio" if u.enviado else "análise não enviada" }}</span></div>
+        <div class="numero"><b>{{ u.total }}</b><span class="suave">intimações</span></div>
+        <div class="numero"><b class="ok">{{ u.lancadas }}</b><span class="suave">lançadas</span></div>
+        <div class="numero"><b class="erro">{{ u.total - u.lancadas }}</b><span class="suave">não lançadas</span></div>
+        <div class="numero"><b class="aviso">{{ u.atencao }}</b><span class="suave">com atenção</span></div>
+      </div>
+      {% if automaticos | length > 1 %}<p class="dias-auto"><span class="suave">Outros dias:</span>
+        {% for a in automaticos[1:] %}<a href="{{ url_for('automatico', dia=a.dia) }}">{{ a.dia[8:10] }}/{{ a.dia[5:7] }}/{{ a.dia[0:4] }}</a>{% if not a.enviado %} <span class="suave">(não enviada)</span>{% endif %}{{ " · " if not loop.last }}{% endfor %}</p>{% endif %}
+    {% else %}<p class="suave">Nenhum envio automático ainda.</p>{% endif %}
   </div>
   <div class="cartao">
     <details>

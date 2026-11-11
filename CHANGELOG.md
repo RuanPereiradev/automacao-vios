@@ -12,6 +12,23 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Relatório de conferência no Envio automático do Sam (11/11/2026)
+- A tela `/automatico` virou o relatório de conferência, com foco nos prazos (`bot/conferencia.py`):
+  números do dia, nota "como ler os prazos" (com os feriados nacionais que contaram como dia útil),
+  visão geral por CI e um cartão por intimação com prazos, conta de cada prazo refeita por fora,
+  tarefa da análise × tarefa gravada no VIOS, o que a IA entendeu, pendências, teor e pontos de
+  atenção (não lançada com prazo próximo, tarefa em feriado ou depois do fatal, CIÊNCIA com prazo...).
+- Filtro por **dia de envio** (dia em que as tarefas foram gravadas no VIOS), não mais pelo arquivo da
+  análise; análise nunca enviada aparece como "não enviada". Filtros de lançadas, não lançadas e com
+  atenção, busca e botão Imprimir / PDF.
+- Página `/sam`: cartão **Envio automático** com o último envio e os outros dias.
+
+### Alterado — Páginas do Sam com as cores da vila (11/11/2026)
+- `/sam`, histórico, envio e envio automático trocaram o fundo azul escuro pelas cores da vila 01:
+  grama com tufos e flores, mata nas bordas, cabeçalho de mata com a estrada de terra, cartões escuros
+  como as placas da vila e botão principal dourado (classe `tema-vila` em `_estilo.html`). As outras
+  páginas não mudam.
+
 ### Corrigido — Lançamento bloqueia tarefa com data que já passou (11/11/2026)
 - As datas D-2, dia seguinte e data informada vêm prontas da análise e não eram conferidas no
   lançamento: uma análise de um dia lançada em outro (ex.: `lancar.py` dias depois) gravava a tarefa

@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 from flask import (Flask, Response, abort, jsonify, redirect, render_template, request, send_file,
                    send_from_directory, url_for)
 
-from bot import albi, config, duplicidade, envio_txt, eventos, jarvis, orelha, skill, zangao
+from bot import albi, conferencia, config, duplicidade, envio_txt, eventos, jarvis, orelha, prazos, skill, zangao
 from bot.lancamento import REGISTRO, RESULTADOS, lancar, ler_intimacao
 from bot.login import fazer_login
 from bot.navegador import criar_driver
@@ -259,48 +259,66 @@ RESULTADO_ROTULO = {
 }
 
 
-def _dias_analisados(pasta_saida):
-    """Análises do dia inteiro (saida/analise_<dia>.json, sem as de CIs avulsas), da mais nova para a mais antiga."""
-    arquivos = [a for a in Path(pasta_saida).glob("analise_*.json") if "_ci-" not in a.name]
-    return [a.stem[len("analise_"):] for a in sorted(arquivos, key=lambda a: a.stat().st_mtime, reverse=True)]
-
-
-def montar_automatico(pasta_saida, dia):
-    """Uma linha por intimação analisada no dia: intimação -> análise -> resultado do lançamento."""
+def _registros_automatico(pasta_saida):
+    """(lancamentos.json, automatico_resultados.json)."""
     pasta = Path(pasta_saida)
-    analises = json.loads((pasta / f"analise_{dia}.json").read_text(encoding="utf-8"))
+    ler = lambda a: json.loads(a.read_text(encoding="utf-8")) if a.exists() else {}
+    return ler(pasta / REGISTRO), ler(pasta / RESULTADOS)
+
+
+def montar_automatico(pasta_saida, dias_analise):
+    """Relatório de conferência das análises pedidas (bot/conferencia.py): uma linha por intimação,
+    da captura à tarefa gravada no VIOS, com os prazos conferidos. Não lançadas primeiro, depois as
+    lançadas, cada grupo pela data mais próxima."""
+    pasta = Path(pasta_saida)
     capturas = _capturas(pasta)
-    registro = json.loads((pasta / REGISTRO).read_text(encoding="utf-8")) if (pasta / REGISTRO).exists() else {}
-    anotados = json.loads((pasta / RESULTADOS).read_text(encoding="utf-8")) if (pasta / RESULTADOS).exists() else {}
+    registro, anotados = _registros_automatico(pasta)
     linhas = []
-    for a in analises:
-        ci = a.get("ci", "")
-        item = capturas.get(ci, {})
-        link = a.get("link_lancar") or item.get("link_lancar", "")
-        if ci in registro:
-            estado, mensagem, quando = "gravada", "", registro[ci].get("quando", "")
-        elif ci in anotados:
-            estado, mensagem, quando = anotados[ci]["estado"], anotados[ci].get("mensagem", ""), anotados[ci].get("quando", "")
-        elif a.get("duplicada_de") and duplicidade.ligado():
-            estado, mensagem, quando = "duplicada", f"Cópia da CI {a['duplicada_de']}: vale a tarefa da original.", ""
-        elif a.get("bloqueios"):
-            estado, mensagem, quando = "bloqueada", "; ".join(a["bloqueios"]), ""
-        else:
-            estado, mensagem, quando = "aguardando", "", ""
-        classe, rotulo = RESULTADO_ROTULO.get(estado, ("s-ja", estado))
-        linhas.append({
-            "ci": ci, "processo": a.get("processo", ""), "cliente": a.get("cliente") or item.get("cliente", ""),
-            "posicao": a.get("posicao_cliente", ""), "auxiliar": a.get("auxiliar", ""),
-            "disponibilizacao": a.get("disponibilizacao", ""), "publicacao": a.get("publicacao", ""),
-            "teor": item.get("texto", ""), "ato": a.get("ato", ""), "area": a.get("area", ""),
-            "do_que_se_trata": a.get("do_que_se_trata", ""), "tarefas": a.get("tarefas", []),
-            "alertas": a.get("alertas", []), "bloqueios": a.get("bloqueios", []), "modelo": a.get("modelo", ""),
-            "custo": a.get("custo_us") or 0, "estado": estado, "lancada": estado == "gravada",
-            "classe": classe, "rotulo": rotulo, "mensagem": mensagem, "quando": quando,
-            "gravadas": registro.get(ci, {}).get("tarefas", []),
-            "link_lancar": link,
-            "link_conferencia": link.replace("int-lanca.php", "confere-intimacao-lancada.php") if link else "",
-        })
+    for dia in dias_analise:
+        for a in json.loads((pasta / f"analise_{dia}.json").read_text(encoding="utf-8")):
+            ci = a.get("ci", "")
+            item = capturas.get(ci, {})
+            link = a.get("link_lancar") or item.get("link_lancar", "")
+            if ci in registro:
+                estado, mensagem, quando = "gravada", "", registro[ci].get("quando", "")
+            elif ci in anotados:
+                estado, mensagem, quando = anotados[ci]["estado"], anotados[ci].get("mensagem", ""), anotados[ci].get("quando", "")
+            elif a.get("duplicada_de") and duplicidade.ligado():
+                estado, mensagem, quando = "duplicada", f"Cópia da CI {a['duplicada_de']}: vale a tarefa da original.", ""
+            elif a.get("bloqueios"):
+                estado, mensagem, quando = "bloqueada", "; ".join(a["bloqueios"]), ""
+            else:
+                estado, mensagem, quando = "aguardando", "", ""
+            classe, rotulo = RESULTADO_ROTULO.get(estado, ("s-ja", estado))
+            lancada = estado == "gravada"
+            gravadas = registro.get(ci, {}).get("tarefas", []) if lancada else []
+            pares, notas, atencao_datas = conferencia.comparar_tarefas(a, gravadas, quando)
+            ia = a.get("ia") or {}
+            datas = [d for d in (conferencia.data(a.get("prazo_d2")), conferencia.data(a.get("embargos")),
+                                 *(conferencia.data(v["data"] if v else t.get("data_tarefa")) for t, v in pares)) if d]
+            linhas.append({
+                "ci": ci, "processo": a.get("processo", ""), "cliente": a.get("cliente") or item.get("cliente", ""),
+                "posicao": a.get("posicao_cliente", ""), "auxiliar": a.get("auxiliar", ""),
+                "disponibilizacao": a.get("disponibilizacao", ""), "publicacao": a.get("publicacao", ""),
+                "teor": item.get("texto", ""), "ato": a.get("ato", ""), "area": a.get("area", ""),
+                "do_que_se_trata": a.get("do_que_se_trata", ""), "pendencias": a.get("pendencias", []),
+                "alertas": a.get("alertas", []), "bloqueios": a.get("bloqueios", []), "modelo": a.get("modelo", ""),
+                "custo": a.get("custo_us") or 0, "estado": estado, "lancada": lancada,
+                "classe": classe, "rotulo": rotulo, "mensagem": mensagem, "quando": quando,
+                "pares": pares, "gravadas": gravadas,
+                "prazo_fatal": a.get("prazo_fatal", ""), "prazo_d2": a.get("prazo_d2", ""),
+                "prazo_trecho": a.get("prazo_trecho", ""), "prazo": ia.get("prazo") or {},
+                "embargos": a.get("embargos", ""), "embargos_dias": (ia.get("embargos") or {}).get("dias"),
+                "recurso": a.get("recurso", ""), "recurso_nome": a.get("recurso_nome", ""),
+                "recurso_dias": (ia.get("recurso") or {}).get("dias"),
+                "cabe_recurso": a.get("cabe_recurso", ""), "calendario": a.get("calendario", ""),
+                "contas": [(True, n) for n in notas] + conferencia.conferir_contas(a),
+                "atencao": atencao_datas + conferencia.pontos_de_atencao(a, pares, lancada),
+                "proxima": min(datas) if datas else date.max,
+                "link_lancar": link,
+                "link_conferencia": link.replace("int-lanca.php", "confere-intimacao-lancada.php") if link else "",
+            })
+    linhas.sort(key=lambda l: (l["lancada"], l["proxima"], l["ci"]))
     return linhas
 
 
@@ -395,8 +413,22 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     def inicio():
         """Página do Sam (envio de tarefas ao VIOS)."""
         recentes = sorted(envios.items(), key=lambda e: e[1]["criado"], reverse=True)[:8]
+        # cartão "Envio automático": os últimos dias de envio, o mais novo com os números
+        automaticos = []
+        for n, (dia, envio) in enumerate(list(_dias_envio().items())[:6]):
+            item = {"dia": dia, "enviado": envio["enviado"]}
+            if n == 0:
+                try:
+                    linhas = montar_automatico(pasta_saida, envio["analises"])
+                except (OSError, ValueError, KeyError):
+                    log.exception("Envio automático de %s: não deu para montar o resumo", dia)
+                    linhas = []
+                item.update(total=len(linhas), lancadas=sum(l["lancada"] for l in linhas),
+                            atencao=sum(1 for l in linhas if l["atencao"]))
+            automaticos.append(item)
         return render_template("envio.html", tela="inicio", recentes=recentes, resumo=resumo_envio,
-                               total_envios=len(envios), total_lancadas=len(lancadas()), ocupado=trava.locked())
+                               total_envios=len(envios), total_lancadas=len(lancadas()), ocupado=trava.locked(),
+                               automaticos=automaticos)
 
     @app.route("/historico")
     def historico():
@@ -413,23 +445,33 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
                                gravadas=gravadas, total_tarefas=sum(len(r.get("tarefas", [])) for r in registro.values()),
                                ocupado=trava.locked())
 
+    def _dias_envio():
+        return conferencia.dias_de_envio(pasta_saida, *_registros_automatico(pasta_saida))
+
     @app.route("/automatico")
     @app.route("/automatico/<dia>")
     def automatico(dia=None):
-        """Envio automático: cada intimação do dia -> análise da IA -> o que foi lançado (ou por que não)."""
-        dias = _dias_analisados(pasta_saida)
+        """Envio automático: relatório de conferência de um dia de envio (o dia em que as tarefas foram
+        gravadas no VIOS): cada intimação -> análise da IA -> prazos conferidos -> o que foi lançado."""
+        dias = _dias_envio()
         if not dias:
-            return render_template("automatico.html", dias=[], dia="", linhas=[], ocupado=trava.locked())
+            return render_template("automatico.html", dias={}, dia="", linhas=[], ocupado=trava.locked())
         if dia not in dias:
             if dia:
                 abort(404)
-            dia = dias[0]
-        linhas = montar_automatico(pasta_saida, dia)
+            dia = next(iter(dias))
+        linhas = montar_automatico(pasta_saida, dias[dia]["analises"])
+        contas = [ok for l in linhas for ok, _ in l["contas"]]
         return render_template("automatico.html", dias=dias, dia=dia, linhas=linhas, ocupado=trava.locked(),
                                lancadas=sum(l["lancada"] for l in linhas),
                                tarefas=sum(len(l["gravadas"]) for l in linhas),
                                custo=sum(l["custo"] for l in linhas),
-                               modelos=sorted({l["modelo"] for l in linhas if l["modelo"]}))
+                               modelos=sorted({l["modelo"] for l in linhas if l["modelo"]}),
+                               contas=len(contas), contas_ok=sum(contas),
+                               com_atencao=sum(1 for l in linhas if l["atencao"]),
+                               feriados=conferencia.feriados_no_periodo(linhas),
+                               simplificada=prazos.contagem_simplificada(),
+                               gerado=datetime.now(), cf=conferencia)
 
     @app.route("/ler", methods=["POST"])
     def ler():
