@@ -12,6 +12,18 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Subagentes do Claude Code em `.claude/agents/` (11/11/2026)
+- `backend-specialist`: Python, integrações (Selenium/VIOS, IA, Datajud, Presto), arquitetura e
+  dados. Pode editar.
+- `frontend-specialist`: HTML, CSS, JS, React e UX/UI, voltado aos templates Jinja do Ultron e da
+  revisão. Pode editar.
+- `security-auditor`: segurança, autenticação, certificados, segredos e LGPD. Somente leitura
+  (Read, Grep, Glob).
+- `code-reviewer`: bugs, arquitetura, qualidade e testes, com foco em prazos, duplicidade e
+  lançamento. Somente leitura (Read, Grep, Glob).
+- Todos seguem as regras do `CLAUDE.md` (CHANGELOG, documentação em português, nada de senha ou
+  `.env` em textos).
+
 ### Alterado — Branch relatorio-processos atualizada com a main: PDF dentro de `jarvis/` (09/11/2026)
 - Com o Jarvis na pasta própria, o PDF foi junto: `bot/relatorio_pdf.py` → `jarvis/nucleo/relatorio_pdf.py`
   e `bot/timbrado/` → `jarvis/nucleo/timbrado/` (o Jarvis não importa nada de `bot/`).
