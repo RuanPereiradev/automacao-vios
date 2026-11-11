@@ -12,6 +12,14 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Histórico perdia o resultado do envio conferido de novo depois (11/11/2026)
+- "Salvar e conferir" num envio já enviado apagava o resultado das CIs e o histórico mostrava
+  "Conferido, não enviado" com "—" (caso de `analise_2026-11-10_complementar.txt`, que gravou 10 CIs
+  às 16:56 de 10/11 e foi conferido de novo às 16:57). Agora o histórico e o `/sam` mostram o resultado
+  do último envio (lido do `envio_fim` em `saida/eventos.jsonl`, `eventos.fins_por_envio`) com a nota
+  "conferido de novo depois", e a página do envio avisa que ele já foi enviado. Vale para os envios
+  antigos, sem mexer nos arquivos.
+
 ### Alterado — Fortaleza do Dragão também na Vila dos Bots (11/11/2026)
 - Na página inicial (`/`) e em `/vila`, a aba **01 · Sam** mostra a Fortaleza do Dragão por cima da
   Vila 01 antiga; a barra de abas fica por cima e as abas 02 a 05 não mudam. Patch novo

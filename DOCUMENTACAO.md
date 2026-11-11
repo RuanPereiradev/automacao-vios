@@ -483,6 +483,12 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   carrega tudo ao iniciar. O botão **Histórico** (`/historico`) mostra todos os
   envios e todas as tarefas gravadas no VIOS (`saida/lancamentos.json`), com busca.
   Os envios de 29 e 30/10 anteriores a isso foram reconstruídos do log (só leitura).
+- **Envio conferido de novo depois de enviado** ("Salvar e conferir" num envio já concluído): a
+  conferência nova apaga o resultado de cada CI e o envio volta a "conferido". O histórico e o `/sam`
+  mostram mesmo assim o resultado do último envio (Concluído, gravadas, já no VIOS), com a nota
+  "conferido de novo depois", e a página do envio avisa "Este arquivo já foi enviado em ...". O
+  resultado vem do último `envio_fim` desse envio em `saida/eventos.jsonl` (vale também para os
+  envios antigos). Caso real: `analise_2026-11-10_complementar.txt` (10/11, 10 gravadas e 2 já no VIOS).
 - **Velocidade (medida em 31/10/2026, teste sem gravar):** quem manda no tempo é o
   servidor do VIOS. Cada Adicionar leva ~1,5 s, abrir a tela de lançamento ~1,2 s e a
   Conferência ~0,7 s nos horários bons, e o dobro ou mais nos horários lentos (o mesmo

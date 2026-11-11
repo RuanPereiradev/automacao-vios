@@ -2,10 +2,13 @@
 {% from "_vila.html" import fortaleza_cartao %}
 {% set ESTADOS = {"conferir": ["s-ja", "Conferido, não enviado"], "enviando": ["s-andamento", "Enviando…"],
                   "testado": ["s-andamento", "Testado (não gravou)"], "concluido": ["s-ok", "Concluído"], "falhou": ["s-erro", "Parou"]} %}
+{# envio conferido de novo depois de enviado: a situação vem do último envio_fim (eventos) #}
+{% set FINS = {"concluido": ["s-ok", "Concluído"], "testado": ["s-andamento", "Testado (não gravou)"], "parou": ["s-erro", "Parou"]} %}
 {% macro tabela_envios(lista) %}
 <div class="rolar"><table class="hist">
   <tr><th>Quando</th><th>Arquivo</th><th>CIs / tarefas</th><th>Resultado</th><th>Situação</th></tr>
-  {% for id, e in lista %}{% set r = resumo(e) %}{% set s = ESTADOS.get(e.estado, ["s-ja", e.estado]) %}
+  {% for id, e in lista %}{% set fim = (fins or {}).get(id) if e.estado == "conferir" else none %}{% set r = resumo(e, fim) %}
+  {%- if fim %}{% set s = FINS.get(fim.resultado, ["s-ja", fim.resultado]) %}{% else %}{% set s = ESTADOS.get(e.estado, ["s-ja", e.estado]) %}{% endif %}
   <tr>
     <td class="nowrap">{{ e.criado.strftime('%d/%m/%Y %H:%M') }}</td>
     <td><a href="{{ url_for('ver', envio_id=id) }}">{{ e.arquivo }}</a></td>
@@ -15,7 +18,7 @@
       {% if r.erros %}<span class="erro">{{ r.erros }} erro(s)</span>{% endif %}
       {% if r.puladas %}<span class="suave">{{ r.puladas }} já no VIOS/duplicada(s)</span>{% endif %}
       {% if not (r.gravadas or r.testadas or r.erros or r.puladas) %}<span class="suave">—</span>{% endif %}</td>
-    <td><span class="selo {{ s[0] }}">{{ s[1] }}</span></td>
+    <td><span class="selo {{ s[0] }}">{{ s[1] }}</span>{% if fim %}<div class="suave" style="font-size: 12px">conferido de novo depois</div>{% endif %}</td>
   </tr>
   {% endfor %}
 </table></div>
@@ -178,6 +181,15 @@ SENTENÇA
   {% set ja = envio.cis | selectattr("ja_lancada") | list %}
 
   {{ fortaleza_cartao() }}
+
+  {% if fim_anterior %}{% set k = fim_anterior.contagens or {} %}
+  <div class="cartao">
+    <h2>Este arquivo já foi {{ "enviado" if fim_anterior.resultado == "concluido" else ("testado" if fim_anterior.resultado == "testado" else "enviado, mas parou") }} em {{ fim_anterior.ts[8:10] }}/{{ fim_anterior.ts[5:7] }}/{{ fim_anterior.ts[0:4] }} às {{ fim_anterior.ts[11:16] }}</h2>
+    <p>Resultado: <b class="ok">{{ k.gravadas or 0 }} gravada(s)</b>{% if k.testadas %} · {{ k.testadas }} testada(s){% endif %}{% if k.erros %} · <span class="erro">{{ k.erros }} com erro</span>{% endif %}{% if k.ja_tinha %} · {{ k.ja_tinha }} já tinha(m) tarefa{% endif %}{% if k.duplicatas %} · {{ k.duplicatas }} duplicata(s){% endif %}.</p>
+    <p class="suave">Depois disso ele foi conferido de novo, por isso aparece como conferido: as CIs que já foram gravadas
+      aparecem como "já lançada". Enviar de novo só lança o que ainda não está no VIOS.</p>
+  </div>
+  {% endif %}
 
   {% if envio.estado == "enviando" %}
   <div class="cartao">

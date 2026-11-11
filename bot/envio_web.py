@@ -105,12 +105,18 @@ def _editavel(envio):
     return envio["estado"] in EDITAVEIS and not envio.get("reconstruido")
 
 
-def resumo_envio(envio):
-    """Contagem por resultado, para o histórico."""
+def resumo_envio(envio, fim=None):
+    """Contagem por resultado, para o histórico. fim = o último envio_fim deste envio (eventos.fins_por_envio):
+    se o envio foi conferido de novo depois de enviado, as CIs perderam o resultado e a contagem vem dele."""
     r = [c.get("resultado") for c in envio["cis"]]
-    return {"gravadas": r.count("gravada"), "testadas": r.count("testada"), "erros": r.count("erro"),
-            "puladas": r.count("pulada") + r.count("duplicada"), "cis": len(r),
-            "tarefas": sum(len(c["tarefas"]) for c in envio["cis"])}
+    resumo = {"gravadas": r.count("gravada"), "testadas": r.count("testada"), "erros": r.count("erro"),
+              "puladas": r.count("pulada") + r.count("duplicada"), "cis": len(r),
+              "tarefas": sum(len(c["tarefas"]) for c in envio["cis"])}
+    if fim and envio.get("estado") == "conferir" and not any(r):
+        k = fim.get("contagens") or {}
+        resumo.update(gravadas=k.get("gravadas", 0), testadas=k.get("testadas", 0), erros=k.get("erros", 0),
+                      puladas=k.get("ja_tinha", 0) + k.get("duplicatas", 0))
+    return resumo
 
 
 def _situacao_tarefas(c):
@@ -431,6 +437,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
                             atencao=sum(1 for l in linhas if l["atencao"]))
             automaticos.append(item)
         return render_template("envio.html", tela="inicio", recentes=recentes, resumo=resumo_envio,
+                               fins=eventos.fins_por_envio(pasta_saida),
                                total_envios=len(envios), total_lancadas=len(lancadas()), ocupado=trava.locked(),
                                automaticos=automaticos)
 
@@ -446,6 +453,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
                 return datetime.min
         gravadas = sorted(registro.items(), key=quando, reverse=True)
         return render_template("envio.html", tela="historico", envios_todos=todos, resumo=resumo_envio,
+                               fins=eventos.fins_por_envio(pasta_saida),
                                gravadas=gravadas, total_tarefas=sum(len(r.get("tarefas", [])) for r in registro.values()),
                                ocupado=trava.locked())
 
@@ -513,7 +521,9 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
                                nao_capturadas=nao_capturadas,
                                ocupado=trava.locked() and envio["estado"] != "enviando",
                                editavel=_editavel(envio), oficiais=oficiais, pessoas=pessoas(), agora=datetime.now(),
-                               texto=envio_txt.gerar(envio["cis"]))
+                               texto=envio_txt.gerar(envio["cis"]),
+                               fim_anterior=eventos.fins_por_envio(pasta_saida).get(envio_id)
+                               if envio["estado"] == "conferir" else None)
 
     @app.route("/envio/<envio_id>/salvar", methods=["POST"])
     def salvar(envio_id):

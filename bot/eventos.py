@@ -113,6 +113,25 @@ def receber(pasta, corpo):
     return n
 
 
+def fins_por_envio(pasta, bot="ultron"):
+    """{envio: último envio_fim do bot}, lendo o eventos.jsonl inteiro. O histórico e a página do envio usam
+    para lembrar o resultado de um envio que foi conferido de novo depois de enviado ("Salvar e conferir"
+    refaz a conferência e apaga o resultado de cada CI do envio)."""
+    caminho = Path(pasta) / ARQUIVO
+    fins = {}
+    if caminho.exists():
+        for linha in caminho.read_text(encoding="utf-8").splitlines():
+            if '"envio_fim"' not in linha:
+                continue
+            try:
+                e = json.loads(linha)
+            except ValueError:
+                continue
+            if e.get("tipo") == "envio_fim" and e.get("bot") == bot and e.get("envio"):
+                fins[e["envio"]] = e
+    return fins
+
+
 def ler(pasta, desde=0, limite=LIMITE_INICIAL):
     """{"ultimo": n, "eventos": [...]} com os eventos de n > desde (desde=0: os últimos `limite`)."""
     caminho = Path(pasta) / ARQUIVO
