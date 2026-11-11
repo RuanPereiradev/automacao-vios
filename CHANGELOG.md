@@ -22,6 +22,9 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   análise; análise nunca enviada aparece como "não enviada". Filtros de lançadas, não lançadas e com
   atenção, busca e botão Imprimir / PDF.
 - Página `/sam`: cartão **Envio automático** com o último envio e os outros dias.
+- A conta refeita só vale para análise feita pela contagem simplificada: as de antes de 10/11/2026
+  (calendário de feriados de cada tribunal) acusavam divergência falsa (ex.: 28/10 com "6/57") e agora
+  ficam sem a conta, com o aviso na nota "como ler os prazos".
 
 ### Alterado — Páginas do Sam com as cores da vila (11/11/2026)
 - `/sam`, histórico, envio e envio automático trocaram o fundo azul escuro pelas cores da vila 01:

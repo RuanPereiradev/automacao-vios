@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 from flask import (Flask, Response, abort, jsonify, redirect, render_template, request, send_file,
                    send_from_directory, url_for)
 
-from bot import albi, conferencia, config, duplicidade, envio_txt, eventos, jarvis, orelha, prazos, skill, zangao
+from bot import albi, conferencia, config, duplicidade, envio_txt, eventos, jarvis, orelha, skill, zangao
 from bot.lancamento import REGISTRO, RESULTADOS, lancar, ler_intimacao
 from bot.login import fazer_login
 from bot.navegador import criar_driver
@@ -294,6 +294,7 @@ def montar_automatico(pasta_saida, dias_analise):
             gravadas = registro.get(ci, {}).get("tarefas", []) if lancada else []
             pares, notas, atencao_datas = conferencia.comparar_tarefas(a, gravadas, quando)
             ia = a.get("ia") or {}
+            contas = conferencia.conferir_contas(a)
             datas = [d for d in (conferencia.data(a.get("prazo_d2")), conferencia.data(a.get("embargos")),
                                  *(conferencia.data(v["data"] if v else t.get("data_tarefa")) for t, v in pares)) if d]
             linhas.append({
@@ -312,7 +313,8 @@ def montar_automatico(pasta_saida, dias_analise):
                 "recurso": a.get("recurso", ""), "recurso_nome": a.get("recurso_nome", ""),
                 "recurso_dias": (ia.get("recurso") or {}).get("dias"),
                 "cabe_recurso": a.get("cabe_recurso", ""), "calendario": a.get("calendario", ""),
-                "contas": [(True, n) for n in notas] + conferencia.conferir_contas(a),
+                "contas": [(True, n) for n in notas] + contas,  # notas do corte das 12h + conta refeita
+                "contas_ok": [ok for ok, _ in contas],
                 "atencao": atencao_datas + conferencia.pontos_de_atencao(a, pares, lancada),
                 "proxima": min(datas) if datas else date.max,
                 "link_lancar": link,
@@ -461,7 +463,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
                 abort(404)
             dia = next(iter(dias))
         linhas = montar_automatico(pasta_saida, dias[dia]["analises"])
-        contas = [ok for l in linhas for ok, _ in l["contas"]]
+        contas = [ok for l in linhas for ok in l["contas_ok"]]
         return render_template("automatico.html", dias=dias, dia=dia, linhas=linhas, ocupado=trava.locked(),
                                lancadas=sum(l["lancada"] for l in linhas),
                                tarefas=sum(len(l["gravadas"]) for l in linhas),
@@ -470,7 +472,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
                                contas=len(contas), contas_ok=sum(contas),
                                com_atencao=sum(1 for l in linhas if l["atencao"]),
                                feriados=conferencia.feriados_no_periodo(linhas),
-                               simplificada=prazos.contagem_simplificada(),
+                               simplificadas=sum(conferencia.usa_simplificada(l) for l in linhas),
                                gerado=datetime.now(), cf=conferencia)
 
     @app.route("/ler", methods=["POST"])

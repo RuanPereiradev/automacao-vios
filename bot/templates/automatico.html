@@ -220,15 +220,17 @@
       <div class="kpi"><b>{{ linhas | length }}</b><span class="sub">intimações vistas pelo bot</span></div>
       <div class="kpi ok"><b>{{ lancadas }}</b><span class="sub">lançadas ({{ tarefas }} tarefa{{ "s" if tarefas != 1 }})</span></div>
       <div class="kpi nao"><b>{{ nao }}</b><span class="sub">não lançadas</span></div>
-      <div class="kpi{{ ' nao' if contas_ok < contas }}"><b>{{ contas_ok }}/{{ contas }}</b><span class="sub">contas de prazo conferidas sem divergência</span></div>
+      {% if contas %}<div class="kpi{{ ' nao' if contas_ok < contas }}"><b>{{ contas_ok }}/{{ contas }}</b><span class="sub">contas de prazo conferidas sem divergência</span></div>
+      {% else %}<div class="kpi"><b>—</b><span class="sub">conta não refeita (calendário de cada tribunal)</span></div>{% endif %}
       <div class="kpi at"><b>{{ com_atencao }}</b><span class="sub">com ponto de atenção</span></div>
       <div class="kpi"><b>US$ {{ "%.2f" | format(custo) }}</b><span class="sub">{{ modelos | join(", ") or "IA" }}</span></div>
     </div>
 
     <div class="nota"><b>Como ler os prazos</b><ul>
-      <li>O prazo começa no 1º dia útil depois da <b>publicação</b>.{% if simplificada %} A contagem configurada é a
-        <b>simplificada</b>: só sábado e domingo ficam de fora e <b>feriado conta como dia útil</b>, então a data fica
-        igual ou antes do vencimento real.{% endif %}</li>
+      <li>O prazo começa no 1º dia útil depois da <b>publicação</b>.{% if simplificadas %} Contagem <b>simplificada</b>:
+        só sábado e domingo ficam de fora e <b>feriado conta como dia útil</b>, então a data fica igual ou antes do
+        vencimento real.{% endif %}{% if simplificadas < linhas | length %} {{ "Estas análises" if not simplificadas else "As análises de antes de 10/11/2026" }}
+        usaram o <b>calendário de feriados de cada tribunal</b> (linha "Contagem" de cada cartão).{% endif %}</li>
       <li><b>D-2</b> é a data da tarefa: dois dias úteis antes do prazo fatal. As linhas
         <b class="vermelho">PRAZO PARA EMBARGOS / RECURSO</b> da observação também estão em D-2.</li>
       <li>Análise de sentença/decisão e ciência: a data é o dia do lançamento. Lançadas depois das 12h, vão para o
@@ -236,8 +238,9 @@
       {% for f in feriados %}<li><b>{{ f[0] }} ({{ f[1] }}) é feriado nacional</b> ({{ f[2] }}). Pela contagem simplificada ele contou
         como dia útil: prazo que passa por ele ficou <b>1 dia útil antes</b> do vencimento real (lado seguro). Tarefa marcada
         <b>para</b> esse dia aparece como ponto de atenção.</li>{% endfor %}
-      {% if simplificada %}<li>"Conferência da conta" refaz cada data por fora, a partir dos dias que a IA leu no texto: ✓ = a data bate.</li>
-      {% else %}<li>A contagem com feriados por tribunal está ligada (<code>PRAZO_CONTAGEM=feriados</code>): a conta refeita fica de fora.</li>{% endif %}
+      {% if simplificadas %}<li>"Conferência da conta" refaz cada data por fora, a partir dos dias que a IA leu no texto: ✓ = a data bate.</li>{% endif %}
+      {% if simplificadas < linhas | length %}<li>Análise feita pelo calendário de cada tribunal não tem a conta refeita aqui (a conferência segue
+        a contagem simplificada); confira essas datas pela linha "Contagem".</li>{% endif %}
       <li>As <b>não lançadas</b> vêm primeiro, depois as lançadas, cada grupo pela data mais próxima.</li>
     </ul></div>
 

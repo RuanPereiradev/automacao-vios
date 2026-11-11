@@ -112,12 +112,19 @@ def _feriados(*anos):
     return todos
 
 
+def usa_simplificada(a):
+    """A análise contou os prazos pela contagem simplificada? As de antes de 10/11/2026 usavam o calendário
+    de feriados de cada tribunal ("Justiça Federal — SOBRAL/CE"): a conta refeita aqui não vale para elas."""
+    return (a.get("calendario") or "").startswith(prazos.AVISO_SIMPLIFICADA.split(";")[0])
+
+
 def conferir_contas(a):
-    """[(bateu?, texto)] da conta refeita: prazo principal, D-2, embargos e recurso."""
+    """[(bateu?, texto)] da conta refeita: prazo principal, D-2, embargos e recurso.
+    Só para análise feita pela contagem simplificada (a mesma regra da conta daqui)."""
     publicacao = data(a.get("publicacao"))
     ia = a.get("ia") or {}
     contas = []
-    if not publicacao or not prazos.contagem_simplificada():
+    if not publicacao or not usa_simplificada(a):
         return contas
     pr = ia.get("prazo") or {}
     if pr.get("dias"):
@@ -204,9 +211,10 @@ def pontos_de_atencao(a, pares, lancada):
 def feriados_no_periodo(linhas):
     """Feriados nacionais em dia de semana entre a publicação e o último vencimento do dia: pela contagem
     simplificada eles contam como dia útil (a data fica 1 dia útil antes do vencimento real)."""
+    linhas = [l for l in linhas if usa_simplificada(l)]  # na contagem por tribunal o feriado já fica de fora
     inicio = [d for l in linhas if (d := data(l["publicacao"]))]
     fim = [d for l in linhas for d in (data(l["prazo_fatal"]), data(l["embargos"]), data(l["recurso"])) if d]
-    if not inicio or not fim or not prazos.contagem_simplificada():
+    if not inicio or not fim:
         return []
     de, ate = min(inicio), max(fim) + timedelta(days=10)  # o recurso guarda o D-2: o fatal vem depois
     feriados = _feriados(*range(de.year, ate.year + 1))

@@ -595,7 +595,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
     e os alertas da análise.
 - Não lançadas primeiro, depois as lançadas, cada grupo pela data mais próxima. Filtros: todas, não
   lançadas, lançadas, com atenção, e busca. **Imprimir / PDF** sai só o relatório, em papel claro.
-- Com `PRAZO_CONTAGEM=feriados` a conta refeita fica de fora (ela segue a contagem simplificada).
+- A conta refeita segue a contagem simplificada: só vale para a análise feita por ela (linha "Contagem"
+  = "Contagem solicitada: segunda a sexta, incluindo feriados..."). As análises de antes de 10/11/2026
+  usaram o calendário de feriados de cada tribunal e ficam sem a conta refeita (nem divergência falsa).
 
 | O que foi | De onde vem |
 | --- | --- |
