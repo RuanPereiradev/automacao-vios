@@ -195,31 +195,42 @@
   @media (max-width: 640px) { .painel { flex-direction: column; text-align: center; } header .sub { display: none; } }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
-  /* Sam (<body class="tema-vila">): as cores da vila 01 no lugar do azul escuro. Grama com tufos e flores,
-     mata nas bordas, cabeçalho de mata com a estrada de terra embaixo, cartões escuros como as placas
-     da vila, dourado nos destaques (o cabelo do Sam). */
-  body.tema-vila { --fundo: #2f6b34; --cartao: #201f1d; --cartao2: #2b2925; --borda: #4f4430; --texto: #efe6d2;
-    --suave: #b9b2a3; --metal: #f0c46a; --red: #c98a2e; --red-escuro: #8a5a1c; --azul: #8fd0f2;
-    --grama: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' shape-rendering='crispEdges'%3E%3Crect width='64' height='64' fill='%236aad4c'/%3E%3Cg fill='%237fc15e'%3E%3Crect x='6' y='8' width='2' height='4'/%3E%3Crect x='8' y='10' width='2' height='2'/%3E%3Crect x='38' y='22' width='2' height='4'/%3E%3Crect x='40' y='24' width='2' height='2'/%3E%3Crect x='20' y='44' width='2' height='4'/%3E%3Crect x='22' y='46' width='2' height='2'/%3E%3Crect x='52' y='52' width='2' height='4'/%3E%3C/g%3E%3Cg fill='%235a9a3e'%3E%3Crect x='26' y='12' width='2' height='2'/%3E%3Crect x='56' y='6' width='2' height='2'/%3E%3Crect x='8' y='34' width='2' height='2'/%3E%3Crect x='44' y='40' width='2' height='2'/%3E%3C/g%3E%3Crect x='48' y='14' width='2' height='2' fill='%23ffffff'/%3E%3Crect x='14' y='56' width='2' height='2' fill='%23f6a5c0'/%3E%3Crect x='32' y='34' width='2' height='2' fill='%23f0c46a'/%3E%3C/svg%3E");
-    background: linear-gradient(90deg, #2f6b34 0 28px, #24572a 28px 34px, transparent 34px calc(100% - 34px), #24572a calc(100% - 34px) calc(100% - 28px), #2f6b34 calc(100% - 28px)) fixed,
-      var(--grama), #6aad4c; }
-  .tema-vila header { background: #2f6b34; border-bottom: 6px solid #c8a265; box-shadow: 0 2px 0 #8f6e3b; backdrop-filter: none; }
-  .tema-vila header .sub { color: #d7ecc5; }
-  .tema-vila .cartao { border-color: #4f4430; box-shadow: 0 4px 0 rgba(28, 24, 18, .45); }
-  .tema-vila .primario { background: linear-gradient(180deg, #f0c46a, #c98a2e); color: #201f1d; border-color: #201f1d;
-                         box-shadow: 0 3px 0 #8a5a1c; }
-  .tema-vila .primario:hover:not(:disabled) { box-shadow: 0 3px 0 #8a5a1c, 0 0 18px rgba(240, 196, 106, .45); }
-  .tema-vila .secundario { background: #201f1d; border-color: #6b5a3c; }
-  .tema-vila .secundario:hover:not(:disabled) { border-color: #f0c46a; }
-  .tema-vila pre, .tema-vila input:not([type=checkbox]), .tema-vila textarea, .tema-vila .barra { background: #161512; }
-  .tema-vila input:focus, .tema-vila textarea:focus { box-shadow: 0 0 0 3px rgba(240, 196, 106, .2); }
-  .tema-vila .soltar { border-color: #6b5a3c; background: rgba(240, 196, 106, .03); }
-  .tema-vila .soltar:hover, .tema-vila .soltar.arrastando { border-color: #f0c46a; background: rgba(240, 196, 106, .07);
+  /* Sam (<body class="tema-vila">): o estilo da Fortaleza do Dragão (bot/vila/fortaleza.html), no lugar do
+     azul escuro. Noite sobre a pedra, molduras douradas como os quadros da cena, Lora no texto e
+     Silkscreen na marca. */
+  body.tema-vila { --fundo: #0b0a09; --cartao: #15120f; --cartao2: #1d1914; --borda: #3a2f20; --texto: #f3ead8;
+    --suave: #a99a7a; --metal: #f0c46a; --red: #c8963a; --red-escuro: #6b4f22; --azul: #9fd0ff; --ouro: #c8963a;
+    font-family: Lora, Georgia, serif;
+    background: radial-gradient(ellipse 120% 60% at 50% -10%, #22336a 0%, #141a33 35%, transparent 70%) fixed,
+                radial-gradient(ellipse 80% 40% at 50% 110%, rgba(200, 150, 58, .16), transparent 70%) fixed, #0b0a09; }
+  .tema-vila header { background: #15120f; border-bottom: 3px solid #c8963a; box-shadow: 0 3px 0 #3a2c14, 0 10px 30px rgba(0, 0, 0, .5);
+                      backdrop-filter: none; }
+  .tema-vila header .sub { color: #a99a7a; font-family: Lora, Georgia, serif; }
+  .tema-vila .marca-sam { font-family: Silkscreen, monospace; font-weight: 400; letter-spacing: .3em; color: #f3ead8; }
+  .tema-vila .marca-sam b { color: #e8b923; font-weight: 400; text-shadow: 0 0 12px rgba(232, 185, 35, .5); }
+  .tema-vila h1, .tema-vila h2 { font-family: Lora, Georgia, serif; font-weight: 500; color: #f0c46a; letter-spacing: .01em; }
+  .tema-vila .cartao { border: 1.5px solid #6b4f22; border-radius: 4px;
+                       box-shadow: inset 0 0 0 3px #15120f, inset 0 0 0 4px #3a2c14, 0 10px 30px rgba(0, 0, 0, .45); }
+  .tema-vila .botao, .tema-vila button { font-family: Lora, Georgia, serif; border-radius: 3px; }
+  .tema-vila .primario { background: linear-gradient(180deg, #f0c46a, #c8963a); color: #15120f; border-color: #6b4f22;
+                         box-shadow: inset 0 1px 0 #fff1a8, 0 3px 0 #3a2c14; }
+  .tema-vila .primario:hover:not(:disabled) { box-shadow: inset 0 1px 0 #fff1a8, 0 3px 0 #3a2c14, 0 0 18px rgba(240, 196, 106, .45); }
+  .tema-vila .secundario { background: #15120f; color: #d9cdb4; border-color: #6b4f22; }
+  .tema-vila .secundario:hover:not(:disabled) { border-color: #f0c46a; color: #fff1a8; }
+  .tema-vila pre, .tema-vila input:not([type=checkbox]), .tema-vila textarea, .tema-vila .barra { background: #0e0c0a; }
+  .tema-vila input:focus, .tema-vila textarea:focus { border-color: #c8963a; box-shadow: 0 0 0 3px rgba(240, 196, 106, .18); }
+  .tema-vila code { background: #1d1914; }
+  .tema-vila .soltar { border-color: #6b4f22; border-radius: 4px; background: rgba(240, 196, 106, .02); }
+  .tema-vila .soltar:hover, .tema-vila .soltar.arrastando { border-color: #f0c46a; background: rgba(240, 196, 106, .06);
                                                             box-shadow: inset 0 0 40px rgba(240, 196, 106, .08); }
-  .tema-vila .barra-salvar { background: linear-gradient(transparent, rgba(32, 31, 29, .92) 40%); }
+  .tema-vila .barra-salvar { background: linear-gradient(transparent, rgba(11, 10, 9, .95) 40%); }
   .tema-vila .lista > li.atual { box-shadow: 0 0 18px rgba(240, 196, 106, .25); }
   .tema-vila .hist tr:hover td { background: rgba(240, 196, 106, .04); }
+  .tema-vila .hist th { color: #a99a7a; }
+  .tema-vila .numero { border-color: #3a2f20; border-radius: 3px; }
   .numero b.ok { color: var(--verde); }
   .dias-auto { margin: 4px 0 0; font-size: 14px; }
-  @media (max-width: 640px) { body.tema-vila { background: var(--grama), #6aad4c; } }
+  /* a Fortaleza no topo: a própria cena tem a moldura dourada */
+  .fortaleza-cartao { padding: 0; border: 0 !important; background: #0b0a09; box-shadow: 0 0 0 2px #0b0a09, 0 0 0 5px #3a2c14, 0 20px 60px rgba(0, 0, 0, .6) !important; }
+  .fortaleza-quadro { aspect-ratio: 16 / 9; }
 </style>

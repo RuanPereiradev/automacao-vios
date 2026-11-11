@@ -30,6 +30,8 @@ FINAIS = ("gravada", "testada", "pulada", "duplicada", "erro")
 # 1ª linha "MODO: TESTE": o arquivo só pode ser testado (o botão de gravar some e o servidor recusa)
 MODO_TESTE = re.compile(r"\A\s*MODO\s*:\s*TESTE\s*(\r?\n|\Z)", re.I)
 ARQUIVO_VILA = Path(__file__).parent / "vila" / "vila.html"  # HTML único da vila (servido em /vila)
+# vila do Sam: a Fortaleza do Dragão (servida em /vila/sam, no topo das páginas do Sam)
+ARQUIVO_FORTALEZA = Path(__file__).parent / "vila" / "fortaleza.html"
 PASTA_ENVIOS = "envios"  # dentro da pasta de saída: um .json por envio (histórico que não some)
 DATAS = ("criado", "inicio", "fim", "editado")
 
@@ -832,6 +834,12 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
                             {"Content-Type": "text/html; charset=utf-8"})
         return Response(ARQUIVO_VILA.read_bytes(), 200, {"Content-Type": "text/html; charset=utf-8",
                                                          "Cache-Control": "no-cache"})
+
+    @app.route("/vila/sam")
+    def vila_sam():
+        """A vila do Sam: a Fortaleza do Dragão (HTML único, só assiste aos eventos do Sam em /eventos)."""
+        return Response(ARQUIVO_FORTALEZA.read_bytes(), 200, {"Content-Type": "text/html; charset=utf-8",
+                                                              "Cache-Control": "no-cache"})
 
     def _rodar(envio_id, envio):
         """Entra no VIOS uma vez e lança CI por CI (as que não têm problema)."""

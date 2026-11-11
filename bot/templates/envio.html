@@ -1,5 +1,5 @@
 {% from "_ultron.html" import ultron, ultron_script, ultron_icone %}
-{% from "_vila.html" import vila_cartao %}
+{% from "_vila.html" import fortaleza_cartao %}
 {% set ESTADOS = {"conferir": ["s-ja", "Conferido, não enviado"], "enviando": ["s-andamento", "Enviando…"],
                   "testado": ["s-andamento", "Testado (não gravou)"], "concluido": ["s-ok", "Concluído"], "falhou": ["s-erro", "Parou"]} %}
 {% macro tabela_envios(lista) %}
@@ -28,7 +28,7 @@
 <title>Sam — envio ao VIOS</title>
 {{ ultron_icone() }}
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&family=Lora:wght@400;500;600&family=Silkscreen&display=swap" rel="stylesheet">
 {% include "_estilo.html" %}
 </head>
 <body class="tema-vila">
@@ -46,7 +46,7 @@
 </header>
 <main>
 {% if tela == "inicio" %}
-  {{ vila_cartao(1) }}
+  {{ fortaleza_cartao() }}
   <div class="cartao">
     <form action="{{ url_for('ler') }}" method="post" enctype="multipart/form-data" id="form-arquivo">
       <label class="soltar" id="soltar">
@@ -177,7 +177,7 @@ SENTENÇA
   {% set com_problema = envio.cis | selectattr("problemas") | list %}
   {% set ja = envio.cis | selectattr("ja_lancada") | list %}
 
-  {{ vila_cartao(1) }}
+  {{ fortaleza_cartao() }}
 
   {% if envio.estado == "enviando" %}
   <div class="cartao">

@@ -5,3 +5,9 @@
   <iframe class="vila-quadro" src="{{ url_for('vila') }}?vila={{ n }}" title="Vila dos bots"></iframe>
 </div>
 {% endmacro %}
+{# Vila do Sam: a Fortaleza do Dragão (bot/vila/fortaleza.html, em /vila/sam), com os eventos reais do Sam. #}
+{% macro fortaleza_cartao() %}
+<div class="cartao vila-cartao fortaleza-cartao">
+  <iframe class="vila-quadro fortaleza-quadro" src="{{ url_for('vila_sam') }}" title="Fortaleza do Dragão: o Sam em ação"></iframe>
+</div>
+{% endmacro %}

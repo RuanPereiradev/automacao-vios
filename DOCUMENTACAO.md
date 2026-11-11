@@ -607,10 +607,40 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 
 - A página lê a pasta `saida/` do computador onde roda: o que foi analisado e lançado em outro
   computador não aparece nela.
-- Visual: as páginas do Sam (`/sam`, histórico, envio, envio automático) usam as cores da vila 01
-  (grama, mata nas bordas, cabeçalho de mata com a estrada de terra, placas escuras, dourado), pela
-  classe `tema-vila` do `bot/templates/_estilo.html`; o relatório fica num pergaminho claro, como a
-  caixa de fala da vila. As outras páginas (vila, Bumblebee, Albi, Jarvis, Orelha) não mudam.
+- Visual: ver o Passo 39 (Fortaleza do Dragão). O relatório fica num pergaminho claro com moldura
+  dourada.
+
+### Passo 39 — Vila do Sam: a Fortaleza do Dragão (estilo Senhor dos Anéis)
+- Design: `doc/desing_sam/fortaleza-dragao.html` (cena lateral em pixel art: fortaleza, montanhas, o
+  dragão no salão do tesouro, a comitiva). Instalado em **`bot/vila/fortaleza.html`**, servido em
+  **`/vila/sam`** e mostrado no topo das páginas do Sam (`/sam` e a página de cada envio), no lugar
+  da Vila 01 (macro `fortaleza_cartao()` em `bot/templates/_vila.html`).
+- Ligada aos **eventos reais do Sam** (`GET /eventos` a cada 2 s, só os do bot `ultron`; contrato em
+  `doc/vila/contrato-eventos.md`). Ao abrir, monta o estado do último envio sem animar; depois anima
+  cada evento novo, um por vez:
+
+| Evento | Na fortaleza |
+| --- | --- |
+| `arquivo_subido` | Missão: TXT recebido ✓. O Mensageiro avisa que o TXT chegou |
+| `conferido` | CIs conferidas ✓; "Tarefas criadas 0/N" (N = tarefas das CIs prontas). A Arqueira dá as contagens |
+| `envio_iniciado` | Rumo à Torre VIOS (ou "Ensaio: nada é gravado" no modo teste) |
+| `fase` | entrando no VIOS (Ferreiro), conferindo duplicatas (Mago), criando tarefas: **o dragão desperta** |
+| `ci` gravada (no teste: `no_quadro`) | +1 em "Tarefas criadas", faixa "Tarefa n/N criada" e a vida da Torre VIOS cai na mesma proporção |
+| `ci` erro | a Torre diz o motivo e o dragão cospe fogo num herói |
+| `ci` ja_tinha / duplicata | o Mago avisa e segue |
+| `envio_fim` | "Missão cumprida" (ou "Ensaio concluído" / "A missão parou"), com as contagens; o dragão volta ao covil |
+
+- Fora de um envio a cena continua viva como no design (o dragão às vezes acorda e ataca, os comandos
+  Atacar / Magia / Escudo funcionam e **Demonstração** roda o envio de mentira). Durante um envio real
+  a demonstração fica desligada e a vida do dragão segue os eventos. Sem conexão com `/eventos`, o
+  quadro da missão mostra "Sem conexão" e tenta de novo.
+- As páginas do Sam (`/sam`, histórico, envio, envio automático) seguem o estilo da fortaleza pela
+  classe `tema-vila` de `bot/templates/_estilo.html`: noite azul sobre fundo escuro, quadros escuros com
+  moldura dourada, botões dourados, fontes Lora (texto) e Silkscreen (marca e dias do relatório).
+- Não mudam: a Vila dos Bots (`/`, com a vila antiga e as abas 01 a 05) e as páginas dos outros bots.
+- Para atualizar o design: trocar o desenho em `bot/vila/fortaleza.html` mantendo o bloco
+  "eventos reais do Sam" do fim do script e os ganchos `emEnvio()` (o dragão não acorda nem recua
+  sozinho durante um envio). Não precisa reiniciar a página.
 
 ### Passo 21 — Rodar no Mac e no Linux
 - O projeto roda nos dois sistemas com os mesmos arquivos e comandos.

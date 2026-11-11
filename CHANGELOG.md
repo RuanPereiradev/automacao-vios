@@ -12,6 +12,18 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Vila do Sam vira a Fortaleza do Dragão, no estilo Senhor dos Anéis (11/11/2026)
+- Novo design (`doc/desing_sam/fortaleza-dragao.html`) instalado em `bot/vila/fortaleza.html`, servido
+  em `/vila/sam` e mostrado no topo do `/sam` e da página de cada envio, no lugar da Vila 01.
+- A cena do design era só simulação; agora assiste aos eventos reais do Sam (`/eventos`): a missão
+  avança a cada etapa (TXT recebido, CIs conferidas, duplicatas, tarefas criadas n/N), o dragão desperta
+  quando as tarefas começam a ser criadas, cada tarefa gravada tira vida dele, erro faz o dragão cuspir
+  fogo e o fim mostra "Missão cumprida" com as contagens. Ao abrir, mostra o último envio.
+  "Simular envio" virou "Demonstração" (desligada durante um envio real).
+- Páginas do Sam no estilo da fortaleza (tema `tema-vila`): troca a grama da vila antiga por noite,
+  pedra e dourado, com as fontes Lora e Silkscreen do design. O relatório do envio automático ganhou
+  a moldura dourada.
+
 ### Adicionado — Relatório de conferência no Envio automático do Sam (11/11/2026)
 - A tela `/automatico` virou o relatório de conferência, com foco nos prazos (`bot/conferencia.py`):
   números do dia, nota "como ler os prazos" (com os feriados nacionais que contaram como dia útil),
