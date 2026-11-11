@@ -12,6 +12,13 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Lançamento bloqueia tarefa com data que já passou (11/11/2026)
+- As datas D-2, dia seguinte e data informada vêm prontas da análise e não eram conferidas no
+  lançamento: uma análise de um dia lançada em outro (ex.: `lancar.py` dias depois) gravava a tarefa
+  numa data já passada, sem aviso. Agora `lancar()` (`bot/lancamento.py`, usado pelo `lancar.py` e
+  pela página web) não lança a CI se alguma tarefa ficar antes de hoje: ela fica **bloqueada** com o
+  motivo, para refazer a análise. O envio automático do Sam (análise e lançamento no mesmo dia) não muda.
+
 ### Corrigido — Nomes novos da tarefa de laudo previdenciário no VIOS (10/11/2026)
 - O VIOS dividiu "MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026" (nome
   que a skill ainda usa) em duas. A análise troca sozinha: laudo -> "MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO

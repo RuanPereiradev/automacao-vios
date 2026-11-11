@@ -378,6 +378,15 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
             anotar(ci, "bloqueada", "Data não calculada para " + "; ".join(sem_data))
             erros += 1
             continue
+        # a data vem pronta da análise (D-2, dia seguinte...): análise de outro dia pode trazer data que já passou
+        passadas = [f"{t['nome']} ({d:%d/%m/%Y})" for t in r["tarefas"] if (d := _data_conclusao(t, hoje)) < hoje]
+        if passadas:
+            log.warning("CI %s: data que já passou (análise de outro dia), nada lançado — refazer a análise: %s",
+                        ci, "; ".join(passadas))
+            anotar(ci, "bloqueada", "Data já passou (análise de outro dia): " + "; ".join(passadas)
+                   + ". Refazer a análise.")
+            erros += 1
+            continue
 
         ja = [t for t in tarefas_lancadas(driver, r["link_lancar"], timeout) if not t["apagada"]]
         if ja:

@@ -293,6 +293,12 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - **Contra duplicidade:** não lança se a CI já tem tarefa ativa no VIOS
   (tarefa apagada não conta) ou se já está em `saida/lancamentos.json`; não
   lança se a análise pediu conferência humana.
+- **Data que já passou:** as datas (D-2, dia seguinte, data informada) vêm
+  prontas da análise. Se alguma tarefa da CI ficar com data anterior ao dia do
+  lançamento (análise de um dia lançada em outro), nada é lançado: a CI fica
+  **bloqueada** com o motivo e é preciso refazer a análise. Vale para o
+  `lancar.py` e para a página web. Tarefa do mesmo dia e ciência sem data não
+  entram nisso (são sempre o dia do lançamento).
 - **Modo teste é o padrão:** sem `--confirmar` o bot adiciona ao quadro e tira
   print (`logs/lancamento_ci<CI>_*.png`), mas **não grava**.
 - Lição do 1º teste: clicar só em *Adicionar* não grava nada, e a CI 42431 tinha
