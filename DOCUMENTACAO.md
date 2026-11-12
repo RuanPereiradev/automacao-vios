@@ -799,32 +799,31 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   andamento com número e vara) e quem não tem, com a assinatura do escritório e o CPF
   mascarado. Dá para editar no campo, clicar em "Copiar mensagem" e mandar junto o
   relatório PDF.
-- **Mensagens da CAC** (na mesma tela do "Capturar resumo"): uma mensagem por pessoa com
-  processos, no padrão da Central de Atendimento ao Cliente (abertura com a atendente,
-  "*1️⃣ Autor x Réu*", "Trata-se de…", assunto, valor, situação atual, conclusão e ressalva).
-  Escolha a atendente (Beatriz Vasconcelos ou Renara Kathleem), revise e clique em "Copiar
-  mensagem". Arquivos: `mensagens_cac.txt` e `.json` (`albi/mensagem_cac.py`). **Sem IA**:
-  o texto sai de regras fixas, no roteiro do prompt da CAC:
-  - do que se trata (classe, número, data, vara, posição da pessoa) e por que o processo existe
-    (o que é esse tipo de ação, os assuntos cadastrados pelo tribunal explicados em palavras
-    simples e o valor da causa);
-  - os acontecimentos com data (citação/notificação, contestação, réplica, audiências, liminar,
-    gratuidade, recursos) e as decisões (sentença de procedência/improcedência/parcial, acordo,
-    embargos, julgamento do recurso, trânsito em julgado, cumprimento de sentença, alvará,
-    penhora), tirados das **movimentações oficiais** de cada processo na API pública do CNJ
-    (DataJud, `albi/datajud.py`). Só o número do processo é enviado; o resultado fica em
-    `datajud/` na pasta da execução e não é consultado de novo;
-  - a situação atual pelo movimento mais recente (arquivado, em recurso, aguardando audiência,
-    em cumprimento de sentença…), com aviso quando o status do Sonar diz outra coisa, e um
-    resumo de cada processo; com mais de um, a conclusão diz se há sentença desfavorável.
-  - O que **não** aparece: os fatos narrados nas petições (ex.: jornada, valores recebidos) e
-    os fundamentos das decisões, porque o texto dos autos não está no Sonar nem no DataJud; a
-    data marcada da audiência; processos em segredo de justiça. Sem resposta do DataJud, o
-    processo sai só com o cadastro do Sonar.
-  - No `albi/.env` (opcional): `DATAJUD=false` desliga a consulta; `DATAJUD_PRAZO` (segundos,
-    padrão 150) limita o tempo total; `DATAJUD_CHAVE` troca a chave pública, se o CNJ mudar.
-    Pelo terminal: `relatorio.py <pasta> --sem-datajud`, ou `.venv/bin/python datajud.py
-    <número>` para ver o que o CNJ tem de um processo.
+- **Mensagens da CAC** (na mesma tela do "Capturar resumo"): uma mensagem por pessoa pesquisada, no
+  padrão da Central de Atendimento ao Cliente. Escolha a atendente (Beatriz Vasconcelos ou Renara
+  Kathleem), revise e clique em "Copiar mensagem". Arquivos: `mensagens_cac.txt` e `.json`
+  (`albi/mensagem_cac.py`). **Sem IA e sem entrar em tribunal nenhum**: o texto sai de regras fixas e
+  só usa os registros da planilha do Sonar.
+  - **Com processos**: abertura ("após consulta aos registros processuais disponibilizados, foram
+    localizados *N processos judiciais* relacionados a *NOME*, CPF nº …, todos vinculados ao *TJ…*"),
+    o período e a área dos processos, quantos estão arquivados/em tramitação e, por processo:
+    "*1️⃣ Autor x Réu*", "*Processo nº … — TJ…*", o que é a ação, a posição da pessoa (requerente,
+    exequente, parte ré…), o que a pesquisa não traz (petição, valores, provas, decisões), o andamento
+    e a "*Conclusão:*". O formato é fixo (sem parágrafos opcionais e sem ressalva final): só mudam os campos.
+  - **Sem processos** ("não consta" no Sonar): "Informamos que após consulta ao sistema do Poder
+    Judiciário, não localizamos *nenhum processo* em nome de *NOME*." Pessoa com falha ao ler a
+    planilha não ganha mensagem.
+  - **Parágrafo explicativo por processo (Gemini)**: com `GEMINI_API_KEY`, cada processo ganha um
+    parágrafo que explica o tipo de ação, a posição da pessoa e a situação, gerado só a partir desses
+    três dados e guardado em `albi/explicacoes_classe.json` (editável). Sem chave, vale a explicação fixa.
+  - **Tipos de ação fora do dicionário**: com `GEMINI_API_KEY` no `albi/.env` (chave gratuita), o
+    `albi/explicacao_ia.py` pede ao Gemini uma frase para "Esse tipo de processo é…". Só o nome da
+    classe é enviado; a resposta fica em `albi/explicacoes_classe.json` (uma vez por classe) e pode ser
+    editada. Modelo: `gemini-flash-latest` (com dois reservas); `GEMINI_MODEL` fixa um. Sem chave ou com
+    erro, o parágrafo é omitido.
+  - O que **não** aparece: os fatos das petições, as sentenças e os pagamentos. O DataJud
+    (`albi/datajud.py`) deixou de ser usado na mensagem; o arquivo continua para consulta manual
+    (`.venv/bin/python datajud.py <número>`).
 - **Baixar de novo** (não compra): na execução já confirmada, o botão "Baixar de novo
   os resultados de cada um" (ou `./rodar.sh --arquivo X --baixar`) pega o número de
   cada pedido no registro e baixa de novo o PDF e a planilha, sem abrir a Nova

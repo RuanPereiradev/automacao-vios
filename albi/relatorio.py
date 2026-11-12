@@ -9,9 +9,8 @@ o arquivo vem como .xls, mas é .xlsx por dentro) e escreve, na mesma pasta:
   processos.csv    um processo por linha, para abrir no Excel
   mensagem.txt     uma mensagem resumida por empresa, pronta para mandar (WhatsApp/e-mail) à
                    empresa que pediu a pesquisa (CPF mascarado; o detalhe vai no relatorio.pdf)
-  mensagens_cac.*  uma mensagem por pessoa com processos, no padrão da CAC (mensagem_cac.py), com
-                   as movimentações de cada processo na API pública do CNJ (datajud.py; guardadas
-                   em datajud/ dentro da pasta)
+  mensagens_cac.*  uma mensagem por pessoa (com processos ou "não consta"), no padrão da CAC
+                   (mensagem_cac.py), só com os registros do Sonar (sem consultar tribunal)
 
 Só biblioteca padrão (o PDF usa o Selenium que o Albi já tem). Não entra no Sonar. Sem IA.
 

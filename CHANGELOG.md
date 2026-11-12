@@ -12,6 +12,61 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Albi: parágrafo explicativo de cada processo escrito pelo Gemini (12/11/2026)
+- `explicacao_ia.paragrafo(classe, posição, situação)`: o Gemini escreve 2 a 4 frases explicando o tipo de
+  ação, o que significa a posição da pessoa (ex.: réu não é condenação) e o que significa a situação. Só
+  esses três dados são enviados (nunca nome, CPF ou número). Cada combinação é gerada uma vez e guardada
+  em `explicacoes_classe.json` (chave `P|…`). O prompt proíbe inventar fatos e dizer que alguém ganhou,
+  perdeu, pagou ou foi condenado; respostas com essas palavras, com markdown ou cortadas são descartadas.
+  O parágrafo entra no lugar da explicação fixa; sem chave ou com erro, volta a explicação fixa.
+
+### Corrigido — Albi: Gemini e português da mensagem, testados com um relatório real (12/11/2026)
+- `explicacao_ia.py`: o modelo padrão `gemini-2.5-flash` foi aposentado pelo Google. Agora usa
+  `gemini-flash-latest` e, se estiver sobrecarregado (503), tenta `gemini-3.5-flash` e
+  `gemini-3.1-flash-lite`. Respostas cortadas ou fora do formato (frase curta começando em minúscula)
+  não são aceitas nem guardadas no cache; o limite de tokens subiu para 1024.
+- `mensagem_cac.py`: "Estado do Ceará / da Bahia / de Sergipe" (antes era sempre "de"), plural quando há
+  mais de uma parte do outro lado ("figuram como reclamados") e mais palavras com acento (provisório,
+  decisão, consórcio…).
+
+### Adicionado — Albi: explicação de tipos de ação novos pelo Gemini (12/11/2026)
+- `albi/explicacao_ia.py`: para a classe processual que não está no dicionário fixo, pede ao Gemini
+  (chave gratuita, `GEMINI_API_KEY` no `albi/.env`) uma frase simples para "Esse tipo de processo é…".
+  Só o nome da classe é enviado (nunca nome, CPF, número ou partes). A resposta fica em
+  `albi/explicacoes_classe.json` (uma chamada por classe, texto igual em todas as mensagens, editável).
+  Sem chave, sem internet ou com erro, a mensagem sai sem esse parágrafo. Novas variáveis no
+  `.env.example`: `GEMINI_API_KEY` e `GEMINI_MODEL`.
+
+### Alterado — Albi: mensagem da CAC com formato fixo (12/11/2026)
+- A atendente confirmou que todas as mensagens seguem o mesmo formato (com e sem processos). O texto
+  agora é sempre igual e só mudam os campos: saíram os parágrafos opcionais (valor da causa, assunto,
+  segredo de justiça, aviso de processo criminal, instância, observação do status) e a ressalva final,
+  que não existem no modelo. Entraram o nome completo do tribunal ("Tribunal de Justiça do Estado de
+  Sergipe (TJSE)"), "Comarca de X, Estado de Y", o papel da outra parte (requerido, executado…) e o aviso
+  fixo de que *exequente não é quem está sendo cobrado*. A conclusão traz sempre a mesma frase sobre
+  condenação.
+
+### Alterado — Albi: novo modelo de mensagem da CAC, sem entrar em tribunal (12/11/2026)
+- A mensagem passa a seguir o novo modelo do escritório: "*Beatriz Vasconcelos:* Informamos que, após
+  consulta aos registros processuais disponibilizados, foram localizados *N processos judiciais*
+  relacionados a *NOME*, CPF nº …, todos vinculados ao *TJ…*", período e área, quantos arquivados/em
+  tramitação, um bloco por processo (partes, "*Processo nº … — TJ…*", posição da pessoa, o que a pesquisa
+  não traz, andamento e "*Conclusão:*") e a ressalva final.
+- Não consulta mais tribunal nem o DataJud: o texto usa só a planilha do Sonar (`mensagem_cac.gerar`
+  ignora `datajud`; `datajud.py` fica só para consulta manual).
+
+### Adicionado — Albi: mensagem para quem não tem processo (12/11/2026)
+- Quem o Sonar respondeu "não consta" ganha a mensagem "Informamos que após consulta ao sistema do Poder
+  Judiciário, não localizamos *nenhum processo* em nome de *NOME*." Pessoa com falha ao ler a planilha
+  continua sem mensagem.
+
+### Alterado — Skill da Controladoria pede o número do processo no TXT do robô (11/11/2026)
+- A skill `doc/analise-intimacoes-controladoria/` proibia o número do processo no TXT, e os arquivos
+  chegavam ao Sam sem ele. Agora cada bloco traz `PROCESSO:` logo abaixo de `CI:` (padrão
+  0000000-00.0000.0.00.0000), no modelo (`assets/pedido-arquivo-robo.txt`, com o exemplo), em
+  `references/saida-txt-bot.md` (sete campos) e no `SKILL.md`. O resto da skill não mudou. O Sam já lia
+  esse campo e mostra o número na conferência.
+
 ### Corrigido — Histórico perdia o resultado do envio conferido de novo depois (11/11/2026)
 - "Salvar e conferir" num envio já enviado apagava o resultado das CIs e o histórico mostrava
   "Conferido, não enviado" com "—" (caso de `analise_2026-11-10_complementar.txt`, que gravou 10 CIs

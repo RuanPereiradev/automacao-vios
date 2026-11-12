@@ -1,30 +1,23 @@
-"""Albi — mensagem no padrão da CAC (Central de Atendimento ao Cliente) para cada pessoa com processos.
+"""Albi — mensagem no padrão da CAC (Central de Atendimento ao Cliente) para cada pessoa pesquisada.
 
-Segue o modelo do escritório: abertura com a atendente ("*Beatriz Vasconcelos:* Informamos que,
-após consulta aos sistemas do Poder Judiciário, foram localizados *dois processos*..."), um bloco
-por processo ("*1️⃣ Autor x Réu*", "Trata-se de...", valor, situação atual) e, com mais de um
-processo, um parágrafo de conclusão. Negrito no padrão do WhatsApp (*texto*).
-
-Cada processo segue o roteiro do prompt da CAC, sem inteligência artificial (regras fixas):
-  A) do que se trata (classe, número, data, vara, posição da pessoa) — planilha do Sonar;
-  B) por que existe (o que é esse tipo de ação, assuntos cadastrados, valor da causa);
-  C) acontecimentos com data (contestação, audiências, liminar, gratuidade, recursos) e
-  D) decisões (sentença, recurso, embargos, trânsito em julgado, cumprimento, alvará) — movimentações
-     oficiais da API pública do CNJ (datajud.py);
-  E) situação atual (do movimento mais recente) e F) um resumo do processo.
-
-REGRA: só o que está comprovado nos registros. O texto das petições e das decisões não está em
-nenhuma das duas fontes: os fatos narrados (ex.: "trabalhava das 9h à meia-noite") e os fundamentos
-não aparecem, e a ressalva final diz isso. Nunca diz que houve pagamento (alvará/requisição vêm
-com a ressalva). Sem resposta do DataJud, o processo sai só com o cadastro do Sonar. Sem
-"Sr./Sra.": o gênero não está nos dados (a atendente pode acrescentar ao revisar).
+Modelo do escritório (sem entrar em tribunal nenhum: só os registros processuais do Sonar):
+  • com processos: "*Beatriz Vasconcelos:* Informamos que, após consulta aos registros processuais
+    disponibilizados, foram localizados *3 (três) processos judiciais* relacionados a *NOME*, CPF nº ...,
+    todos vinculados ao *TJSE*." + período e natureza + quantos arquivados/em tramitação + um bloco por
+    processo ("*1️⃣ Autor x Réu*", "*Processo nº ... — TJSE*", o que é a ação, posição da pessoa, o que a
+    pesquisa não traz, andamento e "*Conclusão:*");
+  • sem processos: "*Beatriz Vasconcelos:* Informamos que após consulta ao sistema do Poder Judiciário, não
+    localizamos *nenhum processo* em nome de *NOME*.".
+Negrito no padrão do WhatsApp (*texto*). Sem inteligência artificial (regras fixas) e sem consulta ao
+DataJud: o texto só afirma o que está na planilha do Sonar. Sem "Sr./Sra.": o gênero não está nos dados
+(a atendente pode acrescentar ao revisar).
 Escreve mensagens_cac.txt (para copiar) e mensagens_cac.json (para a página /albi).
 """
 import json
 import re
 from pathlib import Path
 
-import datajud as DJ
+import explicacao_ia
 import relatorio as R
 
 ATENDENTES = ("Beatriz Vasconcelos", "Renara Kathleem")
@@ -32,14 +25,6 @@ SEPARADOR = R.SEPARADOR
 NUMEROS = ["zero", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez", "onze", "doze",
            "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove", "vinte"]
 EMOJI = ["0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
-RESSALVA = ("*Ressaltamos que as informações acima se baseiam nos registros processuais disponíveis nas bases do "
-            "Poder Judiciário consultadas (número, partes, classe, assunto, valor e situação), sem acesso ao conteúdo "
-            "integral dos autos. Dessa forma, detalhes sobre os fatos, as decisões e eventuais pagamentos dependem da "
-            "consulta direta a cada processo.*")
-RESSALVA_DJ = ("*Ressaltamos que as informações acima se baseiam nos registros processuais públicos do Poder Judiciário "
-               "(cadastro e movimentações oficiais de cada processo), sem acesso ao conteúdo integral dos autos. Dessa "
-               "forma, os fatos narrados pelas partes, os fundamentos das decisões e eventuais pagamentos dependem da "
-               "consulta direta a cada processo.*")
 
 # o Sonar manda tudo em maiúsculas e sem acento: devolve o acento das palavras mais comuns
 ACENTOS = {
@@ -76,6 +61,10 @@ ACENTOS = {
     "MORAL": "moral", "MORAIS": "morais", "MATERIAL": "material", "MATERIAIS": "materiais", "REU": "réu",
     "REUS": "réus", "EXEQUENTE": "exequente", "EXECUTADO": "executado", "EXECUTADA": "executada",
     "CUSTODIA": "custódia", "AUDIENCIA": "audiência", "PECULIO": "pecúlio", "COMARCA": "comarca",
+    "PROVISORIO": "provisório", "PROVISORIA": "provisória", "DECISAO": "decisão", "DECISOES": "decisões",
+    "CONSORCIO": "consórcio", "CONSORCIOS": "consórcios", "DEFINITIVO": "definitivo", "DEFINITIVA": "definitiva",
+    "JURIDICA": "jurídica", "JURIDICO": "jurídico", "ADMINISTRADORA": "administradora", "FINANCIAMENTO": "financiamento",
+    "ESPECIAIS": "especiais", "CRIMINAL": "criminal", "FAZENDA": "fazenda", "ORDINARIO": "ordinário",
 }
 MINUSCULAS = {"de", "da", "do", "das", "dos", "e", "em", "a", "o", "na", "no", "nas", "nos", "por", "para", "com", "ou"}
 SIGLAS = {"LTDA", "S/A", "SA", "S.A.", "ME", "EPP", "EIRELI", "CNPJ", "CPF", "INSS", "TJ", "TRT", "TRF", "TST", "STJ",
@@ -224,266 +213,284 @@ def _lista(itens):
     return ", ".join(itens[:-1]) + " e " + itens[-1] if len(itens) > 1 else (itens[0] if itens else "")
 
 
-def _dj(x):
-    """O andamento do DataJud deste processo (dict) ou None."""
-    d = x.get("datajud")
-    return d if d and not d.get("erro") else None
-
-
-def _encerrado(x):
-    d = _dj(x)
-    return d["encerrado"] if d else x["encerrado"]
-
-
-def _situacao_sonar(x):
+def _situacao_rotulo(x):
+    """Situação do cadastro do Sonar: (rotulo curto, chave). Chaves: arq_def, arq, baixa, extinto, susp, tram, nd."""
     st = R._sem_acento(x.get("status"))
     if not st or st in R.VAZIO:
-        return "A situação atual do processo não consta nos registros consultados."
+        return "situação não informada", "nd"
     if "ARQUIV" in st:
-        defin = "definitiv" if "DEFINITIV" in st else ""
-        return (f"*Conforme o registro mais recente disponível, o processo encontra-se arquivado{' definitivamente' if defin else ''}*, "
-                "ou seja, foi encerrado e enviado ao arquivo, sem movimentação ativa.")
+        return ("arquivamento definitivo", "arq_def") if "DEFINITIV" in st else ("arquivamento", "arq")
     if "BAIXA" in st:
-        return "*Conforme o registro mais recente disponível, o processo consta como baixado*, ou seja, encerrado no juízo em que tramitava."
+        return "baixa", "baixa"
     if "EXTIN" in st:
-        return "*Conforme o registro mais recente disponível, o processo foi extinto*, ou seja, encerrado pela Justiça."
+        return "extinção", "extinto"
     if "SUSPEN" in st or "SOBREST" in st:
-        return "*Conforme o registro mais recente disponível, o processo encontra-se suspenso*, aguardando a retomada da tramitação."
-    if "TRAMIT" in st or "ANDAMENTO" in st or "ATIVO" in st or "NORMAL" in st:
-        return "*Atualmente, o processo encontra-se em tramitação.*"
-    return f"*Situação registrada no sistema: {texto(x.get('status'))}.*"
+        return "suspensão", "susp"
+    return "tramitação", "tram"
 
 
-def _situacao_dj(d):
-    br = DJ.br
-    quando = f" ({br(d['situacao_data'])})" if d.get("situacao_data") else ""
-    s = d["situacao"]
-    txt = {
-        "arquivado_def": f"*Conforme a movimentação mais recente registrada{quando}, o processo encontra-se arquivado "
-                         "definitivamente*, ou seja, foi encerrado e enviado ao arquivo, sem movimentação ativa.",
-        "arquivado": f"*Conforme a movimentação mais recente registrada{quando}, o processo encontra-se arquivado*, "
-                     "sem movimentação ativa.",
-        "arquivado_prov": f"*Conforme a movimentação mais recente registrada{quando}, o processo encontra-se arquivado "
-                          "provisoriamente*, ou seja, está parado, mas pode ser retomado a pedido da parte.",
-        "baixa": f"*Conforme a movimentação mais recente registrada{quando}, o processo recebeu baixa definitiva*, ou "
-                 "seja, foi encerrado no juízo em que tramitava.",
-        "suspenso": f"*Conforme a movimentação mais recente registrada{quando}, o processo encontra-se suspenso*, "
-                    "aguardando a retomada da tramitação.",
-        "aguarda_audiencia": "*Atualmente, o processo encontra-se em andamento, aguardando a realização da audiência.*",
-        "cumprimento": "*Atualmente, o processo encontra-se em fase de cumprimento de sentença*, etapa em que se busca "
-                       "cumprir ou cobrar o que foi decidido. Os registros não informam se já houve pagamento.",
-        "transitado": "*A decisão já é definitiva (transitou em julgado)*, mas os registros não mostram o arquivamento do "
-                      "processo; por isso, não é possível afirmar que ele esteja totalmente encerrado.",
-        "recurso": ("*Atualmente, o processo encontra-se em fase de recurso*: o recurso já foi julgado, mas ainda não "
-                    "consta o trânsito em julgado (decisão definitiva)." if d.get("recurso") else
-                    "*Atualmente, o processo encontra-se em fase de recurso*, aguardando o julgamento pelo tribunal."),
-        "sentenciado": "*O processo já tem sentença, mas ainda não consta o trânsito em julgado*, ou seja, a decisão "
-                       "ainda pode ser objeto de recurso.",
-        "aguarda_julgamento": "*Atualmente, o processo encontra-se em andamento, concluso (enviado ao juiz) para "
-                              "julgamento.*",
-        "tramitando": "*Atualmente, o processo encontra-se em tramitação*, ainda sem sentença registrada.",
-    }[s]
-    if d.get("atualizado"):
-        txt += f" Informação conforme os registros do tribunal atualizados em {br(d['atualizado'])}."
-    return txt
+def _andamento(x):
+    """Parágrafos sobre a situação processual, só com o que o cadastro informa."""
+    _, k = _situacao_rotulo(x)
+    if k == "arq_def":
+        return ["Quanto ao andamento, a informação disponibilizada indica que o processo se encontra em situação de "
+                "*ARQUIVAMENTO DEFINITIVO*.",
+                "Isso significa que, segundo o registro consultado, o processo foi encerrado e encaminhado ao arquivo, não "
+                "constando como uma ação em tramitação ativa nessa base."]
+    if k == "arq":
+        return ["Quanto ao andamento, o registro consultado indica que o processo se encontra *ARQUIVADO*.",
+                "Isso significa que, segundo o registro, ele não consta como ação em tramitação ativa nessa base."]
+    if k == "baixa":
+        return ["Quanto ao andamento, o registro consultado indica que o processo recebeu *BAIXA*, ou seja, foi encerrado "
+                "no juízo em que tramitava."]
+    if k == "extinto":
+        return ["Quanto ao andamento, o registro consultado indica que o processo foi *EXTINTO*, ou seja, encerrado pela "
+                "Justiça."]
+    if k == "susp":
+        return ["Quanto ao andamento, o registro consultado indica que o processo se encontra *SUSPENSO*, aguardando a "
+                "retomada da tramitação."]
+    if k == "tram":
+        return ["Quanto ao andamento, o registro consultado indica que o processo *consta como em tramitação* na base "
+                "consultada."]
+    return ["A situação atual do processo não consta nos registros consultados."]
 
 
-SITUACAO_CURTA = {"arquivado_def": "arquivado definitivamente", "arquivado": "arquivado",
-                  "arquivado_prov": "arquivado provisoriamente", "baixa": "baixado", "suspenso": "suspenso",
-                  "aguarda_audiencia": "em andamento, aguardando audiência",
-                  "cumprimento": "em fase de cumprimento de sentença", "transitado": "com decisão definitiva",
-                  "recurso": "em fase de recurso", "sentenciado": "com sentença, ainda sem trânsito em julgado",
-                  "aguarda_julgamento": "aguardando julgamento", "tramitando": "em tramitação, ainda sem sentença"}
+def _papel(x):
+    """Como a pessoa aparece no processo: (rótulo curto, explicação) a partir do cadastro."""
+    polo, papel = x.get("polo"), (x.get("papel") or "")
+    papel_txt = " ".join(ACENTOS.get(R._sem_acento(w), w.lower()).lower() for w in papel.split()) if papel else ""
+    if polo == "Polo ativo":
+        return papel_txt or "parte autora", "parte que iniciou a ação"
+    if polo == "Polo passivo":
+        return papel_txt or "parte ré", "parte contra quem a ação foi proposta"
+    if polo == "Outra parte":
+        return papel_txt or "outra parte interessada", "parte interessada no processo, sem ser autora nem ré"
+    if polo == "Advogado(a)":
+        return papel_txt or "advogado(a)", "advogado(a) que atua no processo, e não como parte"
+    return "", ""
 
 
-def _paragrafos(eventos, abertura, por_paragrafo=4):
-    """[(data, frase)] -> parágrafos "Em dd/mm/aaaa, frase." (o primeiro começa com a abertura)."""
-    frases = []
-    for i, (dt, f) in enumerate(eventos):
-        frase = f"Em *{DJ.br(dt)}*, {f}."
-        if i == 0 and abertura:
-            frase = f"{abertura}, em *{DJ.br(dt)}*, {f}."
-        frases.append(frase)
-    return [" ".join(frases[i:i + por_paragrafo]) for i in range(0, len(frases), por_paragrafo)]
+def _data_br(x):
+    return R.data(x.get("distribuicao")) or ""
 
 
-def _desfavoravel(x):
-    """Sentença registrada contra a pessoa pesquisada: ré com pedido aceito, ou autora com pedido negado."""
-    d = _dj(x)
-    if not d or not d.get("sentenca"):
-        return False
-    k = d["sentenca"][1]
-    return (x["polo"] == "Polo passivo" and k in ("sentenca:procedente", "sentenca:parcial")) or \
-           (x["polo"] == "Polo ativo" and k == "sentenca:improcedente")
+def _ano(x):
+    m = re.search(r"(\d{4})\s*$", _data_br(x))
+    return int(m.group(1)) if m else None
+
+
+def _onde(x):
+    comarca = texto(re.split(r"\s+[-–]\s+", R._limpo(x.get("comarca")))[0], nome=True)
+    comarca = re.sub(r"^Comarca de\s+", "", comarca, flags=re.I)
+    orgao = texto(x.get("orgao"), nome=True)
+    if comarca and R._sem_acento(comarca) in R._sem_acento(orgao):  # a vara já diz a comarca
+        comarca = ""
+    uf = R._limpo(x.get("uf"))
+    return comarca, uf, orgao
+
+
+ESTADOS = {"AC": "Acre", "AL": "Alagoas", "AP": "Amapá", "AM": "Amazonas", "BA": "Bahia", "CE": "Ceará",
+           "DF": "Distrito Federal", "ES": "Espírito Santo", "GO": "Goiás", "MA": "Maranhão", "MT": "Mato Grosso",
+           "MS": "Mato Grosso do Sul", "MG": "Minas Gerais", "PA": "Pará", "PB": "Paraíba", "PR": "Paraná",
+           "PE": "Pernambuco", "PI": "Piauí", "RJ": "Rio de Janeiro", "RN": "Rio Grande do Norte",
+           "RS": "Rio Grande do Sul", "RO": "Rondônia", "RR": "Roraima", "SC": "Santa Catarina", "SP": "São Paulo",
+           "SE": "Sergipe", "TO": "Tocantins"}
+
+
+ARTIGO_ESTADO = {"AC": "do", "AP": "do", "AM": "do", "BA": "da", "CE": "do", "DF": "do", "ES": "do", "MA": "do",
+                 "PA": "do", "PB": "da", "PR": "do", "PI": "do", "RJ": "do", "RN": "do", "RS": "do", "TO": "do"}
+
+
+def de_estado(uf):
+    """"CE" -> "do Ceará"; "SE" -> "de Sergipe"; "PB" -> "da Paraíba"."""
+    nome = ESTADOS.get(R._limpo(uf).upper())
+    return f"{ARTIGO_ESTADO.get(R._limpo(uf).upper(), 'de')} {nome}" if nome else ""
+
+
+def tribunal_completo(sigla):
+    """"TJSE" -> "Tribunal de Justiça do Estado de Sergipe"; sigla desconhecida volta como está."""
+    t = R._sem_acento(sigla).replace(" ", "").replace("-", "")
+    m = re.fullmatch(r"TJ([A-Z]{2})", t)
+    if m and m.group(1) == "DF" or t == "TJDFT":
+        return "Tribunal de Justiça do Distrito Federal e dos Territórios"
+    if m and m.group(1) in ESTADOS:
+        return f"Tribunal de Justiça do Estado {de_estado(m.group(1))}"
+    m = re.fullmatch(r"TRF(\d)", t)
+    if m:
+        return f"Tribunal Regional Federal da {m.group(1)}ª Região"
+    m = re.fullmatch(r"TRT(\d+)", t)
+    if m:
+        return f"Tribunal Regional do Trabalho da {m.group(1)}ª Região"
+    return R._limpo(sigla)
+
+
+def _nome_tribunal(sigla):
+    c = tribunal_completo(sigla)
+    return f"{c} ({sigla})" if c and c != sigla else sigla
+
+
+def _papel_parte(lista, padrao):
+    """Papel (requerido, executado...) da primeira parte da lista, com acento e em minúsculas."""
+    if lista and lista[0][0]:
+        return " ".join(ACENTOS.get(R._sem_acento(w), w.lower()).lower() for w in lista[0][0].split())
+    return padrao
 
 
 def bloco_processo(i, x, nome):
-    d = _dj(x)
+    """Um processo, sempre na mesma ordem e com as mesmas frases; só mudam os campos."""
     ativo, passivo = R.partes(x.get("ativo")), R.partes(x.get("passivo"))
     autor = _nomes(ativo) or "Parte autora não informada"
     reu = _nomes(passivo) or "parte ré não informada"
     emoji = EMOJI[i] if i < len(EMOJI) else f"{i}."
-    linhas = [f"*{emoji} {autor} x {reu}*"]
     numero = R.cnj(x.get("numero", ""))
-    classe = texto(x.get("acao")) or (d and d["classe"]) or texto(x.get("ramo")) or "natureza não informada"
-    ramo = texto(x.get("ramo"))
-    data = R.data(x.get("distribuicao")) or (d and DJ.br(d["ajuizamento"])) or ""
-    orgao = texto(x.get("orgao"), nome=True) or (d and texto(d["orgao"], nome=True)) or ""
-    comarca = texto(re.split(r"\s+[-–]\s+", R._limpo(x.get("comarca")))[0], nome=True)  # "FORTALEZA - FORUM ..." -> Fortaleza
-    comarca = re.sub(r"^Comarca de\s+", "", comarca, flags=re.I)
-    if comarca and R._sem_acento(comarca) in R._sem_acento(orgao):  # a vara já diz a comarca
-        comarca = ""
-    uf = R._limpo(x.get("uf"))
     tribunal = R._limpo(x.get("tribunal"))
-    onde = (f", perante {_artigo_orgao(orgao)}" if orgao else "") + \
-           (f", na comarca de {comarca}{'/' + uf if uf else ''}" if comarca else (f"/{uf}" if uf and orgao else "")) + \
-           (f" ({tribunal})" if tribunal else "")
-    # A) do que se trata: classe, número, data, órgão e a posição da pessoa pesquisada
-    polo, papel = x.get("polo"), (x.get("papel") or "")
-    papel_txt = " ".join(ACENTOS.get(R._sem_acento(w), w.lower()).lower() for w in papel.split()) if papel else ""
-    if polo in EXPLICA_POLO:
-        contra = _nomes(passivo if polo == "Polo ativo" else ativo) if polo in ("Polo ativo", "Polo passivo") else ""
-        lado = (f" e {contra} como {'parte ré' if polo == 'Polo ativo' else 'parte autora'}" if contra else "")
-        quem = f"*na qual {nome} figura como {papel_txt or polo.lower()} ({EXPLICA_POLO[polo]}){lado}.*"
+    classe = texto(x.get("acao")) or texto(x.get("ramo")) or "natureza não informada"
+    data = _data_br(x)
+    comarca, uf, _ = _onde(x)
+    linhas = [f"*{emoji} {autor} x {reu}*"]
+    linhas.append(f"*Processo nº {numero or 'não informado'}" + (f" — {tribunal}" if tribunal else "") + "*")
+    local = (f", na Comarca de *{comarca}{', Estado ' + (de_estado(uf) or 'de ' + uf) if uf else ''}*" if comarca else
+             (f", no Estado *{de_estado(uf) or 'de ' + uf}*" if uf else ""))
+    linhas.append(f"Trata-se de um processo de *{classe}*" + (f", distribuído em *{data}*" if data else "") + local
+                  + (f", perante o {tribunal_completo(tribunal)}" if tribunal else "") + ".")
+    rotulo, expl = _papel(x)
+    if rotulo:
+        polo = x.get("polo")
+        outro = _nomes(passivo if polo == "Polo ativo" else ativo) if polo in ("Polo ativo", "Polo passivo") else ""
+        outro_papel = _papel_parte(passivo if polo == "Polo ativo" else ativo,
+                                   "parte ré" if polo == "Polo ativo" else "parte autora")
+        varios = len(passivo if polo == "Polo ativo" else ativo) > 1
+        if varios and not outro_papel.endswith("s"):
+            outro_papel += "es" if outro_papel.endswith(("r", "z")) else "s"
+        contra = f", enquanto *{outro} {'figuram' if varios else 'figura'} como {outro_papel}*" if outro else ""
+        linhas.append(f"Nesse processo, *{nome} figura como {rotulo}*{contra}.")
     else:
-        quem = f"Pelos registros consultados, não foi possível confirmar a posição de *{nome}* neste processo."
-    inst = R._limpo(x.get("instancia"))
-    linhas.append(f"Trata-se de um processo de *{classe}*"
-                  + (f" (área: {ramo})" if ramo and R._sem_acento(ramo) not in R._sem_acento(classe) else "")
-                  + (f", nº {numero}" if numero else "")
-                  + (f", iniciado em {data}" if data else "")
-                  + onde + ", " + quem)
-    # B) por que o processo existe: o que é a ação e os assuntos cadastrados pelo tribunal
-    origem = []
-    exp = _explica_classe(classe) or (d and _explica_classe(d["classe"]))
-    if exp:
-        origem.append(f"Esse tipo de processo é {exp}.")
-    assuntos = (d and d["assuntos"]) or ([R._limpo(x.get("tema"))] if R._limpo(x.get("tema")) else [])
-    if assuntos:
-        lista = _lista([_assunto(a) for a in assuntos[:6]])
-        if polo == "Polo ativo":
-            origem.append(f"Conforme os assuntos cadastrados pelo tribunal, {nome} levou à Justiça questões "
-                          f"relacionadas a: {lista}.")
-        elif polo == "Polo passivo":
-            origem.append(f"Conforme os assuntos cadastrados pelo tribunal, a ação contra {nome} trata de: {lista}.")
-        else:
-            origem.append(f"Conforme os assuntos cadastrados pelo tribunal, o processo trata de: {lista}.")
-    v = R.valor(x.get("valor"), x.get("moeda"))
-    if v:
-        origem.append(f"O valor atribuído à ação foi de *{v}*, quantia correspondente aos pedidos apresentados, não "
-                      "significando que esse valor já tenha sido reconhecido ou concedido pela Justiça.")
-    if origem:
-        linhas.append(" ".join(origem))
-    extra = []
-    if inst and "1" not in inst:
-        extra.append(f"O registro consultado é da *{inst.lower()}*, ou seja, o processo está ou esteve em fase de recurso.")
-    if R._sem_acento(x.get("segredo")) == "SIM" or (d and d["sigilo"]):
-        extra.append("O processo tramita em *segredo de justiça*, o que limita o acesso às suas informações.")
-    if any(k in R._sem_acento(x.get("ramo")) for k in ("CRIMIN", "PENAL")):
-        extra.append("Importante: figurar em um processo criminal *não significa condenação*"
-                     + ("." if d and d.get("sentenca") else "; os registros consultados não informam sentença ou resultado."))
-    if extra:
-        linhas.append(" ".join(extra))
-    if d:
-        # C) acontecimentos durante a tramitação, D) decisões, E) situação atual
-        linhas += _paragrafos(d["fatos"], "Durante a tramitação")
-        if d["audiencias_nao_realizadas"]:
-            n = d["audiencias_nao_realizadas"]
-            linhas.append(f"Ao longo do processo, {_quantos(n, 'audiência', 'audiências', feminino=True)} "
-                          f"{'foi cancelada ou não chegou' if n == 1 else 'foram canceladas ou não chegaram'} a ser "
-                          f"{'realizada' if n == 1 else 'realizadas'}.")
-        if not d["fatos"] and not d["decisoes"]:
-            linhas.append("Nos registros públicos do tribunal ainda não há movimentações relevantes além do início do processo.")
-        linhas += _paragrafos(d["decisoes"], "Quanto às decisões" if d["fatos"] else "Durante a tramitação")
-        linhas.append(_situacao_dj(d))
-        sonar_enc = x["encerrado"]
-        if R._limpo(x.get("status")) and sonar_enc != d["encerrado"]:
-            linhas.append(f"Observação: no cadastro da pesquisa, o status informado é *{texto(x.get('status'))}*; a "
-                          "informação acima é a mais recente registrada nas movimentações do tribunal.")
-        # F) conclusão individual
-        if d.get("sentenca"):
-            res = f"foi registrada sentença de *{DJ.SENTENCA[d['sentenca'][1]]}*"
-            if d.get("recurso"):
-                res += f", e houve julgamento de recurso (*{DJ.RECURSO[d['recurso'][1]]}*)"
-            if d.get("transito"):
-                res += ", com trânsito em julgado"
-        else:
-            res = "ainda não há sentença registrada"
-        papel_curto = papel_txt or {"Polo ativo": "parte autora", "Polo passivo": "parte ré"}.get(polo, "parte")
-        linhas.append(f"Em resumo, neste processo {nome} figura como *{papel_curto}*; {res}; e o processo está "
-                      f"*{SITUACAO_CURTA[d['situacao']]}*.")
+        linhas.append(f"Pelos registros consultados, não foi possível confirmar a posição de *{nome}* neste processo.")
+    sit_rotulo, _ = _situacao_rotulo(x)
+    ia = explicacao_ia.paragrafo(classe, rotulo, sit_rotulo) if rotulo else ""
+    if ia:  # parágrafo do Gemini (sem dados pessoais); no lugar da explicação fixa
+        linhas.append(ia)
     else:
-        motivo = (" porque o processo tramita em segredo de justiça" if R._sem_acento(x.get("segredo")) == "SIM" else
-                  " no momento da consulta" if (x.get("datajud") or {}).get("erro", "").startswith(("tempo", "HTTP", "es_", "{"))
-                  else "")
-        if x.get("datajud"):
-            linhas.append(f"As movimentações deste processo não estavam disponíveis na base pública do CNJ{motivo}; por "
-                          "isso, não é possível informar aqui as decisões e os acontecimentos da tramitação.")
-        linhas.append(_situacao_sonar(x))
+        exp = _explica_classe(classe) or explicacao_ia.explicar(classe)
+        if exp:
+            linhas.append(f"Esse tipo de processo é {exp}.")
+        if "EXEQUENTE" in R._sem_acento(rotulo):
+            linhas.append("É importante esclarecer que *figurar como exequente não significa estar sendo cobrado por uma "
+                          "dívida*. Pelo contrário, nessa posição processual, a pessoa atua buscando o cumprimento da "
+                          "obrigação por parte de quem deve cumpri-la.")
+    linhas.append("A pesquisa registra a existência do processo e identifica as partes envolvidas, mas não apresenta o "
+                  "conteúdo da petição inicial, os valores eventualmente solicitados, as provas produzidas ou a "
+                  "fundamentação das decisões judiciais.")
+    linhas += _andamento(x)
+    linhas.append("Entretanto, não foram disponibilizados a sentença ou os demais documentos necessários para identificar "
+                  "o resultado do pedido ou o motivo específico do andamento atual.")
+    _, k = _situacao_rotulo(x)
+    fim = {"arq_def": "o registro disponível aponta seu *arquivamento definitivo*",
+           "arq": "o registro disponível aponta que ele está *arquivado*",
+           "baixa": "o registro disponível aponta que ele recebeu *baixa*",
+           "extinto": "o registro disponível aponta que ele foi *extinto*",
+           "susp": "o registro disponível aponta que ele está *suspenso*",
+           "tram": "o registro disponível aponta que ele *consta como em tramitação*",
+           "nd": "a situação atual não consta nos registros disponíveis"}[k]
+    verbo = "participou" if k in ("arq_def", "arq", "baixa", "extinto") else "participa"
+    posicao = (f"{verbo} desse processo na condição de *{rotulo}* em processo de *{classe}*" if rotulo
+               else "consta nos registros desse processo")
+    linhas.append(f"*Conclusão:* {nome} {posicao}, e {fim}. Não há, na documentação apresentada, informação que "
+                  "permita afirmar a existência de condenação contra o pesquisado.")
     return "\n\n".join(linhas)
+
+
+def _tribunais(ps):
+    nomes = []
+    for x in ps:
+        t = R._limpo(x.get("tribunal"))
+        if t and t not in nomes:
+            nomes.append(t)
+    return nomes
+
+
+def _abertura(p, ps, nome, atendente):
+    n = len(ps)
+    doc = R.formatar_doc(p["doc"]) if p.get("doc") else ""
+    rot = "CPF" if len(R.so_digitos(p.get("doc"))) <= 11 else "CNPJ"
+    verbo = "foi localizado" if n == 1 else "foram localizados"
+    rel = "relacionado" if n == 1 else "relacionados"
+    qtd = f"{n} ({NUMEROS[n]}) {'processo judicial' if n == 1 else 'processos judiciais'}" if n <= 20 else f"{n} processos judiciais"
+    trib = _tribunais(ps)
+    if len(trib) == 1:
+        onde = f", {'vinculado' if n == 1 else 'todos vinculados'} ao *{_nome_tribunal(trib[0])}*"
+    elif trib:
+        onde = f", vinculados aos tribunais *{_lista(trib)}*"
+    else:
+        onde = ""
+    return (f"*{atendente}:* Informamos que, após consulta aos registros processuais disponibilizados, {verbo} "
+            f"*{qtd}* {rel} a *{nome}*" + (f", {rot} nº {doc}" if doc else "") + onde + ".")
+
+
+def _panorama(ps, nome):
+    """Período, natureza e quantos estão encerrados ou em tramitação (só com o cadastro)."""
+    n = len(ps)
+    out = []
+    anos = sorted(a for a in (_ano(x) for x in ps) if a)
+    naturezas = sorted({texto(x.get("ramo")).lower() for x in ps if R._limpo(x.get("ramo"))})
+    if anos or naturezas:
+        per = ""
+        if anos:
+            per = (f"iniciados {'em' if anos[0] == anos[-1] else 'entre os anos de'} "
+                   f"*{anos[0]}{'' if anos[0] == anos[-1] else ' e ' + str(anos[-1])}*")
+        nat = f"relacionados à área de {_lista(naturezas)}" if naturezas else ""
+        out.append(f"Os registros identificados referem-se a processos {_lista([t for t in (per, nat) if t])}."
+                   if n > 1 else f"O registro identificado refere-se a um processo {_lista([t for t in (per.replace('iniciados', 'iniciado'), nat.replace('relacionados', 'relacionado')) if t])}.")
+    if n > 1:
+        cont = {}
+        for x in ps:
+            r, k = _situacao_rotulo(x)
+            cont[k] = cont.get(k, 0) + 1
+        desc = []
+        for k, t_um, t_var in (("arq_def", "registro de arquivamento definitivo", "registro de arquivamento definitivo"),
+                               ("arq", "registro de arquivamento", "registro de arquivamento"),
+                               ("baixa", "registro de baixa", "registro de baixa"),
+                               ("extinto", "registro de extinção", "registro de extinção"),
+                               ("susp", "registro de suspensão", "registro de suspensão"),
+                               ("tram", "consta como em tramitação na base consultada", "constam como em tramitação na base consultada"),
+                               ("nd", "está sem situação informada", "estão sem situação informada")):
+            c = cont.get(k, 0)
+            if c:
+                nome_n = "todos" if c == n else NUMEROS[c] if c <= 20 else str(c)
+                verbo = (("apresenta " if t_um.startswith("registro") else "") if c == 1 else
+                         ("apresentam " if t_var.startswith("registro") else ""))
+                desc.append(f"*{nome_n} {verbo}{t_um if c == 1 else t_var}*")
+        out.append(f"Dos {NUMEROS[n] if n <= 20 else n} processos encontrados, {_lista(desc)}. "
+                   "A seguir, apresentamos as informações individualizadas.")
+    return out
 
 
 def mensagem_pessoa(p, atendente=ATENDENTES[0]):
     ps, nome = p["processos"], (p["nome"] or R.formatar_doc(p["doc"])).strip()
-    n = len(ps)
-    verbo = "foi localizado" if n == 1 else "foram localizados"
-    rel = "relacionado" if n == 1 else "relacionados"
-    partes = [f"*{atendente}:* Informamos que, após consulta aos sistemas do Poder Judiciário, {verbo} "
-              f"*{_quantos(n, 'processo', 'processos')}* {rel} a *{nome}.*"]
+    if not ps:
+        return (f"*{atendente}:* Informamos que após consulta ao sistema do Poder Judiciário, não localizamos "
+                f"*nenhum processo* em nome de *{nome}*.")
+    partes = [_abertura(p, ps, nome, atendente)] + _panorama(ps, nome)
     for i, x in enumerate(ps, 1):
         partes.append(bloco_processo(i, x, nome))
-    com_dj = [x for x in ps if _dj(x)]
-    if n > 1:
-        andam = sum(1 for x in ps if not _encerrado(x))
-        enc = n - andam
-        pol = {}
-        for x in ps:
-            pol[x["polo"]] = pol.get(x["polo"], 0) + 1
-        posicoes = []
-        for k, t in (("Polo passivo", "como parte ré (polo passivo)"), ("Polo ativo", "como autor(a)"),
-                     ("Outra parte", "como outra parte interessada"), ("Advogado(a)", "como advogado(a)"),
-                     ("Não identificado", "sem posição confirmada nos registros")):
-            if pol.get(k):
-                posicoes.append(f"{_quantos(pol[k], 'processo', 'processos')} {t}")
-        naturezas = sorted({texto(x.get("ramo")).lower() for x in ps if R._limpo(x.get("ramo"))})
-        concl = (f"Em resumo, foram localizados *{_quantos(n, 'processo', 'processos')}* relacionados a *{nome}*"
-                 + (f", nas áreas de {_lista(naturezas)}" if naturezas else "")
-                 + ". " + (f"{nome} figura em {_lista(posicoes)}. " if posicoes else "")
-                 + "Pelos registros mais recentes, "
-                 + ("*todos estão em andamento*. " if not enc else "*todos constam como encerrados ou arquivados*. "
-                    if not andam else f"*{NUMEROS[andam] if andam <= 20 else andam} {'está' if andam == 1 else 'estão'} "
-                    f"em andamento* e *{NUMEROS[enc] if enc <= 20 else enc} {'consta' if enc == 1 else 'constam'} como "
-                    f"{'encerrado ou arquivado' if enc == 1 else 'encerrados ou arquivados'}*. "))
-        contra = [x for x in ps if _desfavoravel(x)]
-        if contra:
-            quais = _lista([(texto(x.get("acao")) or "processo") + " nº " + R.cnj(x.get("numero", "")) for x in contra])
-            concl += (f"Há sentença registrada desfavorável a {nome} em *{_quantos(len(contra), 'processo', 'processos')}* "
-                      f"({quais}), "
-                      "conforme descrito acima.")
-        elif len(com_dj) == n:
-            concl += "Nos registros consultados, não foi identificada sentença desfavorável a " + nome + "."
-        else:
-            concl += ("Para os processos sem movimentações disponíveis, não é possível afirmar, com base nos registros, "
-                      "se houve condenação ou resultado desfavorável.")
-        partes.append(concl)
-    partes.append(RESSALVA_DJ if com_dj else RESSALVA)
     return "\n\n".join(partes)
 
 
-def gerar(pasta, pessoas, atendente=ATENDENTES[0], datajud=True):
-    """mensagens_cac.json (para a página) e mensagens_cac.txt: uma mensagem por pessoa com processos.
-    Com datajud=True, antes busca as movimentações de cada processo na API pública do CNJ (datajud.py)."""
-    if datajud:
-        try:
-            DJ.enriquecer(pasta, pessoas)
-        except Exception as e:  # a mensagem nunca deixa de sair por causa do DataJud
-            print(f"DataJud: consulta não feita ({e})")
+def _sem_processo_confirmado(p):
+    """Pessoa que o Sonar respondeu "não consta" (e não houve falha ao ler a planilha)."""
+    return not p["processos"] and not p["aviso"] and "NAO CONSTA" in R._sem_acento(p["situacao"])
+
+
+def gerar(pasta, pessoas, atendente=ATENDENTES[0], datajud=False):
+    """mensagens_cac.json (para a página) e mensagens_cac.txt: uma mensagem por pessoa com processos ou com
+    "não consta processo" confirmado. O parâmetro datajud ficou só por compatibilidade: o modelo atual não
+    consulta tribunal nem API nenhuma."""
     msgs = [{"empresa": p["empresa"], "nome": p["nome"], "pedido": p["pedido"], "processos": len(p["processos"]),
-             "texto": mensagem_pessoa(p, atendente)} for p in pessoas if p["processos"]]
+             "texto": mensagem_pessoa(p, atendente)} for p in pessoas if p["processos"] or _sem_processo_confirmado(p)]
     pasta = Path(pasta)
     (pasta / "mensagens_cac.json").write_text(json.dumps({"atendentes": ATENDENTES, "mensagens": msgs}, ensure_ascii=False, indent=1),
                                               encoding="utf-8")
     (pasta / "mensagens_cac.txt").write_text(
         (f"\n\n{SEPARADOR}\n\n".join(f"[{m['empresa']} · {m['nome']} · pedido S{m['pedido']}]\n\n{m['texto']}" for m in msgs)
-         or "Nenhuma pessoa com processos nesta pesquisa.") + "\n", encoding="utf-8")
+         or "Nenhuma pessoa nesta pesquisa.") + "\n", encoding="utf-8")
     return msgs

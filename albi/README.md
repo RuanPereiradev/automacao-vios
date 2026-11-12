@@ -29,14 +29,14 @@ a planilha) e escreve o `resultado.txt`.
    do que já foi baixado (sem Sonar): `.venv/bin/python relatorio.py <pasta do resultado>`.
    Escreve também o `mensagem.txt`, com o resumo pronto para mandar a cada empresa (CPF mascarado). Na
    página, é o botão "Capturar resumo".
-   E `mensagens_cac.txt`/`.json` (`mensagem_cac.py`): uma mensagem por pessoa com processos, no padrão da CAC
-   ("*Beatriz Vasconcelos:* Informamos que…", "*1️⃣ Autor x Réu*", "Trata-se de…", situação e ressalva), sem IA.
-   Para contar o que aconteceu em cada processo (contestação, audiências, sentença, recurso, trânsito em
-   julgado, cumprimento, arquivamento), `datajud.py` consulta o número do processo na API pública do CNJ
-   (DataJud) e guarda a resposta em `datajud/` na pasta do resultado. Os fatos narrados nas petições e os
-   fundamentos das decisões não estão em nenhuma das fontes, e a mensagem diz isso. Sem resposta da API, o
-   processo sai só com o cadastro do Sonar. Ver um processo: `.venv/bin/python datajud.py <número>`;
-   desligar: `DATAJUD=false` no `.env` ou `relatorio.py <pasta> --sem-datajud`.
+   E `mensagens_cac.txt`/`.json` (`mensagem_cac.py`): uma mensagem por pessoa, no padrão da CAC, sem IA e
+   **sem consultar tribunal nem DataJud** (só a planilha do Sonar). Com processos: "*Beatriz Vasconcelos:*
+   Informamos que, após consulta aos registros processuais disponibilizados, foram localizados *N
+   processos judiciais*…", período, quantos arquivados/em tramitação, um bloco por processo
+   ("*1️⃣ Autor x Réu*", "*Processo nº … — TJ…*", posição da pessoa, andamento, "*Conclusão:*") e a
+   conclusão (formato fixo, só mudam os campos). Tipos de ação fora do dicionário: `explicacao_ia.py` pede uma
+   frase ao Gemini (`GEMINI_API_KEY` no `.env`; só o nome da classe vai; cache em `explicacoes_classe.json`).
+   Sem processos ("não consta"): "…não localizamos *nenhum processo* em nome de *NOME*".
 7. Não compra duas vezes: o registro `saida/pedidos_confirmados.json` é anotado antes de cada
    clique em Confirmar; CPF já pesquisado para a mesma empresa nos últimos 30 dias usa o pedido
    anterior. Erro depois do clique vira "Conferir no Sonar" (nunca clica de novo); 3 seguidos param.
