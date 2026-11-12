@@ -12,6 +12,19 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Albi: tela "Mensagens" com as mensagens da CAC por dia (12/11/2026)
+- Nova tela `/albi/mensagens` (botão "Mensagens" no topo da página do Albi): o produto final, as mensagens
+  prontas para copiar e enviar ao cliente, **de um dia** (`?dia=AAAA-MM-DD`; sem ele, hoje ou o dia mais
+  recente com mensagens). Escolha o dia no calendário ou nos botões "Dias com mensagens" (data · quantidade).
+- Mostra o total do dia, quantas têm processos e quantas não, filtro "Todas / Com processos / Sem processos",
+  busca por nome ou empresa, mensagens agrupadas por empresa, escolha da atendente (troca o nome no começo de
+  todas), "Copiar mensagem" em cada uma e "Copiar todas as que estão na tela". Mensagens com processos vêm
+  recolhidas ("Ver e editar a mensagem"); as de "nenhum processo" já vêm abertas.
+- Não precisa mais clicar em "Capturar resumo": o relatório (e as mensagens) já são gerados no fim de cada
+  execução. Quem foi pesquisado de novo no mesmo dia fica com a mensagem da execução mais recente.
+- `bot/albi.py`: `mensagens_por_dia()`; `bot/envio_web.py`: rota `albi_mensagens`; o card da execução ganhou
+  o botão "Ver as mensagens para copiar".
+
 ### Alterado — Albi: página no tema da Arena (Dragon Ball Z) (12/11/2026)
 - A página `/albi` (`bot/templates/albi.html`, `<body class="tema-arena">`) deixa o fundo escuro e rosa e
   passa a usar o tema da vila 03 (Arena do Albi, `albi/mascote/fundo-arena-albi.html`): céu em degradê, nuvens

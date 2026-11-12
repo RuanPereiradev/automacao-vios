@@ -74,6 +74,9 @@
   .tema-arena .hist tr:hover td { background: rgba(200, 100, 30, .08); }
   .tema-arena .barra-salvar { background: linear-gradient(transparent, rgba(155, 207, 246, .95) 40%); }
   .tema-arena summary { color: var(--madeira); }
+  .cartao.msg textarea.mensagem { min-height: 0; }
+  .tema-arena .grupo-empresa { display: inline-block; background: #f4d9b2; border: 3px solid var(--madeira); border-bottom-width: 5px;
+                               padding: 4px 14px; margin: 14px 0 10px; border-radius: 3px; font-size: 15px; }
   @media (max-width: 640px) { body.tema-arena::before { display: none; } }
   .soltar.desligado { opacity: .55; pointer-events: none; }
   /* mascote: pisca, achata como no original e a fivela brilha */
@@ -96,6 +99,7 @@
     <a class="botao secundario" href="{{ url_for('vila_dos_bots') }}">Vila dos Bots</a>
     <a class="botao secundario" href="{{ url_for('inicio') }}">Sam</a>
     {% if zangao_ligado %}<a class="botao secundario" href="{{ url_for('zangao_pagina') }}">Bumblebee</a>{% endif %}
+    <a class="botao primario" href="{{ url_for('albi_mensagens') }}">Mensagens</a>
     <a class="botao secundario" href="{{ url_for('albi_historico') }}">Histórico</a>
   </span>
 </header>
@@ -213,6 +217,64 @@ EMPRESA: Empresa B
     })();
   </script>
 
+{% elif tela == "mensagens" %}
+  {% set sel = dias | selectattr("dia", "equalto", dia) | list %}
+  {% set total = msgs | length %}{% set com = msgs | selectattr("processos") | list | length %}
+  {% macro br(d) %}{{ d[8:10] }}/{{ d[5:7] }}/{{ d[:4] }}{% endmacro %}
+  <div class="cartao">
+    <div class="topo-hist"><h2>Mensagens prontas para enviar</h2>
+      <a class="botao secundario" href="{{ url_for('albi_pagina') }}">Voltar</a></div>
+    <p class="suave">O resultado de cada CPF já vira a mensagem da CAC no fim da execução. Escolha o dia da execução,
+      confira, copie e envie ao cliente.</p>
+    <form method="get" action="{{ url_for('albi_mensagens') }}" class="acoes" id="form-dia">
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:14px">Dia
+        <input type="date" name="dia" value="{{ dia }}" style="width:auto;margin:0" id="campo-dia"></label>
+      <button class="secundario" type="submit">Ver</button>
+    </form>
+    {% if dias %}
+    <p class="acoes" style="margin-top:12px"><span class="suave">Dias com mensagens:</span>
+      {% for d in dias %}<a class="botao {{ 'primario' if d.dia == dia else 'secundario' }}" style="padding:5px 12px"
+        href="{{ url_for('albi_mensagens', dia=d.dia) }}">{{ d.dia[8:10] }}/{{ d.dia[5:7] }} · {{ d.total }}</a>{% endfor %}</p>
+    {% endif %}
+  </div>
+
+  {% if not msgs %}
+  <div class="cartao"><h2>Nenhuma mensagem em {{ br(dia) }}</h2>
+    <p class="suave">{% if dias %}Escolha um dos dias acima.{% else %}Quando uma execução terminar, as mensagens aparecem aqui.{% endif %}
+      Se a execução terminou mas o dia está vazio, abra o <a href="{{ url_for('albi_historico') }}">histórico</a> e clique em
+      "Capturar resumo" nela.</p></div>
+  {% else %}
+  <div class="cartao">
+    <div class="numeros">
+      <div class="numero"><b>{{ total }}</b>mensagem(ns) em {{ br(dia) }}</div>
+      <div class="numero"><b>{{ com }}</b>com processos</div>
+      <div class="numero"><b>{{ total - com }}</b>sem processos</div>
+    </div>
+    <p class="acoes" id="filtros"><span class="suave">Mostrar:</span>
+      <button type="button" class="primario" data-f="todas">Todas</button>
+      <button type="button" class="secundario" data-f="com">Com processos</button>
+      <button type="button" class="secundario" data-f="sem">Sem processos</button>
+      <input type="search" id="busca" class="busca" placeholder="Buscar por nome ou empresa" style="margin:0;max-width:280px">
+    </p>
+    <p class="acoes" id="atendentes"><span class="suave">Atendente:</span>
+      {% for a in atendentes %}<button type="button" class="{{ 'primario' if loop.first else 'secundario' }}" data-atendente="{{ a }}">{{ a }}</button> {% endfor %}
+      <button type="button" class="secundario" id="copiar-todas">Copiar todas as que estão na tela</button>
+    </p>
+  </div>
+  {% set ns = namespace(emp=None) %}
+  {% for m in msgs %}
+  {% if m.empresa != ns.emp %}{% set ns.emp = m.empresa %}<h3 class="empresa-a grupo-empresa" data-empresa="{{ m.empresa | lower }}">{{ m.empresa or "Sem empresa" }}</h3>{% endif %}
+  <div class="cartao msg" data-tem="{{ 1 if m.processos else 0 }}" data-busca="{{ (m.nome ~ ' ' ~ m.empresa) | lower }}" data-empresa="{{ m.empresa | lower }}">
+    <div class="topo-hist"><h3 class="empresa-a" style="margin:0">{{ m.nome }}
+        {% if m.processos %}<span class="selo s-aviso">{{ m.processos }} processo(s)</span>{% else %}<span class="selo s-ok">sem processos</span>{% endif %}
+        <span class="suave" style="font-size:13px;font-weight:400">· pedido S{{ m.pedido }} · {{ m.hora }}</span></h3>
+      <button class="primario copiar" type="button" data-alvo="cac-{{ loop.index }}">Copiar mensagem</button></div>
+    <details {{ "open" if not m.processos }} style="margin-top:8px"><summary>{{ "Ver e editar a mensagem" if m.processos else "Mensagem" }}</summary>
+      <textarea class="mensagem cac" id="cac-{{ loop.index }}" rows="{{ [m.texto.count('\n') + 2, 40] | min }}">{{ m.texto }}</textarea></details>
+  </div>
+  {% endfor %}
+  {% endif %}
+
 {% elif tela == "historico" %}
   <div class="cartao">
     <div class="topo-hist"><h2>Execuções do Albi</h2>
@@ -305,6 +367,7 @@ EMPRESA: Empresa B
   const FINAIS = ['pronto', 'erro', 'ja_pesquisado', 'encontrados', 'nao_consta', 'sem_resultado', 'conferir', 'sem_pedido'];
   const ARQ = '{{ url_for("albi_arquivo", envio_id="ID", nome="NOME") }}', ZIP = '{{ url_for("albi_zip", envio_id="ID") }}';
   const RODAR = '{{ url_for("albi_rodar", envio_id="ID") }}', VER = '{{ url_for("albi_ver", envio_id="ID") }}';
+  const MENSAGENS = '{{ url_for("albi_mensagens") }}';
   const RELATORIO = '{{ url_for("albi_relatorio", envio_id="ID") }}', RESUMO = '{{ url_for("albi_resumo", envio_id="ID") }}';
   const link = (id, nome) => ARQ.replace('ID', encodeURIComponent(id)).replace('NOME', nome.split('/').map(encodeURIComponent).join('/'));
 
@@ -332,6 +395,9 @@ EMPRESA: Empresa B
     else if (compra && !rodando && arqs.includes('resultado.txt'))
       h += `<form method="post" action="${RELATORIO.replace('ID', encodeURIComponent(e.id))}" class="acoes">` +
            '<button class="primario">Gerar relatório dos processos</button></form>';
+    // o produto final: as mensagens da CAC do dia desta execução, prontas para copiar
+    if (!rodando && arqs.includes('mensagens_cac.txt') && e.inicio)
+      h += `<p class="acoes"><a class="botao primario" href="${MENSAGENS}?dia=${encodeURIComponent(e.inicio.slice(0, 10))}">Ver as mensagens para copiar</a></p>`;
     // mensagem resumida para a empresa que pediu (gera o relatório antes, se faltar)
     if (compra && !rodando && arqs.includes('resultado.txt'))
       h += `<form method="post" action="${RESUMO.replace('ID', encodeURIComponent(e.id))}" class="acoes">` +
@@ -372,7 +438,7 @@ EMPRESA: Empresa B
     }).join('') + '</ul>';
   }
 
-  {% if tela == "resumo" %}
+  {% if tela == "resumo" or tela == "mensagens" %}
   // atendente: troca o "*Nome:*" do começo de cada mensagem da CAC (mantém o que já foi editado no resto)
   document.querySelectorAll('#atendentes button[data-atendente]').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('#atendentes button[data-atendente]').forEach(x => x.className = x === b ? 'primario' : 'secundario');
@@ -385,6 +451,34 @@ EMPRESA: Empresa B
     if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(t.value).then(ok); return; }
     t.focus(); t.select(); try { document.execCommand('copy'); ok(); } catch (_) { b.textContent = 'Selecione e copie (Ctrl+C)'; }
   }));
+  {% if tela == "mensagens" %}
+  (function () {
+    let filtro = 'todas';
+    const cartoes = [...document.querySelectorAll('.cartao.msg')], grupos = [...document.querySelectorAll('.grupo-empresa')];
+    function aplicar() {
+      const q = ($('busca').value || '').trim().toLowerCase();
+      cartoes.forEach(c => {
+        const ok = (filtro === 'todas' || (filtro === 'com') === (c.dataset.tem === '1')) && (!q || c.dataset.busca.includes(q));
+        c.style.display = ok ? '' : 'none';
+      });
+      grupos.forEach(g => { g.style.display = cartoes.some(c => c.dataset.empresa === g.dataset.empresa && c.style.display !== 'none') ? '' : 'none'; });
+    }
+    document.querySelectorAll('#filtros button[data-f]').forEach(b => b.addEventListener('click', () => {
+      filtro = b.dataset.f;
+      document.querySelectorAll('#filtros button[data-f]').forEach(x => x.className = x === b ? 'primario' : 'secundario');
+      aplicar();
+    }));
+    $('busca').addEventListener('input', aplicar);
+    $('campo-dia').addEventListener('change', () => $('form-dia').submit());
+    $('copiar-todas').addEventListener('click', () => {
+      const b = $('copiar-todas'), txt = b.textContent;
+      const todas = cartoes.filter(c => c.style.display !== 'none').map(c => c.querySelector('textarea').value).join('\n\n' + '='.repeat(48) + '\n\n');
+      const t = document.createElement('textarea'); t.value = todas; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t);
+      t.select(); try { document.execCommand('copy'); b.textContent = 'Copiadas!'; } catch (_) { b.textContent = 'Não consegui copiar'; }
+      document.body.removeChild(t); setTimeout(() => { b.textContent = txt; }, 2000);
+    });
+  })();
+  {% endif %}
   {% elif tela == "execucao" %}
   $('execucao').innerHTML = cartao({{ e | tojson }});
   {% elif tela == "inicio" %}

@@ -833,6 +833,12 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - Pela página: `http://<IP do Mac>:5001/albi` (link "Albi" no topo do Ultron).
   A página usa o tema da Arena do Albi (Dragon Ball Z): céu, nuvens, lago, cabeçalho bege com telhado laranja
   e cartões com moldura de madeira (`<body class="tema-arena">` em `bot/templates/albi.html`).
+- **Tela "Mensagens"** (botão no topo da página do Albi, `/albi/mensagens?dia=AAAA-MM-DD`): o produto final do
+  Albi. Junta as mensagens da CAC (`mensagens_cac.json` de cada execução) **por dia da execução**: escolha o dia
+  no calendário ou nos botões de dias com mensagens, filtre por "com processos / sem processos", busque por nome
+  ou empresa, troque a atendente e use "Copiar mensagem" (ou "Copiar todas as que estão na tela"). As mensagens
+  já existem no fim de cada execução (o Albi gera o relatório sozinho); "Capturar resumo" só serve para
+  execuções antigas sem elas. Quem foi pesquisado de novo no mesmo dia fica com a mensagem mais recente.
   Soltar o `.txt` na caixa: o Albi **só confere** e mostra quem vai ser
   pesquisado e o **total em R$**. "Só testar" faz tudo menos confirmar;
   "Confirmar e pesquisar" (dois cliques) compra. Roda em segundo plano (um por

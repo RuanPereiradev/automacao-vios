@@ -302,6 +302,30 @@ def mensagens_cac(pasta_saida, envio_id):
         return None
 
 
+def mensagens_por_dia(pasta_saida):
+    """As mensagens da CAC de todas as execuções, por dia da execução: {"AAAA-MM-DD": [mensagem, ...]}.
+    Cada mensagem: id (da execução), hora, arquivo, empresa, nome, pedido, processos, texto. Quem foi
+    pesquisado de novo no mesmo dia fica só com a mensagem da execução mais recente. Dias do mais novo
+    para o mais antigo; dentro do dia, por empresa e nome. Também devolve os nomes das atendentes."""
+    dias, atendentes = {}, []
+    for e in execucoes(pasta_saida):  # da mais nova para a mais antiga
+        cac = mensagens_cac(pasta_saida, e["id"])
+        if not cac or not e.get("inicio"):
+            continue
+        atendentes = atendentes or list(cac.get("atendentes") or [])
+        dia = e["inicio"][:10]
+        vistos = {(m["empresa"], m["nome"], m["pedido"]) for m in dias.get(dia, [])}
+        for m in cac.get("mensagens", []):
+            if (m["empresa"], m["nome"], m["pedido"]) in vistos:
+                continue
+            dias.setdefault(dia, []).append({"id": e["id"], "hora": e["inicio"][11:16], "arquivo": e.get("arquivo"),
+                                             "empresa": m["empresa"], "nome": m["nome"], "pedido": m["pedido"],
+                                             "processos": m["processos"], "texto": m["texto"]})
+    for lista in dias.values():
+        lista.sort(key=lambda m: (m["empresa"].lower(), m["nome"].lower()))
+    return dict(sorted(dias.items(), reverse=True)), atendentes
+
+
 def arquivos(pasta_saida, envio_id):
     """resultado.txt e planilhas desta execução (caminhos relativos à pasta do resultado)."""
     base = pasta_resultado(pasta_saida, envio_id)

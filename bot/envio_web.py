@@ -709,6 +709,19 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     def albi_andamento():
         return jsonify(albi.andamento(pasta_albi, pasta_saida))
 
+    @app.route("/albi/mensagens")
+    def albi_mensagens():
+        """O produto final do Albi: as mensagens da CAC prontas para copiar, de um dia (?dia=AAAA-MM-DD;
+        sem ele, hoje, ou o dia mais recente que tem mensagens)."""
+        dias, atendentes = albi.mensagens_por_dia(pasta_saida)
+        dia = request.args.get("dia", "")
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", dia):
+            hoje = datetime.now().strftime("%Y-%m-%d")
+            dia = hoje if hoje in dias else (next(iter(dias), hoje))
+        resumo = [{"dia": d, "total": len(m), "com": sum(1 for x in m if x["processos"])} for d, m in dias.items()]
+        return render_template("albi.html", tela="mensagens", textos=albi.TEXTOS, dia=dia, msgs=dias.get(dia, []),
+                               dias=resumo[:45], atendentes=atendentes or ["Beatriz Vasconcelos", "Renara Kathleem"])
+
     @app.route("/albi/historico")
     def albi_historico():
         return render_template("albi.html", tela="historico", execucoes=albi.execucoes(pasta_saida), textos=albi.TEXTOS)
