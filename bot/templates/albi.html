@@ -13,32 +13,82 @@
 <title>Albi — pesquisa de processos no Sonar</title>
 {{ albi_icone() }}
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&family=Silkscreen&display=swap" rel="stylesheet">
 {% include "_estilo.html" %}
 <style>
   /* cores do Albi por cima do estilo do Sam */
-  :root { --red: #f29bbf; --red-escuro: #c96a93; }
-  body { background: radial-gradient(ellipse at top, #1d1218 0%, var(--fundo) 55%) fixed, var(--fundo); }
-  .marca b { text-shadow: 0 0 12px rgba(242, 155, 191, .6); }
-  .primario { color: #1d1e21; box-shadow: 0 0 18px rgba(242, 155, 191, .3); }
-  .primario.confirmar { background: linear-gradient(180deg, #ff4b3a, #b3121b); color: #fff; box-shadow: 0 0 22px rgba(255, 60, 40, .5); }
-  .s-aviso { color: var(--ambar); border-color: rgba(227, 167, 47, .45); background: rgba(227, 167, 47, .1); }
-  .lista > li.atual { box-shadow: 0 0 18px rgba(242, 155, 191, .2); }
-  .barra i { box-shadow: 0 0 14px rgba(242, 155, 191, .7); }
+  /* Tema da vila 03 (Arena do Albi, Dragon Ball Z): céu e lago da arena, nuvens, casa em domo bege com
+     telhado laranja, ki ciano e o rosa do Albi. Cores de albi/mascote/fundo-arena-albi.html. */
+  body.tema-arena { --fundo: #9bcff6; --cartao: #fbf1de; --cartao2: #f2e2c4; --borda: #c9a070; --texto: #2a1d12;
+    --suave: #7a6448; --metal: #5a3e22; --red: #f29bbf; --red-escuro: #c96a93; --azul: #1d4ea0; --verde: #1f7a38;
+    --ambar: #9a5a00; --madeira: #5a3e22; --telhado: #c8641e; --ki: #5ad8ff;
+    background:
+      linear-gradient(0deg, #2468c8 0 28px, #2f7fe0 28px 56px, #3c8ee8 56px 84px, transparent 84px) fixed,
+      linear-gradient(180deg, #3c8ee8 0, #5aa7e6 20%, #6db4ec 40%, #82c1f1 60%, #9bcff6 80%, #b7ddf9 100%) fixed, #9bcff6; }
+  /* nuvens de pixel passando devagar atrás de tudo */
+  body.tema-arena::before { content: ""; position: fixed; left: 0; top: 70px; width: 200%; height: 220px; z-index: -1; pointer-events: none;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='200' shape-rendering='crispEdges'%3E%3Cg fill='%23fff'%3E%3Crect x='40' y='53' width='96' height='20'/%3E%3Crect x='52' y='41' width='72' height='12'/%3E%3Crect x='68' y='33' width='36' height='8'/%3E%3Crect x='360' y='113' width='72' height='16'/%3E%3Crect x='372' y='101' width='48' height='12'/%3E%3Crect x='386' y='93' width='24' height='8'/%3E%3Crect x='500' y='33' width='80' height='16'/%3E%3Crect x='512' y='21' width='56' height='12'/%3E%3C/g%3E%3Cg fill='%23d8ebf7'%3E%3Crect x='42' y='73' width='92' height='4'/%3E%3Crect x='362' y='129' width='68' height='4'/%3E%3Crect x='502' y='49' width='76' height='4'/%3E%3C/g%3E%3C/svg%3E") repeat-x; image-rendering: pixelated; animation: nuvens 160s linear infinite; }
+  @keyframes nuvens { to { transform: translateX(-50%); } }
+  .tema-arena a { color: #1d4ea0; }
+  .tema-arena header { background: #f4d9b2; border-bottom: 6px solid var(--telhado); box-shadow: 0 3px 0 #8c4f28, 0 10px 24px rgba(20, 50, 100, .35);
+                       backdrop-filter: none; }
+  .tema-arena header a { color: var(--texto); }
+  .tema-arena header .sub { color: #7a6448; }
+  .tema-arena .marca { font-family: Silkscreen, Orbitron, monospace; font-weight: 400; color: var(--madeira); }
+  .tema-arena .marca b { color: #f29bbf; text-shadow: 2px 2px 0 #7a2a52; }
+  .tema-arena h1, .tema-arena h2 { color: var(--madeira); }
+  .tema-arena .cartao { border: 3px solid var(--madeira); border-radius: 4px;
+                        box-shadow: inset 0 0 0 2px #fbf1de, inset 0 0 0 4px #e3c89c, 0 5px 0 #3b2814, 0 14px 28px rgba(20, 50, 100, .3); }
+  .tema-arena .vila-cartao { border: 0; background: #1b2a4a;
+                             box-shadow: 0 0 0 3px #5a3e22, 0 0 0 6px #f4d9b2, 0 0 0 9px #c8641e, 0 14px 30px rgba(20, 50, 100, .45); }
+  .tema-arena code { background: #f2e2c4; color: #2a1d12; }
+  .tema-arena pre { background: #f2e2c4; color: #2a1d12; border-color: var(--borda); }
+  .tema-arena input:not([type=checkbox]), .tema-arena textarea { background: #fffaf0; color: var(--texto); border-color: var(--borda); border-radius: 3px; }
+  .tema-arena input:focus, .tema-arena textarea:focus { border-color: var(--telhado); box-shadow: 0 0 0 3px rgba(200, 100, 30, .25); }
+  .tema-arena .botao, .tema-arena button { border-radius: 3px; }
+  .tema-arena .primario { background: linear-gradient(180deg, #ffa44a, #c8641e); color: #2a1d12; border-color: #5a3e22;
+                          box-shadow: inset 0 1px 0 #ffd9a8, 0 3px 0 #5a3e22; }
+  .tema-arena .primario:hover:not(:disabled) { box-shadow: inset 0 1px 0 #ffd9a8, 0 3px 0 #5a3e22, 0 0 18px rgba(90, 216, 255, .7); }
+  .tema-arena .primario.confirmar { background: linear-gradient(180deg, #ff5a4a, #c8102e); color: #fff; border-color: #5a1010;
+                                    box-shadow: inset 0 1px 0 #ff9a8f, 0 3px 0 #5a1010; }
+  .tema-arena .secundario { background: #f2e2c4; color: var(--texto); border-color: var(--madeira); }
+  .tema-arena .secundario:hover:not(:disabled) { border-color: var(--telhado); background: #fff1d0; }
+  .tema-arena .s-ok { color: #1f6b34; border-color: rgba(31, 107, 52, .5); background: rgba(63, 185, 80, .16); }
+  .tema-arena .s-erro { color: #a4231f; border-color: rgba(164, 35, 31, .5); background: rgba(200, 16, 46, .1); }
+  .tema-arena .s-aviso { color: #8a5200; border-color: rgba(154, 90, 0, .5); background: rgba(227, 167, 47, .22); }
+  .tema-arena .s-ja { color: #7a6448; background: #f2e2c4; }
+  .tema-arena .s-andamento { color: #1d4ea0; border-color: rgba(29, 78, 160, .5); background: rgba(90, 216, 255, .22); }
+  .tema-arena .numero { background: #f2e2c4; border-color: var(--borda); border-radius: 3px; }
+  .tema-arena .erro { color: #a4231f; }
+  .tema-arena .aviso { color: #8a5200; }
+  .tema-arena .soltar { border-color: var(--telhado); border-radius: 4px; background: rgba(200, 100, 30, .05); }
+  .tema-arena .soltar:hover, .tema-arena .soltar.arrastando { border-color: #1d4ea0; background: rgba(90, 216, 255, .18);
+                                                              box-shadow: inset 0 0 40px rgba(90, 216, 255, .35); }
+  .tema-arena .barra { background: #e3c89c; border-color: var(--madeira); border-radius: 3px; }
+  .tema-arena .barra i { background: linear-gradient(90deg, #2f7fe0, #5ad8ff, #e6fbff); box-shadow: 0 0 14px var(--ki); }
+  .tema-arena .fase { color: var(--madeira); }
+  .tema-arena .lista > li { background: #f2e2c4; border-color: var(--borda); border-radius: 3px; }
+  .tema-arena .lista > li.atual { border-color: var(--telhado); box-shadow: 0 0 18px rgba(90, 216, 255, .6); }
+  .tema-arena .icone { border-color: var(--borda); }
+  .tema-arena .hist td { border-top-color: var(--borda); }
+  .tema-arena .hist tr:hover td { background: rgba(200, 100, 30, .08); }
+  .tema-arena .barra-salvar { background: linear-gradient(transparent, rgba(155, 207, 246, .95) 40%); }
+  .tema-arena summary { color: var(--madeira); }
+  @media (max-width: 640px) { body.tema-arena::before { display: none; } }
   .soltar.desligado { opacity: .55; pointer-events: none; }
   /* mascote: pisca, achata como no original e a fivela brilha */
   .albi.piscando .olho-a { fill: #f29bbf; }
   .albi.subindo svg { transform: scale(1.03, .97) translateY(1.5%); }
   .albi .fivela { animation: fivela 1s steps(1) infinite; }
   @keyframes fivela { 50% { fill: #f0c46a; } }
-  .albi .sombra { background: radial-gradient(rgba(242, 155, 191, .3), transparent 70%); }
+  .albi .sombra { background: radial-gradient(rgba(90, 40, 20, .28), transparent 70%); }
   .pedido-a .detalhe { font-size: 13px; color: var(--suave); margin-top: 4px; }
   .pedido-a code { font-size: 13px; }
   .empresa-a { font-size: 16px; margin: 18px 0 6px; }
   textarea.mensagem { font-size: 14px; line-height: 1.5; min-height: 320px; }
 </style>
 </head>
-<body>
+<body class="tema-arena">
 <header>
   <a href="{{ url_for('albi_pagina') }}">{{ albi("parado", 48, "albi-topo") }}
     <span><span class="marca"><b>A</b>LBI</span><br><span class="sub">pesquisa de processos no Sonar</span></span></a>
@@ -209,10 +259,13 @@ EMPRESA: Empresa B
   </div>
   {% if cac.mensagens %}
   <div class="cartao">
-    <div class="topo-hist"><h2>Mensagens da CAC · uma por pessoa com processos</h2></div>
+    <div class="topo-hist"><h2>Mensagens da CAC · uma por pessoa pesquisada</h2></div>
     <p class="suave">No padrão da Central de Atendimento ao Cliente, pronta para o WhatsApp (o negrito é com *asteriscos*).
-      Traz só o que está nos registros do Sonar (número, data, vara, partes e o papel de cada uma, ação, assunto, valor e situação)
-      e termina com a ressalva de que os autos não foram consultados. Sem "Sr./Sra.": acrescente ao revisar, se quiser.</p>
+      O formato é sempre o mesmo e só mudam os campos. Quem tem processos recebe um bloco por processo (número, tribunal,
+      partes, posição da pessoa, andamento e conclusão); quem não tem recebe a mensagem "não localizamos nenhum processo".
+      Traz só o que está nos registros do Sonar, sem consultar os autos. O parágrafo explicativo de cada processo é escrito
+      pelo Gemini a partir do tipo de ação, da posição e da situação (nunca nome, CPF ou número) e fica guardado em
+      <code>albi/explicacoes_classe.json</code>. Sem "Sr./Sra.": acrescente ao revisar, se quiser.</p>
     <p class="acoes" id="atendentes"><span class="suave">Atendente:</span>
       {% for a in cac.atendentes %}<button type="button" class="{{ 'primario' if loop.first else 'secundario' }}" data-atendente="{{ a }}">{{ a }}</button> {% endfor %}
       <a class="botao secundario" href="{{ url_for('albi_arquivo', envio_id=envio_id, nome='mensagens_cac.txt') }}">mensagens_cac.txt</a>
@@ -220,7 +273,7 @@ EMPRESA: Empresa B
   </div>
   {% for m in cac.mensagens %}
   <div class="cartao">
-    <div class="topo-hist"><h3 class="empresa-a">{{ m.nome }} <span class="suave">· {{ m.empresa }} · pedido S{{ m.pedido }} · {{ m.processos }} processo(s)</span></h3>
+    <div class="topo-hist"><h3 class="empresa-a">{{ m.nome }} <span class="suave">· {{ m.empresa }} · pedido S{{ m.pedido }} · {% if m.processos %}{{ m.processos }} processo(s){% else %}sem processos{% endif %}</span></h3>
       <button class="primario copiar" type="button" data-alvo="cac-{{ loop.index }}">Copiar mensagem</button></div>
     <textarea class="mensagem cac" id="cac-{{ loop.index }}" rows="{{ [m.texto.count('\n') + 2, 40] | min }}">{{ m.texto }}</textarea>
   </div>

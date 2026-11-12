@@ -831,6 +831,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - Não compra duas vezes: CPF já pesquisado para a mesma empresa nos últimos 30
   dias usa o pedido anterior (registro `albi/saida/pedidos_confirmados.json`).
 - Pela página: `http://<IP do Mac>:5001/albi` (link "Albi" no topo do Ultron).
+  A página usa o tema da Arena do Albi (Dragon Ball Z): céu, nuvens, lago, cabeçalho bege com telhado laranja
+  e cartões com moldura de madeira (`<body class="tema-arena">` em `bot/templates/albi.html`).
   Soltar o `.txt` na caixa: o Albi **só confere** e mostra quem vai ser
   pesquisado e o **total em R$**. "Só testar" faz tudo menos confirmar;
   "Confirmar e pesquisar" (dois cliques) compra. Roda em segundo plano (um por

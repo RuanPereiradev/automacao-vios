@@ -12,6 +12,17 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Albi: página no tema da Arena (Dragon Ball Z) (12/11/2026)
+- A página `/albi` (`bot/templates/albi.html`, `<body class="tema-arena">`) deixa o fundo escuro e rosa e
+  passa a usar o tema da vila 03 (Arena do Albi, `albi/mascote/fundo-arena-albi.html`): céu em degradê, nuvens
+  de pixel passando devagar, faixa de lago embaixo, cabeçalho bege com telhado laranja (a casa em domo),
+  cartões bege com moldura de madeira, botões laranja, barra de andamento em ki ciano e o rosa do Albi na
+  marca (fonte Silkscreen). O quadro da vila ganhou moldura de madeira/bege/laranja. Nuvens somem no celular
+  e o `prefers-reduced-motion` continua parando as animações.
+- Tela "Mensagens prontas": o texto de ajuda e o título ("uma por pessoa pesquisada") agora descrevem o
+  formato fixo, a mensagem de "nenhum processo" e o parágrafo do Gemini; quem não tem processo mostra
+  "sem processos" em vez de "0 processo(s)".
+
 ### Adicionado — Albi: parágrafo explicativo de cada processo escrito pelo Gemini (12/11/2026)
 - `explicacao_ia.paragrafo(classe, posição, situação)`: o Gemini escreve 2 a 4 frases explicando o tipo de
   ação, o que significa a posição da pessoa (ex.: réu não é condenação) e o que significa a situação. Só
