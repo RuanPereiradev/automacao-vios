@@ -410,6 +410,42 @@ def execucoes(pasta_saida):
     return sorted(lista, key=lambda e: e["inicio"] or "", reverse=True)
 
 
+SEM_EMPRESA = "Sem empresa"
+
+
+def _chave_empresa(nome):
+    return re.sub(r"\s+", " ", (nome or SEM_EMPRESA).strip()).lower()
+
+
+def clientes(pasta_saida):
+    """Os clientes (empresas) que pediram pesquisas, do mais recente para o mais antigo. De cada um:
+    nome, pedidos (cada execução com pessoas dele, do mais novo para o mais antigo) e totais.
+    Pedido: id, inicio, arquivo, modo, fim, relatorio (tem o relatório?), pessoas (as linhas dele na
+    execução) e mensagens (as mensagens da CAC dele nessa execução, com o parágrafo do Gemini)."""
+    por_empresa = {}
+    for e in execucoes(pasta_saida):  # da mais nova para a mais antiga
+        cac = mensagens_cac(pasta_saida, e["id"]) or {}
+        msgs = {}
+        for m in cac.get("mensagens", []):
+            msgs.setdefault(_chave_empresa(m.get("empresa")), []).append(m)
+        pessoas = {}
+        for p in e["pedidos"]:
+            pessoas.setdefault(p["empresa"] or SEM_EMPRESA, []).append(p)
+        for nome, ps in pessoas.items():
+            c = por_empresa.setdefault(_chave_empresa(nome), {"nome": nome, "pedidos": []})
+            c["pedidos"].append({"id": e["id"], "inicio": e["inicio"], "arquivo": e["arquivo"], "modo": e["modo"],
+                                 "fim": e["fim"], "relatorio": "relatorio.html" in e["arquivos"],
+                                 "resultado_txt": "resultado.txt" in e["arquivos"], "pessoas": ps,
+                                 "mensagens": sorted(msgs.get(_chave_empresa(nome), []), key=lambda m: m["nome"].lower())})
+    lista = []
+    for c in por_empresa.values():
+        ms = [m for pd in c["pedidos"] for m in pd["mensagens"]]
+        c.update(total_pessoas=sum(len(pd["pessoas"]) for pd in c["pedidos"]), mensagens=len(ms),
+                 com_processos=sum(1 for m in ms if m["processos"]), ultimo=c["pedidos"][0]["inicio"] or "")
+        lista.append(c)
+    return sorted(lista, key=lambda c: c["ultimo"], reverse=True)
+
+
 def andamento(p, pasta_saida):
     """Para a página do Albi (a cada 1,5 s): status do processo + a execução mais recente."""
     info = status(p)

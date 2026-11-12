@@ -74,7 +74,15 @@
   .tema-arena .hist tr:hover td { background: rgba(200, 100, 30, .08); }
   .tema-arena .barra-salvar { background: linear-gradient(transparent, rgba(155, 207, 246, .95) 40%); }
   .tema-arena summary { color: var(--madeira); }
-  .cartao.msg textarea.mensagem { min-height: 0; }
+  textarea.mensagem.cac { min-height: 0; }
+  .clientes { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin-top: 10px; }
+  a.cliente { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; text-decoration: none; color: var(--texto);
+              background: #f2e2c4; border: 3px solid var(--madeira); border-radius: 4px; box-shadow: 0 4px 0 #3b2814; transition: .12s; }
+  a.cliente:hover { transform: translateY(-2px); border-color: var(--telhado); box-shadow: 0 6px 0 #3b2814, 0 0 16px rgba(90, 216, 255, .6); }
+  a.cliente b { font-size: 16px; color: var(--madeira); }
+  a.cliente .selos { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pedido-cliente + .pedido-cliente { margin-top: 0; }
+  .msg-int { border-top: 2px dashed var(--borda); padding-top: 12px; margin-top: 12px; }
   .tema-arena .grupo-empresa { display: inline-block; background: #f4d9b2; border: 3px solid var(--madeira); border-bottom-width: 5px;
                                padding: 4px 14px; margin: 14px 0 10px; border-radius: 3px; font-size: 15px; }
   @media (max-width: 640px) { body.tema-arena::before { display: none; } }
@@ -96,7 +104,7 @@
   <a href="{{ url_for('albi_pagina') }}">{{ albi("parado", 48, "albi-topo") }}
     <span><span class="marca"><b>A</b>LBI</span><br><span class="sub">pesquisa de processos no Sonar</span></span></a>
   <span class="acoes" style="margin-left: auto">
-    <a class="botao secundario" href="{{ url_for('vila_dos_bots') }}">Vila dos Bots</a>
+    <a class="botao secundario" href="{{ url_for('vila_dos_bots') }}">← Voltar à Vila</a>
     <a class="botao secundario" href="{{ url_for('inicio') }}">Sam</a>
     {% if zangao_ligado %}<a class="botao secundario" href="{{ url_for('zangao_pagina') }}">Bumblebee</a>{% endif %}
     <a class="botao primario" href="{{ url_for('albi_mensagens') }}">Mensagens</a>
@@ -120,6 +128,26 @@
     <p class="suave" style="margin-bottom:0">Primeira vez? <a href="{{ url_for('albi_modelo') }}">Baixe o modelo do .txt</a>,
       troque os exemplos pelos CPFs e nomes de cada empresa e solte aqui.</p>
   </div>
+  {% if clientes %}
+  <div class="cartao">
+    <div class="topo-hist"><h2>Clientes</h2>
+      <input type="search" id="busca-cliente" class="busca" placeholder="Buscar cliente" style="margin:0;max-width:240px"></div>
+    <p class="suave">Um bloco por cliente que pediu pesquisa. Clique para ver os pedidos dele, com a data, o resultado de cada
+      pessoa e as mensagens prontas para copiar.</p>
+    <div class="clientes">
+      {% for c in clientes %}
+      <a class="cliente" href="{{ url_for('albi_cliente', empresa=c.nome) }}" data-busca="{{ c.nome | lower }}">
+        <b>{{ c.nome }}</b>
+        <span class="suave">{{ c.pedidos | length }} pedido(s) · {{ c.total_pessoas }} pessoa(s)</span>
+        <span class="selos">{% if c.mensagens %}<span class="selo s-aviso">{{ c.com_processos }} com processos</span>
+          <span class="selo s-ok">{{ c.mensagens - c.com_processos }} sem processos</span>
+          {% else %}<span class="selo s-ja">sem mensagens ainda</span>{% endif %}</span>
+        {% if c.ultimo %}<span class="suave">último pedido: {{ c.ultimo[8:10] }}/{{ c.ultimo[5:7] }}/{{ c.ultimo[:4] }}</span>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 
   <div class="cartao" id="execucao"><p class="suave">Carregando a última execução…</p></div>
 
@@ -216,6 +244,66 @@ EMPRESA: Empresa B
       });
     })();
   </script>
+
+{% elif tela == "cliente" %}
+  {% set ns = namespace(n=0) %}
+  <div class="cartao">
+    <div class="topo-hist"><h2>{{ c.nome }}</h2>
+      <a class="botao secundario" href="{{ url_for('albi_pagina') }}">← Voltar</a></div>
+    <div class="numeros">
+      <div class="numero"><b>{{ c.pedidos | length }}</b>pedido(s)</div>
+      <div class="numero"><b>{{ c.total_pessoas }}</b>pessoa(s) pesquisada(s)</div>
+      <div class="numero"><b>{{ c.mensagens }}</b>mensagem(ns)</div>
+      <div class="numero"><b>{{ c.com_processos }}</b>com processos</div>
+    </div>
+    <p class="suave">Cada pedido é um arquivo enviado para este cliente (a data é a da pesquisa). Dentro dele estão o resultado
+      de cada pessoa e a mensagem pronta para copiar.</p>
+    <p class="acoes" id="atendentes"><span class="suave">Atendente:</span>
+      {% for a in atendentes %}<button type="button" class="{{ 'primario' if loop.first else 'secundario' }}" data-atendente="{{ a }}">{{ a }}</button> {% endfor %}</p>
+  </div>
+  {% for pd in c.pedidos %}
+  {% set ini = pd.inicio or "" %}
+  {% set r = RES.get(pd.fim.resultado if pd.fim else "interrompida", ["s-ja", "—"]) %}
+  {% set com = pd.pessoas | selectattr("etapa", "equalto", "encontrados") | list | length %}
+  {% set sem = pd.pessoas | selectattr("etapa", "equalto", "nao_consta") | list | length %}
+  {% set erro = pd.pessoas | selectattr("etapa", "in", ["erro", "sem_resultado", "conferir", "sem_pedido", "invalido"]) | list | length %}
+  <div class="cartao pedido-cliente">
+    <div class="topo-hist"><h2>Pedido de {{ ini[8:10] }}/{{ ini[5:7] }}/{{ ini[:4] }} <span class="suave" style="font-weight:400">às {{ ini[11:16] }}</span></h2>
+      <span class="selo {{ r[0] }}">{{ r[1] }}</span></div>
+    <p class="suave" style="margin-top:0">{{ pd.arquivo or "arquivo" }} · {{ textos.modos.get(pd.modo, "Teste (não compra)") }} · {{ pd.pessoas | length }} pessoa(s)</p>
+    <div class="numeros">
+      <div class="numero"><b>{{ com }}</b>com processos</div>
+      <div class="numero"><b>{{ sem }}</b>não consta processo</div>
+      {% if erro %}<div class="numero"><b class="erro">{{ erro }}</b>com problema</div>{% endif %}
+    </div>
+    <p class="acoes">
+      {% if pd.relatorio %}<a class="botao secundario" href="{{ url_for('albi_ver', envio_id=pd.id) }}" target="_blank" rel="noopener">Ver relatório</a>
+      <a class="botao secundario" href="{{ url_for('albi_arquivo', envio_id=pd.id, nome='relatorio.pdf') }}">Relatório PDF</a>{% endif %}
+      {% if pd.resultado_txt %}<a class="botao secundario" href="{{ url_for('albi_zip', envio_id=pd.id) }}">Baixar tudo (.zip)</a>{% endif %}
+      {% if not pd.mensagens and pd.resultado_txt %}<form method="post" action="{{ url_for('albi_resumo', envio_id=pd.id) }}" style="display:inline">
+        <button class="primario">Gerar as mensagens deste pedido</button></form>{% endif %}
+    </p>
+    <details><summary>Resultado de cada pessoa ({{ pd.pessoas | length }})</summary>
+      <ul class="lista">{% for p in pd.pessoas %}{% set st = textos.etapas.get(p.etapa, ["s-ja", p.etapa]) %}
+        <li class="pedido-a"><div class="topo"><span><b>Linha {{ p.linha }}</b> <code>{{ p.texto or p.doc or "" }}</code></span>
+          <span class="selo {{ st[0] }}">{{ st[1] }}</span></div>
+          {% if p.motivo or (p.resultado and p.resultado != "—") %}<div class="detalhe">{{ p.resultado if p.resultado and p.resultado != "—" else "" }}{{ " · " if p.motivo and p.resultado and p.resultado != "—" else "" }}{{ p.motivo or "" }}</div>{% endif %}</li>
+        {% endfor %}</ul></details>
+    {% if pd.mensagens %}
+    <h3 class="empresa-a">Mensagens deste pedido ({{ pd.mensagens | length }})</h3>
+    {% for m in pd.mensagens %}{% set ns.n = ns.n + 1 %}
+    <div class="msg-int">
+      <div class="topo-hist"><h3 class="empresa-a" style="margin:0">{{ m.nome }}
+          {% if m.processos %}<span class="selo s-aviso">{{ m.processos }} processo(s)</span>{% else %}<span class="selo s-ok">sem processos</span>{% endif %}
+          <span class="suave" style="font-size:13px;font-weight:400">· pedido S{{ m.pedido }}</span></h3>
+        <button class="primario copiar" type="button" data-alvo="cac-{{ ns.n }}">Copiar mensagem</button></div>
+      <details {{ "open" if not m.processos }} style="margin-top:8px"><summary>{{ "Ver e editar a mensagem" if m.processos else "Mensagem" }}</summary>
+        <textarea class="mensagem cac" id="cac-{{ ns.n }}" rows="{{ [m.texto.count('\n') + 2, 40] | min }}">{{ m.texto }}</textarea></details>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+  {% endfor %}
 
 {% elif tela == "mensagens" %}
   {% set sel = dias | selectattr("dia", "equalto", dia) | list %}
@@ -438,7 +526,7 @@ EMPRESA: Empresa B
     }).join('') + '</ul>';
   }
 
-  {% if tela == "resumo" or tela == "mensagens" %}
+  {% if tela == "resumo" or tela == "mensagens" or tela == "cliente" %}
   // atendente: troca o "*Nome:*" do começo de cada mensagem da CAC (mantém o que já foi editado no resto)
   document.querySelectorAll('#atendentes button[data-atendente]').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('#atendentes button[data-atendente]').forEach(x => x.className = x === b ? 'primario' : 'secundario');
@@ -482,6 +570,11 @@ EMPRESA: Empresa B
   {% elif tela == "execucao" %}
   $('execucao').innerHTML = cartao({{ e | tojson }});
   {% elif tela == "inicio" %}
+  const buscaCliente = $('busca-cliente');
+  if (buscaCliente) buscaCliente.addEventListener('input', () => {
+    const q = buscaCliente.value.trim().toLowerCase();
+    document.querySelectorAll('a.cliente').forEach(a => { a.style.display = !q || a.dataset.busca.includes(q) ? '' : 'none'; });
+  });
   const form = $('form-arquivo'), caixa = $('soltar'), campo = $('arquivo');
   function enviar(nome) {
     $('soltar-titulo').textContent = 'Conferindo ' + nome + '…';

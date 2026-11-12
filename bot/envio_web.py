@@ -596,7 +596,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     def albi_pagina():
         """Página do Albi: solta o .txt (um CPF/CNPJ por linha) e ele preenche no Sonar, sem confirmar."""
         return render_template("albi.html", tela="inicio", textos=albi.TEXTOS, erro=request.args.get("erro"),
-                               max_linhas=albi.MAX_LINHAS)
+                               max_linhas=albi.MAX_LINHAS, clientes=albi.clientes(pasta_saida))
 
     @app.route("/albi/enviar", methods=["POST"])
     def albi_enviar():
@@ -708,6 +708,15 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     @app.route("/albi/andamento")
     def albi_andamento():
         return jsonify(albi.andamento(pasta_albi, pasta_saida))
+
+    @app.route("/albi/cliente")
+    def albi_cliente():
+        """Um cliente (empresa): cada pedido dele (uma execução), com a data, o resultado de cada pessoa
+        e as mensagens da CAC (?empresa=NOME)."""
+        nome = request.args.get("empresa", "")
+        c = next((c for c in albi.clientes(pasta_saida) if c["nome"] == nome), None) or abort(404)
+        return render_template("albi.html", tela="cliente", textos=albi.TEXTOS, c=c,
+                               atendentes=["Beatriz Vasconcelos", "Renara Kathleem"])
 
     @app.route("/albi/mensagens")
     def albi_mensagens():

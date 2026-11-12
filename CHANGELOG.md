@@ -12,6 +12,17 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Albi: blocos de clientes e tela de cada cliente com os pedidos e as mensagens (12/11/2026)
+- Na `/albi`, abaixo da caixa "Solte o .txt", um bloco por cliente (empresa) que pediu pesquisa: nome,
+  quantos pedidos e pessoas, quantas mensagens com e sem processos e a data do último pedido, com busca por
+  nome. O botão do topo agora é "← Voltar à Vila".
+- Clicar no cliente abre `/albi/cliente?empresa=NOME`: cada **pedido** dele (um arquivo enviado, ex.: 25 CPFs
+  hoje e outros 25 na semana seguinte) em ordem da data mais recente, com o resultado de cada pessoa
+  (com processos, não consta, erro), os links do relatório/PDF/.zip e a mensagem da análise (com o parágrafo do
+  Gemini) pronta para copiar, com a escolha da atendente. Pedido sem mensagens ainda tem o botão "Gerar as
+  mensagens deste pedido".
+- `bot/albi.py`: `clientes()` agrupa as execuções por empresa; `bot/envio_web.py`: rota `albi_cliente`.
+
 ### Adicionado — Albi: tela "Mensagens" com as mensagens da CAC por dia (12/11/2026)
 - Nova tela `/albi/mensagens` (botão "Mensagens" no topo da página do Albi): o produto final, as mensagens
   prontas para copiar e enviar ao cliente, **de um dia** (`?dia=AAAA-MM-DD`; sem ele, hoje ou o dia mais
