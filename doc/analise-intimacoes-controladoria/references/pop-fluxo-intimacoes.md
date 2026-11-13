@@ -55,6 +55,10 @@ Usar título exato como `AUDIÊNCIA UNA`, sem explicação entre parênteses. Se
 
 ## Perícias
 
+Antes de gerar especificamente `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`, identificar a filial pela cidade vinculada à perícia. Preencher o responsável pelo seguinte mapa: Camocim — `FRANCISCO VICTOR HORA DO NASCIMENTO`; Tianguá — `JOÃO JÂNIO`; Jijoca de Jericoacoara/Jijoca — `GUIVIA VASCONCELOS`; Sobral — `ANA LETÍCIA DA SILVA LEITAO`. Esta regra prevalece sobre auxiliar e advogado responsável do processo. Não atribuir essa tarefa a Amanda Leite Mendes nem a Suiane/Suhiane.
+
+Se a filial estiver ausente, ambígua ou fora do mapa, não lançar a tarefa de perícia médica judicial e sinalizar `NÃO LANÇAR — CONFIRMAR FILIAL/RESPONSÁVEL DA PERÍCIA MÉDICA JUDICIAL.` Não aplicar esse roteamento nem a exclusão de Suiane/Suhiane a perícia trabalhista, perícia técnica cível, aviso, instrução ou minutas; essas tarefas continuam em seus fluxos próprios.
+
 ```text
 TIPO:
 DATA:

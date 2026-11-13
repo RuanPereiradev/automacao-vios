@@ -678,6 +678,22 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   Reiniciar a página depois de atualizar.
 - Ainda não agenda horário: o clique é manual.
 
+### Passo 41 — Skill de 13/11/2026 (responsáveis, feriado, marco pela publicação)
+- A Controladoria mandou a skill revisada (`doc/skill-original/8_2026-11-13_responsaveis-feriado/`), que passou a ser a
+  skill do projeto. Resumo das regras novas na seção 8 de `doc/skill-original/LEIAME.md`.
+- O que já vale sem mexer no código: a skill entra no prompt da análise pela API (`bot/skill.py`) e na skill única do chat.
+- **O que o código faz e o que ainda não faz:**
+
+| Regra nova da skill | Situação no código |
+| --- | --- |
+| `RESPONSÁVEIS` nunca `automático` (vai para a Amanda) | **Feito (13/11/2026):** a página de envio (`bot/envio_txt.py`) e o lançamento (`bot/lancamento.py`, `responsavel_proibido()`) barram a CI com responsável em branco, `automático` ou AMANDA LEITE MENDES; no Envio automático (análise pela API) aparece como "barrada" com o motivo |
+| Sem auxiliar e com RONIELLE FEITOSA como responsável: não lançar | Não confere |
+| Perícia médica judicial previdenciária: responsável da filial | Não confere |
+| `DATA` antecipada quando cair em feriado nacional/da filial | `bot/prazos.py` segue só segunda a sexta, sem checar feriado na DATA |
+| Marco pela publicação, inclusive Fazenda Pública | Depende da IA (prompt); sem regra no código |
+
+- **Atenção:** a análise pela API só guarda a sigla do auxiliar (SUH, TAMI...) e deixa `responsaveis` vazio (exceto Carlos → Johnys), então o **Envio automático barra essas tarefas** até a análise passar a preencher o nome completo do auxiliar. Pela página de envio de .txt (análise do chat) funciona normal, com os nomes no arquivo.
+
 ### Passo 21 — Rodar no Mac e no Linux
 - O projeto roda nos dois sistemas com os mesmos arquivos e comandos.
 - Scripts `rodar*.sh` sem `readlink -f` (funcionam no macOS e no Linux);

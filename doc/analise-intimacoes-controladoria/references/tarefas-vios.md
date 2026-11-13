@@ -2,7 +2,11 @@
 
 Use esta lista para escolher a tarefa VIOS e montar a descrição. Preserve o nome da tarefa quando possível.
 
-Aplicar obrigatoriamente as datas, cabeçalhos exclusivos e modelos curtos do SKILL.md e POP. Análise/ciência observam o corte das 12h. Prioridades são agendadas no próximo dia de expediente do escritório; a descrição preserva controle D-2. Responsáveis e auxiliares ficam fora da descrição.
+Aplicar obrigatoriamente as datas, cabeçalhos exclusivos e modelos curtos do SKILL.md e POP. Análise/ciência observam o corte das 12h. Prioridades são agendadas no próximo dia de expediente do escritório; a descrição preserva controle D-2. Se a `DATA` operacional ajustável coincidir com feriado nacional ou local aplicável à filial, antecipar para o dia de trabalho anterior, sem alterar as datas de referência da descrição. Responsáveis e auxiliares ficam fora da descrição.
+
+Somente em `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`, usar o responsável da filial definido no SKILL.md: Camocim — `FRANCISCO VICTOR HORA DO NASCIMENTO`; Tianguá — `JOÃO JÂNIO`; Jijoca de Jericoacoara/Jijoca — `GUIVIA VASCONCELOS`; Sobral — `ANA LETÍCIA DA SILVA LEITAO`. Nunca atribuir essa tarefa a Amanda Leite Mendes ou Suiane/Suhiane. Todas as demais tarefas seguem seus fluxos próprios; nelas, esta regra não exclui Suiane/Suhiane.
+
+Em qualquer tarefa de intimação, nunca usar `automático` no campo `RESPONSÁVEIS`: informar o advogado auxiliar; na ausência dele, usar qualquer advogado responsável identificado, exceto Ronielle Feitosa. Se não houver auxiliar e Ronielle for o responsável, bloquear e sinalizar para a usuária conferir o auxiliar ou o responsável correto, conforme o SKILL.md.
 
 Índice: Trabalhista; Previdenciário; Execução; Cível; Gerais e complementares; Fluxo de pagamento; Pendências de saneamento.
 
@@ -61,6 +65,8 @@ Aplicar obrigatoriamente as datas, cabeçalhos exclusivos e modelos curtos do SK
 | MINUTAR PETIÇÃO (EXECUÇÃO) 2026 | PRAZO FATAL D -2: DD/MM/AAAA<br>MINUTAR PETIÇÃO [informar qual petição e destacar a parte principal da intimação] |
 
 ### Cível
+
+No catálogo oficial, `CIÊNCIA (CÍVEL) 2026` (CI 1161) também está habilitada para Criminal. Aplicar na CI 42875, com responsável JOANA CLÁUDIA DOTTO, sem mudar a natureza do processo nem criar prazo para despacho que apenas aguarda investigações.
 
 | Tarefa VIOS | Modelo de descrição |
 | --- | --- |

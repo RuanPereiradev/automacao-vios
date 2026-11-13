@@ -9,7 +9,7 @@ seguidas viram uma CI com várias tarefas):
     TAREFA: MINUTAR PETIÇÃO (EXECUÇÃO) 2026
     DATA: 29/10/2026
     HORA:
-    RESPONSÁVEIS: automático
+    RESPONSÁVEIS: NOME COMPLETO DO ADVOGADO AUXILIAR
     DESCRIÇÃO:
     PRAZO FATAL: 29/10/2026
     MINUTAR PETIÇÃO ...
@@ -19,14 +19,14 @@ import re
 from datetime import date, datetime
 
 from bot.analise import COM_HORARIO, FORA_DA_DESCRICAO, numero_processo
-from bot.lancamento import APELIDOS, _normalizar
+from bot.lancamento import AMANDA, APELIDOS, _normalizar
 
 SEPARADOR = re.compile(r"^\s*-{3,}\s*$")
 CAMPO = re.compile(r"^\s*([A-Za-zÀ-ú ]+?)\s*:\s?(.*)$")
 CAMPOS = {"CI": "ci", "PROCESSO": "processo", "NUMERO DO PROCESSO": "processo", "N DO PROCESSO": "processo",
           "TAREFA": "nome", "DATA": "data", "HORA": "hora", "HORARIO": "hora",
           "RESPONSAVEIS": "responsaveis", "DESCRICAO": "descricao"}
-AUTOMATICO = {"", "AUTOMATICO", "AUTOMATICO PELO VIOS"}
+AUTOMATICO = {"", "AUTOMATICO", "AUTOMATICO PELO VIOS"}  # proibido desde a skill de 13/11/2026 (vai para a Amanda)
 LINK_LANCAR = "index.php?pag=sys/publicacoes/int-lanca.php&imp_pub_id={ci}"
 
 
@@ -117,7 +117,11 @@ def ler(texto, oficiais, pessoas=(), lancadas=(), links=None, base_url="", hoje=
             problemas.append(f"{nome}: falta o horário (vai no campo Horário do VIOS).")
 
         responsaveis = []
-        if _normalizar(campos.get("responsaveis", "")) not in AUTOMATICO:
+        if _normalizar(campos.get("responsaveis", "")) in AUTOMATICO:
+            # skill de 13/11/2026: o VIOS manda "automático" para a Amanda, que só lança e não executa a tarefa
+            problemas.append(f"{nome}: RESPONSÁVEIS em branco ou 'automático' (o VIOS manda para a Amanda). "
+                             "Informe o advogado auxiliar ou, sem auxiliar, o advogado responsável.")
+        else:
             for p in re.split(r"[,;]", campos["responsaveis"]):
                 if not p.strip():
                     continue
@@ -125,6 +129,8 @@ def ler(texto, oficiais, pessoas=(), lancadas=(), links=None, base_url="", hoje=
                 if pessoas and not achado:
                     problemas.append(f"{nome}: responsável fora da lista do VIOS: '{p.strip()}'.")
                 responsaveis.append(achado or p.strip())
+            if any(_normalizar(r) == _normalizar(AMANDA) for r in responsaveis):
+                problemas.append(f"{nome}: a tarefa não pode ficar com a {AMANDA} (ela só lança, não executa).")
 
         descricao = campos.get("descricao", "")
         if not descricao:
@@ -182,7 +188,7 @@ def gerar(cis):
         for t in c["tarefas"]:
             linhas = [f"CI: {c['ci']}"] + ([f"PROCESSO: {c['processo']}"] if c.get("processo") else []) + [
                       f"TAREFA: {t['nome']}", f"DATA: {t['data_tarefa']}", f"HORA: {t['hora']}",
-                      f"RESPONSÁVEIS: {', '.join(t['responsaveis']) or 'automático'}"]
+                      f"RESPONSÁVEIS: {', '.join(t['responsaveis'])}"]
             linhas += t.get("soltas") or []
             linhas += ["DESCRIÇÃO:", t["descricao"]]
             blocos.append("\n".join(linhas))

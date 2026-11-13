@@ -1,0 +1,64 @@
+Com as tarefas da análise já ajustadas, gere o ARQUIVO PARA O ROBÔ: um único bloco de texto, sem nenhum comentário dentro dele, seguindo exatamente o padrão abaixo. Ele será salvo como .txt e enviado ao VIOS como está.
+
+PADRÃO (um bloco por tarefa; entre um bloco e outro, uma linha só com ---):
+
+CI: [número da CI]
+PROCESSO: [número do processo no padrão 0000000-00.0000.0.00.0000]
+TAREFA: [nome exato da lista oficial do VIOS]
+DATA: [DD/MM/AAAA]
+HORA: [HH:MM ou vazio]
+RESPONSÁVEIS: [nomes completos separados por vírgula]
+DESCRIÇÃO:
+[texto da tarefa, quantas linhas precisar]
+---
+
+REGRAS:
+1. Os campos vêm sempre nesta ordem, um por linha: CI, PROCESSO, TAREFA, DATA, HORA, RESPONSÁVEIS, DESCRIÇÃO. A DESCRIÇÃO é sempre o último campo; tudo abaixo dela até o --- vai para a Observação da tarefa, exatamente como escrito.
+2. CI: só o número. PROCESSO: sempre o número do processo daquela CI, no padrão CNJ (0000000-00.0000.0.00.0000), em todos os blocos.
+3. TAREFA: o nome exatamente como está na lista oficial de tarefas do VIOS.
+4. DATA: a data operacional da tarefa no VIOS (já com D-2, prioridade de RPV/emenda da Suhiane ou corte do mesmo dia, conforme as regras). Se a data ajustável coincidir com feriado nacional ou feriado estadual/municipal aplicável à filial responsável, antecipar para o primeiro dia de trabalho anterior; não antecipar por ponto facultativo nem por feriado exclusivo de outro estado/município. Não alterar a data real de audiência, perícia, sustentação ou outro ato com data/hora fixas. Só CIÊNCIA pode ficar com DATA vazia.
+5. HORA: obrigatória em audiência, perícia e sustentação oral (na sessão virtual, o horário de início). Nas demais tarefas, deixar vazia.
+6. RESPONSÁVEIS: nunca usar "automático", pois o VIOS direciona a tarefa para AMANDA LEITE MENDES, que apenas realiza o lançamento. Informar o nome completo do advogado auxiliar; se não houver auxiliar, usar o advogado responsável. Qualquer outro advogado responsável identificado pode receber a tarefa. Exceção: se não houver auxiliar e o responsável for RONIELLE FEITOSA, não gerar o bloco e sinalizar à usuária para verificar quem é o advogado auxiliar ou o advogado responsável correto. Somente na tarefa PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026, não usar Suiane/Suhiane e preencher o responsável da filial: Camocim — FRANCISCO VICTOR HORA DO NASCIMENTO; Tianguá — JOÃO JÂNIO; Jijoca de Jericoacoara/Jijoca — GUIVIA VASCONCELOS; Sobral — ANA LETÍCIA DA SILVA LEITAO. Na petição da Execução da Tamira: TAMIRA LOIOLA, BRENO SILVA MOTA.
+7. DESCRIÇÃO: primeiro as linhas de prazo (PRAZO FATAL: / PRAZO FATAL (D-2): / PRAZO PARA EMBARGOS: e PRAZO PARA RECURSO: na análise), depois o texto do modelo da tarefa. O ajuste de feriado modifica somente a DATA operacional; preservar as datas de referência calculadas na DESCRIÇÃO. Não escrever "Responsável a marcar na tarefa", "Advogada auxiliar" nem "PRIORIDADE ...". Audiência no padrão: AUDIÊNCIA [TIPO] / DATA / HORA / FORMATO / LINK/LOCAL / ID da reunião / SENHA, uma informação por linha, sem OBS.
+8. Duas tarefas da mesma CI: dois blocos seguidos com o mesmo número de CI.
+9. NÃO colocar no arquivo: CI duplicada, CI que não deve ser lançada (falta informação, evento sem teor, área diferente do auxiliar, tarefa pendente de definição). Depois do bloco, listar essas CIs com o motivo.
+10. Usar as tarefas e textos como ficaram depois dos meus ajustes; não refazer a análise.
+
+EXEMPLO:
+
+CI: 42484
+PROCESSO: 0000123-45.2026.8.06.0001
+TAREFA: MINUTAR PETIÇÃO (EXECUÇÃO) 2026
+DATA: 29/10/2026
+HORA:
+RESPONSÁVEIS: TAMIRA LOIOLA, BRENO SILVA MOTA
+DESCRIÇÃO:
+PRAZO FATAL: 29/10/2026
+MINUTAR PETIÇÃO PARA INFORMAR OS DEMAIS DADOS NECESSÁRIOS PARA A CONFECÇÃO DOS REQUISITÓRIOS (RPV/PRECATÓRIO)
+Despacho: considerando a certidão de ID 192859275, intime-se a parte exequente para, no prazo de 5 dias, informar os demais dados necessários para a confecção dos requisitórios.
+---
+CI: 42502
+PROCESSO: 0000456-78.2026.5.07.0001
+TAREFA: AUDIÊNCIA UNA/INSTRUÇÃO (TRABALHISTA) 2026
+DATA: 22/01/2027
+HORA: 08:20
+RESPONSÁVEIS: NOME COMPLETO DO ADVOGADO AUXILIAR
+DESCRIÇÃO:
+AUDIÊNCIA UNA
+DATA: 22/01/2027
+HORA: 08:20
+FORMATO: TELEPRESENCIAL (ZOOM)
+LINK/LOCAL: https://trt7-jus-br.zoom.us/j/85164513045
+ID da reunião: 851 6451 3045
+SENHA: 355957
+---
+CI: 42491
+PROCESSO: 0000789-01.2025.8.06.0001
+TAREFA: ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026
+DATA: 28/10/2026
+HORA:
+RESPONSÁVEIS: NOME COMPLETO DO ADVOGADO AUXILIAR
+DESCRIÇÃO:
+PRAZO PARA EMBARGOS: 04/11/2026
+PRAZO PARA RECURSO: 18/11/2026
+[texto da análise]

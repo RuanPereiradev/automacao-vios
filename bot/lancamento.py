@@ -38,6 +38,17 @@ class LancamentoErro(Exception):
     pass
 
 
+AMANDA = "AMANDA LEITE MENDES"  # só realiza o lançamento: não acompanha nem executa as tarefas (skill de 13/11/2026)
+MOTIVO_RESPONSAVEL = ("RESPONSÁVEIS em branco ou 'automático' (o VIOS manda para a Amanda): informe o advogado auxiliar "
+                      "ou, sem auxiliar, o advogado responsável.")
+
+
+def responsavel_proibido(responsaveis):
+    """True se a tarefa ficaria com a Amanda: sem responsável (o VIOS marcaria sozinho, 'automático') ou com o nome dela."""
+    nomes = [n for n in (responsaveis or []) if str(n).strip()]
+    return not nomes or any(_normalizar(n) == _normalizar(AMANDA) for n in nomes)
+
+
 def _normalizar(texto):
     sem_acento = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
     return re.sub(r"[^A-Z0-9]+", " ", sem_acento.upper()).strip()
@@ -363,6 +374,13 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
             log.warning("CI %s: falta informação, nada lançado (conferir no PJe e lançar manualmente): %s",
                         ci, "; ".join(r["bloqueios"]))
             anotar(ci, "bloqueada", "; ".join(r["bloqueios"]))
+            erros += 1
+            continue
+        sem_resp = [t["nome"] for t in r["tarefas"] if responsavel_proibido(t.get("responsaveis"))]
+        if sem_resp:
+            log.warning("CI %s: responsável em branco/automático/Amanda em %s: nada lançado (o VIOS mandaria para a Amanda)",
+                        ci, "; ".join(sem_resp))
+            anotar(ci, "bloqueada", MOTIVO_RESPONSAVEL + " Tarefa(s): " + "; ".join(sem_resp))
             erros += 1
             continue
         especiais = [t["nome"] for t in r["tarefas"] if t["nome"] in skill.ESPECIAIS]

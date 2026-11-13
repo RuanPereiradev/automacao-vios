@@ -12,6 +12,31 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Trava de responsável: nada de `automático` nem Amanda (13/11/2026)
+- Pela skill de 13/11/2026, o VIOS manda a tarefa de `RESPONSÁVEIS: automático` para AMANDA LEITE MENDES, que só lança.
+  Agora a CI é barrada quando algum responsável está em branco, é `automático` ou é a Amanda:
+  - página de envio de .txt (`bot/envio_txt.py`): vira "problema" na conferência (não vai ao VIOS); o campo Responsáveis da
+    edição não vem mais preenchido com "automático" e o formato de exemplo mostra o nome do auxiliar;
+  - lançamento (`bot/lancamento.py`, `responsavel_proibido()`): CI fica "bloqueada" com o motivo, também no `lancar.py` e no
+    Envio automático (`/automatico` mostra o motivo).
+- **Efeito no Envio automático:** a análise pela API deixa os responsáveis vazios (guarda só a sigla do auxiliar), então as
+  tarefas saem barradas até ela passar a preencher o nome completo do auxiliar. Próximo passo a combinar.
+- Skill única (`regras-do-programa.md`) e `DOCUMENTACAO.md` (Passo 41) atualizados.
+
+### Alterado — Skill da Controladoria de 13/11/2026 (responsáveis, feriado e marco pela publicação)
+- Pacote `analise-intimacoes-controladoria-atualizada-2026-11-13.zip` vira a skill do projeto
+  (`doc/analise-intimacoes-controladoria/`); versão guardada em `doc/skill-original/8_2026-11-13_responsaveis-feriado/`
+  (explicada no `LEIAME.md`) e skill única regerada (`gerar_skill_unica.py`).
+- Mudanças de regra: **nunca `automático`** em `RESPONSÁVEIS` (vai para AMANDA LEITE MENDES): auxiliar, senão o advogado
+  responsável, exceto RONIELLE FEITOSA sem auxiliar (não lança); perícia médica judicial previdenciária com o responsável
+  da filial (Camocim, Tianguá, Jijoca, Sobral); `DATA` antecipada para o dia de trabalho anterior quando cair em feriado
+  nacional ou da filial (D-2 e vencimento não mudam; audiência/perícia/sustentação ficam na data real); marco pela
+  publicação do DJEN/CSV, inclusive Fazenda Pública; `CIÊNCIA (CÍVEL)` vale para Criminal; novas equivalências de clientes.
+- O pacote já trazia o campo `PROCESSO` do TXT (alterações que estavam pendentes na pasta da skill).
+- `doc/skill-unica/arquivo-para-o-robo.md` e `regras-do-programa.md`: exemplos e regra de `RESPONSÁVEIS` sem `automático`.
+- A análise pela API (`./rodar_analise.sh` e o Envio automático) já lê a skill nova no prompt. **O código ainda não faz** a
+  parte de feriado na `DATA`, o mapa de filiais da perícia nem a exceção Ronielle (a trava do `automático` entrou à parte); ver a lista no passo 41 do `DOCUMENTACAO.md`.
+
 ### Adicionado — Envio automático em um clique na página do Sam, com animação (13/11/2026)
 - Na `/sam`, cartão **Envio automático em um clique**: botão **▶ Enviar automaticamente** e **Ensaio (não grava)**.
   Os dois perguntam **"Você tem certeza?"** antes de ativar o Sam; o servidor também exige a confirmação e

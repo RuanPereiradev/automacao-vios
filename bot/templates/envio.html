@@ -226,7 +226,7 @@ CI: 42491
 TAREFA: ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026
 DATA: 29/10/2026
 HORA:
-RESPONSÁVEIS: automático
+RESPONSÁVEIS: NOME COMPLETO DO ADVOGADO AUXILIAR
 DESCRIÇÃO:
 PRAZO DE EMBARGOS: 02/11/2026
 PRAZO DE RECURSO: 16/11/2026
@@ -236,7 +236,7 @@ SENTENÇA
         <li><b>TAREFA</b>: nome exato da lista oficial do VIOS.</li>
         <li><b>DATA</b>: DD/MM/AAAA. Só a CIÊNCIA pode ficar sem data (vai para o dia do envio).</li>
         <li><b>HORA</b>: HH:MM. Obrigatória em audiência, perícia e sustentação oral; vazia nas demais.</li>
-        <li><b>RESPONSÁVEIS</b>: <code>automático</code> (o VIOS marca o auxiliar) ou os nomes, separados por vírgula.</li>
+        <li><b>RESPONSÁVEIS</b>: o nome completo do advogado auxiliar (sem auxiliar, o advogado responsável), separados por vírgula. <b>Nunca <code>automático</code></b>: o VIOS manda a tarefa para a Amanda, que só lança.</li>
       </ul>
     </details>
   </div>
@@ -293,7 +293,7 @@ SENTENÇA
       {% for ci, r in gravadas %}{% for t in r.tarefas or [{}] %}
       <tr>
         <td class="nowrap">{{ r.quando }}</td><td><b>{{ ci }}</b></td><td>{{ t.tarefa }}</td>
-        <td class="nowrap">{{ t.data }}</td><td>{{ (t.responsaveis or []) | join(", ") or "automático" }}</td>
+        <td class="nowrap">{{ t.data }}</td><td>{{ (t.responsaveis or []) | join(", ") or "— sem responsável" }}</td>
       </tr>
       {% endfor %}{% endfor %}
     </table></div>
@@ -432,7 +432,7 @@ SENTENÇA
         <td><b>{{ c.ci }}</b></td>
         <td class="nowrap processo">{{ c.processo or "—" }}</td>
         <td>{% for t in c.tarefas %}<div>{{ t.nome }} <span class="suave">· {{ t.data_tarefa or "dia do envio" }}{% if t.hora %} às {{ t.hora }}{% endif %}
-          · {{ t.responsaveis | join(", ") if t.responsaveis else "automático" }}</span></div>{% endfor %}</td>
+          · {{ t.responsaveis | join(", ") if t.responsaveis else "— sem responsável" }}</span></div>{% endfor %}</td>
         <td>{% if c.resultado == "gravada" %}<span class="selo s-ok">Gravada no VIOS</span>
           {% elif c.resultado == "testada" %}<span class="selo s-ok">Teste ok</span>
           {% elif c.resultado == "pulada" %}<span class="selo s-ja">Já tinha tarefa no VIOS</span>
@@ -451,7 +451,7 @@ SENTENÇA
   {% if editavel %}
   <form method="post" action="{{ url_for('salvar', envio_id=envio_id) }}" id="form-editar">
     <datalist id="lista-tarefas">{% for n in oficiais %}<option value="{{ n }}">{% endfor %}</datalist>
-    <datalist id="lista-pessoas"><option value="automático">{% for p in pessoas %}<option value="{{ p }}">{% endfor %}</datalist>
+    <datalist id="lista-pessoas">{% for p in pessoas %}<option value="{{ p }}">{% endfor %}</datalist>
     {% for c in envio.cis %}{% set g = loop.index0 %}
     <div class="cartao ci {% if c.problemas %}com-problema{% endif %}">
       <div class="ci-topo">
@@ -478,7 +478,7 @@ SENTENÇA
             title="{{ 'CIÊNCIA não tem prazo: vazio, vai para o dia em que for enviada ao VIOS' if t.nome.startswith('CIÊNCIA') else 'Data da tarefa no VIOS' }}"></label>
           <label>Hora <input name="{{ p }}hora" value="{{ t.hora }}" placeholder="HH:MM" maxlength="5"></label>
           <label class="largo">Responsáveis <input name="{{ p }}responsaveis" list="lista-pessoas"
-            value="{{ t.responsaveis | join(', ') if t.responsaveis else 'automático' }}"></label>
+            value="{{ t.responsaveis | join(', ') if t.responsaveis else '' }}" placeholder="obrigatório: advogado auxiliar"></label>
           <label class="remover"><input type="checkbox" name="{{ p }}remover" value="1"> Remover tarefa</label>
         </div>
         <label>Descrição (vai para a Observação no VIOS)

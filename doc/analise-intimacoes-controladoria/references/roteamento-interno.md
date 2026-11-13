@@ -39,6 +39,25 @@ Reconhecer ITBN TELEFONIA LTDA (MATRIZ), A M AGUIAR TELEFONIA LTDA e RAV HOLDING
 - Reconhecer RAV HOLDING LTDA e R V COMÉRCIO DE TELEFONIA LTDA como o mesmo cliente para vínculo operacional, inclusive na CI 42771, processo 0005947-23.2026.8.05.0256. Aplicar em conjunto com as equivalências já confirmadas de RAV Holding. A confirmação do vínculo não dispensa a leitura do teor do ato para definir a tarefa.
 - Não inferir identidade de CNPJ, fusão societária ou equivalência com outras empresas sem confirmação.
 
+### Equivalências e confirmações de 11/11/2026
+
+- Reconhecer FCIA COMÉRCIO LTDA (MATRIZ) e SANDALO A. A. ANGELIM – ME como o mesmo cliente para vínculo operacional, inclusive na CI 42850. Preservar a denominação documental; não repetir consulta por essa diferença.
+- Reconhecer RAV HOLDING LTDA e CASA DO CELULAR DE CARIACICA LTDA como o mesmo cliente para vínculo operacional, inclusive na CI 42848. Aplicar Ianna à carteira Casa do Celular; preservar o nome documental, sem inferir identidade de CNPJ ou fusão societária.
+- CI 42854: LD Urbanismo é cliente e a apelação foi apresentada pelo polo ativo; abrir contrarrazões cíveis para JOANA CLÁUDIA DOTTO.
+- CI 42856: B. I. Transportes é cliente no polo ativo; não repetir pendência de vínculo nesse processo.
+- CI 42853: os embargos foram apresentados pela cliente A. Aline B. de Sousa Pescados; a intimação para resposta se dirige à parte contrária. Usar ciência, sem minuta de contrarrazões para a própria embargante.
+- CI 42874: FRANCISCO HELIO CARNEIRO é o cliente confirmado. A certidão atualiza interessados/representantes e o expediente dirige-se ao administrador judicial, sem providência atual do cliente: ciência da Execução/Tamira.
+- CIs 42862 e 42875: responsável confirmada JOANA CLÁUDIA DOTTO. A primeira é certidão de juntada de extrato Sisbajud, sem nova ordem ao cliente no teor fornecido; a segunda manda aguardar investigações, sem providência atual.
+- A tarefa oficial `CIÊNCIA (CÍVEL) 2026` (CI 1161 do catálogo VIOS, “Vios Jurídico - Tipo de Tarefa de Processo (1)(1).pdf”, pp. 81–82) abrange também Criminal. Usar essa opção no despacho sem providência da CI 42875, com Joana; não exigir tarefa “CIÊNCIA (CRIMINAL)” inexistente no catálogo nem alterar a natureza criminal do processo.
+
+### Equivalências e confirmações de 12/11/2026
+
+- Reconhecer FRANCISCO VALDIR RIBEIRO MARQUES – EPP e F. V. R. MARQUES LTDA (inclusive MATRIZ, variações de pontuação e espaços) como o mesmo cliente para vínculo operacional, conforme confirmação expressa da usuária na CI 42896, processo 0001342-36.2023.5.07.0029. Não repetir pendência por essas denominações. Preservar a identificação documental e o polo; no caso trabalhista, manter Johnys conforme o departamento confirmado.
+- Reconhecer VR DIAS CELULARIA LTDA (inclusive MATRIZ) e CASA DO CELULAR DE CARIACICA LTDA como o mesmo cliente para vínculo operacional, conforme confirmação expressa da usuária na CI 42878, processo 5016328-11.2025.8.08.0012. Não repetir pendência por essas denominações. Aplicar em conjunto com as equivalências já confirmadas da Casa do Celular de Cariacica; nas demandas cíveis dessa carteira, atribuir Ianna. Não transformar demanda trabalhista com departamento confirmado em Cível apenas pela equivalência empresarial.
+- CI 42898, processo 0000047-56.2026.5.07.0029: a cliente confirmada é CAMILA DE ALBUQUERQUE PEREIRA LIMA, polo ativo. A coluna Varejão Chocobalas está incorreta para esse vínculo. Resposta ao recurso da União: Trabalhista Reclamante/Suhiane, sem repetir consulta de cliente ou atribuir o caso à carteira de reclamada.
+- CI 42883, processo 0006099-07.2014.8.06.0081: vínculo do cliente FRANCISCO JOSE MORACIO DE ANDRADE e polo ativo confirmados pela usuária. Preservar Execução/Tamira e prioridade RPV; a indicação de Karlos como parte na publicação não reabre a pendência de vínculo já resolvida.
+- Não inferir identidade de CNPJ, fusão societária nem equivalência com outras empresas além das confirmações expressas.
+
 ## Divergências e informações ausentes
 
 - Identificar separadamente natureza, fase, departamento confirmado/provável e auxiliar.
@@ -109,4 +128,21 @@ Aplicar a dados bancários, documentos, RPV, alvará, prosseguimento, penhora e 
 
 ## Ausência de responsável
 
-Não atribuir nenhuma tarefa a Sarah Pontes/Controladoria. Se não houver responsável identificável pelas regras institucionais, registrar `RESPONSÁVEL NÃO IDENTIFICADO`, bloquear a tarefa e listar a pendência fora do arquivo. Não presumir responsável de outra área.
+Nenhuma tarefa de intimação pode ser atribuída a AMANDA LEITE MENDES, que realiza o lançamento, mas não acompanha nem executa as tarefas. Não usar `automático` no TXT, pois esse valor direciona a tarefa para Amanda.
+
+Usar o nome completo do advogado auxiliar. Se não houver auxiliar, usar o nome completo do advogado responsável; qualquer outro advogado responsável identificado pode receber a tarefa. A única exceção a esse fallback é RONIELLE FEITOSA: se não houver auxiliar e ele constar como responsável pelo processo, não atribuir a tarefa a ele. Registrar `NÃO LANÇAR — VERIFICAR QUEM É O ADVOGADO AUXILIAR OU O ADVOGADO RESPONSÁVEL CORRETO; PROCESSO SEM AUXILIAR E COM RONIELLE FEITOSA COMO RESPONSÁVEL`, bloquear a tarefa e listá-la fora do TXT para conferência da usuária.
+
+Também não atribuir nenhuma tarefa a Sarah Pontes/Controladoria. Se não houver responsável identificável pelas regras institucionais, registrar `RESPONSÁVEL NÃO IDENTIFICADO`, bloquear a tarefa e listar a pendência fora do arquivo. Não presumir responsável de outra área.
+
+## Responsável da perícia médica judicial por filial
+
+Somente para a tarefa `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`, o roteamento por filial prevalece sobre auxiliar e advogado responsável do processo. Não atribuir essa tarefa a AMANDA LEITE MENDES nem a Suiane/Suhiane.
+
+| Filial/cidade vinculada à perícia | Responsável |
+| --- | --- |
+| Camocim | FRANCISCO VICTOR HORA DO NASCIMENTO |
+| Tianguá | JOÃO JÂNIO |
+| Jijoca de Jericoacoara/Jijoca | GUIVIA VASCONCELOS |
+| Sobral | ANA LETÍCIA DA SILVA LEITAO |
+
+Não estender esta regra a perícia técnica/médica trabalhista, perícia técnica cível, aviso, instrução, quesitos, indicação de assistente técnico, manifestação sobre laudo ou qualquer outra tarefa. Nessas tarefas, Suiane/Suhiane não é excluída por esta regra; permanece apenas a proibição geral de atribuição a Amanda. Se não for possível identificar inequivocamente uma das quatro filiais na perícia médica judicial previdenciária, bloquear a tarefa e registrar `NÃO LANÇAR — CONFIRMAR FILIAL/RESPONSÁVEL DA PERÍCIA MÉDICA JUDICIAL.` Não escolher responsável por semelhança de cidade ou por mera presença de nome no cadastro.
