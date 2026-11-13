@@ -526,14 +526,21 @@ function aplicar(e,vivo){
   if(!real||real.envio!==e.envio)real={envio:e.envio,total:0,feitas:0,modo:'',fim:null,cont:{}};
   if(sim&&vivo){sim=null;}
   switch(e.tipo){
-    case 'arquivo_subido':Object.assign(real,{total:0,feitas:0,modo:'',fim:null});quest(1,'Conferindo o pergaminho');
+    case 'arquivo_subido':Object.assign(real,{total:0,feitas:0,fim:null});if(!e.automatico)real.modo='';
+      if(e.automatico){quest(1,`${e.intimacoes||0} intimação(ões) capturada(s)`);
+        fala(hal.name,e.intimacoes?`Trouxe ${e.intimacoes} intimação(ões) do VIOS. Entrego ao oráculo para analisar.`:'Nenhuma intimação nova hoje. Missão encerrada cedo.');break;}
+      quest(1,'Conferindo o pergaminho');
       fala(hal.name,`Chegou um TXT na Doca 01${e.arquivo?': '+e.arquivo:''}. Levo para a conferência.`);break;
     case 'conferido':real.total=totalTarefas(e.cis)||e.prontas||0;real.fim=null;quest(2,`${e.prontas||0} pronta(s) · ${e.com_problema||0} com problema`);
       fala(arc.name,`Conferi o pergaminho: ${e.prontas||0} CI(s) pronta(s), ${e.com_problema||0} com problema, ${e.ja_lancadas||0} já lançada(s).`);break;
-    case 'envio_iniciado':Object.assign(real,{modo:e.modo||'gravar',feitas:0,fim:null});quest(2,e.modo==='teste'?'Ensaio: nada é gravado':'Rumo à Torre VIOS');
+    case 'envio_iniciado':Object.assign(real,{modo:e.modo||'gravar',feitas:0,fim:null});
+      if(e.automatico){quest(0,'O Sam acordou: envio automático');fala(wiz.name,e.modo==='teste'?'Envio automático em ensaio: faço tudo, mas nada é gravado.':'O Sam foi ativado! Capturo, analiso e crio as tarefas, tudo sozinho.');break;}
+      quest(2,e.modo==='teste'?'Ensaio: nada é gravado':'Rumo à Torre VIOS');
       fala(wiz.name,e.modo==='teste'?'Um ensaio: vamos até o quadro, sem gravar nada.':'Partimos para a Torre VIOS!');break;
     case 'fase':
-      if(e.fase==='entrando_vios'){quest(2,'Entrando no VIOS');fala(dwa.name,'Abrindo os portões da Torre VIOS...');}
+      if(e.fase==='capturando'){quest(0,'Capturando intimações');fala(dwa.name,'Abrindo os portões da Torre VIOS e buscando as intimações sem tarefa...');}
+      else if(e.fase==='analisando'){quest(1,'A IA está analisando');fala(arc.name,'O oráculo lê cada intimação e escolhe tarefa e prazo. As datas, quem calcula é o código.');}
+      else if(e.fase==='entrando_vios'){quest(2,'Entrando no VIOS');fala(dwa.name,'Abrindo os portões da Torre VIOS...');}
       else if(e.fase==='conferindo_duplicatas'){quest(2,'Conferindo duplicatas');fala(wiz.name,'Confiro duplicatas antes de enfrentar o dragão. Nenhuma tarefa repetida passa.');}
       else if(e.fase==='criando_tarefas'){quest(3,real.modo==='teste'?'Ensaio no quadro':'Criando tarefas');if(vivo){if(D.st==='sleep')wake();else say('Torre VIOS','RAAAWR! Quem ousa bater na Torre VIOS?');}}
       break;

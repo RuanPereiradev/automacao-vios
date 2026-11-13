@@ -12,6 +12,28 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Envio automático em um clique na página do Sam, com animação (13/11/2026)
+- Na `/sam`, cartão **Envio automático em um clique**: botão **▶ Enviar automaticamente** e **Ensaio (não grava)**.
+  Os dois perguntam **"Você tem certeza?"** antes de ativar o Sam; o servidor também exige a confirmação e
+  recusa pedido de outro site (`POST /automatico/rodar`).
+- O Sam faz o fluxo inteiro sozinho: captura as intimações de ontem sem tarefa, analisa com a IA e lança as tarefas
+  no VIOS CI por CI, com as mesmas travas e a mesma Conferência do envio de .txt. No ensaio para no quadro de
+  tarefas (não grava). Sem intimação nova, termina sem chamar a IA. Uma execução por vez (mesma trava dos envios).
+- Animações: o cartão mostra 4 passos (Capturar, Analisar, Criar tarefas, Conferir), barra e números ao vivo;
+  a Fortaleza do Dragão ganhou os momentos de captura e análise (eventos `automatico`, fases `capturando` e
+  `analisando`) e segue com o dragão acordando e a vida da Torre VIOS caindo a cada tarefa criada.
+- Novos: `bot/envio_auto.py`, rotas `POST /automatico/rodar` e `GET /automatico/andamento`, andamento em
+  `saida/automatico_execucao.json`. `main.py` ganhou a função `capturar()` (a captura que o `main` já fazia, sem mudar o
+  comportamento). Contrato de eventos e `DOCUMENTACAO.md` (Passo 40) atualizados.
+- Testado com a captura, a IA e o lançamento simulados (eventos, contagens e travas) e as rotas (recusas de
+  segurança); **ainda não rodado de verdade no VIOS**: fazer primeiro um Ensaio.
+
+### Adicionado — Roteiro do motion do Sam: fluxo do modo automático (13/11/2026)
+- `doc/motion-sam/roteiro-motion-sam.md`: briefing para um profissional de motion criar o vídeo do Sam.
+  Traz os personagens (Fortaleza do Dragão), o fluxo em 7 cenas (captura, análise da IA, travas de
+  segurança, lançamento, conferência e relatório `/automatico`), textos de tela, números de exemplo e o que
+  ainda falta confirmar (horário do disparo automático). Só documentação; o código não mudou.
+
 ### Adicionado — Albi: pesquisa digitada na página, sem precisar de .txt (13/11/2026)
 - Na `/albi`, abaixo da caixa de soltar o arquivo, o cartão **Pesquisa digitada**: empresa (com sugestão dos
   clientes já cadastrados), CPF/CNPJ e nome, com "+ Adicionar outra pessoa" e "Tirar" para mais de uma. Serve

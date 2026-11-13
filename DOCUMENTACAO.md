@@ -652,6 +652,32 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   "eventos reais do Sam" do fim do script e os ganchos `emEnvio()` (o dragão não acorda nem recua
   sozinho durante um envio). Não precisa reiniciar a página.
 
+### Passo 40 — Envio automático em um clique (botão na página do Sam)
+- Na página `/sam`, cartão **Envio automático em um clique** logo abaixo da Fortaleza: botão **▶ Enviar
+  automaticamente** e **Ensaio (não grava)**. Os dois abrem a pergunta **"Você tem certeza?"** (com o que
+  vai acontecer); só o "Sim" dispara. O servidor também exige a confirmação (`POST /automatico/rodar` com
+  `{"modo": "gravar", "confirmado": true}`; `{"modo": "teste"}` é o ensaio) e recusa pedido de outro site.
+- O que o Sam faz sozinho (`bot/envio_auto.py`, numa thread da página, com a mesma trava de um envio por vez):
+  1. **Captura** as intimações de ontem sem tarefa (na segunda, sexta a domingo): é a mesma captura do
+     `main.py` (`capturar()`), com o navegador fechado no fim;
+  2. **Analisa com a IA** (`analisar_arquivo`, a mesma da `./rodar_analise.sh`; usa a chave de API do `.env`
+     e gasta créditos; leva o tempo do lote);
+  3. **Lança** CI por CI com `lancar()`: as mesmas travas do envio de .txt (falta de informação, já tem
+     tarefa no VIOS, conferência humana, data que já passou, duplicada) e a Conferência do VIOS depois de
+     gravar. Quem não passa nas travas fica de fora e aparece como "barrada".
+  No ensaio faz tudo igual, mas para no quadro de tarefas do VIOS (não grava).
+- **Animação:** o andamento vira eventos da vila (bot `ultron`; ver `doc/vila/contrato-eventos.md`) e a
+  Fortaleza do Dragão anima: o Sam acorda, o Mensageiro traz as intimações capturadas, a IA analisa, a Arqueira
+  dá as contagens, o dragão desperta na criação das tarefas e a vida da Torre VIOS cai a cada tarefa criada.
+  No cartão, quatro passos acendem (Capturar, Analisar, Criar tarefas, Conferir) com barra de progresso e os
+  números ao vivo; ao terminar a página se atualiza.
+- Andamento em `saida/automatico_execucao.json` (também em `GET /automatico/andamento`); o resultado de cada CI
+  continua em `saida/lancamentos.json` e `saida/automatico_resultados.json`, então o relatório `/automatico`
+  mostra tudo como antes. Sem intimação nova, termina sem gastar IA.
+- Só funciona se o Sam estiver rodando (`./rodar_envio.sh`) com o `.env` completo (login do VIOS e chave da IA).
+  Reiniciar a página depois de atualizar.
+- Ainda não agenda horário: o clique é manual.
+
 ### Passo 21 — Rodar no Mac e no Linux
 - O projeto roda nos dois sistemas com os mesmos arquivos e comandos.
 - Scripts `rodar*.sh` sem `readlink -f` (funcionam no macOS e no Linux);

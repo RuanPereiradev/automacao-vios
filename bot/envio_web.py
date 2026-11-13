@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 from flask import (Flask, Response, abort, jsonify, redirect, render_template, request, send_file,
                    send_from_directory, url_for)
 
-from bot import albi, conferencia, config, duplicidade, envio_txt, eventos, jarvis, orelha, skill, zangao
+from bot import albi, conferencia, config, duplicidade, envio_auto, envio_txt, eventos, jarvis, orelha, skill, zangao
 from bot.lancamento import REGISTRO, RESULTADOS, lancar, ler_intimacao
 from bot.login import fazer_login
 from bot.navegador import criar_driver
@@ -439,7 +439,8 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         return render_template("envio.html", tela="inicio", recentes=recentes, resumo=resumo_envio,
                                fins=eventos.fins_por_envio(pasta_saida),
                                total_envios=len(envios), total_lancadas=len(lancadas()), ocupado=trava.locked(),
-                               automaticos=automaticos)
+                               automaticos=automaticos, auto=envio_auto.andamento(pasta_saida),
+                               auto_fases=envio_auto.FASES)
 
     @app.route("/historico")
     def historico():
@@ -591,6 +592,31 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     def menu():
         return {"zangao_ligado": bool(pasta_zangao), "albi_ligado": albi.configurado(pasta_albi),
                 "jarvis_ligado": jarvis.configurado(pasta_jarvis)}
+
+    @app.route("/automatico/andamento")
+    def automatico_andamento():
+        """Andamento do envio automático (atual ou o último) para a página do Sam."""
+        return jsonify(dict(envio_auto.andamento(pasta_saida), ocupado=trava.locked()))
+
+    @app.route("/automatico/rodar", methods=["POST"])
+    def automatico_rodar():
+        """Envio automático com um clique: captura, analisa com a IA e lança no VIOS.
+        {"modo": "gravar", "confirmado": true} grava de verdade (a página só manda depois do "tem certeza?");
+        {"modo": "teste"} faz tudo, mas só até o quadro de tarefas do VIOS (não grava)."""
+        if not _mesma_origem():
+            return jsonify(erro="pedido recusado"), 403
+        corpo = request.get_json(silent=True) or {}
+        modo = corpo.get("modo")
+        if modo not in ("gravar", "teste"):
+            return jsonify(erro="modo inválido"), 400
+        if modo == "gravar" and corpo.get("confirmado") is not True:
+            return jsonify(erro="falta a confirmação"), 400
+        if not trava.acquire(blocking=False):
+            return jsonify(erro="o Sam está ocupado com outro envio", ocupado=True), 409
+        log.info("Envio automático disparado pela página (%s) por %s", modo, request.remote_addr)
+        threading.Thread(target=envio_auto.rodar, daemon=True,
+                         args=(cfg, caminho_env, pasta_saida, modo == "gravar", trava.release)).start()
+        return jsonify(ok=True, modo=modo)
 
     @app.route("/albi")
     def albi_pagina():

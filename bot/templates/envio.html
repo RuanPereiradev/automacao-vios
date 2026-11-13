@@ -50,6 +50,136 @@
 <main>
 {% if tela == "inicio" %}
   {{ fortaleza_cartao() }}
+  <div class="cartao auto-um-clique" id="auto">
+    <style>
+      .auto-um-clique .topo { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+      .auto-um-clique .passos { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 6px; padding: 0; list-style: none; }
+      .auto-um-clique .passos li { flex: 1 1 150px; border: 1px solid var(--borda); background: var(--cartao2); border-radius: 10px;
+                                   padding: 8px 12px; color: var(--suave); position: relative; transition: .3s; }
+      .auto-um-clique .passos li b { display: block; font-size: 13px; }
+      .auto-um-clique .passos li.agora { color: var(--texto); border-color: var(--ambar); box-shadow: 0 0 14px rgba(227, 167, 47, .35);
+                                         animation: auto-pulsa 1.4s ease-in-out infinite; }
+      .auto-um-clique .passos li.feito { color: var(--verde); border-color: rgba(63, 185, 80, .5); }
+      .auto-um-clique .passos li.feito::after { content: "✓"; position: absolute; right: 10px; top: 6px; font-weight: 700; }
+      .auto-um-clique .passos li.falhou { color: #ff7b72; border-color: rgba(255, 123, 114, .5); }
+      @keyframes auto-pulsa { 50% { box-shadow: 0 0 22px rgba(227, 167, 47, .6); } }
+      .auto-um-clique .barra { height: 10px; border-radius: 6px; background: var(--cartao2); border: 1px solid var(--borda); overflow: hidden; margin: 10px 0 4px; }
+      .auto-um-clique .barra i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--ambar), var(--verde)); transition: width .6s; }
+      .auto-um-clique .barra.indef i { width: 35%; animation: auto-corre 1.3s linear infinite; }
+      @keyframes auto-corre { from { margin-left: -35%; } to { margin-left: 100%; } }
+      .auto-um-clique .quando { font-size: 13px; }
+      dialog#auto-dialogo { background: var(--cartao); color: var(--texto); border: 1px solid var(--ambar); border-radius: 12px; padding: 24px;
+                            max-width: 460px; box-shadow: 0 0 60px rgba(0, 0, 0, .7); }
+      dialog#auto-dialogo::backdrop { background: rgba(0, 0, 0, .65); }
+      dialog#auto-dialogo h2 { margin-top: 0; }
+      dialog#auto-dialogo ul { padding-left: 20px; margin: 8px 0 16px; }
+      @media (prefers-reduced-motion: reduce) { .auto-um-clique .passos li.agora, .auto-um-clique .barra.indef i { animation: none; } }
+    </style>
+    <div class="topo">
+      <div><h2 style="margin:0">Envio automático em um clique</h2>
+        <span class="suave">O Sam captura as intimações, a IA analisa e as tarefas são criadas no VIOS, sem subir arquivo.</span></div>
+      <div class="acoes">
+        <button class="secundario" id="auto-ensaio" type="button" {% if ocupado %}disabled{% endif %}>Ensaio (não grava)</button>
+        <button class="primario" id="auto-iniciar" type="button" {% if ocupado %}disabled{% endif %}>▶ Enviar automaticamente</button>
+      </div>
+    </div>
+    <ol class="passos" id="auto-passos" hidden>
+      <li data-p="capturando"><b>1 · Capturar</b><span>intimações sem tarefa</span></li>
+      <li data-p="analisando"><b>2 · Analisar</b><span>IA + prazos</span></li>
+      <li data-p="lancando"><b>3 · Criar tarefas</b><span>no VIOS, com as travas</span></li>
+      <li data-p="fim"><b>4 · Conferir</b><span>cada tarefa no VIOS</span></li>
+    </ol>
+    <div class="barra indef" id="auto-barra" hidden><i></i></div>
+    <p id="auto-texto" class="suave" aria-live="polite" style="margin:6px 0 0"></p>
+    <dialog id="auto-dialogo">
+      <h2 id="auto-dialogo-titulo">Você tem certeza?</h2>
+      <p id="auto-dialogo-texto"></p>
+      <ul class="suave" id="auto-dialogo-lista"></ul>
+      <div class="acoes" style="justify-content: flex-end">
+        <button class="secundario" id="auto-nao" type="button">Cancelar</button>
+        <button class="primario" id="auto-sim" type="button">Sim, ativar o Sam</button>
+      </div>
+    </dialog>
+    <script>
+      (() => {
+        const $ = id => document.getElementById(id), FASES = ["capturando", "analisando", "lancando"];
+        const btn = $("auto-iniciar"), ens = $("auto-ensaio"), dlg = $("auto-dialogo");
+        let modo = "gravar", ativo = false, tempo = null;
+        function abrir(m) {
+          modo = m;
+          $("auto-dialogo-titulo").textContent = m === "gravar" ? "Você tem certeza?" : "Rodar o ensaio?";
+          $("auto-dialogo-texto").textContent = m === "gravar"
+            ? "O Sam vai fazer o fluxo inteiro agora e GRAVAR as tarefas no VIOS, de verdade."
+            : "O Sam faz o fluxo inteiro, mas para no quadro de tarefas do VIOS: nada é gravado.";
+          $("auto-dialogo-lista").innerHTML = (m === "gravar"
+            ? ["Captura as intimações de ontem que ainda não têm tarefa (na segunda, sexta a domingo).",
+               "A IA analisa cada uma (gasta créditos da API).",
+               "Cria as tarefas no VIOS. Quem tiver informação faltando ou já tiver tarefa fica de fora.",
+               "Depois de gravadas, desfazer só no VIOS, à mão."]
+            : ["Captura e analisa de verdade (a IA gasta créditos).", "Preenche o formulário do VIOS e não grava."])
+            .map(t => "<li>" + t + "</li>").join("");
+          $("auto-sim").textContent = m === "gravar" ? "Sim, ativar o Sam" : "Sim, rodar o ensaio";
+          dlg.showModal();
+        }
+        btn.onclick = () => abrir("gravar"); ens.onclick = () => abrir("teste");
+        $("auto-nao").onclick = () => dlg.close();
+        $("auto-sim").onclick = async () => {
+          dlg.close(); btn.disabled = ens.disabled = true;
+          try {
+            const r = await fetch("{{ url_for('automatico_rodar') }}", { method: "POST", credentials: "same-origin",
+              headers: { "Content-Type": "application/json" }, body: JSON.stringify({ modo, confirmado: true }) });
+            const j = await r.json();
+            if (!r.ok) throw new Error(j.erro || "não deu para iniciar");
+            ativo = true; puxar();
+          } catch (e) { $("auto-texto").textContent = "Não iniciou: " + e.message; $("auto-texto").className = "erro"; btn.disabled = ens.disabled = false; }
+        };
+        function mostrar(a) {
+          const rodando = a.estado === "rodando", tem = a.id && (rodando || ativo);
+          $("auto-passos").hidden = !tem; $("auto-barra").hidden = !rodando;
+          btn.disabled = ens.disabled = rodando || a.ocupado;
+          if (!tem) { resumoAnterior(a); return; }
+          const i = FASES.indexOf(a.fase);
+          $("auto-passos").querySelectorAll("li").forEach(li => {
+            const p = li.dataset.p, k = FASES.indexOf(p);
+            li.className = rodando ? (p === a.fase ? "agora" : (k >= 0 && k < i ? "feito" : ""))
+                                   : (a.estado === "parou" ? (k >= 0 && k <= FASES.indexOf(a.ultima || "lancando") ? "falhou" : "")
+                                                           : "feito");
+          });
+          const b = $("auto-barra"), pct = a.total_cis ? Math.round(100 * (a.feitas_cis || 0) / a.total_cis) : 0;
+          b.classList.toggle("indef", a.fase !== "lancando" || !a.total_cis);
+          b.firstElementChild.style.width = a.fase === "lancando" && a.total_cis ? pct + "%" : "";
+          const t = $("auto-texto"); t.className = "suave";
+          if (rodando) {
+            const fases = { capturando: "Capturando as intimações no VIOS…", analisando: "A IA está analisando " + (a.intimacoes || "") + " intimação(ões)…",
+              lancando: "Criando as tarefas: CI " + (a.feitas_cis || 0) + " de " + (a.total_cis || "?") + " · " + (a.gravadas || 0) + " tarefa(s) " + (a.modo === "teste" ? "no quadro" : "gravada(s)") + (a.erros ? " · " + a.erros + " barrada(s)" : "") };
+            t.textContent = fases[a.fase] || "Trabalhando…";
+          } else resumoAnterior(a);
+        }
+        function resumoAnterior(a) {
+          const t = $("auto-texto");
+          if (!a.id || a.estado === "rodando") { t.textContent = a.ocupado ? "O Sam está ocupado com outro envio." : ""; return; }
+          const quando = (a.fim || "").replace("T", " ").slice(8, 10) + "/" + (a.fim || "").slice(5, 7) + " " + (a.fim || "").slice(11, 16);
+          if (a.estado === "parou") { t.className = "erro"; t.textContent = "O último envio automático parou (" + quando + "): " + (a.motivo || "veja o log") ; return; }
+          if (a.motivo && !a.analisadas) { t.className = "suave"; t.textContent = "Último envio automático (" + quando + "): " + a.motivo; return; }
+          t.className = a.erros ? "aviso" : "ok";
+          t.textContent = "Último envio automático (" + quando + ", " + (a.modo === "teste" ? "ensaio" : "gravando") + "): "
+            + (a.gravadas || a.testadas || 0) + (a.modo === "teste" ? " no quadro" : " tarefa(s) gravada(s)") + ", " + (a.erros || 0) + " barrada(s), "
+            + (a.ja_tinha || 0) + " já no VIOS.";
+        }
+        async function puxar() {
+          try {
+            const r = await fetch("{{ url_for('automatico_andamento') }}", { cache: "no-store", credentials: "same-origin" });
+            const a = await r.json();
+            if (a.fase && FASES.includes(a.fase)) a.ultima = a.fase;
+            mostrar(a);
+            if (a.estado === "rodando") { ativo = true; tempo = setTimeout(puxar, 2000); return; }
+            if (ativo) { ativo = false; setTimeout(() => location.reload(), 2500); }  // atualiza os cartões com o resultado
+          } catch (_) { tempo = setTimeout(puxar, 4000); }
+        }
+        puxar();
+      })();
+    </script>
+  </div>
   <div class="cartao">
     <form action="{{ url_for('ler') }}" method="post" enctype="multipart/form-data" id="form-arquivo">
       <label class="soltar" id="soltar">

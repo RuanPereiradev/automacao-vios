@@ -26,6 +26,20 @@ def configurar_log():
     )
 
 
+def capturar(driver, cfg):
+    """Pesquisa no VIOS (já logado e na tela de intimações), lê as intimações e salva o JSON. Devolve (arquivo, itens, erros)."""
+    log = logging.getLogger("bot")
+    inicio, fim = pesquisar(driver, cfg)
+    itens, erros = extrair_intimacoes(driver, cfg, inicio, fim)
+    # 1ª conferência de duplicatas: já na leitura (a 2ª é no envio do .txt)
+    for ci, d in duplicidade.marcar(itens).items():
+        log.info("CI %s é cópia da CI %s (%s): não gera tarefa", ci, d["original"], d["motivo"])
+    arquivo = salvar_json(itens, cfg.pasta_saida, inicio, fim)
+    log.info("Concluído: %d intimações (%d cópia(s)), %d com erro -> %s",
+             len(itens), sum(1 for i in itens if i.get("duplicada_de")), erros, arquivo)
+    return arquivo, itens, erros
+
+
 def main(caminho_env=".env"):
     configurar_log()
     log = logging.getLogger("bot")
@@ -41,14 +55,7 @@ def main(caminho_env=".env"):
         fazer_login(driver, cfg)
         ir_ate_tabela(driver, cfg)
         if cfg.pesquisa_data:
-            inicio, fim = pesquisar(driver, cfg)
-            itens, erros = extrair_intimacoes(driver, cfg, inicio, fim)
-            # 1ª conferência de duplicatas: já na leitura (a 2ª é no envio do .txt)
-            for ci, d in duplicidade.marcar(itens).items():
-                log.info("CI %s é cópia da CI %s (%s): não gera tarefa", ci, d["original"], d["motivo"])
-            arquivo = salvar_json(itens, cfg.pasta_saida, inicio, fim)
-            log.info("Concluído: %d intimações (%d cópia(s)), %d com erro -> %s",
-                     len(itens), sum(1 for i in itens if i.get("duplicada_de")), erros, arquivo)
+            arquivo, itens, erros = capturar(driver, cfg)
             if itens and cfg.analise_ativa:
                 relatorio, total, falhas = analisar_arquivo(arquivo, caminho_env)
                 log.info("Análise: %d intimações, %d com erro -> %s", total, falhas, relatorio)
