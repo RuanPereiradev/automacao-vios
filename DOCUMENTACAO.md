@@ -833,6 +833,10 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - Pela página: `http://<IP do Mac>:5001/albi` (link "Albi" no topo do Ultron).
   A página usa o tema da Arena do Albi (Dragon Ball Z): céu, nuvens, lago, cabeçalho bege com telhado laranja
   e cartões com moldura de madeira (`<body class="tema-arena">` em `bot/templates/albi.html`).
+- **Pesquisa digitada** (abaixo da caixa "Solte o .txt"): para uma pesquisa única ou poucas, sem arquivo. Digite a
+  empresa (cliente), o CPF/CNPJ e o nome; "+ Adicionar outra pessoa" cria mais linhas. A página monta o mesmo
+  texto do .txt (`EMPRESA: X` e `CPF ; nome`), guarda como `digitado-AAAA-MM-DD_HHMM.txt` e abre a **conferência**,
+  como no arquivo: nada é comprado antes de você confirmar. Todos os campos são obrigatórios.
 - **Clientes** (abaixo da caixa "Solte o .txt"): um bloco por empresa que pediu pesquisa. Clicar abre a tela do
   cliente (`/albi/cliente?empresa=NOME`) com **cada pedido** dele (um arquivo enviado) por data, o resultado de
   cada pessoa e as mensagens da CAC (com o parágrafo do Gemini) para copiar. Um cliente que pediu 25 CPFs hoje e

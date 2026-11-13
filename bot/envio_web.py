@@ -614,6 +614,18 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
             return redirect(url_for("albi_pagina", erro=str(e)))
         return redirect(url_for("albi_conferir", envio_id=envio_id))
 
+    @app.route("/albi/digitar", methods=["POST"])
+    def albi_digitar():
+        """Pesquisa digitada na página (uma pessoa ou poucas), sem precisar de um .txt: monta o mesmo texto do
+        arquivo e segue o mesmo caminho (conferência antes de comprar)."""
+        try:
+            texto = albi.texto_digitado(request.form.get("empresa", ""), request.form.getlist("cpf"),
+                                        request.form.getlist("nome"))
+            envio_id = albi.receber(pasta_albi, pasta_saida, texto, f"digitado-{datetime.now():%Y-%m-%d_%H%M}.txt")
+        except albi.AlbiErro as e:
+            return redirect(url_for("albi_pagina", erro=str(e)))
+        return redirect(url_for("albi_conferir", envio_id=envio_id))
+
     def _id_albi(envio_id):
         if not re.fullmatch(r"[\w-]{1,64}", envio_id):
             abort(404)

@@ -132,6 +132,27 @@ def _ambiente():
     return ambiente
 
 
+def texto_digitado(empresa, cpfs, nomes):
+    """Monta o texto de um pedido digitado na página (mesmo formato do .txt): "EMPRESA: X" e uma linha
+    "CPF ; nome" por pessoa. Levanta AlbiErro se faltar empresa, CPF/CNPJ ou nome. Tira quebras de linha e
+    ";" do que foi digitado, para um campo não virar outra linha do arquivo."""
+    limpo = lambda v: re.sub(r"\s+", " ", (v or "").replace(";", " ")).strip()
+    empresa = limpo(empresa)
+    if not empresa:
+        raise AlbiErro("digite o nome da empresa (cliente) que pediu a pesquisa")
+    pessoas = [(limpo(c), limpo(n)) for c, n in zip(cpfs, nomes) if limpo(c) or limpo(n)]
+    if not pessoas:
+        raise AlbiErro("digite o CPF/CNPJ e o nome de pelo menos uma pessoa")
+    if len(pessoas) > MAX_LINHAS:
+        raise AlbiErro(f"são {len(pessoas)} pessoas; o máximo por vez é {MAX_LINHAS}")
+    for i, (c, n) in enumerate(pessoas, 1):
+        if not c:
+            raise AlbiErro(f"pessoa {i}: falta o CPF/CNPJ")
+        if not n:
+            raise AlbiErro(f"pessoa {i}: falta o nome")
+    return f"EMPRESA: {empresa}\n" + "\n".join(f"{c} ; {n}" for c, n in pessoas) + "\n"
+
+
 def receber(p, pasta_saida, texto, nome_arquivo):
     """1.º passo (soltou o .txt): guarda o arquivo e pede ao Albi a conferência (sem navegador):
     quem é válido, quem já foi pesquisado e quantos vão ser comprados. Devolve o id."""

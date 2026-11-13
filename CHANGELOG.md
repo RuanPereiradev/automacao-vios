@@ -12,6 +12,17 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Albi: pesquisa digitada na página, sem precisar de .txt (13/11/2026)
+- Na `/albi`, abaixo da caixa de soltar o arquivo, o cartão **Pesquisa digitada**: empresa (com sugestão dos
+  clientes já cadastrados), CPF/CNPJ e nome, com "+ Adicionar outra pessoa" e "Tirar" para mais de uma. Serve
+  para uma pesquisa única ou poucas.
+- Vai pelo mesmo caminho do arquivo: a página monta o texto no mesmo formato (`EMPRESA: X` e `CPF ; nome`),
+  guarda como `digitado-AAAA-MM-DD_HHMM.txt` e abre a conferência (CPF/CNPJ válidos, já pesquisados e total em
+  R$) antes de qualquer compra. O pedido aparece normalmente no bloco do cliente e nas mensagens por dia.
+- `bot/albi.py`: `texto_digitado()` (exige empresa, CPF/CNPJ e nome; tira quebras de linha e ";" para um campo
+  não virar outra linha; máximo de pessoas igual ao do arquivo); `bot/envio_web.py`: rota `POST /albi/digitar`.
+  O botão fica desligado enquanto o Albi está trabalhando, como a caixa de soltar.
+
 ### Adicionado — Albi: blocos de clientes e tela de cada cliente com os pedidos e as mensagens (12/11/2026)
 - Na `/albi`, abaixo da caixa "Solte o .txt", um bloco por cliente (empresa) que pediu pesquisa: nome,
   quantos pedidos e pessoas, quantas mensagens com e sem processos e a data do último pedido, com busca por

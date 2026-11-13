@@ -75,6 +75,9 @@
   .tema-arena .barra-salvar { background: linear-gradient(transparent, rgba(155, 207, 246, .95) 40%); }
   .tema-arena summary { color: var(--madeira); }
   textarea.mensagem.cac { min-height: 0; }
+  .pessoa-linha { display: grid; grid-template-columns: 240px 1fr auto; gap: 12px; align-items: end; margin-top: 10px; }
+  .pessoa-linha[hidden], .remover-pessoa[hidden] { display: none; }
+  @media (max-width: 700px) { .pessoa-linha { grid-template-columns: 1fr; } }
   .clientes { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin-top: 10px; }
   a.cliente { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; text-decoration: none; color: var(--texto);
               background: #f2e2c4; border: 3px solid var(--madeira); border-radius: 4px; box-shadow: 0 4px 0 #3b2814; transition: .12s; }
@@ -127,6 +130,26 @@
     <p class="erro" id="rodar-erro" hidden></p>
     <p class="suave" style="margin-bottom:0">Primeira vez? <a href="{{ url_for('albi_modelo') }}">Baixe o modelo do .txt</a>,
       troque os exemplos pelos CPFs e nomes de cada empresa e solte aqui.</p>
+  </div>
+  <div class="cartao">
+    <div class="topo-hist"><h2>Pesquisa digitada</h2><span class="suave">para uma pessoa ou poucas, sem precisar de um .txt</span></div>
+    <form action="{{ url_for('albi_digitar') }}" method="post" id="form-digitar">
+      <label>Empresa (cliente que pediu)
+        <input type="text" name="empresa" required maxlength="120" list="lista-clientes" placeholder="Ex.: PADARIA ESTRELA" autocomplete="off"></label>
+      <datalist id="lista-clientes">{% for c in clientes or [] %}<option value="{{ c.nome }}">{% endfor %}</datalist>
+      <div id="pessoas">
+        <div class="pessoa-linha">
+          <label>CPF / CNPJ<input type="text" name="cpf" required maxlength="30" placeholder="000.000.000-00" inputmode="numeric" autocomplete="off"></label>
+          <label>Nome<input type="text" name="nome" required maxlength="120" placeholder="Nome da pessoa" autocomplete="off"></label>
+          <button type="button" class="secundario remover-pessoa" title="Tirar esta pessoa" hidden>Tirar</button>
+        </div>
+      </div>
+      <p class="acoes" style="margin-top:14px">
+        <button type="button" class="secundario" id="mais-pessoa">+ Adicionar outra pessoa</button>
+        <button type="submit" class="primario" id="btn-digitar">Conferir antes de pesquisar</button>
+      </p>
+      <p class="suave" style="margin:8px 0 0">Nada é comprado agora: o Albi confere o CPF/CNPJ e mostra o total antes, como no arquivo.</p>
+    </form>
   </div>
   {% if clientes %}
   <div class="cartao">
@@ -570,6 +593,24 @@ EMPRESA: Empresa B
   {% elif tela == "execucao" %}
   $('execucao').innerHTML = cartao({{ e | tojson }});
   {% elif tela == "inicio" %}
+  (function () {
+    const lista = $('pessoas'), btn = $('mais-pessoa');
+    function atualizarTirar() {
+      const linhas = lista.querySelectorAll('.pessoa-linha');
+      linhas.forEach(l => { l.querySelector('.remover-pessoa').hidden = linhas.length < 2; });
+    }
+    btn.addEventListener('click', () => {
+      if (lista.querySelectorAll('.pessoa-linha').length >= {{ max_linhas }}) return;
+      const nova = lista.querySelector('.pessoa-linha').cloneNode(true);
+      nova.querySelectorAll('input').forEach(i => { i.value = ''; });
+      lista.appendChild(nova); atualizarTirar();
+      nova.querySelector('input').focus();
+    });
+    lista.addEventListener('click', e => {
+      const b = e.target.closest('.remover-pessoa');
+      if (b) { b.closest('.pessoa-linha').remove(); atualizarTirar(); }
+    });
+  })();
   const buscaCliente = $('busca-cliente');
   if (buscaCliente) buscaCliente.addEventListener('input', () => {
     const q = buscaCliente.value.trim().toLowerCase();
@@ -599,6 +640,7 @@ EMPRESA: Empresa B
       const ocupado = !info.configurado || info.rodando;
       caixa.classList.toggle('desligado', ocupado);
       campo.disabled = ocupado;
+      $('btn-digitar').disabled = ocupado;
       $('soltar-titulo').textContent = !info.configurado ? 'O Albi não está instalado neste servidor'
         : info.rodando ? 'O Albi está trabalhando…' : 'Solte o .txt aqui';
       $('soltar-sub').textContent = !info.configurado ? 'falta a pasta albi/ com .venv e .env (veja albi/README.md)'
