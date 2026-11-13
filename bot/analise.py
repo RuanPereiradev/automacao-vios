@@ -17,7 +17,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from bot import custo, duplicidade, feriados_web, ia, prazos, skill
+from bot import custo, duplicidade, feriados_web, ia, prazos, responsaveis, skill
 from bot.custo import LimiteGasto
 from bot.ia import IAErro
 
@@ -50,6 +50,8 @@ JOHNYS = "FRANCISCO JOHNYS VASCONCELOS BARBOSA"
 LAUDO_PREV_ANTIGA = "MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026"
 LAUDO_PREV = "MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026"
 INTERMEDIARIA_PREV = "MINUTAR PETIÇÃO INTERMEDIÁRIA (PREVIDENCIÁRIO)"  # substitui Carlos (CARL) nas tarefas trabalhistas
+# tarefas cuja DATA (sem hora fixa) recua para o dia de trabalho anterior quando cai em feriado (skill de 13/11/2026)
+AJUSTAVEIS_POR_FERIADO = {"D-2", "PRIORIDADE_RPV", "PRIORIDADE_EMENDA_SUHIANE", "MESMO_DIA", "DIA_SEGUINTE"}
 # sentença e acórdão sempre geram ANALISAR (o advogado decide se recorre)
 ATOS_DE_ANALISE = {"SENTENÇA", "ACÓRDÃO"}
 
@@ -330,18 +332,37 @@ class Agente:
             if t["nome"] == LAUDO_PREV_ANTIGA:
                 laudo = r["ato"] in ("LAUDO", "PERÍCIA") or "LAUDO" in prazos.normalizar(t["finalidade"] + " " + t["resumo"])
                 t["nome"] = LAUDO_PREV if laudo and r["ato"] != "PROPOSTA DE ACORDO" else INTERMEDIARIA_PREV
-        if [a.strip().upper() for a in re.split(r"[/,;]", item.get("auxiliares", "")) if a.strip()] == ["CARL"]:
-            for t in tarefas:
-                if "(TRABALHISTA)" in t["nome"]:
-                    t["responsaveis"] = [JOHNYS]
-                    alertas.append(f"Auxiliar CARL: {t['nome']} vai para {JOHNYS} (Carlos não está mais "
-                                   "no Trabalhista — roteamento da skill).")
+        # DATA da tarefa em feriado nacional (ou do local do escritório): recua para o dia de trabalho anterior
+        # (skill de 13/11/2026). Só a DATA: o D-2 e os vencimentos da descrição não mudam. Ato com data/hora fixas não recua.
+        locais = prazos.locais_escritorio()
+        for t in tarefas:
+            dia = _data(t["data_tarefa"])
+            if t["tipo_data"] not in AJUSTAVEIS_POR_FERIADO or t["nome"].startswith(COM_HORARIO) or not dia:
+                continue
+            novo, feriado, aviso = prazos.antecipar(dia, hoje, self.tabela, locais)
+            if feriado:
+                t["data_tarefa"] = _br(novo)
+                t["ajuste_feriado"] = f"{_br(dia)} → {_br(novo)} ({feriado})"
+                alertas.append(f"{t['nome']}: DATA antecipada de {_br(dia)} para {_br(novo)} por causa do feriado "
+                               f"{feriado} (o vencimento e o D-2 da descrição não mudam).")
+            elif aviso:
+                alertas.append(f"{t['nome']}: {aviso}")
+        # responsáveis: auxiliar (nome completo do VIOS) ou o advogado responsável; nunca "automático" nem Amanda
+        pessoas = responsaveis.carregar(os.getenv("SAIDA_PASTA", "saida").strip() or "saida")
+        bloqueios_resp = []
+        for t in tarefas:
+            nomes, bloqueio, avisos_resp = responsaveis.da_tarefa(item, t, pessoas)
+            t["responsaveis"] = nomes
+            alertas += avisos_resp
+            if bloqueio:
+                bloqueios_resp.append(f"{t['nome']}: {bloqueio}")
         alertas += self._conferir(item, tarefas, d2)
         considerados, avisos_cal = self._feriados_do_periodo(publicacao, [fatal, embargos_fatal, recurso_fatal], alertas)
 
         # motivos para NÃO lançar no VIOS (falta informação que só o PJe ou a Controladoria têm)
         bloqueios = [f"Falta no documento: {f}" for f in r.get("faltam_dados", [])]
         bloqueios += self._conferir_area(item, tarefas)
+        bloqueios += bloqueios_resp
         evento = SO_EVENTO.search(item.get("texto", ""))
         if evento:
             bloqueios.append(f"A intimação só indica o {evento.group(1).strip()}, sem o teor: "
@@ -469,10 +490,7 @@ class Agente:
 
 
 def _tabela_do_env():
-    return prazos.Tabela(
-        os.getenv("FERIADOS_TABELA", "doc/feriados-brasil-2026-2027.md").strip(),
-        os.getenv("FERIADOS_ARQUIVO", "doc/feriados.txt").strip(),
-    )
+    return prazos.tabela_do_env()
 
 
 def _br(dia):

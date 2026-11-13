@@ -12,6 +12,24 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Regras da skill de 13/11/2026 no robô: responsáveis, filial da perícia e feriado na DATA (13/11/2026)
+- **Responsáveis na análise pela API** (`bot/responsaveis.py`): a sigla do auxiliar (SUH, TAMI, JOHN, JOAN...) vira o nome completo
+  pela lista do VIOS (`saida/responsaveis.json`); sem auxiliar, o advogado responsável do processo. Sigla ambígua (CARL) não é
+  adivinhada; Carlos só no Trabalhista vai para o Johnys, como antes. A petição da Execução da Tamira leva também o Breno.
+  Com isso o **Envio automático volta a lançar** (as tarefas não saem mais sem responsável).
+- **Exceção Ronielle:** sem auxiliar e com RONIELLE FEITOSA (RONEELY FEITOSA no VIOS) como responsável, a tarefa é bloqueada com a
+  mensagem da skill; no `.txt`, o arquivo que traz só ele como responsável é barrado.
+- **Perícia médica judicial previdenciária:** responsável da filial (Camocim, Tianguá, Jijoca, Sobral), nunca Amanda nem Suhiane;
+  cidade pelo teor (senão pela comarca); nenhuma ou mais de uma filial = `NÃO LANÇAR — CONFIRMAR FILIAL/RESPONSÁVEL...`. No `.txt`,
+  só aceita o responsável da filial.
+- **Feriado na `DATA`:** `prazos.antecipar()` recua a `DATA` da tarefa (D-2, prioridades, mesmo dia, dia seguinte) para o dia de trabalho
+  anterior quando cai em feriado nacional, ou do local de `ESCRITORIO_LOCAIS` (novo no `.env`; vazio = só nacionais). Só a `DATA`:
+  D-2 e vencimentos da descrição não mudam; ato com hora fixa e data informada não recuam; nunca volta antes de hoje (alerta de
+  urgência). Vale na análise e depois do corte das 12h, no lançamento. Exemplo da skill: 02/11 vai para 30/10.
+- Testes: `tests/test_responsaveis.py` (18 casos). Conferido em análise real de 09/11 (sem chamar a IA): 38 de 39 tarefas com
+  responsável; 1 CI bloqueada pela regra do Ronielle; 20/11 (Consciência Negra) recuou para 19/11.
+- `DOCUMENTACAO.md` (Passo 41 e tabela do `.env`), `.env.example` e a skill única atualizados.
+
 ### Adicionado — Trava de responsável: nada de `automático` nem Amanda (13/11/2026)
 - Pela skill de 13/11/2026, o VIOS manda a tarefa de `RESPONSÁVEIS: automático` para AMANDA LEITE MENDES, que só lança.
   Agora a CI é barrada quando algum responsável está em branco, é `automático` ou é a Amanda:
@@ -19,8 +37,7 @@ etapa estiver pronta e testada, vira uma nova versão com data.
     edição não vem mais preenchido com "automático" e o formato de exemplo mostra o nome do auxiliar;
   - lançamento (`bot/lancamento.py`, `responsavel_proibido()`): CI fica "bloqueada" com o motivo, também no `lancar.py` e no
     Envio automático (`/automatico` mostra o motivo).
-- **Efeito no Envio automático:** a análise pela API deixa os responsáveis vazios (guarda só a sigla do auxiliar), então as
-  tarefas saem barradas até ela passar a preencher o nome completo do auxiliar. Próximo passo a combinar.
+- **Efeito no Envio automático:** a análise pela API deixava os responsáveis vazios; resolvido logo em seguida (item abaixo).
 - Skill única (`regras-do-programa.md`) e `DOCUMENTACAO.md` (Passo 41) atualizados.
 
 ### Alterado — Skill da Controladoria de 13/11/2026 (responsáveis, feriado e marco pela publicação)
@@ -34,8 +51,7 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   publicação do DJEN/CSV, inclusive Fazenda Pública; `CIÊNCIA (CÍVEL)` vale para Criminal; novas equivalências de clientes.
 - O pacote já trazia o campo `PROCESSO` do TXT (alterações que estavam pendentes na pasta da skill).
 - `doc/skill-unica/arquivo-para-o-robo.md` e `regras-do-programa.md`: exemplos e regra de `RESPONSÁVEIS` sem `automático`.
-- A análise pela API (`./rodar_analise.sh` e o Envio automático) já lê a skill nova no prompt. **O código ainda não faz** a
-  parte de feriado na `DATA`, o mapa de filiais da perícia nem a exceção Ronielle (a trava do `automático` entrou à parte); ver a lista no passo 41 do `DOCUMENTACAO.md`.
+- A análise pela API (`./rodar_analise.sh` e o Envio automático) já lê a skill nova no prompt. **O código aplica essas regras:** ver o item seguinte; ver a lista no passo 41 do `DOCUMENTACAO.md`.
 
 ### Adicionado — Envio automático em um clique na página do Sam, com animação (13/11/2026)
 - Na `/sam`, cartão **Envio automático em um clique**: botão **▶ Enviar automaticamente** e **Ensaio (não grava)**.

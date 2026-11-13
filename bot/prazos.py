@@ -264,6 +264,63 @@ class Calendario:
         return considerados, avisos
 
 
+def tabela_do_env():
+    """Tabela de feriados dos arquivos do .env (FERIADOS_TABELA e FERIADOS_ARQUIVO)."""
+    return Tabela(os.getenv("FERIADOS_TABELA", "doc/feriados-brasil-2026-2027.md").strip(),
+                  os.getenv("FERIADOS_ARQUIVO", "doc/feriados.txt").strip())
+
+
+# --- DATA da tarefa no VIOS × feriado (skill de 13/11/2026) -----------------------------------------
+# A contagem dos prazos continua simplificada (segunda a sexta, feriado conta). Só a DATA operacional da
+# tarefa recua para o dia de trabalho anterior quando cai em feriado nacional ou em feriado do local do
+# escritório. Ponto facultativo não é feriado. Feriado só de outro estado/município não recua.
+
+def locais_escritorio():
+    """ESCRITORIO_LOCAIS no .env: onde fica o escritório que executa as tarefas, "CIDADE/UF" separados por ";"
+    (ou só "UF" para o feriado estadual). Vazio = só os feriados nacionais recuam a DATA."""
+    locais = []
+    for parte in os.getenv("ESCRITORIO_LOCAIS", "").split(";"):
+        parte = parte.strip()
+        if not parte:
+            continue
+        cidade, _, uf = parte.rpartition("/")
+        locais.append((normalizar(cidade), uf.strip().upper()))
+    return locais
+
+
+def feriado_aplicavel(dia, tabela=None, locais=()):
+    """Nome do feriado nacional, ou estadual/municipal de um dos `locais` [(CIDADE, UF)], que cai em `dia`; '' se não há."""
+    tabela = tabela or Tabela()
+    nome = nacionais(dia.year).get(dia) or tabela.nacionais.get(dia)
+    if nome:
+        return nome
+    for cidade, uf in locais:
+        nome = tabela.estaduais.get(uf, {}).get(dia) or (tabela.municipais.get((cidade, uf), {}).get(dia) if cidade else None)
+        if nome:
+            return nome
+        for d, escopo, descricao, so_aviso in tabela.manuais:  # doc/feriados.txt com escopo "UF" ou "CIDADE/UF"
+            if d == dia and not so_aviso and escopo in (uf, f"{cidade}/{uf}"):
+                return descricao
+    return ""
+
+
+def antecipar(dia, hoje, tabela=None, locais=()):
+    """DATA da tarefa que cai em feriado aplicável vai para o dia de trabalho anterior (segunda a sexta que não seja
+    feriado aplicável). Devolve (data, feriado, aviso): `feriado` vazio = nada mudou. Se o dia anterior já passou
+    (antes de `hoje`), mantém a data e devolve um aviso de urgência (sem voltar no tempo)."""
+    tabela = tabela or Tabela()
+    feriado = feriado_aplicavel(dia, tabela, locais)
+    if not feriado:
+        return dia, "", ""
+    novo = dia - timedelta(days=1)
+    while novo.weekday() >= 5 or feriado_aplicavel(novo, tabela, locais):
+        novo -= timedelta(days=1)
+    if novo < hoje:
+        return dia, "", (f"A data {dia:%d/%m/%Y} cai em feriado ({feriado}) e não dá para antecipar: o dia de trabalho "
+                         f"anterior ({novo:%d/%m/%Y}) já passou. Conferir a urgência.")
+    return novo, feriado, ""
+
+
 def contexto(item):
     """Extrai (uf, cidade, federal, trabalho) de uma intimação capturada do VIOS.
     O ramo vem do dígito J do número CNJ (NNNNNNN-DD.AAAA.J.TR.OOOO): 4 federal, 5 trabalho."""

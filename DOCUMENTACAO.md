@@ -682,17 +682,22 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - A Controladoria mandou a skill revisada (`doc/skill-original/8_2026-11-13_responsaveis-feriado/`), que passou a ser a
   skill do projeto. Resumo das regras novas na seção 8 de `doc/skill-original/LEIAME.md`.
 - O que já vale sem mexer no código: a skill entra no prompt da análise pela API (`bot/skill.py`) e na skill única do chat.
-- **O que o código faz e o que ainda não faz:**
+- **O que o código faz (13/11/2026):**
 
-| Regra nova da skill | Situação no código |
+| Regra nova da skill | No código |
 | --- | --- |
-| `RESPONSÁVEIS` nunca `automático` (vai para a Amanda) | **Feito (13/11/2026):** a página de envio (`bot/envio_txt.py`) e o lançamento (`bot/lancamento.py`, `responsavel_proibido()`) barram a CI com responsável em branco, `automático` ou AMANDA LEITE MENDES; no Envio automático (análise pela API) aparece como "barrada" com o motivo |
-| Sem auxiliar e com RONIELLE FEITOSA como responsável: não lançar | Não confere |
-| Perícia médica judicial previdenciária: responsável da filial | Não confere |
-| `DATA` antecipada quando cair em feriado nacional/da filial | `bot/prazos.py` segue só segunda a sexta, sem checar feriado na DATA |
-| Marco pela publicação, inclusive Fazenda Pública | Depende da IA (prompt); sem regra no código |
+| `RESPONSÁVEIS` nunca `automático` (vai para a Amanda) | `bot/envio_txt.py` e `bot/lancamento.py` (`responsavel_proibido()`) barram a CI com responsável em branco, `automático` ou AMANDA LEITE MENDES |
+| Nome completo do auxiliar / advogado responsável na análise pela API | `bot/responsaveis.py`: a sigla do auxiliar (SUH, TAMI, JOHN...) vira o nome completo pela lista do VIOS (`saida/responsaveis.json`; sigla ambígua como CARL não é adivinhada); sem auxiliar, o advogado responsável do processo. Carlos (CARL) só no Trabalhista vai para o Johnys |
+| Sem auxiliar e com RONIELLE FEITOSA (no VIOS: RONEELY FEITOSA) como responsável: não lançar | Análise: bloqueio com a mensagem da skill. Página de envio: barra o `.txt` que traz só ele como responsável |
+| Perícia médica judicial previdenciária: responsável da filial (Camocim, Tianguá, Jijoca, Sobral) | Análise: a cidade vem do teor (senão da comarca/cidade do processo); nenhuma ou mais de uma filial = bloqueio `NÃO LANÇAR — CONFIRMAR FILIAL...`. Página de envio: só aceita o responsável da filial |
+| `DATA` antecipada quando cair em feriado | `prazos.antecipar()`: feriado **nacional** recua a `DATA` para o dia de trabalho anterior; feriado estadual/municipal só dos locais de `ESCRITORIO_LOCAIS` (`.env`). Só a `DATA`: D-2 e vencimentos da descrição ficam. Ato com hora fixa (audiência, perícia, sustentação) e data informada não recuam. Nunca volta antes de hoje (avisa a urgência). Vale na análise e depois do corte das 12h no lançamento |
+| Marco pela publicação, inclusive Fazenda Pública | O código já conta da publicação do DJEN/CSV; os dias (embargos 10, recurso 30 na Fazenda) a IA lê pela skill (prompt) |
 
-- **Atenção:** a análise pela API só guarda a sigla do auxiliar (SUH, TAMI...) e deixa `responsaveis` vazio (exceto Carlos → Johnys), então o **Envio automático barra essas tarefas** até a análise passar a preencher o nome completo do auxiliar. Pela página de envio de .txt (análise do chat) funciona normal, com os nomes no arquivo.
+- `ESCRITORIO_LOCAIS` (`.env`): onde fica o escritório que executa as tarefas, `CIDADE/UF` separados por `;` (ou só `UF`).
+  **Vazio = só feriados nacionais recuam a `DATA`.** Preencher para valer também o feriado do estado/município do escritório.
+- Os feriados nacionais são os do código (fixos e Sexta-feira Santa) e da tabela `doc/feriados-brasil-*.md`; ponto facultativo
+  (Carnaval, Corpus Christi...) não é feriado e não recua.
+- Testes: `.venv/bin/python -m unittest tests.test_responsaveis`.
 
 ### Passo 21 — Rodar no Mac e no Linux
 - O projeto roda nos dois sistemas com os mesmos arquivos e comandos.
@@ -1420,6 +1425,7 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `LLM_PRECOS` | não | Corrige preços da tabela: `modelo=entrada/saída` por milhão de tokens, separados por vírgula | vazio |
 | `FERIADOS_PESQUISA` | não | Pesquisa feriados na internet antes da análise (`true`/`false`); só roda com `PRAZO_CONTAGEM=feriados` | `true` |
 | `DUPLICIDADE_ATIVA` | não | `true` liga o detector de duplicadas (Passo 17); `false` = desligado (a Controladoria tira as duplicadas no VIOS) | `false` |
+| `ESCRITORIO_LOCAIS` | não | Onde fica o escritório que executa as tarefas, `CIDADE/UF` separados por `;` (ou só `UF`); o feriado estadual/municipal desses locais recua a `DATA` da tarefa. Vazio = só feriados nacionais | `SOBRAL/CE;CE` |
 | `PRAZO_CONTAGEM` | não | `simplificada` = só sábado e domingo ficam de fora (feriados e recesso contam como dia útil); `feriados` = calendário antigo por tribunal (Passo 13) | `simplificada` |
 | `SAIDA_PASTA` | não | Pasta dos `.txt` | `saida` |
 | `HEADLESS` | não | Chrome sem janela | `false` |

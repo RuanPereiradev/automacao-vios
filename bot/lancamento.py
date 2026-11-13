@@ -18,7 +18,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from bot.navegador import POLL
 
-from bot import duplicidade, skill
+from bot import duplicidade, prazos, skill
 
 log = logging.getLogger(__name__)
 
@@ -425,6 +425,14 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
                 data, motivo = corte_meio_dia(t, _data_conclusao(t, hoje), datetime.now())
                 if motivo:
                     log.info("CI %s tarefa %d (%s): corte das 12h: %s", ci, n, t["nome"], motivo)
+                    # o próximo dia de segunda a sexta pode ser feriado: a skill de 13/11/2026 recua a DATA para o dia
+                    # de trabalho anterior (nunca antes de hoje)
+                    data, feriado, aviso = prazos.antecipar(data, hoje, prazos.tabela_do_env(), prazos.locais_escritorio())
+                    if feriado:
+                        log.info("CI %s tarefa %d (%s): DATA antecipada para %s por causa do feriado %s",
+                                 ci, n, t["nome"], data.strftime("%d/%m/%Y"), feriado)
+                    elif aviso:
+                        log.warning("CI %s tarefa %d (%s): %s", ci, n, t["nome"], aviso)
                 tela = preencher(driver, t, data, timeout)
                 log.info("CI %s tarefa %d: %s | prazo %s %s %s | responsáveis %s | texto da intimação: %s",
                          ci, n, tela["tarefa"], tela["tipo_prazo"], tela["data_prevista"], tela["hora"],

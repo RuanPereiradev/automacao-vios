@@ -20,6 +20,7 @@ from datetime import date, datetime
 
 from bot.analise import COM_HORARIO, FORA_DA_DESCRICAO, numero_processo
 from bot.lancamento import AMANDA, APELIDOS, _normalizar
+from bot.responsaveis import FILIAIS, MSG_RONIELLE, PERICIA_MEDICA, eh_ronielle
 
 SEPARADOR = re.compile(r"^\s*-{3,}\s*$")
 CAMPO = re.compile(r"^\s*([A-Za-zÀ-ú ]+?)\s*:\s?(.*)$")
@@ -129,6 +130,13 @@ def ler(texto, oficiais, pessoas=(), lancadas=(), links=None, base_url="", hoje=
                 if pessoas and not achado:
                     problemas.append(f"{nome}: responsável fora da lista do VIOS: '{p.strip()}'.")
                 responsaveis.append(achado or p.strip())
+            if len(responsaveis) == 1 and eh_ronielle(responsaveis[0]):
+                problemas.append(f"{nome}: {MSG_RONIELLE}")
+            if nome.startswith(PERICIA_MEDICA) and not (
+                    len(responsaveis) == 1 and _normalizar(responsaveis[0]) in {_normalizar(f[1]) for f in FILIAIS.values()}):
+                problemas.append(f"{nome}: o responsável é o da filial (Camocim: FRANCISCO VICTOR HORA DO NASCIMENTO; "
+                                 "Tianguá: JOÃO JÂNIO; Jijoca: GUIVIA VASCONCELOS; Sobral: ANA LETÍCIA DA SILVA LEITAO). "
+                                 "Sem filial identificada, não lançar.")
             if any(_normalizar(r) == _normalizar(AMANDA) for r in responsaveis):
                 problemas.append(f"{nome}: a tarefa não pode ficar com a {AMANDA} (ela só lança, não executa).")
 
