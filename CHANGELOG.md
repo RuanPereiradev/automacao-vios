@@ -17,6 +17,25 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   se foram pesquisados nas últimas 24 h; depois disso o Albi compra de novo. Textos atualizados em
   `albi/README.md`, `DOCUMENTACAO.md` e `bot/templates/albi.html`.
 
+### Adicionado — Vila 06: a muralha do bot do Previdenciário (13/11/2026)
+- Aba **06 · Mikasa** na Vila dos Bots (`doc/vila/ligar_vila06_muralha.py`), com a cena `bot/vila/muralha.html` em
+  `/vila/previdenciario`: vídeos de plantão (dia), fora do expediente (noite) e um clipe por evento do bot (respondida /
+  passada para a equipe / não entendida), com os contadores do dia.
+- `bot/vila06.py` + rota `/vila/previdenciario/estado`: o servidor da vila consulta o bot (`VILA06_URL`, `VILA06_TOKEN`,
+  `VILA06_CERTIFICADO`) e repassa só contagens e eventos sem dado pessoal; sem configuração, simulação.
+- Vídeos fora do git (`VILA06_CLIPES`, padrão `<SAIDA_PASTA>/vila06_clipes`), servidos só pelos 5 nomes da lista.
+- Caixa de diálogo da Mikasa (estilo RPG) com uma fala por evento; retratos `retrato-<expressão>.png` na mesma pasta, fora do git.
+- Testes: `tests/test_vila06.py`.
+
+### Adicionado — Vila 06: som (voz da Mikasa, música, ambiente e efeitos) (16/11/2026)
+- A Mikasa fala em voz alta cada frase da caixa de diálogo (`sons/fala-<hash>.mp3`; a música abaixa enquanto ela fala).
+- Música de fundo original em laço (com fusão), vento da muralha e efeitos sincronizados com os vídeos: sino e passo do
+  titã na chegada; gás, gancho, cortes de lâmina, vapor, esquiva e pouso na resposta; canhão e sino ao passar para a equipe.
+- Botão **Som** na placa (o navegador só deixa tocar depois de um clique; a escolha fica salva no navegador).
+- `doc/vila/gerar_sons_vila06.py` gera tudo na ElevenLabs (chave só por variável de ambiente); arquivos em
+  `<VILA06_CLIPES>/sons/`, fora do git, servidos só pelos nomes da lista (`/vila/previdenciario/sons/<nome>.mp3`).
+- Falas sem número (as contagens ficam no painel), para a voz gravada valer sempre; subtítulo da placa: bot da recepção.
+
 ### Adicionado — Regras da skill de 13/11/2026 no robô: responsáveis, filial da perícia e feriado na DATA (13/11/2026)
 - **Responsáveis na análise pela API** (`bot/responsaveis.py`): a sigla do auxiliar (SUH, TAMI, JOHN, JOAN...) vira o nome completo
   pela lista do VIOS (`saida/responsaveis.json`); sem auxiliar, o advogado responsável do processo. Sigla ambígua (CARL) não é

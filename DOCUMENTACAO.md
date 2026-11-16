@@ -699,6 +699,36 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   (Carnaval, Corpus Christi...) não é feriado e não recua.
 - Testes: `.venv/bin/python -m unittest tests.test_responsaveis`.
 
+### Passo 42 — Vila 06: a muralha do bot do Previdenciário
+- A Vila 06 é a casa do bot de WhatsApp do setor previdenciário (repositório próprio, `bot-previdenciario`, RN28). A cena
+  é **vídeo** pré-renderizado (Blender): plantão de dia, fora do expediente à noite e, a cada evento do bot, um clipe curto
+  (mensagem chegando → respondida pelo bot, ou → passada para a equipe). A cena **só assiste**.
+- Página: **`bot/vila/muralha.html`**, servida em **`/vila/previdenciario`**; aparece por cima do palco quando a aba
+  **06 · Mikasa** é escolhida (patch `doc/vila/ligar_vila06_muralha.py`, rodar depois do da Fortaleza). O mapa
+  continua com 5 lotes: a aba 06 é só a camada.
+- Estado: a página consulta **`/vila/previdenciario/estado`** a cada 3 s. Este servidor pergunta ao bot
+  (`GET <VILA06_URL>/vila/estado`, com `Authorization: Bearer <VILA06_TOKEN>`) e repassa **só** horário, conexão,
+  contagens do dia, conversas com a equipe e eventos novos (`n`, tipo, horário) — nada de número, nome ou texto de cliente
+  (`bot/vila06.py`, `limpar`). O token nunca vai ao navegador. Sem `VILA06_URL`/`VILA06_TOKEN` a cena roda em **simulação**.
+- Vídeos: **fora do git**. Ficam em `VILA06_CLIPES` (padrão `<SAIDA_PASTA>/vila06_clipes`, já ignorada) com os nomes
+  `plantao.mp4`, `fora.mp4`, `chegou.mp4`, `respondendo.mp4` e `equipe.mp4`; só esses nomes são servidos
+  (`/vila/previdenciario/clipes/<nome>.mp4`). Sem os vídeos a página mostra a muralha vazia com o aviso.
+- Caixa de diálogo (estilo RPG): nome, retrato e texto letra por letra, com uma fala por evento (chegou, respondida, passada
+  à equipe, não entendida, conexão caída ou de volta, horário, a cada 10 respondidas e de espera). Os retratos ficam na mesma
+  pasta dos vídeos, fora do git: `retrato-neutro.png`, `retrato-alerta.png`, `retrato-firme.png`, `retrato-sereno.png`
+  (`/vila/previdenciario/retratos/<nome>.png`); sem eles, a caixa usa um rosto em pixel art de reserva.
+- Som: botão **Som** na placa (o navegador exige um clique antes de tocar; a escolha fica salva). Arquivos em
+  `<VILA06_CLIPES>/sons/`, fora do git: `musica.mp3` (laço com fusão de 3 s), `ambiente.mp3` (vento, em laço), efeitos
+  `sfx-<nome>.mp3` (gancho, gas, corte, esquiva, pouso, vapor, passo, canhao, sino; os tempos de cada vídeo ficam em
+  `EFEITOS_CLIPE` na página) e a voz de cada fala, `fala-<hash>.mp3` (FNV-1a de 32 bits do texto). Mudou o texto de uma fala
+  = ela fica sem voz até gerar de novo (nunca toca a versão velha). Para gerar ou atualizar:
+  `ELEVENLABS_API_KEY=... .venv/bin/python doc/vila/gerar_sons_vila06.py <VILA06_CLIPES> --aplicar` (só o que falta;
+  `--so falas|efeitos|musica`, `--refazer`). Sem `--aplicar` mostra o que seria gerado e o custo. Sem os arquivos, a cena
+  segue muda.
+- No bot: `VILA_TOKEN` no `.env` dele (24+ caracteres, `openssl rand -hex 24`); o mesmo valor vai em `VILA06_TOKEN` aqui.
+  Bot com HTTPS de certificado próprio (RN22.4): copiar o certificado para cá e apontar `VILA06_CERTIFICADO`.
+- Testes: `.venv/bin/python -m unittest tests.test_vila06`.
+
 ### Passo 21 — Rodar no Mac e no Linux
 - O projeto roda nos dois sistemas com os mesmos arquivos e comandos.
 - Scripts `rodar*.sh` sem `readlink -f` (funcionam no macOS e no Linux);
@@ -1437,6 +1467,10 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `ZANGAO_PASTA` | não | Pasta do Zangão neste computador (com `.venv` e `.env` dele); liga os botões da Vila 02 | `~/zangao` |
 | `ALBI_PASTA` | não | Pasta do Albi (com `.venv` e `.env` dele); vazio = `albi/` deste repositório | `~/albi` |
 | `ORELHA_PASTA` | não | Pasta do Orelha, de onde o Sam lê o horário e os relatórios (`/orelha`); vazio = `orelha/` deste repositório | `~/orelha` |
+| `VILA06_URL` | não | Endereço do bot do Previdenciário para a Vila 06 (vazio = simulação) | vazio |
+| `VILA06_TOKEN` | não | Mesmo `VILA_TOKEN` do `.env` do bot (RN28) | (no `.env`) |
+| `VILA06_CERTIFICADO` | não | Certificado próprio do bot (HTTPS na rede interna) | vazio |
+| `VILA06_CLIPES` | não | Pasta dos vídeos da Vila 06 (fora do git) | `<SAIDA_PASTA>/vila06_clipes` |
 
 **Site com certificado vencido.** Se o certificado do VIOS (ou do Sonar, no Albi) vencer, o Chrome
 mostra "Sua conexão não é particular" no lugar do login. O Sam, o Orelha, o Jarvis e o Albi clicam

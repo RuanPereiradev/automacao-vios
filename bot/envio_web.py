@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 from flask import (Flask, Response, abort, jsonify, redirect, render_template, request, send_file,
                    send_from_directory, url_for)
 
-from bot import albi, conferencia, config, duplicidade, envio_auto, envio_txt, eventos, jarvis, orelha, skill, zangao
+from bot import albi, conferencia, config, duplicidade, envio_auto, envio_txt, eventos, jarvis, orelha, skill, vila06, zangao
 from bot.lancamento import REGISTRO, RESULTADOS, lancar, ler_intimacao
 from bot.login import fazer_login
 from bot.navegador import criar_driver
@@ -32,6 +32,8 @@ MODO_TESTE = re.compile(r"\A\s*MODO\s*:\s*TESTE\s*(\r?\n|\Z)", re.I)
 ARQUIVO_VILA = Path(__file__).parent / "vila" / "vila.html"  # HTML único da vila (servido em /vila)
 # vila do Sam: a Fortaleza do Dragão (servida em /vila/sam, no topo das páginas do Sam)
 ARQUIVO_FORTALEZA = Path(__file__).parent / "vila" / "fortaleza.html"
+# Vila 06: a muralha do bot do Previdenciário (servida em /vila/previdenciario; vídeos fora do git)
+ARQUIVO_MURALHA = Path(__file__).parent / "vila" / "muralha.html"
 PASTA_ENVIOS = "envios"  # dentro da pasta de saída: um .json por envio (histórico que não some)
 DATAS = ("criado", "inicio", "fim", "editado")
 
@@ -396,6 +398,8 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     pasta_jarvis = jarvis.pasta()
     # Orelha (relatório do dia): ORELHA_PASTA ou a pasta orelha/ deste repositório; o Sam só lê o horário e os relatórios
     pasta_orelha = orelha.pasta()
+    # Vila 06 (bot do Previdenciário): endereço e token do bot, pasta dos vídeos (bot/vila06.py)
+    conf_vila06 = vila06.configuracao(cfg.pasta_saida)
     arquivo_pessoas = pasta_saida / "responsaveis.json"
     envios = carregar_envios(pasta_saida)  # id -> {arquivo, cis, estado, confirmar, ...}
     trava = threading.Lock()  # um envio por vez (um navegador só)
@@ -910,6 +914,48 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         """A vila do Sam: a Fortaleza do Dragão (HTML único, só assiste aos eventos do Sam em /eventos)."""
         return Response(ARQUIVO_FORTALEZA.read_bytes(), 200, {"Content-Type": "text/html; charset=utf-8",
                                                               "Cache-Control": "no-cache"})
+
+    @app.route("/vila/previdenciario")
+    def vila_previdenciario():
+        """Vila 06: a muralha do bot do Previdenciário (HTML único; só assiste ao estado do bot)."""
+        return Response(ARQUIVO_MURALHA.read_bytes(), 200, {"Content-Type": "text/html; charset=utf-8",
+                                                            "Cache-Control": "no-cache"})
+
+    @app.route("/vila/previdenciario/estado")
+    def vila_previdenciario_estado():
+        """Estado do bot do Previdenciário para a cena (só contagens; o token fica neste servidor)."""
+        desde = request.args.get("desde", "")
+        dados = vila06.estado(conf_vila06, int(desde) if desde.isdigit() else None)
+        dados["clipes"] = vila06.clipes_instalados(conf_vila06["clipes"])
+        dados["retratos"] = vila06.retratos_instalados(conf_vila06["clipes"])
+        dados["sons"] = vila06.sons_instalados(conf_vila06["clipes"])
+        resposta = jsonify(dados)
+        resposta.headers["Cache-Control"] = "no-store"
+        return resposta
+
+    @app.route("/vila/previdenciario/clipes/<nome>.mp4")
+    def vila_previdenciario_clipe(nome):
+        """Vídeos da cena, só os da lista (bot/vila06.CLIPES), da pasta VILA06_CLIPES."""
+        arquivo = vila06.caminho_clipe(conf_vila06["clipes"], nome)
+        if not arquivo:
+            abort(404)
+        return send_file(arquivo, mimetype="video/mp4", conditional=True, max_age=3600)
+
+    @app.route("/vila/previdenciario/retratos/<nome>.png")
+    def vila_previdenciario_retrato(nome):
+        """Retratos da caixa de diálogo (bot/vila06.RETRATOS), da mesma pasta dos vídeos."""
+        arquivo = vila06.caminho_retrato(conf_vila06["clipes"], nome)
+        if not arquivo:
+            abort(404)
+        return send_file(arquivo, mimetype="image/png", conditional=True, max_age=3600)
+
+    @app.route("/vila/previdenciario/sons/<nome>.mp3")
+    def vila_previdenciario_som(nome):
+        """Sons da cena (bot/vila06.SONS e falas fala-<hash>), da pasta sons/ dentro da pasta dos vídeos."""
+        arquivo = vila06.caminho_som(conf_vila06["clipes"], nome)
+        if not arquivo:
+            abort(404)
+        return send_file(arquivo, mimetype="audio/mpeg", conditional=True, max_age=3600)
 
     def _rodar(envio_id, envio):
         """Entra no VIOS uma vez e lança CI por CI (as que não têm problema)."""
