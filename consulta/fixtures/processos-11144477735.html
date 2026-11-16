@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<!-- FIXTURE FICTÍCIA (repo público): lista de processos filtrada por CPF. Nenhum dado real. -->
+<html><head><meta charset="utf-8"><title>Processos</title></head><body>
+<form method="get" action="?pag=sys/processos/processos-lista.php&amp;menu_lateral=true">
+  <input type="text" name="pesq[cpfcnpj]" value="111.444.777-35">
+  <button id="Pesq" type="submit">Pesquisar</button>
+</form>
+<table class="geratabela">
+  <thead><tr><th>CI</th><th>Número</th><th>Cliente</th><th>Área</th><th>Partes</th><th>Valor</th><th>Obs</th><th>Ações</th></tr></thead>
+  <tbody>
+      <tr id="processos-lista_linha_1" data-processos_id="9103" data-detalhes-linha="1">
+        <td data-id="processos-lista_linha_1_processos_id">9103</td>
+        <td data-id="processos-lista_linha_1_nro_proc_html"><span class="vj-badge">Cliente OURO</span> CNJ: 0009103-33.2099.8.06.0001</td>
+        <td data-id="processos-lista_linha_1_clientes_nome">Beltrano Fictício</td>
+        <td data-id="processos-lista_linha_1_pr_areas_nome">Previdenciário</td>
+        <td data-id="processos-lista_linha_1_ativahtml">Autor: Beltrano Fictício</td>
+        <td data-id="processos-lista_linha_1_valor_acao">R$ 1,00</td>
+        <td data-id="processos-lista_linha_1_obs_proc"></td>
+        <td><a title="Visualizar" href="?pag=sys/processos/processos-vis.php&amp;processos_id=9103">ver</a>
+            <a title="Apagar" href="?pag=sys/processos/processos-lista.php&amp;act=del&amp;processos_id=9103">apagar</a></td>
+      </tr>
+  </tbody>
+</table>
+</body></html>

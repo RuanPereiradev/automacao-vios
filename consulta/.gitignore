@@ -1,0 +1,4 @@
+# segredos e logs do coletor nunca vão para o git
+.env
+*.pem
+logs/

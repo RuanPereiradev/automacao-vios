@@ -802,6 +802,17 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `saida/vila_pendentes.jsonl` dele).
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py bot/vila/vila.html`.
 
+### Passo 37 — Consulta de processo pelo WhatsApp: o coletor (pasta `consulta/`)
+- Quinto robô, ao lado da Orelha (usa o `.venv` e o núcleo dela, sem alterá-la). Roda no Mac, só com saída
+  HTTPS para o bot: a cada `CONSULTA_INTERVALO` s busca pedidos, lê o VIOS só por leitura e devolve a ficha
+  mínima (fase, área, datas, telefones em HMAC). Nunca sai do Mac: CPF, nome, CNJ, CI, comentários, valores.
+- Especificação: `consulta/CONTRATO.md`. Instalar e rodar: `consulta/README.md`
+  (`orelha/.venv/bin/pip install -r consulta/requirements.txt`; `cp consulta/.env.example consulta/.env`;
+  `consulta/rodar.sh --simulado --uma-vez` para ver sem VIOS).
+- Configuração: variáveis `CONSULTA_*` em `consulta/.env.example`. `ORELHA_PARADOS_LIBERAR_XHR=auto` é
+  necessário: a tabela de tarefas da ficha carrega por XHR POST e o bloqueio de envios a deixaria vazia.
+- Mapa tipo de tarefa -> fase: `consulta/fases_vios.yaml` (todas as áreas, revisão do setor).
+
 ### Passo 33 — Orelha, o relatório do dia que só lê o VIOS (pasta `orelha/`) e a Vila 05
 - Quarto bot, separado como o Albi: fica em `orelha/`, com `.venv`, `.env`, `logs/` e `saida/`
   próprios, e não importa nada de `bot/` nem de `albi/`. **Detalhes em `orelha/README.md`**:

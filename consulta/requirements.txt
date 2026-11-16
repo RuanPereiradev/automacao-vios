@@ -1,0 +1,5 @@
+# Coletor da consulta de processo. Vale o mesmo ambiente da Orelha (orelha/.venv):
+#   orelha/.venv/bin/pip install -r consulta/requirements.txt
+-r ../orelha/requirements.txt
+cryptography==50.0.2
+PyYAML==6.0.3
