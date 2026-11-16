@@ -12,6 +12,21 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Coletor da consulta de processo pelo WhatsApp, pasta `consulta/` (16/11/2026)
+- Robô Python que lê o VIOS só por leitura (reaproveita `orelha/nucleo` e a leitura da tabela de tarefas da
+  ficha) e responde aos pedidos do bot de WhatsApp: busca pedidos (`GET /consulta/pendentes`, assinado com
+  HMAC), decifra o CPF (RSA-OAEP SHA-256), acha processos e telefones do cadastro, calcula a fase e devolve
+  só a ficha mínima por lista branca (`POST /consulta/resultado`); telefones só como HMAC. Especificação em
+  `consulta/CONTRATO.md`; uso em `consulta/README.md`. `python -m consulta [--uma-vez] [--simulado]`.
+- `consulta/fases_vios.yaml`: mapa tipo de tarefa -> fase para TODAS as áreas (551 tipos de
+  `consulta/tipos-todos.txt`; `tipos-previdenciario.txt` guarda o catálogo do previdenciário); tipo fora do
+  mapa vira `desconhecida` e o bot encaminha para a equipe.
+- Testes `unittest` em `consulta/tests/` (fixtures fictícias em `consulta/fixtures/`), incluindo log sem CPF,
+  telefone, nome ou CI. Dependências novas (`consulta/requirements.txt`): `cryptography`, `PyYAML`.
+- Configuração: `consulta/.env` (modelo `consulta/.env.example`), incluindo `ORELHA_PARADOS_LIBERAR_XHR=auto`
+  (a tabela de tarefas da ficha carrega por XHR POST; sem isso vem vazia).
+- Corrigido ao fechar a sessão: o leitor é fechado antes do Chrome (evita o traceback de conexão recusada).
+
 ### Alterado — Albi: trava de pedido repetido passa de 30 dias para 1 dia (16/11/2026)
 - `DIAS_REPETIDO` em `albi/main.py` agora é 1: CPF + empresa só são bloqueados (usa o pedido anterior)
   se foram pesquisados nas últimas 24 h; depois disso o Albi compra de novo. Textos atualizados em

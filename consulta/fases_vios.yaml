@@ -1,0 +1,172 @@
+# Mapa tipo de tarefa do VIOS -> código de fase (CONTRATO.md, seção 4). Vale para TODAS as áreas.
+#
+# O nome real da tarefa é, por exemplo, "ACOMPANHAR MOB (PREVIDENCIÁRIO)- SOBRAL 2026" ou
+# "DESPACHAR PROCESSO (CÍVEL) 2026". Duas passadas (consulta/fases.py, Mapa.codigo), sempre sem acento e
+# em maiúsculas:
+#   1. "tipos": tipo-base exato. Tipo-base = nome sem parênteses (área, segmento), sem cidade, sem ano e
+#      sem "- PROCESSO". Os de baixo vieram do catálogo do previdenciário (tipos-previdenciario.txt);
+#   2. "regras": expressões regulares sobre o nome COMPLETO (com parênteses), na ordem; vale a primeira que
+#      casar. As regras de "ignorar" vêm primeiro, depois as fases mais específicas.
+# Nada casou -> "desconhecida" (a equipe responde). Catálogo completo (551 tipos): tipos-todos.txt.
+#
+# Valores possíveis:
+#   <código da seção 4>  a tarefa define a fase;
+#   ignorar              comunicação interna, financeiro, controladoria, contrato, prospect, reunião:
+#                        não define fase, o coletor pula a tarefa e usa a próxima;
+#   desconhecida         ambíguo: se for a tarefa que decidiria a fase, devolve "desconhecida".
+# Revisado por uma pessoa do setor antes de ligar: na dúvida, "desconhecida".
+versao: 1
+
+tipos:
+  "ACOMPANHAMENTO INTERNO": ignorar
+  "ACOMPANHAMENTO PROCESSUAL": ignorar
+  "ACOMPANHAR AGENDAMENTO NO INSS": aguardando_agendamento_inss
+  "ACOMPANHAR JULGAMENTO DO PROCESSO": aguardando_decisao
+  "ACOMPANHAR MOB": em_analise_inss
+  "ACOMPANHAR PRORROGAÇÃO NO INSS": em_analise_inss
+  "ACOMPANHAR REATIVAÇÃO DO BENEFÍCIO/MOB": em_analise_inss
+  "ACOMPANHAR RESULTADO DE PERICIA": desconhecida
+  "ACOMPANHAR TRÂNSITO EM JULGADO E ENCERRAR A PASTA": encerramento
+  "AGENDAMENTO INICIAL NO INSS": aguardando_agendamento_inss
+  "AGENDAMENTO PERICIAL SOCIAL/MEDICA": aguardando_pericia_inss
+  "AGENDAMENTO PRORROGAÇÃO NO INSS": aguardando_agendamento_inss
+  "ANALISAR DECISÃO ADMINISTRATIVA": decisao_proferida
+  "ANALISAR DECISÃO MOB": decisao_proferida
+  "ANALISAR DECISÃO PRORROGAÇÃO": decisao_proferida
+  "ANALISAR DOCUMENTOS": triagem_documentos
+  "ANALISAR DOCUMENTOS ADMINISTRATIVO": triagem_documentos
+  "ANALISAR DOCUMENTOS JUDICIAL": triagem_documentos
+  "ANALISAR EXIGÊNCIA": exigencia_inss
+  "ANALISAR EXIGÊNCIA PRORROGAÇÃO": exigencia_inss
+  "ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO": decisao_proferida
+  "AUDIÊNCIA": aguardando_audiencia
+  # AVISAR ..., RETORNO ..., LEMBRAR ..., INFORMAR ...: ver "prefixos" (comunicação com o cliente)
+  "BENEFÍCIO/PERÍCIA IMPROCEDENTE, COM PROCESSO JUDICIAL": decisao_proferida
+  "BENEFÍCIO/PERÍCIA IMPROCEDENTE, SEM PROCESSO JUDICIAL": decisao_proferida
+  "BENEFÍCIO/PERÍCIA PROCEDENTE, COM PROCESSO JUDICIAL": decisao_proferida
+  "BENEFÍCIO/PERÍCIA PROCEDENTE, SEM PROCESSO JUDICIAL": decisao_proferida
+  "C: AGENDAMENTO INICIAL NO INSS": aguardando_agendamento_inss
+  "C: AGENDAMENTO PRORROGAÇÃO NO INSS CONSULTORIAS": aguardando_agendamento_inss
+  "C: PROTOCOLAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/EMENDA/IMPUGNAÇÃO LAUDO": acao_protocolada
+  "CADASTRAR DECISÃO E LANÇAR TAREFA PARA A ADVOGADA RESPONSÁVEL": decisao_proferida
+  "CIÊNCIA": ignorar
+  "CONFIRMAR AUDIÊNCIA": aguardando_audiencia
+  "CRIAR PROCESSO ADM": pedido_em_preparo
+  "CRIAR PROCESSO JUDICIAL": acao_em_preparo
+  "CRIAR PROCESSO PRORROGAÇÃO ADM": pedido_em_preparo
+  "CRIAR PROCESSO PRORROGAÇÃO JUDICIAL": acao_em_preparo
+  "CUMPRIR EXIGÊNCIA": exigencia_inss
+  "CUMPRIR EXIGÊNCIA PRORROGAÇÃO": exigencia_inss
+  "DESPACHAR PROCESSO": ignorar
+  "DILIGENCIA NO INSS": em_analise_inss
+  "EDITAR OS DADOS DA AÇÃO PROTOCOLADA": acao_protocolada
+  "EDITAR OS DADOS DO PROTOCOLO ADMINISTRATIVO": em_analise_inss
+  "ELABORAR SUBSTABELECIMENTO (/B2C)": ignorar
+  "EMITIR GUIAS INSS": ignorar
+  "GERAR BOLETO PARCELAMENTO ADM": ignorar
+  "GERAR BOLETOS PARCELAMENTO": ignorar
+  "IMPLANTAÇÃO ADMINISTRATIVA": implantacao_beneficio
+  "IMPLANTAÇÃO JUDICIAL": implantacao_beneficio
+  "INSTRUÇÃO E RELATÓRIO DE AUDIÊNCIA": aguardando_audiencia
+  "INSTRUÇÃO PERÍCIA MÉDICA JUDICIAL": aguardando_pericia_judicial
+  "INSTRUÇÃO PERÍCIA MÉDICA NO INSS": aguardando_pericia_inss
+  "INSTRUÇÃO PERÍCIA SOCIAL JUDICIAL": aguardando_pericia_judicial
+  "MARCAR REUNIÃO COM O CLIENTE SOBRE A AUDIÊNCIA": ignorar
+  "MARCAR REUNIÃO COM O CLIENTE SOBRE A AUDIÊNCIA/PERÍCIA": ignorar
+  "MINUTAR DEFESA ADM/MOB": pedido_em_preparo
+  "MINUTAR EMBARGOS/RECURSO/CONTRARRAZÕES": em_recurso
+  "MINUTAR EMENDA À INICIAL": acao_protocolada
+  "MINUTAR INICIAL": acao_em_preparo
+  "MINUTAR PETIÇÃO INTERMEDIÁRIA": acao_protocolada
+  "MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO": acao_protocolada
+  "PARCELAMENTO": ignorar
+  "PERÍCIA MÉDICA JUDICIAL": aguardando_pericia_judicial
+  "PERÍCIA MÉDICA/SOCIAL NO INSS": aguardando_pericia_inss
+  "PLANEJAMENTO": ignorar
+  "PRESTAÇÃO DE CONTAS (FINANCEIRO)": ignorar
+  "PRESTAÇÃO DE CONTAS ADMINISTRATIVO (FINANCEIRO)": ignorar
+  "PROCEDENTE ADMINISTRATIVO": decisao_proferida
+  "PROCEDENTE JUDICIAL": decisao_proferida
+  "PROCEDENTE PRORROGAÇÃO NO INSS": decisao_proferida
+  "PROSPECT": ignorar
+  "PROTOCOLAR EMBARGOS/RECURSO/CONTRARRAZÕES": em_recurso
+  "PROTOCOLAR EMENDA À INICIAL": acao_protocolada
+  "PROTOCOLAR HABILITAÇÃO": acao_protocolada
+  "PROTOCOLAR INICIAL": acao_protocolada
+  "PROTOCOLAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO": acao_protocolada
+  "PROTOCOLAR REENVIO": desconhecida
+  "PROTOCOLAR SUBSTABELECIMENTO (/B2C)": ignorar
+  "REAGENDAMENTO": aguardando_agendamento_inss
+  "RECEBIMENTO (FINANCEIRO)": ignorar
+  "REENVIAR/REVISAR PROCESSO": ignorar
+  "REPASSE AO LAÇADOR": ignorar
+  "REQUERER DOCUMENTOS": aguardando_documentos
+  "REQUERER HABILITAÇÃO E FAZER RELATÓRIO- SUSTENTAÇÃO ORAL": em_recurso
+  "REUNIÃO COM O CLIENTE": ignorar
+  "REVISAR EMBARGOS/RECURSO/CONTRARRAZÕES": em_recurso
+  "REVISAR EMENDA À INICIAL": acao_protocolada
+  "REVISAR INICIAL": acao_em_preparo
+  "REVISAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO": acao_protocolada
+  "SOLICITAR DOCUMENTAÇÃO ADMINISTRATIVA": aguardando_documentos
+  "SOLICITAR DOCUMENTAÇÃO JUDICIAL": aguardando_documentos
+  "SUSTENTAÇÃO ORAL": em_recurso
+  "TRANSFORMAR CONSULTORIA EM PROCESSO E AGENDAR INICIAL": pedido_em_preparo
+  "TRIAGEM DE DOCUMENTOS INICIAIS": triagem_documentos
+  "TRIAGEM/ANALISE DOCUMENTOS": triagem_documentos
+  "VERIFICAR VIABILIDADE DE REALIZAR SUSTENTAÇÃO ORAL": em_recurso
+
+# Comunicação interna / com o cliente: qualquer tipo-base que COMEÇA com estas palavras é ignorado
+# (casam depois dos tipos exatos acima, que têm prioridade).
+prefixos:
+  "AVISAR": ignorar
+  "RETORNO": ignorar
+  "LEMBRAR": ignorar
+  "INFORMAR": ignorar
+
+# Fases em que o coletor devolve encaminhar=true (a equipe fala com o cliente): documento pedido ao
+# cliente, decisão, valores, encerramento e fase desconhecida.
+encaminhar:
+  - aguardando_documentos
+  - decisao_proferida
+  - cumprimento_pagamento
+  - encerramento
+  - desconhecida
+
+# Tarefas abertas que dão o "proximo" (perícia ou audiência com data prevista de hoje em diante). A chave
+# casa o começo do tipo-base: "AUDIENCIA" pega "AUDIÊNCIA UNA (TRABALHISTA) 2026".
+proximo:
+  "AUDIÊNCIA": audiencia
+  "PERÍCIA MÉDICA JUDICIAL": pericia
+  "PERÍCIA MÉDICA/SOCIAL NO INSS": pericia
+
+# Regras genéricas para todas as áreas (regex sobre o nome completo; a primeira que casar vale).
+regras:
+  # --- não definem fase: financeiro, controladoria, contrato, comercial, consultivo, INPI, reunião, comunicação
+  - {padrao: '\((FINANCEIRO|CONTROLADORIA|COMERCIAL|COMPLIANCE|NUJI|CONSULTIVO|CONS\. CIVEL|CONTADORIA|B2B|REUNIAO|INPI)', fase: ignorar}
+  - {padrao: '^(AVISAR|RETORNO|LEMBRAR|INFORMAR|DESPACHAR|ACOMPANHAMENTO|AGENDAR|CANCELAR|MARCAR REUNIAO|REUNIAO|ENVIAR|ENCAMINHAR|CONFECCIONAR|ENTRAR EM CONTATO|BAIXA MANUAL|ROTA|CRIAR PLANO|DIAGNOSTICO|\[NAO USAR|FASE \d|REENVIO|CHAVAL|CALCULOS PELA SECRETARIA|GERAR GRU|SOLICITAR A ATA|DILIGENCIA|ELABORAR RELATORIO E ENVIAR)', fase: ignorar}
+  - {padrao: 'PROSPECT|PLANEJAMENTO|COBRANCA|CONTRATO|CONSULTORIA|PARCELAMENTO|BOLETO|RECEBIMENTO|PRESTACAO DE CONTAS|REPASSE|GUIAS?\b|HOLDING|\bB2B\b|AUDITORIA|PLANO DE ACAO|ATA DE REUNIAO|SUBSTABELECIMENTO|NOTIFICACAO EXTRAJUDICIAL|PEDIDO DE REGISTRO DE MARCA', fase: ignorar}
+  - {padrao: '^ANALISAR (PROCESSO|PROCEDIMENTO|VIABILIDADE)|^ACOMPANHAR( 20\d\d)?$', fase: ignorar}
+  # --- misturas de petição inicial, contestação e embargos: ambíguo
+  - {padrao: 'INICIAL/CONTESTACAO', fase: desconhecida}
+  # --- exigência (a do INSS/órgão administrativo)
+  - {padrao: 'EXIGENCIA', fase: exigencia_inss}
+  # --- encerramento
+  - {padrao: 'ENCERRAR|ENCERRAMENTO|ARQUIVAR|ARQUIVAMENTO|TRANSITO EM JULGADO', fase: encerramento}
+  # --- audiência e perícia
+  - {padrao: 'AUDIENCIA|OITIVA', fase: aguardando_audiencia}
+  - {padrao: 'PERICIA.*\bINSS\b|\bINSS\b.*PERICIA', fase: aguardando_pericia_inss}
+  - {padrao: 'PERICIA|LAUDO', fase: aguardando_pericia_judicial}
+  # --- recurso e embargos
+  - {padrao: 'EMBARGOS|RECURSO|CONTRARRAZOES|SUSTENTACAO|AGRAVO|APELACAO|REVISTA|RECURSAL', fase: em_recurso}
+  # --- decisão
+  - {padrao: 'SENTENCA|ACORDAO|DECISAO|PROCEDENTE|IMPROCEDENTE|JULGAMENTO', fase: decisao_proferida}
+  # --- cumprimento e pagamento (dinheiro)
+  - {padrao: 'EXECUCAO|CUMPRIMENTO|ALVARA|\bRPV\b|PRECATORIO|CALCULO|ACORDO|PAGAMENTO|HOMOLOGACAO|LIQUIDACAO|PENHORA|BACENJUD|SISBAJUD', fase: cumprimento_pagamento}
+  # --- documentos do cliente
+  - {padrao: '^(SOLICITAR|REQUERER|CONFERIR|COBRAR) DOC', fase: aguardando_documentos}
+  - {padrao: 'TRIAGEM|^ANALISAR DOCUMENTOS', fase: triagem_documentos}
+  # --- pedido administrativo (não é ação judicial)
+  - {padrao: '^(MINUTAR|REVISAR|ELABORAR) .*(ADMINISTRATIV|REQUERIMENTO)', fase: pedido_em_preparo}
+  # --- ação: o que já foi protocolado vem antes de minutar/revisar
+  - {padrao: 'EMENDA|^(PROTOCOLAR|C: PROTOCOLAR|EDITAR)|PETICAO|REPLICA|IMPUGNACAO|CONTESTACAO|DEFESA|MANIFESTACAO|HABILITACAO|RESPOSTA A ACUSACAO', fase: acao_protocolada}
+  - {padrao: 'INICIAL|^(MINUTAR|REVISAR|ELABORAR|CRIAR PROCESSO)', fase: acao_em_preparo}
