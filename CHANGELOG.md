@@ -12,6 +12,11 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — `consulta/servico_mac.sh`: coletor sempre ligado no Mac pelo launchd (16/11/2026)
+- `instalar` põe as dependências de `consulta/requirements.txt` na `.venv` da Orelha, confere o `consulta/.env`
+  (campos obrigatórios, certificado do bot, chave privada com permissão 600) e liga o coletor com `KeepAlive`
+  (sobe no login, reinicia se cair). Também `status`, `log` e `parar`.
+
 ### Adicionado — Coletor confia no certificado próprio do bot no Mac (`CONSULTA_CERTIFICADO`) (16/11/2026)
 - No Mac do escritório o bot roda com HTTPS de certificado próprio (RN22 do bot). Com `CONSULTA_CERTIFICADO`
   apontando para `dados/certificado/certificado.pem` do bot, o coletor valida a conexão só contra esse

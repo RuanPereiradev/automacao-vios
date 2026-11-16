@@ -51,7 +51,17 @@ consulta/rodar.sh --uma-vez              # um ciclo de verdade (busca pedidos, l
 consulta/rodar.sh                        # laço: a cada CONSULTA_INTERVALO s
 ```
 
-Em produção, deixe o laço sob o launchd (`KeepAlive`) ou numa janela do terminal. Códigos de saída: 0 ok,
+No Mac do escritório, deixe ligado pelo launchd (sobe no login, reinicia se cair):
+
+```bash
+consulta/servico_mac.sh instalar   # instala consulta/requirements.txt na .venv da Orelha, confere o .env e liga
+consulta/servico_mac.sh status     # rodando? último código de saída
+consulta/servico_mac.sh log        # acompanha consulta/logs/launchd.log
+consulta/servico_mac.sh parar      # desliga
+```
+
+No mesmo Mac do bot: `CONSULTA_BOT_URL=https://localhost:3000` e `CONSULTA_CERTIFICADO` apontando para
+`dados/certificado/certificado.pem` da pasta do bot (o instalador do bot gera). Códigos de saída: 0 ok,
 1 bot inacessível (`--uma-vez`), 2 configuração, 3 bloqueio de envios inativo (nada é lido).
 
 ## Testes
