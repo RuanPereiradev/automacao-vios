@@ -875,8 +875,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   os resultados de cada um" (ou `./rodar.sh --arquivo X --baixar`) pega o número de
   cada pedido no registro e baixa de novo o PDF e a planilha, sem abrir a Nova
   Pesquisa. Quem não tem pedido no registro fica como "Sem pedido no registro".
-- Não compra duas vezes: CPF já pesquisado para a mesma empresa nos últimos 30
-  dias usa o pedido anterior (registro `albi/saida/pedidos_confirmados.json`).
+- Não compra duas vezes: CPF já pesquisado para a mesma empresa no último dia
+  (24 h) usa o pedido anterior (registro `albi/saida/pedidos_confirmados.json`).
 - Pela página: `http://<IP do Mac>:5001/albi` (link "Albi" no topo do Ultron).
   A página usa o tema da Arena do Albi (Dragon Ball Z): céu, nuvens, lago, cabeçalho bege com telhado laranja
   e cartões com moldura de madeira (`<body class="tema-arena">` em `bot/templates/albi.html`).

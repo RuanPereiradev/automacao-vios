@@ -12,6 +12,11 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Albi: trava de pedido repetido passa de 30 dias para 1 dia (16/11/2026)
+- `DIAS_REPETIDO` em `albi/main.py` agora é 1: CPF + empresa só são bloqueados (usa o pedido anterior)
+  se foram pesquisados nas últimas 24 h; depois disso o Albi compra de novo. Textos atualizados em
+  `albi/README.md`, `DOCUMENTACAO.md` e `bot/templates/albi.html`.
+
 ### Adicionado — Regras da skill de 13/11/2026 no robô: responsáveis, filial da perícia e feriado na DATA (13/11/2026)
 - **Responsáveis na análise pela API** (`bot/responsaveis.py`): a sigla do auxiliar (SUH, TAMI, JOHN, JOAN...) vira o nome completo
   pela lista do VIOS (`saida/responsaveis.json`); sem auxiliar, o advogado responsável do processo. Sigla ambígua (CARL) não é

@@ -38,7 +38,7 @@ a planilha) e escreve o `resultado.txt`.
    frase ao Gemini (`GEMINI_API_KEY` no `.env`; só o nome da classe vai; cache em `explicacoes_classe.json`).
    Sem processos ("não consta"): "…não localizamos *nenhum processo* em nome de *NOME*".
 7. Não compra duas vezes: o registro `saida/pedidos_confirmados.json` é anotado antes de cada
-   clique em Confirmar; CPF já pesquisado para a mesma empresa nos últimos 30 dias usa o pedido
+   clique em Confirmar; CPF já pesquisado para a mesma empresa no último dia (24 h) usa o pedido
    anterior. Erro depois do clique vira "Conferir no Sonar" (nunca clica de novo); 3 seguidos param.
 
 ## O arquivo .txt (modelo: `modelo_pedidos.txt`)

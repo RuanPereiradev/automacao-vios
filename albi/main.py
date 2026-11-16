@@ -12,7 +12,7 @@ faz uma Pesquisa de Processos, uma por vez:
   4. lê as planilhas e gera o relatório (relatorio.py): relatorio.html, relatorio.pdf e processos.csv,
      com cada processo de quem tem processos (número, tribunal, vara, ação, papel da pessoa, status...).
 Sem --confirmar ele faz o 1 e o 2 e NÃO compra nada (teste). CPF já pesquisado para a mesma
-empresa nos últimos 30 dias não é comprado de novo: usa o pedido anterior
+empresa no último dia (24 h) não é comprado de novo: usa o pedido anterior
 (registro em saida/pedidos_confirmados.json).
 
 .txt (modelo em modelo_pedidos.txt): um bloco por empresa e uma pessoa por linha, "CPF ; nome".
@@ -74,7 +74,7 @@ DOC_PASSO2 = re.compile(r"Documento da pesquisa\s*\n\s*(\d[\d./-]{10,}\d)", re.I
 PEDIDO_URL = re.compile(r"/pesquisa-processos/pedido/(\d+)")
 SACADO_PADRAO = "RONEELY FEITOSA & SOCIEDADE DE ADVOGADOS"
 REGISTRO = PASTA / "saida" / "pedidos_confirmados.json"  # empresa|CPF -> pedido (não comprar 2 vezes)
-DIAS_REPETIDO = 30
+DIAS_REPETIDO = 1
 PRECO = "R$ 15,70"  # valor por pesquisa visto no passo 2 em 04/11/2026 (o Albi lê o valor real lá)
 EVENTOS = False  # --eventos: cada evento vira uma linha "@evento {json}" na saída padrão
 
@@ -313,7 +313,7 @@ def chave(p):
 
 
 def ja_pesquisado(reg, p, agora=None):
-    """Registro de um pedido desta empresa + CPF nos últimos 30 dias (ou None)."""
+    """Registro de um pedido desta empresa + CPF no último dia (ou None)."""
     r = reg.get(chave(p))
     if not r:
         return None
