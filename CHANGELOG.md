@@ -12,6 +12,11 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Coletor confia no certificado próprio do bot no Mac (`CONSULTA_CERTIFICADO`) (16/11/2026)
+- No Mac do escritório o bot roda com HTTPS de certificado próprio (RN22 do bot). Com `CONSULTA_CERTIFICADO`
+  apontando para `dados/certificado/certificado.pem` do bot, o coletor valida a conexão só contra esse
+  certificado (`CONSULTA_BOT_URL=https://localhost:3000`). Vazio: validação padrão (bot com certificado público).
+
 ### Adicionado — Coletor da consulta de processo pelo WhatsApp, pasta `consulta/` (16/11/2026)
 - Robô Python que lê o VIOS só por leitura (reaproveita `orelha/nucleo` e a leitura da tabela de tarefas da
   ficha) e responde aos pedidos do bot de WhatsApp: busca pedidos (`GET /consulta/pendentes`, assinado com
