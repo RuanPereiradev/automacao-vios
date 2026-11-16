@@ -3,6 +3,7 @@
 Nunca escreve corpo, cabeçalho ou assinatura em log.
 """
 import json
+import ssl
 import logging
 import time
 import urllib.error
@@ -26,12 +27,17 @@ def corpo_json(dados):
 
 
 class ClienteBot:
-    def __init__(self, base_url, segredo, timeout=15, agora_ms=None, abrir=None):
+    def __init__(self, base_url, segredo, timeout=15, agora_ms=None, abrir=None, certificado=None):
         self.base = base_url.rstrip("/")
         self.segredo = segredo
         self.timeout = timeout
         self._agora_ms = agora_ms or (lambda: int(time.time() * 1000))
-        self._abrir = abrir or urllib.request.urlopen  # trocável nos testes
+        if abrir is None:
+            # No Mac o bot usa HTTPS com certificado próprio da rede interna (RN22): confiar só nele
+            # (CONSULTA_CERTIFICADO), como a Vila faz com VILA06_CERTIFICADO. Sem o arquivo, validação padrão.
+            ctx = ssl.create_default_context(cafile=str(certificado)) if certificado else None
+            abrir = lambda req, timeout: urllib.request.urlopen(req, timeout=timeout, context=ctx)  # noqa: E731
+        self._abrir = abrir  # trocável nos testes
 
     def cabecalhos(self, metodo, caminho, corpo=""):
         ts = str(self._agora_ms())

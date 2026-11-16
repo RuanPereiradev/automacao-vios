@@ -21,6 +21,7 @@ class ConfigColetor:
     chave_privada: Path = None
     intervalo: float = 5.0
     timeout_http: int = 15
+    certificado: Path = None          # CONSULTA_CERTIFICADO: PEM do certificado próprio do bot (Mac)
     pasta_logs: Path = PASTA / "logs"
     opcoes: Opcoes = None
 
@@ -50,6 +51,7 @@ def carregar(caminho_env=None, simulado=False, ambiente=None):
         chave_privada=chave_path,
         intervalo=intervalo,
         timeout_http=v("CONSULTA_TIMEOUT_HTTP", 15, int),
+        certificado=Path(v("CONSULTA_CERTIFICADO", "", str)).expanduser() if v("CONSULTA_CERTIFICADO", "", str) else None,
         pasta_logs=Path(v("CONSULTA_LOGS", str(PASTA / "logs"), str)),
         opcoes=Opcoes(chave_telefone=vios_cfg.bruto("CONSULTA_CHAVE_TELEFONE") or "",
                       formato_cpf=formato, exigir_eco_cpf=v("CONSULTA_EXIGIR_ECO_CPF", True, bool)),

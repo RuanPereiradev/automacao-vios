@@ -97,3 +97,16 @@ class TestCliente(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCertificadoProprio(unittest.TestCase):
+    """CONSULTA_CERTIFICADO: no Mac o bot usa certificado próprio; o cliente confia só nele."""
+
+    def test_certificado_inexistente_falha_ao_montar(self):
+        from consulta.cliente import ClienteBot
+        with self.assertRaises((FileNotFoundError, OSError)):
+            ClienteBot("https://localhost:3000", "s", certificado="/nao/existe/certificado.pem")
+
+    def test_sem_certificado_usa_validacao_padrao(self):
+        from consulta.cliente import ClienteBot
+        ClienteBot("https://exemplo.invalid", "s")  # não levanta

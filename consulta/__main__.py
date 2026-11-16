@@ -63,7 +63,7 @@ def main(argv=None):
 
     from consulta.fonte import FonteVios
     fonte = FonteVios(c.vios)
-    bot = ClienteBot(c.bot_url, c.segredo, c.timeout_http)
+    bot = ClienteBot(c.bot_url, c.segredo, c.timeout_http, certificado=c.certificado)
     parar = threading.Event()
     for sinal in (signal.SIGINT, signal.SIGTERM):
         signal.signal(sinal, lambda *_: parar.set())
