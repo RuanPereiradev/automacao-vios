@@ -12,6 +12,17 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Sam: segunda checagem da perícia pelo "Escritório atual" do processo (17/11/2026)
+- A tarefa `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026` saía com a filial de Sobral por padrão (a cidade vinha do teor
+  da intimação) e era direcionada para a pessoa errada. Agora, na hora de lançar (`lancamento.conferir_pericia()`), o robô
+  abre a tela Lançar Intimação da CI, segue o link do martelo ("Visualizar processo") e lê o campo **Escritório atual** da
+  ficha do processo (`lancamento.ler_escritorio()`, só leitura). O responsável passa a ser o da filial desse escritório
+  (`responsaveis.da_pericia_pelo_escritorio()`); o bloqueio de filial da análise é refeito com essa informação.
+- Escritório sem filial conhecida (Camocim, Tianguá, Jijoca, Sobral) ou campo não encontrado: a CI não é lançada e o motivo
+  mostra o escritório lido. Vale para todos os caminhos que lançam (envio automático, página de envio e `lancar.py`), também
+  no modo teste. CI sem perícia médica não abre a ficha.
+- Testes em `tests/test_responsaveis.py`.
+
 ### Adicionado — `consulta/servico_mac.sh`: coletor sempre ligado no Mac pelo launchd (16/11/2026)
 - `instalar` põe as dependências de `consulta/requirements.txt` na `.venv` da Orelha, confere o `consulta/.env`
   (campos obrigatórios, certificado do bot, chave privada com permissão 600) e liga o coletor com `KeepAlive`

@@ -72,6 +72,44 @@ class Pericia(unittest.TestCase):
         item = {"auxiliares": "SUH", "texto": "Perícia em Sobral.", "cidade": "SOBRAL/CE"}
         self.assertNotIn("SUHIANE DE MARIA GOMES SILVA", r.da_tarefa(item, {"nome": self.NOME}, PESSOAS)[0])
 
+    def test_escritorio_atual_define_a_filial(self):
+        for escritorio, nome in (("Roneely Feitosa - Sobral", "ANA LETÍCIA DA SILVA LEITAO"),
+                                 ("Roneely Feitosa - Camocim", "FRANCISCO VICTOR HORA DO NASCIMENTO"),
+                                 ("Roneely Feitosa - Tianguá", "JOÃO JÂNIO"),
+                                 ("Roneely Feitosa - Jijoca de Jericoacoara", "GUIVIA VASCONCELOS")):
+            nomes, bloqueio, _ = r.da_pericia_pelo_escritorio(escritorio, PESSOAS)
+            self.assertEqual((nomes, bloqueio), ([nome], ""), escritorio)
+
+    def test_escritorio_sem_filial_bloqueia(self):
+        for escritorio in ("Roneely Feitosa - Fortaleza", "", None):
+            nomes, bloqueio, _ = r.da_pericia_pelo_escritorio(escritorio, PESSOAS)
+            self.assertEqual(nomes, [])
+            self.assertIn(r.MSG_FILIAL, bloqueio)
+
+    def test_segunda_checagem_troca_o_responsavel_e_tira_o_bloqueio_da_analise(self):
+        import tempfile, json
+        res = {"ci": "1", "link_lancar": "x", "alertas": [],
+               "bloqueios": [f"{self.NOME}: {r.MSG_FILIAL}", "Falta no documento: horário"],
+               "tarefas": [{"nome": self.NOME, "responsaveis": ["ANA LETÍCIA DA SILVA LEITAO"]},
+                           {"nome": "OUTRA 2026", "responsaveis": ["TAMIRA LOIOLA"]}]}
+        original = lancamento.ler_escritorio
+        with tempfile.TemporaryDirectory() as pasta:
+            (Path(pasta) / "responsaveis.json").write_text(json.dumps(PESSOAS), encoding="utf-8")
+            try:
+                lancamento.ler_escritorio = lambda *a: "Roneely Feitosa - Camocim"
+                lancamento.conferir_pericia(None, res, pasta, 1)
+                self.assertEqual(res["tarefas"][0]["responsaveis"], ["FRANCISCO VICTOR HORA DO NASCIMENTO"])
+                self.assertEqual(res["tarefas"][1]["responsaveis"], ["TAMIRA LOIOLA"])
+                self.assertEqual(res["bloqueios"], ["Falta no documento: horário"])
+                lancamento.ler_escritorio = lambda *a: "Roneely Feitosa - Fortaleza"
+                lancamento.conferir_pericia(None, res, pasta, 1)
+                self.assertTrue(any(r.MSG_FILIAL in b for b in res["bloqueios"]))
+                # sem perícia médica: nem abre o VIOS
+                lancamento.ler_escritorio = lambda *a: self.fail("não devia ler o escritório")
+                lancamento.conferir_pericia(None, {"tarefas": [{"nome": "OUTRA 2026"}]}, pasta, 1)
+            finally:
+                lancamento.ler_escritorio = original
+
 
 class Feriado(unittest.TestCase):
     TABELA = prazos.Tabela("doc/feriados-brasil-2026-2027.md", "doc/feriados.txt")

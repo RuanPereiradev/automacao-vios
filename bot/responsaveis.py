@@ -6,6 +6,8 @@
   (no VIOS aparece como RONEELY FEITOSA): aí a tarefa não é lançada.
 - Só na PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026: o responsável da filial (Camocim, Tianguá,
   Jijoca de Jericoacoara, Sobral). Filial ausente ou ambígua: não lança.
+  Na análise a filial sai do teor/cidade (palpite); na hora de lançar vale o "Escritório atual" da ficha
+  do processo no VIOS (segunda checagem, bot/lancamento.py).
 """
 import json
 import re
@@ -125,6 +127,28 @@ def da_pericia_medica(item, pessoas):
     if not achado:
         return [], f"{MSG_FILIAL} ({nome} não está na lista do VIOS)", []
     return [achado], "", [f"Perícia médica judicial: responsável da filial de {filial.title()} ({achado})."]
+
+
+def filial_do_escritorio(escritorio):
+    """(filial, responsável) pelo "Escritório atual" da ficha do processo (ex.: "Roneely Feitosa - Sobral").
+    Nenhuma ou mais de uma filial no nome do escritório: (None, None)."""
+    t = normalizar(escritorio or "")
+    achadas = [f for f, (padrao, _) in FILIAIS.items() if re.search(padrao, t)]
+    if len(achadas) != 1:
+        return None, None
+    return achadas[0], FILIAIS[achadas[0]][1]
+
+
+def da_pericia_pelo_escritorio(escritorio, pessoas):
+    """(nomes, bloqueio, alertas) da PERÍCIA MÉDICA JUDICIAL pelo "Escritório atual" do processo no VIOS."""
+    filial, nome = filial_do_escritorio(escritorio)
+    if not nome:
+        return [], f"{MSG_FILIAL} (Escritório atual do processo no VIOS: '{(escritorio or '').strip() or 'não encontrado'}')", []
+    achado = _achar(nome, pessoas) if pessoas else nome
+    if not achado:
+        return [], f"{MSG_FILIAL} ({nome} não está na lista do VIOS)", []
+    return [achado], "", [f"Perícia médica judicial: Escritório atual do processo no VIOS é '{escritorio.strip()}', "
+                          f"responsável da filial de {filial.title()} ({achado})."]
 
 
 def da_tarefa(item, tarefa, pessoas):

@@ -18,7 +18,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from bot.navegador import POLL
 
-from bot import duplicidade, prazos, skill
+from bot import duplicidade, prazos, responsaveis, skill
 
 log = logging.getLogger(__name__)
 
@@ -268,6 +268,56 @@ def ler_intimacao(driver, link_lancar, timeout):
     )
 
 
+def ler_escritorio(driver, link_lancar, timeout):
+    """"Escritório atual" do processo da intimação (ex.: "Roneely Feitosa - Sobral"). Só lê: abre a tela
+    Lançar Intimação, segue o link do martelo ("Visualizar processo") e lê o campo na ficha do processo."""
+    _abrir(driver, link_lancar, timeout)
+    ficha = driver.execute_script(
+        "const i = document.querySelector(\"a[href*='processos-vis.php'] i.vj-icon-gavel\");"
+        "return i ? i.closest('a').href : '';"
+    )
+    if not ficha:
+        raise LancamentoErro("link do processo (martelo) não encontrado na tela Lançar Intimação")
+    driver.get(ficha)
+    # a ficha é montada depois do carregamento (Vue): espera o campo aparecer com valor
+    ler = """
+        const p = [...document.querySelectorAll('p')].find(p =>
+            /^Escrit[oó]rio atual/i.test(((p.querySelector('strong') || {}).innerText || '').trim()));
+        if (!p) return '';
+        const valor = [...p.children].find(e => e.tagName === 'SPAN' && !e.classList.contains('vj-acoes-dados'));
+        return valor ? valor.innerText.trim() : '';
+    """
+    try:
+        return WebDriverWait(driver, timeout, poll_frequency=POLL).until(lambda d: d.execute_script(ler))
+    except Exception:
+        raise LancamentoErro(f"campo 'Escritório atual' não encontrado na ficha do processo ({ficha})") from None
+
+
+def conferir_pericia(driver, r, pasta_saida, timeout):
+    """Segunda checagem da PERÍCIA MÉDICA JUDICIAL: o responsável é o da filial do "Escritório atual" do processo
+    no VIOS, não o da cidade que aparece no teor. Troca os responsáveis da tarefa e refaz o bloqueio de filial."""
+    pericias = [t for t in r.get("tarefas") or [] if t["nome"].startswith(responsaveis.PERICIA_MEDICA)]
+    if not pericias:
+        return
+    escritorio = ler_escritorio(driver, r["link_lancar"], timeout)
+    pessoas = responsaveis.carregar(pasta_saida)
+    # o bloqueio de filial da análise (palpite pelo teor) deixa de valer: quem decide é o escritório do processo
+    r["bloqueios"] = [b for b in r.get("bloqueios") or [] if responsaveis.MSG_FILIAL not in b]
+    for t in pericias:
+        nomes, bloqueio, alertas = responsaveis.da_pericia_pelo_escritorio(escritorio, pessoas)
+        if bloqueio:
+            r["bloqueios"].append(f"{t['nome']}: {bloqueio}")
+            continue
+        if [_normalizar(n) for n in t.get("responsaveis") or []] != [_normalizar(n) for n in nomes]:
+            log.info("CI %s (%s): responsável trocado de %s para %s pelo Escritório atual '%s'", r.get("ci"), t["nome"],
+                     ", ".join(t.get("responsaveis") or []) or "(nenhum)", ", ".join(nomes), escritorio)
+        else:
+            log.info("CI %s (%s): Escritório atual '%s' confirma o responsável %s", r.get("ci"), t["nome"], escritorio,
+                     ", ".join(nomes))
+        t["responsaveis"] = nomes
+        r.setdefault("alertas", []).extend(alertas)
+
+
 def tarefas_lancadas(driver, link_lancar, timeout):
     """Tarefas já lançadas para a intimação, lidas da tela de Conferência
     (confere-intimacao-lancada.php). Cada uma: {tarefa, data, responsaveis, apagada}."""
@@ -368,6 +418,13 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
         if not r.get("link_lancar"):
             log.error("CI %s: sem link 'Lançar Intimação'", ci)
             anotar(ci, "erro", "Sem o link 'Lançar Intimação' do VIOS.")
+            erros += 1
+            continue
+        try:
+            conferir_pericia(driver, r, pasta_saida, timeout)
+        except Exception as e:
+            log.exception("CI %s: falha ao conferir o Escritório atual da perícia, nada lançado", ci)
+            anotar(ci, "erro", f"Perícia médica: não deu para ler o Escritório atual do processo ({e}).")
             erros += 1
             continue
         if r.get("bloqueios"):
