@@ -12,6 +12,32 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Removido — Zips repetidos da skill e caches do Python (17/11/2026)
+- Saíram os `analise-intimacoes-controladoria.zip` de `doc/skill-original/1_…` a `8_…`: cada um era idêntico à pasta
+  `analise-intimacoes-controladoria/` extraída ao lado, que continua (conferido arquivo a arquivo).
+- Saiu `doc/analise-intimacoes-controladoria.zip`, idêntico ao zip da versão 7 (`doc/skill-original/7_2026-11-10_txt-bot-duplicadas/`).
+- Saiu `doc/analise-intimacoes-controladoria(1).zip` (fora do Git), versão intermediária de 11/11 substituída pela versão 8.
+- Saíram as pastas `__pycache__/` do projeto (o Python recria sozinho).
+- Ficou tudo que o código usa: `doc/skill-unica/analise-intimacoes-controladoria.zip` (gerado por `gerar_skill_unica.py`),
+  `doc/mascote/`, timbrados, fixtures, `saida/`, `orelha/saida/` e logs.
+
+### Segurança — Limpeza de arquivos de teste e `.gitignore` dos resultados do Albi e do Jarvis (17/11/2026)
+- `albi/resultado/` e `jarvis/resultado/` entraram no `.gitignore`. Estavam fora dele, neste repositório público, com
+  arquivos de teste que tinham CPF, nome de cliente e relatório de cliente.
+- Arquivos de teste e prints soltos foram para a lixeira (fora do Git, nada versionado foi apagado): `brag-output/`,
+  `orelha/saida/simulado-*`, `albi/resultado/`, `jarvis/resultado/`, os prints de `logs/*.png` e `albi/logs/*.png`,
+  as imagens soltas na raiz de `doc/` (Screenshot e WhatsApp) e a cópia duplicada
+  `albi/mascote/zangao-transforma_att (1).html`.
+- Ficaram os arquivos que o código usa: timbrados do Jarvis e da Orelha, `logs/bot.log` (lido por `jarvis/gastos.py`),
+  `saida/` do Sam, relatórios reais da Orelha em `orelha/saida/<data>/` e o modelo do painel.
+
+### Adicionado — Pasta `bot-previdenciario/` (bot do WhatsApp) dentro do projeto (16/11/2026)
+- O bot do WhatsApp do setor previdenciário (e a mídia da Vila 06, Mikasa) fica em `bot-previdenciario/`, ao lado dos outros bots
+  (`albi/`, `jarvis/`, `orelha/`, `autobots/`). É um clone de `joaotabosa3599/bot-previdenciario`, repositório **privado**,
+  versionado à parte: a pasta está no `.gitignore` e **nunca** entra neste repositório, que é público. Clone uma vez com
+  `git clone https://github.com/joaotabosa3599/bot-previdenciario.git bot-previdenciario` e atualize com `git pull` dentro dela.
+  Instalação no Mac: `bash bot-previdenciario/scripts/mac/instalar.sh`.
+
 ### Adicionado — Sam: segunda checagem da perícia pelo "Escritório atual" do processo (17/11/2026)
 - A tarefa `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026` saía com a filial de Sobral por padrão (a cidade vinha do teor
   da intimação) e era direcionada para a pessoa errada. Agora, na hora de lançar (`lancamento.conferir_pericia()`), o robô

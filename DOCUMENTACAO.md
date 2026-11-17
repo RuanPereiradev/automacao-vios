@@ -67,7 +67,7 @@ muda se o site mudar — só o `.env`.
 - Primeira execução real: **35 cards extraídos, 0 com erro**.
 
 ### Passo 8 — Regras para gerar tarefas (material recebido)
-- Recebido `doc/analise-intimacoes-controladoria.zip`, com as regras da
+- Recebido `analise-intimacoes-controladoria.zip` (hoje extraído em `doc/skill-original/<versão>/`), com as regras da
   Controladoria: fluxo de intimações (POP), roteamento interno, regras de
   prazos/recursos e a lista de **Tarefas VIOS com modelos de descrição**.
 - Esse material será a base das etapas 4 e 5.
@@ -117,7 +117,7 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - Se um filtro configurado não existir na tela, o log mostra um aviso.
 
 ### Passo 12 — Agente de análise (IA + skill da Controladoria)
-- A skill do ChatGPT (`doc/analise-intimacoes-controladoria.zip`) foi extraída em
+- A skill do ChatGPT (`analise-intimacoes-controladoria.zip`) foi extraída em
   `doc/analise-intimacoes-controladoria/` e virou as **instruções do agente**.
 - **Por que IA e não regras em código?** As regras exigem interpretar a decisão
   (desfavorável? encerra o processo? quem recorreu? para quem é a ordem?). Em
