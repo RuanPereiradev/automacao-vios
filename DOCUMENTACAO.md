@@ -768,8 +768,12 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   a `saida/` copiada do computador antigo.
 - Comandos: `./servidor_mac.sh instalar` | `parar` | `status` | `log`
   (log em `logs/servidor.log`).
-- `instalar` também serve para reiniciar (ex.: depois de mudar o `.env`). Se a
-  porta 5001 estiver ocupada (um `./rodar_envio.sh` aberto), ele avisa e para.
+- `instalar` também serve para reiniciar. Se a porta 5001 estiver ocupada (um
+  `./rodar_envio.sh` aberto), ele avisa e para.
+- Login do VIOS (`SISTEMA_USUARIO`, `SISTEMA_SENHA`, seletores, `HEADLESS`, `TIMEOUT`): o Sam relê o `.env`
+  a cada envio (manual e automático), então trocar a senha no `.env` vale já no próximo envio, **sem
+  reiniciar**. Outras variáveis (`ENVIO_SENHA`, `ENVIO_REDE`, `SISTEMA_URL`, `SAIDA_PASTA`, pastas dos
+  outros bots) só valem depois de reiniciar com `./servidor_mac.sh instalar`.
 - A `saida/` **não vai para o GitHub** (o repositório é privado, mas ela tem dados
   de clientes): copiar com `rsync` ou pendrive (Passo 21).
 - Para funcionar sem ninguém por perto:

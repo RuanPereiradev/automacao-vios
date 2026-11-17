@@ -615,11 +615,17 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
             return jsonify(erro="modo inválido"), 400
         if modo == "gravar" and corpo.get("confirmado") is not True:
             return jsonify(erro="falta a confirmação"), 400
+        # Relê o .env a cada envio: a senha do VIOS trocada no .env vale sem reiniciar o servidor
+        try:
+            cfg_envio = config.carregar(caminho_env)
+        except config.ConfigErro as e:
+            log.error("Envio automático não iniciado: %s", e)
+            return jsonify(erro=str(e)), 500
         if not trava.acquire(blocking=False):
             return jsonify(erro="o Sam está ocupado com outro envio", ocupado=True), 409
         log.info("Envio automático disparado pela página (%s) por %s", modo, request.remote_addr)
         threading.Thread(target=envio_auto.rodar, daemon=True,
-                         args=(cfg, caminho_env, pasta_saida, modo == "gravar", trava.release)).start()
+                         args=(cfg_envio, caminho_env, pasta_saida, modo == "gravar", trava.release)).start()
         return jsonify(ok=True, modo=modo)
 
     @app.route("/albi")
@@ -966,11 +972,14 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
                      "GRAVANDO no VIOS" if envio["confirmar"] else "MODO TESTE (não grava)")
             emitir = lambda tipo, **d: eventos.emitir(pasta_saida, envio_id, tipo, **d)
             emitir("fase", fase="entrando_vios")
-            driver = criar_driver(cfg.headless, False, cfg.navegador_rapido)
-            fazer_login(driver, cfg)
+            # Relê o .env a cada envio: a senha do VIOS trocada no .env vale sem reiniciar o servidor
+            cfg_envio = config.carregar(caminho_env)
+            driver = criar_driver(cfg_envio.headless, False, cfg_envio.navegador_rapido)
+            fazer_login(driver, cfg_envio)
             envio["fase"] = "duplicatas"
             emitir("fase", fase="conferindo_duplicatas")
-            seguir = conferir_duplicatas_no_vios(driver, aptas, _capturas(pasta_saida), lancadas(), cfg.timeout)
+            seguir = conferir_duplicatas_no_vios(driver, aptas, _capturas(pasta_saida), lancadas(),
+                                                 cfg_envio.timeout)
             for c in aptas:
                 if c not in seguir:  # cópia (não lançada) ou erro ao conferir
                     for t in c["tarefas"]:
@@ -992,7 +1001,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
                 c["mensagens"] = coletor.linhas  # a página acompanha as linhas enquanto lança
                 logging.getLogger("bot.lancamento").addHandler(coletor)
                 try:
-                    feitas, erros = lancar(driver, [c], [c["ci"]], pasta_saida, Path("logs"), cfg.timeout,
+                    feitas, erros = lancar(driver, [c], [c["ci"]], pasta_saida, Path("logs"), cfg_envio.timeout,
                                            confirmar=envio["confirmar"])
                 except Exception as e:
                     feitas, erros = 0, 1

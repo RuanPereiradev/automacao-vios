@@ -12,6 +12,14 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Sam relê o `.env` a cada envio: senha do VIOS trocada vale sem reiniciar (17/11/2026)
+- No Mac, depois de trocar a senha do VIOS no `.env`, o Sam continuava dando "senha incorreta". O servidor da página
+  (`bot/envio_web.py`, ligado sem parar pelo `servidor_mac.sh`) lia o `.env` uma vez só, ao ligar, e usava a senha
+  antiga em todo envio até ser reiniciado.
+- Agora o envio manual (`_rodar`) e o envio automático (`/automatico/rodar`) chamam `config.carregar()` de novo antes de
+  entrar no VIOS. Se o `.env` estiver incompleto, o envio automático nem começa e a página mostra o erro.
+- `ENVIO_SENHA`, `ENVIO_REDE`, `SISTEMA_URL`, `SAIDA_PASTA` e as pastas dos outros bots continuam lidos só ao ligar.
+
 ### Removido — Zips repetidos da skill e caches do Python (17/11/2026)
 - Saíram os `analise-intimacoes-controladoria.zip` de `doc/skill-original/1_…` a `8_…`: cada um era idêntico à pasta
   `analise-intimacoes-controladoria/` extraída ao lado, que continua (conferido arquivo a arquivo).
