@@ -188,9 +188,19 @@ def entrar_trt7(cfg, destino=None):
     if PADRAO_CAPTCHA.search(cap.get("texto", "") or ""):
         raise AcessoErro("captcha na página de login: resolva na janela do Chrome e rode de novo")
 
-    # TRT7 (PJe-JT): botão "Login via Presto" leva ao SSO, onde aparece o quadro do Presto
-    if not CM.presto(w, t).get("ok") and CM.botao_login_presto(w, t).get("ok"):
-        CM.botao_login_presto(w, t, clicar=True)
+    # TRT7 (PJe-JT): botão "Login via Presto" leva ao SSO, onde aparece o quadro do Presto.
+    # O botão pode demorar a aparecer depois que a página carrega: espera até 20 s.
+    def botao_ou_quadro():
+        if CM.presto(w, t).get("ok"):
+            return "quadro"
+        if CM.botao_login_presto(w, t).get("ok"):
+            return "botao"
+        return ""
+    tela = _esperar(botao_ou_quadro, 20, passo=1.0)
+    print("Tela do TRT7:", tela or "sem botão \"Login via Presto\" nem quadro em 20 s")
+    if tela == "botao":
+        r = CM.botao_login_presto(w, t, clicar=True)
+        print(f"Cliquei em \"{r.get('texto') or 'Login via Presto'}\"; indo para o SSO...")
         antes = CM.url(w, t)
         _esperar(lambda: CM.url(w, t) != antes, 20)
         CM.esperar(w, t)
