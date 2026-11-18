@@ -1,13 +1,16 @@
-"""Responsáveis da tarefa, pela skill da Controladoria de 13/11/2026.
+"""Responsáveis da tarefa, pela skill da Controladoria de 18/11/2026 (pacote atualizado).
 
 - Nunca `automático` e nunca AMANDA LEITE MENDES (ela só lança, não executa as tarefas).
 - Advogado auxiliar (a intimação traz a sigla: SUH, TAMI, JOHN...; o nome completo vem da lista do VIOS,
-  saida/responsaveis.json). Sem auxiliar: o advogado responsável do processo, exceto RONIELLE FEITOSA
-  (no VIOS aparece como RONEELY FEITOSA): aí a tarefa não é lançada.
-- Só na PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026: o responsável da filial (Camocim, Tianguá,
-  Jijoca de Jericoacoara, Sobral). Filial ausente ou ambígua: não lança.
-  Na análise a filial sai do teor/cidade (palpite); na hora de lançar vale o "Escritório atual" da ficha
-  do processo no VIOS (segunda checagem, bot/lancamento.py).
+  saida/responsaveis.json). CARL vai para JOHNYS (FRANCISCO JOHNYS VASCONCELOS BARBOSA) em todas as tarefas;
+  única exceção: cliente CALTECH, para quem CARL continua com Carlos (CARLOS AUGUSTO ALVES CAMILO BRANDÃO).
+  Sem auxiliar: o advogado responsável do processo, exceto RONIELLE FEITOSA (no VIOS: RONEELY FEITOSA):
+  aí a tarefa não é lançada.
+- PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026: o responsável da filial informada e mapeada (Camocim, Tianguá,
+  Jijoca de Jericoacoara, Sobral). Sem filial mapeada, o texto `incluir responsável pela cidade identificada`
+  vai no TXT e NÃO bloqueia. A filial vem só do teor da intimação, nunca da cidade do CSV.
+  Na hora de lançar, o "Escritório atual" da ficha do processo no VIOS define o responsável (segunda checagem,
+  bot/lancamento.py); sem filial ali, a tarefa não é lançada (o bot não consegue identificar a cidade).
 """
 import json
 import re
@@ -27,6 +30,8 @@ FILIAIS = {
     "JIJOCA DE JERICOACOARA": (r"\b(JIJOCA|JERICOACOARA)\b", "GUIVIA VASCONCELOS"),
     "SOBRAL": (r"\bSOBRAL\b", "ANA LETÍCIA DA SILVA LEITAO"),
 }
+CARLOS = "CARLOS AUGUSTO ALVES CAMILO BRANDÃO"
+CIDADE_IDENTIFICADA = "incluir responsável pela cidade identificada"  # texto exato da skill (perícia sem filial mapeada)
 MSG_RONIELLE = ("NÃO LANÇAR — VERIFICAR QUEM É O ADVOGADO AUXILIAR OU O ADVOGADO RESPONSÁVEL CORRETO; "
                 "PROCESSO SEM AUXILIAR E COM RONIELLE FEITOSA COMO RESPONSÁVEL.")
 MSG_FILIAL = "NÃO LANÇAR — CONFIRMAR FILIAL/RESPONSÁVEL DA PERÍCIA MÉDICA JUDICIAL."
@@ -71,16 +76,17 @@ def siglas(item):
     return [s.strip().upper() for s in re.split(r"[/,;]", item.get("auxiliares", "") or "") if s.strip()]
 
 
-def do_processo(item, pessoas, trabalhista=False):
+def do_processo(item, pessoas):
     """(nomes, bloqueio, alertas) de uma tarefa comum: auxiliares do processo; sem auxiliar, o advogado responsável.
-    `trabalhista`: Carlos (CARL) não está mais no Trabalhista, a tarefa vai para o Johnys (roteamento da skill)."""
+    CARL vai para o Johnys, salvo cliente CALTECH (Carlos continua)."""
     if not pessoas:
         return [], ("Lista de responsáveis do VIOS indisponível (saida/responsaveis.json): "
                     "rodar ./rodar_revisao.sh --atualizar-responsaveis."), []
     nomes, sem_nome, alertas = [], [], []
     for sigla in siglas(item):
-        if sigla == "CARL" and trabalhista:
-            nome = _achar(JOHNYS, pessoas) or JOHNYS
+        if sigla == "CARL":
+            caltech = "CALTECH" in normalizar(item.get("cliente", ""))
+            nome = _achar(CARLOS if caltech else JOHNYS, pessoas) or (CARLOS if caltech else JOHNYS)
         else:
             nome = nome_do_auxiliar(sigla, pessoas)
         if not nome:
@@ -107,22 +113,21 @@ def do_processo(item, pessoas, trabalhista=False):
 
 
 def filial_da_pericia(item):
-    """(filial, responsável) da perícia médica judicial: a cidade da perícia está no teor; sem ela ali, vale a
-    cidade/comarca do processo. Mais de uma filial ou nenhuma: (None, None)."""
-    def achar(texto):
-        t = normalizar(texto or "")
-        return [f for f, (padrao, _) in FILIAIS.items() if re.search(padrao, t)]
-    achadas = achar(item.get("texto", "")) or achar(f"{item.get('cidade', '')} {item.get('informacoes_extras', '')}")
+    """(filial, responsável) da perícia médica judicial pela cidade citada no teor da intimação. Nunca pela cidade
+    do CSV nem pelo local da perícia (skill de 18/11/2026). Mais de uma filial ou nenhuma: (None, None)."""
+    achadas = [f for f, (padrao, _) in FILIAIS.items() if re.search(padrao, normalizar(item.get("texto", "") or ""))]
     if len(achadas) != 1:
         return None, None
     return achadas[0], FILIAIS[achadas[0]][1]
 
 
 def da_pericia_medica(item, pessoas):
-    """(nomes, bloqueio, alertas) da PERÍCIA MÉDICA JUDICIAL: o responsável da filial, nunca Amanda nem Suhiane."""
+    """(nomes, bloqueio, alertas) da PERÍCIA MÉDICA JUDICIAL: o responsável da filial mapeada; sem filial,
+    o texto `incluir responsável pela cidade identificada` (não bloqueia). Nunca Amanda nem Suhiane."""
     filial, nome = filial_da_pericia(item)
     if not nome:
-        return [], MSG_FILIAL, []
+        return [CIDADE_IDENTIFICADA], "", ["Perícia médica judicial: filial não identificada no teor; "
+                                           "no TXT vai o texto `incluir responsável pela cidade identificada`."]
     achado = _achar(nome, pessoas) if pessoas else nome
     if not achado:
         return [], f"{MSG_FILIAL} ({nome} não está na lista do VIOS)", []
@@ -156,7 +161,7 @@ def da_tarefa(item, tarefa, pessoas):
     nome = tarefa["nome"]
     if nome.startswith(PERICIA_MEDICA):
         return da_pericia_medica(item, pessoas)
-    nomes, bloqueio, alertas = do_processo(item, pessoas, trabalhista="(TRABALHISTA)" in nome)
+    nomes, bloqueio, alertas = do_processo(item, pessoas)
     if nomes and tarefa.get("marcar_breno"):
         breno = _achar(BRENO, pessoas)
         if breno and breno not in nomes:

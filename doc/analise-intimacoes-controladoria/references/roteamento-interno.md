@@ -16,7 +16,7 @@ Conferir em conjunto departamento, responsável atual, auxiliar e providência; 
 | Suhiane/SUH | Trabalhista Reclamante ou Previdenciário | Diferenciar por partes, teor, órgão e CNJ |
 | Ianna/IANN (Ianna Brena) | Cível — demandas da Casa no Celular/Casa do Celular | Responsável confirmada pela usuária para todas as demandas dessa carteira; corrigir auxiliares antigos sem repetir consulta |
 | Tamira/TAMI | Execução | Se efetivamente responsável, usar tarefa de Execução; se o caso/tarefa for previdenciário, corrigir para Suhiane |
-| Johnys/JOHN | Trabalhista Reclamada | Substituir Carlos/CARL em tarefa trabalhista; Carlos não integra mais o Trabalhista |
+| Johnys/JOHN | Trabalhista Reclamada | Atribuir a Johnys também quando o auxiliar informado for CARL, exceto se o cliente for CALTECH, caso em que CARL permanece com Carlos; usar o nome completo no TXT |
 | Breno | Petições intermediárias da Execução da Tamira | Marcar como responsável operacional, preservando Tamira como auxiliar |
 
 SUH em processo da Justiça do Trabalho: usar Trabalhista Reclamante, inclusive na fase executiva, salvo transferência interna confirmada. SUH em benefício/INSS: Previdenciário, ressalvada a mesma confirmação. Palavra “execução” ou classe judicial não basta para mudar o setor.
@@ -62,7 +62,7 @@ Reconhecer ITBN TELEFONIA LTDA (MATRIZ), A M AGUIAR TELEFONIA LTDA e RAV HOLDING
 
 - Identificar separadamente natureza, fase, departamento confirmado/provável e auxiliar.
 - Se só houver auxiliar, sem prova de departamento compatível, registrar o setor provável como hipótese. Não apresentar essa hipótese como cadastro validado.
-- Tarefa previdenciária cadastrada para Tamira: corrigir para Suhiane. Tarefa trabalhista cadastrada para Carlos: corrigir para Johnys. Não bloquear essas correções já autorizadas pelo usuário.
+- Tarefa previdenciária cadastrada para Tamira: corrigir para Suhiane quando a orientação institucional comprovar o setor. Encaminhar tarefas com auxiliar CARL a JOHN, exceto quando o cliente for CALTECH, caso em que a tarefa permanece com Carlos.
 - Auxiliar de outra área com providência executiva: confirmar se houve transferência; não trocar setor apenas pelo conteúdo executivo.
 - Divergência não resolvida impede lançamento da tarefa afetada; entregar a providência identificada e as alternativas oficiais. Se o usuário/documento confirmar a transferência e o responsável, registrar a evidência e não repetir pedido de confirmação.
 - Sem setor seguro: `PENDENTE – CONFIRMAR ÁREA CADASTRADA NO VIOS.`
@@ -128,21 +128,4 @@ Aplicar a dados bancários, documentos, RPV, alvará, prosseguimento, penhora e 
 
 ## Ausência de responsável
 
-Nenhuma tarefa de intimação pode ser atribuída a AMANDA LEITE MENDES, que realiza o lançamento, mas não acompanha nem executa as tarefas. Não usar `automático` no TXT, pois esse valor direciona a tarefa para Amanda.
-
-Usar o nome completo do advogado auxiliar. Se não houver auxiliar, usar o nome completo do advogado responsável; qualquer outro advogado responsável identificado pode receber a tarefa. A única exceção a esse fallback é RONIELLE FEITOSA: se não houver auxiliar e ele constar como responsável pelo processo, não atribuir a tarefa a ele. Registrar `NÃO LANÇAR — VERIFICAR QUEM É O ADVOGADO AUXILIAR OU O ADVOGADO RESPONSÁVEL CORRETO; PROCESSO SEM AUXILIAR E COM RONIELLE FEITOSA COMO RESPONSÁVEL`, bloquear a tarefa e listá-la fora do TXT para conferência da usuária.
-
-Também não atribuir nenhuma tarefa a Sarah Pontes/Controladoria. Se não houver responsável identificável pelas regras institucionais, registrar `RESPONSÁVEL NÃO IDENTIFICADO`, bloquear a tarefa e listar a pendência fora do arquivo. Não presumir responsável de outra área.
-
-## Responsável da perícia médica judicial por filial
-
-Somente para a tarefa `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`, o roteamento por filial prevalece sobre auxiliar e advogado responsável do processo. Não atribuir essa tarefa a AMANDA LEITE MENDES nem a Suiane/Suhiane.
-
-| Filial/cidade vinculada à perícia | Responsável |
-| --- | --- |
-| Camocim | FRANCISCO VICTOR HORA DO NASCIMENTO |
-| Tianguá | JOÃO JÂNIO |
-| Jijoca de Jericoacoara/Jijoca | GUIVIA VASCONCELOS |
-| Sobral | ANA LETÍCIA DA SILVA LEITAO |
-
-Não estender esta regra a perícia técnica/médica trabalhista, perícia técnica cível, aviso, instrução, quesitos, indicação de assistente técnico, manifestação sobre laudo ou qualquer outra tarefa. Nessas tarefas, Suiane/Suhiane não é excluída por esta regra; permanece apenas a proibição geral de atribuição a Amanda. Se não for possível identificar inequivocamente uma das quatro filiais na perícia médica judicial previdenciária, bloquear a tarefa e registrar `NÃO LANÇAR — CONFIRMAR FILIAL/RESPONSÁVEL DA PERÍCIA MÉDICA JUDICIAL.` Não escolher responsável por semelhança de cidade ou por mera presença de nome no cadastro.
+Não atribuir tarefa de intimação a Amanda Leite Mendes/Controladoria. Se não houver responsável identificável pelas regras institucionais, registrar `RESPONSÁVEL NÃO IDENTIFICADO`, bloquear a tarefa e listar a pendência fora do arquivo. Não presumir responsável de outra área.

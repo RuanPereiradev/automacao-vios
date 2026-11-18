@@ -20,7 +20,7 @@ from datetime import date, datetime
 
 from bot.analise import COM_HORARIO, FORA_DA_DESCRICAO, numero_processo
 from bot.lancamento import AMANDA, APELIDOS, _normalizar
-from bot.responsaveis import FILIAIS, MSG_RONIELLE, PERICIA_MEDICA, eh_ronielle
+from bot.responsaveis import CIDADE_IDENTIFICADA, FILIAIS, MSG_RONIELLE, PERICIA_MEDICA, eh_ronielle
 
 SEPARADOR = re.compile(r"^\s*-{3,}\s*$")
 CAMPO = re.compile(r"^\s*([A-Za-zÀ-ú ]+?)\s*:\s?(.*)$")
@@ -123,8 +123,13 @@ def ler(texto, oficiais, pessoas=(), lancadas=(), links=None, base_url="", hoje=
             problemas.append(f"{nome}: RESPONSÁVEIS em branco ou 'automático' (o VIOS manda para a Amanda). "
                              "Informe o advogado auxiliar ou, sem auxiliar, o advogado responsável.")
         else:
+            pericia = nome.startswith(PERICIA_MEDICA)
             for p in re.split(r"[,;]", campos["responsaveis"]):
                 if not p.strip():
+                    continue
+                if pericia and _normalizar(p) == _normalizar(CIDADE_IDENTIFICADA):
+                    # skill de 18/11/2026: sem filial mapeada, o texto exato vai no TXT e não bloqueia
+                    responsaveis.append(CIDADE_IDENTIFICADA)
                     continue
                 achado = por_pessoa.get(_normalizar(p))
                 if pessoas and not achado:
@@ -132,11 +137,12 @@ def ler(texto, oficiais, pessoas=(), lancadas=(), links=None, base_url="", hoje=
                 responsaveis.append(achado or p.strip())
             if len(responsaveis) == 1 and eh_ronielle(responsaveis[0]):
                 problemas.append(f"{nome}: {MSG_RONIELLE}")
-            if nome.startswith(PERICIA_MEDICA) and not (
-                    len(responsaveis) == 1 and _normalizar(responsaveis[0]) in {_normalizar(f[1]) for f in FILIAIS.values()}):
+            if pericia and not (
+                    len(responsaveis) == 1 and _normalizar(responsaveis[0]) in
+                    {_normalizar(f[1]) for f in FILIAIS.values()} | {_normalizar(CIDADE_IDENTIFICADA)}):
                 problemas.append(f"{nome}: o responsável é o da filial (Camocim: FRANCISCO VICTOR HORA DO NASCIMENTO; "
-                                 "Tianguá: JOÃO JÂNIO; Jijoca: GUIVIA VASCONCELOS; Sobral: ANA LETÍCIA DA SILVA LEITAO). "
-                                 "Sem filial identificada, não lançar.")
+                                 "Tianguá: JOÃO JÂNIO; Jijoca: GUIVIA VASCONCELOS; Sobral: ANA LETÍCIA DA SILVA LEITAO) "
+                                 "ou o texto 'incluir responsável pela cidade identificada'.")
             if any(_normalizar(r) == _normalizar(AMANDA) for r in responsaveis):
                 problemas.append(f"{nome}: a tarefa não pode ficar com a {AMANDA} (ela só lança, não executa).")
 

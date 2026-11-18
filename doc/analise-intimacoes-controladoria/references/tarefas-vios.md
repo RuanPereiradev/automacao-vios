@@ -2,11 +2,7 @@
 
 Use esta lista para escolher a tarefa VIOS e montar a descrição. Preserve o nome da tarefa quando possível.
 
-Aplicar obrigatoriamente as datas, cabeçalhos exclusivos e modelos curtos do SKILL.md e POP. Análise/ciência observam o corte das 12h. Prioridades são agendadas no próximo dia de expediente do escritório; a descrição preserva controle D-2. Se a `DATA` operacional ajustável coincidir com feriado nacional ou local aplicável à filial, antecipar para o dia de trabalho anterior, sem alterar as datas de referência da descrição. Responsáveis e auxiliares ficam fora da descrição.
-
-Somente em `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`, usar o responsável da filial definido no SKILL.md: Camocim — `FRANCISCO VICTOR HORA DO NASCIMENTO`; Tianguá — `JOÃO JÂNIO`; Jijoca de Jericoacoara/Jijoca — `GUIVIA VASCONCELOS`; Sobral — `ANA LETÍCIA DA SILVA LEITAO`. Nunca atribuir essa tarefa a Amanda Leite Mendes ou Suiane/Suhiane. Todas as demais tarefas seguem seus fluxos próprios; nelas, esta regra não exclui Suiane/Suhiane.
-
-Em qualquer tarefa de intimação, nunca usar `automático` no campo `RESPONSÁVEIS`: informar o advogado auxiliar; na ausência dele, usar qualquer advogado responsável identificado, exceto Ronielle Feitosa. Se não houver auxiliar e Ronielle for o responsável, bloquear e sinalizar para a usuária conferir o auxiliar ou o responsável correto, conforme o SKILL.md.
+Aplicar obrigatoriamente as datas, cabeçalhos exclusivos e modelos curtos do SKILL.md e POP. Análise/ciência observam o corte das 12h. Prioridades são agendadas no próximo dia de expediente do escritório; a descrição preserva controle D-2. Responsáveis e auxiliares ficam fora da descrição.
 
 Índice: Trabalhista; Previdenciário; Execução; Cível; Gerais e complementares; Fluxo de pagamento; Pendências de saneamento.
 

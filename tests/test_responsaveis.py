@@ -1,11 +1,11 @@
-"""Regras da skill de 13/11/2026: responsáveis, filial da perícia médica e DATA em feriado."""
+"""Regras da skill de 18/11/2026: responsáveis (CARL/CALTECH), perícia médica por filial e envio do TXT."""
 import sys
 import unittest
 from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from bot import envio_txt, lancamento, prazos, responsaveis as r  # noqa: E402
+from bot import envio_txt, lancamento, responsaveis as r  # noqa: E402
 
 PESSOAS = ["AMANDA LEITE MENDES", "ANA LETÍCIA DA SILVA LEITAO", "BRENO SILVA MOTA",
            "CARLOS AUGUSTO ALVES CAMILO BRANDÃO", "CARLOS EDUARDO RODRIGUES SILVA",
@@ -38,10 +38,13 @@ class Auxiliar(unittest.TestCase):
             nomes, bloqueio, _ = r.do_processo({"auxiliares": "", "advogado": adv}, PESSOAS)
             self.assertEqual((nomes, bloqueio), ([], r.MSG_RONIELLE))
 
-    def test_carlos_so_no_trabalhista_vai_para_o_johnys(self):
-        item = {"auxiliares": "CARL"}
-        self.assertEqual(r.do_processo(item, PESSOAS, trabalhista=True)[0], ["FRANCISCO JOHNYS VASCONCELOS BARBOSA"])
-        self.assertEqual(r.do_processo(item, PESSOAS, trabalhista=False)[0], [])
+    def test_carl_vai_para_o_johnys_em_qualquer_area(self):
+        self.assertEqual(r.do_processo({"auxiliares": "CARL", "cliente": "ACME LTDA"}, PESSOAS)[0],
+                         ["FRANCISCO JOHNYS VASCONCELOS BARBOSA"])
+
+    def test_carl_do_caltech_fica_com_carlos(self):
+        self.assertEqual(r.do_processo({"auxiliares": "CARL", "cliente": "CALTECH SERVIÇOS"}, PESSOAS)[0],
+                         ["CARLOS AUGUSTO ALVES CAMILO BRANDÃO"])
 
     def test_sem_lista_do_vios_bloqueia(self):
         self.assertTrue(r.do_processo({"auxiliares": "SUH"}, [])[1])
@@ -58,15 +61,15 @@ class Pericia(unittest.TestCase):
         item = {"auxiliares": "SUH", "texto": "Perícia médica na cidade de Tianguá, às 9h.", "cidade": "FORTALEZA/CE"}
         self.assertEqual(r.da_tarefa(item, {"nome": self.NOME}, PESSOAS)[0], ["JOÃO JÂNIO"])
 
-    def test_filial_pela_cidade_quando_o_teor_nao_diz(self):
+    def test_cidade_do_csv_nao_define_a_filial(self):
         item = {"auxiliares": "SUH", "texto": "Perícia designada.", "cidade": "JIJOCA DE JERICOACOARA/CE"}
-        self.assertEqual(r.da_tarefa(item, {"nome": self.NOME}, PESSOAS)[0], ["GUIVIA VASCONCELOS"])
+        self.assertEqual(r.da_tarefa(item, {"nome": self.NOME}, PESSOAS)[0], [r.CIDADE_IDENTIFICADA])
 
-    def test_filial_ausente_ou_ambigua_bloqueia(self):
+    def test_filial_ausente_ou_ambigua_usa_o_texto_sem_bloquear(self):
         for item in ({"texto": "Perícia em Fortaleza.", "cidade": "FORTALEZA/CE"},
                      {"texto": "Perícia em Sobral ou Camocim.", "cidade": "SOBRAL/CE"}):
             nomes, bloqueio, _ = r.da_tarefa(item, {"nome": self.NOME}, PESSOAS)
-            self.assertEqual((nomes, bloqueio), ([], r.MSG_FILIAL))
+            self.assertEqual((nomes, bloqueio), ([r.CIDADE_IDENTIFICADA], ""))
 
     def test_nunca_suhiane_na_pericia_medica(self):
         item = {"auxiliares": "SUH", "texto": "Perícia em Sobral.", "cidade": "SOBRAL/CE"}
@@ -80,7 +83,7 @@ class Pericia(unittest.TestCase):
             nomes, bloqueio, _ = r.da_pericia_pelo_escritorio(escritorio, PESSOAS)
             self.assertEqual((nomes, bloqueio), ([nome], ""), escritorio)
 
-    def test_escritorio_sem_filial_bloqueia(self):
+    def test_escritorio_sem_filial_bloqueia_no_lancamento(self):
         for escritorio in ("Roneely Feitosa - Fortaleza", "", None):
             nomes, bloqueio, _ = r.da_pericia_pelo_escritorio(escritorio, PESSOAS)
             self.assertEqual(nomes, [])
@@ -111,28 +114,6 @@ class Pericia(unittest.TestCase):
                 lancamento.ler_escritorio = original
 
 
-class Feriado(unittest.TestCase):
-    TABELA = prazos.Tabela("doc/feriados-brasil-2026-2027.md", "doc/feriados.txt")
-
-    def test_exemplo_da_skill_02_11_vai_para_30_10(self):
-        self.assertEqual(prazos.antecipar(date(2026, 11, 2), date(2026, 10, 28), self.TABELA)[:2],
-                         (date(2026, 10, 30), "Finados"))
-
-    def test_dia_normal_nao_muda(self):
-        self.assertEqual(prazos.antecipar(date(2026, 11, 4), date(2026, 11, 2), self.TABELA)[:2], (date(2026, 11, 4), ""))
-
-    def test_nao_volta_no_tempo(self):
-        dia, feriado, aviso = prazos.antecipar(date(2026, 11, 2), date(2026, 11, 2), self.TABELA)
-        self.assertEqual((dia, feriado), (date(2026, 11, 2), ""))
-        self.assertIn("urgência", aviso)
-
-    def test_feriado_estadual_so_com_o_local_do_escritorio(self):
-        magna = date(2026, 3, 25)  # Data Magna do Ceará
-        self.assertEqual(prazos.antecipar(magna, date(2026, 3, 20), self.TABELA, [])[0], magna)
-        self.assertEqual(prazos.antecipar(magna, date(2026, 3, 20), self.TABELA, [("", "CE")])[0], date(2026, 3, 24))
-        self.assertEqual(prazos.antecipar(magna, date(2026, 3, 20), self.TABELA, [("", "SP")])[0], magna)
-
-
 class TravaDoTxt(unittest.TestCase):
     def bloco(self, tarefa, resp):
         return (f"CI: 1\nPROCESSO: 0000123-45.2026.8.06.0001\nTAREFA: {tarefa}\nDATA: 20/11/2026\nHORA: 09:00\n"
@@ -147,10 +128,11 @@ class TravaDoTxt(unittest.TestCase):
     def test_ronielle_sozinho_barra(self):
         self.assertTrue(any("RONIELLE" in p for p in self.problemas("CIÊNCIA (CÍVEL) 2026", "RONEELY FEITOSA")))
 
-    def test_pericia_medica_exige_o_responsavel_da_filial(self):
+    def test_pericia_medica_exige_o_responsavel_da_filial_ou_o_texto_da_skill(self):
         t = "PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026"
         self.assertTrue(any("filial" in p for p in self.problemas(t, "SUHIANE DE MARIA GOMES SILVA")))
         self.assertFalse(any("filial" in p for p in self.problemas(t, "JOÃO JÂNIO")))
+        self.assertFalse(any("filial" in p for p in self.problemas(t, r.CIDADE_IDENTIFICADA)))
 
 
 if __name__ == "__main__":
