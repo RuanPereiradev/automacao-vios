@@ -1,7 +1,5 @@
 # Análise de intimações
 
-> MODELO HISTÓRICO. Não usar as regras de datas, feriados, responsáveis ou formato deste arquivo como orientação vigente. Aplicar o `SKILL.md` e as referências atuais, especialmente `references/regras-prazos-recursos.md` e `references/saida-txt-bot.md`.
-
 - Origem: `saida/intimacoes_2026-10-27.json`
 - Gerado em: 28/10/2026 12:29 — recalculado / claude-opus-5-5
 - Intimações: 23 — com alerta: 19

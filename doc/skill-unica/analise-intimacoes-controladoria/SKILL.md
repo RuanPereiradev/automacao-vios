@@ -11,6 +11,8 @@ Analisar todas as CIs, sem pular nenhuma. Distinguir providência jurídica, dep
 
 Ao receber exportação CSV/Excel do VIOS para análise, entregar automaticamente **um único arquivo `.txt` em UTF-8**, no modelo institucional de `pedido-arquivo-robo(2).txt`, sem exigir que a usuária repita essa orientação. Ler [saida-txt-bot.md](references/saida-txt-bot.md) e usar [pedido-arquivo-robo.txt](assets/pedido-arquivo-robo.txt) como referência de estrutura. O arquivo contém somente tarefas completas e prontas para automação. Apresentar as CIs que exigem consulta manual **na conversa, fora do TXT**, no padrão habitual com CI e número do processo. O TXT é um arquivo de comandos para cadastro automático: usar exclusivamente os campos CI, PROCESSO, TAREFA, DATA, HORA, RESPONSÁVEIS e DESCRIÇÃO, nessa ordem, um bloco por tarefa separado por `---`, sem relatório ou comentários dentro dele. O modelo antigo `assets/modelo-analise-vios.md` não é o formato do bot. Esta regra prevalece sobre o formato geral de análise abaixo; pedidos apenas de revisão/duplicidades conservam a saída específica.
 
+No campo `RESPONSÁVEIS`, nunca usar `automático` nem abreviação: converter o auxiliar da coluna `Auxiliares` para o nome completo da tabela em [saida-txt-bot.md](references/saida-txt-bot.md). `CARL` identifica Carlos, mas a tarefa deve ser atribuída ao advogado `JOHN`, pelo nome completo; única exceção: cliente CALTECH, para quem `CARL` permanece com Carlos. Na tarefa de comparecimento à perícia médica, quando a filial não estiver informada ou não estiver na tabela, usar exatamente `incluir responsável pela cidade identificada`, conforme o POP; a falta da filial não bloqueia essa tarefa. A regra atual substitui exemplos antigos de roteamento automático. Nas demais tarefas, na ausência de auxiliar, seguir a regra do advogado responsável e bloquear quando ele não for identificável ou for RONEELY FEITOSA; ver a referência para a exceção de Tamira e Breno.
+
 ## Fontes e referências obrigatórias
 
 1. Ler integralmente o documento atual enviado pelo usuário. Se for relatório de análises, distinguir o que consta do relatório do que foi conferido no expediente original ou nos autos.
@@ -38,32 +40,6 @@ Aplicar também as confirmações de 12/11/2026 em seção "Referência — Rote
 9. Elaborar resumo curto que permita lançar a tarefa sem reconstruir os dados.
 10. Resolver inconsistências de redação antes de finalizar. Quando depender de informação externa ausente, entregar a análise e a pendência exata, com status de não lançar para a CI/tarefa afetada. Prosseguir com as demais.
 
-## Responsáveis — proibição de atribuição à Controladoria
-
-Nenhuma tarefa de intimação pode ficar em nome de **AMANDA LEITE MENDES**. Amanda realiza o lançamento e não acompanha nem executa as tarefas lançadas. No TXT do bot, não usar `automático`, pois esse valor direciona a tarefa para Amanda.
-
-Aplicar esta ordem, salvo a regra específica de perícias abaixo:
-
-1. Havendo advogado auxiliar identificado no VIOS ou no arquivo de entrada, preencher `RESPONSÁVEIS` com o nome completo do advogado auxiliar.
-2. Não havendo advogado auxiliar, preencher `RESPONSÁVEIS` com o nome completo do advogado responsável pelo processo. Qualquer advogado responsável identificado pode receber a tarefa, salvo a exceção abaixo.
-3. Exceção ao item 2: se não houver auxiliar e o advogado responsável pelo processo for **RONIELLE FEITOSA**, não atribuir a tarefa a ele nem a Amanda. Bloquear a tarefa, deixá-la fora do TXT e sinalizar à usuária: `NÃO LANÇAR — VERIFICAR QUEM É O ADVOGADO AUXILIAR OU O ADVOGADO RESPONSÁVEL CORRETO; PROCESSO SEM AUXILIAR E COM RONIELLE FEITOSA COMO RESPONSÁVEL.`
-4. Se não houver auxiliar nem advogado responsável seguro identificado, bloquear e sinalizar a pendência. Não usar Amanda, `automático` ou nome presumido para completar o arquivo.
-
-### Perícia médica judicial — responsável da filial
-
-Somente na tarefa `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`, o responsável não é Amanda, Suiane/Suhiane, o auxiliar nem o advogado responsável cadastrado no processo. Identificar a filial pela cidade vinculada à perícia e preencher `RESPONSÁVEIS` com o nome abaixo:
-
-| Filial/cidade | Responsável pela tarefa de perícia |
-| --- | --- |
-| Camocim | FRANCISCO VICTOR HORA DO NASCIMENTO |
-| Tianguá | JOÃO JÂNIO |
-| Jijoca de Jericoacoara/Jijoca | GUIVIA VASCONCELOS |
-| Sobral | ANA LETÍCIA DA SILVA LEITAO |
-
-Não estender o roteamento por filial nem a exclusão de Suiane/Suhiane a qualquer outra tarefa, inclusive perícia técnica/médica trabalhista, perícia técnica cível, aviso, instrução, quesitos, indicação de assistente técnico ou manifestação sobre laudo. Essas tarefas seguem seus fluxos próprios. A proibição geral de atribuir tarefas de intimação a Amanda permanece válida.
-
-Se a cidade/filial estiver ausente, ambígua ou fora desse mapeamento, não atribuir a tarefa `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026` a Amanda nem a Suiane/Suhiane e não escolher filial por aproximação. Excluir a tarefa do TXT e sinalizar: `NÃO LANÇAR — CONFIRMAR FILIAL/RESPONSÁVEL DA PERÍCIA MÉDICA JUDICIAL.`
-
 ## Escolha entre análise, minuta e ciência
 
 ### Verificar primeiro se há providência concreta para o cliente
@@ -88,34 +64,17 @@ Exemplo confirmado — processo 0000539-19.2024.5.07.0029, despacho ID fc972df: 
 
 ### Contagem simplificada — excluir somente sábados e domingos
 
-Por orientação expressa do usuário, aplicar a todas as contagens apresentadas nesta skill, inclusive vencimentos de referência de embargos, recursos, manifestações, obrigações e controles D-2, um calendário de segunda a sexta-feira. Contar feriados nacionais, estaduais, municipais, pontos facultativos, recesso e suspensões como dias úteis para este cálculo. Excluir somente sábados e domingos. Depois de calcular a data operacional, aplicar separadamente o ajuste de coincidência com feriado previsto abaixo.
+Por orientação expressa do usuário, aplicar a todas as contagens apresentadas nesta skill, inclusive vencimentos de referência de embargos, recursos, manifestações, obrigações e controles D-2, um calendário de segunda a sexta-feira. Contar feriados nacionais, estaduais, municipais, pontos facultativos, recesso e suspensões como dias úteis para este cálculo. Excluir somente sábados e domingos. Esta regra substitui a exigência anterior de consultar e aplicar calendários de feriados dos tribunais.
 
-Não usar feriados para excluir dias da contagem nem bloquear o cálculo apenas por faltar calendário judicial oficial. Usar a publicação/ciência efetivamente informada, excluir o dia do marco inicial e iniciar a contagem no próximo dia de segunda a sexta-feira, incluindo feriados. Não alterar a data documental da publicação para ajustá-la ao calendário simplificado. Preservar a quantidade de dias do prazo expresso ou legal de referência.
+Não pesquisar feriados nem bloquear uma tarefa apenas por faltar calendário oficial. Usar a publicação/ciência efetivamente informada, excluir o dia do marco inicial e iniciar a contagem no próximo dia de segunda a sexta-feira, incluindo feriados. Não alterar a data documental da publicação para ajustá-la ao calendário simplificado. Preservar a quantidade de dias do prazo expresso ou legal de referência.
 
 Apresentar os vencimentos solicitados por esse critério, inclusive os campos de prazo jurídico de referência, com uma indicação breve fora dos resumos: **“Contagem solicitada: segunda a sexta, incluindo feriados; vencimentos sem validação do calendário judicial oficial.”** Não apresentar essas datas como vencimentos jurídicos oficiais confirmados. Data-limite expressamente fixada no ato não pode ser substituída por uma contagem derivada; preservar a data determinada. Prazos em horas ou corridos, especialmente criminais, conservam sua unidade e regime próprios; não transformar dias corridos em dias de segunda a sexta.
 
 Aplicar o mesmo calendário simplificado ao agendamento interno: análise/ciência até 12h no mesmo dia de segunda a sexta; após 12h ou em fim de semana, no próximo dia de segunda a sexta. Prioridades RPV/Suhiane e aviso/instrução social usam o próximo dia de segunda a sexta. D-2 corresponde a retroceder dois dias de segunda a sexta do vencimento de referência, incluindo feriados no percurso. Manter data e horário exatos de audiências, perícias e sustentações, sem aplicar D-2 ao comparecimento.
 
-### Ajuste da DATA do VIOS quando coincidir com feriado
-
-Após calcular normalmente o vencimento de referência, o D-2 e a data operacional candidata, conferir se a `DATA` da tarefa no VIOS coincide com feriado oficial aplicável ao escritório/filial que executará a tarefa:
-
-1. Feriado nacional: antecipar a `DATA` para o dia de trabalho anterior.
-2. Feriado estadual ou municipal da localidade do escritório/filial responsável pela tarefa: antecipar a `DATA` para o dia de trabalho anterior.
-3. Feriado estadual ou municipal exclusivo de outro estado ou município, sem aplicação à localidade do escritório/filial responsável: não antecipar; manter a `DATA` calculada.
-4. Ponto facultativo não é feriado para esta regra: manter a `DATA`, salvo orientação expressa de que o escritório estará fechado.
-
-O dia de trabalho anterior é a data imediatamente anterior de segunda a sexta que não seja feriado nacional nem feriado estadual/municipal aplicável à mesma localidade. Se houver feriados consecutivos ou o dia anterior for sábado/domingo, continuar retrocedendo até o primeiro dia de trabalho aplicável.
-
-Nas tarefas com data operacional ajustável, verificar apenas a coincidência da data candidata, usando fonte oficial para distinguir feriado de ponto facultativo e confirmar a abrangência territorial. Essa consulta não altera a contagem simplificada. Se houver indicação de feriado, mas não for possível confirmar se é feriado oficial, ponto facultativo ou se alcança a filial responsável, sinalizar `PENDENTE — CONFIRMAR APLICABILIDADE DO FERIADO À DATA OPERACIONAL` e não presumir a antecipação. Não fazer essa verificação para atos com data fixa.
-
-A antecipação altera somente a `DATA` operacional da tarefa no VIOS. Preservar o vencimento de referência e o D-2 calculados pelo critério de segunda a sexta, incluindo feriados, inclusive nos cabeçalhos da descrição; registrar fora do resumo que a `DATA` foi antecipada e qual feriado causou o ajuste. Não alterar data nem horário fixos de audiência, perícia, sustentação ou outro ato agendado: esses eventos permanecem na data real, ainda que coincida com feriado, sem alerta ou sinalização adicional por essa coincidência.
-
 **Exemplo:** publicação em 29/10/2026 e prazo de 5 dias: contar 30/10, 02/11, 03/11, 04/11 e 05/11. Vencimento de referência: **05/11/2026**; D-2: **03/11/2026**. Não excluir 30/10 ou 02/11 por feriado/suspensão.
 
-Se, em outro caso, a `DATA` operacional calculada fosse **02/11/2026**, manter 02/11 na contagem e no controle de referência, mas lançar a tarefa no VIOS em **30/10/2026**, por ser o dia de trabalho anterior ao feriado nacional. Um feriado exclusivo de outro estado ou município, sem aplicação à filial responsável, não produziria esse recuo.
-
-Separar data de lançamento no VIOS, vencimento de referência e controle D-2. Consultar o horário atual de America/Sao_Paulo (ou horário informado pelo usuário); não presumir lançamento de manhã. Nas demais seções e referências, interpretar “dia útil” como segunda a sexta, inclusive feriados, para a contagem simplificada; para a `DATA` operacional, aplicar o ajuste de feriado oficial previsto acima. “Prazo jurídico/vencimento jurídico” nos modelos representa referência calculada pelo critério solicitado, não validação oficial.
+Separar data de lançamento no VIOS, vencimento de referência e controle D-2. Consultar o horário atual de America/Sao_Paulo (ou horário informado pelo usuário); não presumir lançamento de manhã. Nas demais seções e referências, interpretar “dia útil” e “dia de expediente do escritório” como segunda a sexta, inclusive feriados, para a contagem simplificada. “Prazo jurídico/vencimento jurídico” nos modelos representa referência calculada pelo critério solicitado, não validação oficial.
 
 | Situação | Data da tarefa no VIOS | Descrição |
 | --- | --- | --- |
@@ -164,7 +123,8 @@ PRAZO PARA RECURSO: DD/MM/AAAA
 ## Complementares e situações específicas
 
 - Sustentação oral: indicar viabilidade e sustentação, em blocos próprios e datas distintas conforme a tabela. Separar prazo de envio/inscrição da data da sessão.
-- Perícia médica previdenciária: indicar `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026` e `MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026` para quesitos e assistente técnico. Preservar prazo específico ou marcar pendência, sem presumir prazo não confirmado. Laudo já juntado, sem nova perícia, não gera tarefa de comparecimento nem de quesitos automaticamente.
+- Para a tarefa de comparecimento à perícia médica, usar o responsável da filial informada e mapeada ou, quando a filial não estiver informada ou mapeada, usar `incluir responsável pela cidade identificada`, conforme seção "Referência — POP e fluxo de intimações" (mais abaixo), inclusive quando não se tratar de tarefa previdenciária; não presumir a filial a partir da cidade do CSV ou do local da perícia.
+- Perícia médica previdenciária: indicar `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026` e `MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026` para quesitos e assistente técnico. Aplicar à tarefa de comparecimento a regra específica de filial e o texto para identificação pelo bot em seção "Referência — POP e fluxo de intimações" (mais abaixo), em vez da regra geral do advogado auxiliar. Quesitos e assistente técnico seguem a responsável do Previdenciário. Preservar prazo específico ou marcar pendência, sem presumir prazo não confirmado. Laudo já juntado, sem nova perícia, não gera tarefa de comparecimento nem de quesitos automaticamente.
 - Perícia social previdenciária: indicar `AVISAR PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026`, para Leticya, e `INSTRUÇÃO PERÍCIA SOCIAL JUDICIAL (PREVIDENCIÁRIO) 2026` na mesma data operacional. Confirmar responsável pela instrução, sem presumir que seja o do aviso. Se a visita for expressamente sem agendamento, indicar ambas sem inventar data/hora de comparecimento; se os dados existirem em ID/evento/expediente ainda não lido, bloquear e listar a pendência fora do arquivo. Se solicitar dados/documentos, acrescentar minuta previdenciária para Suhiane, com prazo e data operacional próprios, preservando o prazo jurídico. Não substituir uma tarefa pela outra.
 - No aviso social, usar o aviso padrão em negrito e sublinhado e, abaixo, breve trecho principal entre aspas. Consultar o POP para o texto.
 - Manifestação sobre laudo previdenciário ou proposta de acordo do INSS: usar a tarefa oficial de petição intermediária/réplica/impugnação laudo. Usar o prazo expresso; se o expediente não trouxer prazo, aplicar o legal subsidiário pertinente (laudo: art. 477, §1º, CPC, 15 dias, quando aplicável), identificando a premissa fora do resumo. Não exigir consulta manual unicamente porque o expediente completo omitiu prazo; manter pendência se houver indicação concreta de prazo especial ainda não disponível.
@@ -219,7 +179,7 @@ Conferir uma linha interna por CI: cliente, destinatário, ato/ID, natureza, fas
 
 - Revisar todas as CIs e suas tarefas; não encerrar por dúvida de uma CI deixando as demais sem análise.
 - Verificar a instrução em toda perícia social, os quesitos na perícia médica e as duas tarefas de sustentação.
-- Confirmar o corte das 12h para análise/ciência, o próximo dia de expediente do escritório para prioridades, eventual antecipação da `DATA` por feriado oficial aplicável e a separação entre data operacional, D-2 da descrição e vencimento jurídico.
+- Confirmar o corte das 12h para análise/ciência, o próximo dia de expediente do escritório para prioridades e a separação entre calendário interno, D-2 da descrição e vencimento jurídico.
 - Conferir Breno nas petições intermediárias da Execução da Tamira.
 - Não lançar nem incluir no arquivo importável tarefa indefinida, duplicada, com área/cliente/responsável incertos ou com dado indispensável ausente. Registrar exatamente o que a Controladoria deve conferir.
 - Perguntar somente após ler os documentos e apenas sobre dados que não possam ser obtidos das fontes disponíveis. Entregar as pendências em bloco único; não perguntar qual modelo usar quando a regra já o define.
@@ -228,7 +188,7 @@ Conferir uma linha interna por CI: cliente, destinatário, ato/ID, natureza, fas
 
 Respeitar o modelo institucional anexado e entregar por padrão somente um TXT UTF-8 para o bot ao analisar exportações CSV/Excel do VIOS, conforme `references/saida-txt-bot.md`. Não entregar `.md`, `.csv`, `.docx` ou `.zip` em substituição ao TXT, salvo pedido expresso. Incluir nesse arquivo apenas tarefas completas e prontas. Não criar tarefa para mandar o advogado descobrir informação necessária à triagem. Quando faltar leitura de ID, evento ou expediente, data/horário/local, responsável ou outro dado indispensável, excluir a tarefa afetada do arquivo e listar no chat, fora dele: CI, processo, tarefa bloqueada, dado faltante e conferência exata a realizar no sistema. Informar totais de CIs conferidas, tarefas prontas, duplicidades e pendências, sem confundir quantidade de tarefas com quantidade de CIs. Preservar todas as CIs na conferência interna e explicar qualquer exclusão.
 
-Manter a descrição breve, pronta para copiar, sem responsáveis/auxiliares, fundamentos extensos, transcrição longa, instruções de cadastro ou OBS genérica. Consultar os modelos curtos de audiência e sustentação no POP. Confirmar responsável e auxiliar nos campos próprios. Nunca usar `automático` nem atribuir tarefa a Amanda Leite Mendes ou Sarah Pontes/Controladoria. Na ausência de auxiliar, usar o advogado responsável, exceto Ronielle Feitosa, hipótese em que a tarefa deve ser bloqueada e sinalizada à usuária; somente em `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`, aplicar obrigatoriamente o responsável da filial e não atribuir a Suiane/Suhiane.
+Manter a descrição breve, pronta para copiar, sem responsáveis/auxiliares, fundamentos extensos, transcrição longa, instruções de cadastro ou OBS genérica. Consultar os modelos curtos de audiência e sustentação no POP. Confirmar responsável e auxiliar nos campos próprios; nunca atribuir tarefa de intimação a Amanda Leite Mendes/Controladoria, nem usá-la como alternativa à falta de responsável.
 
 ## Referência — POP e fluxo de intimações
 
@@ -287,10 +247,6 @@ Usar título exato como `AUDIÊNCIA UNA`, sem explicação entre parênteses. Se
 
 ### Perícias
 
-Antes de gerar especificamente `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`, identificar a filial pela cidade vinculada à perícia. Preencher o responsável pelo seguinte mapa: Camocim — `FRANCISCO VICTOR HORA DO NASCIMENTO`; Tianguá — `JOÃO JÂNIO`; Jijoca de Jericoacoara/Jijoca — `GUIVIA VASCONCELOS`; Sobral — `ANA LETÍCIA DA SILVA LEITAO`. Esta regra prevalece sobre auxiliar e advogado responsável do processo. Não atribuir essa tarefa a Amanda Leite Mendes nem a Suiane/Suhiane.
-
-Se a filial estiver ausente, ambígua ou fora do mapa, não lançar a tarefa de perícia médica judicial e sinalizar `NÃO LANÇAR — CONFIRMAR FILIAL/RESPONSÁVEL DA PERÍCIA MÉDICA JUDICIAL.` Não aplicar esse roteamento nem a exclusão de Suiane/Suhiane a perícia trabalhista, perícia técnica cível, aviso, instrução ou minutas; essas tarefas continuam em seus fluxos próprios.
-
 ```text
 TIPO:
 DATA:
@@ -306,6 +262,22 @@ Indicar duas tarefas em blocos próprios:
 2. `MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026`, para quesitos e assistente técnico.
 
 Para a segunda, usar prazo específico confirmado ou marcar pendência. Se o ato apenas designar a perícia, ainda indicar a complementar com prazo pendente; não presumir data. Não confundir com manifestação sobre laudo já produzido.
+
+##### Responsável pela tarefa de comparecimento à perícia médica
+
+Quando a Controladoria informar uma cidade de filial mapeada, preencher o responsável operacional correspondente. Se a filial não estiver informada ou não estiver na tabela, o bot identificará a filial, conforme orientação da usuária: preencher o campo de responsável com o texto determinado abaixo. Esta regra específica prevalece sobre a atribuição geral ao advogado auxiliar na tarefa de comparecimento.
+
+| Cidade da filial | Responsável no TXT, conforme informado no cadastro VIOS |
+| --- | --- |
+| Sobral | Ana Letícia da Silva Leitao |
+| Jijoca ou Jijoca de Jericoacoara | Guivia Vasconcelos |
+| Tianguá | João Jânio |
+| Camocim | Francisco Victor Hora do Nascimento |
+
+- Usar os nomes exatamente como informados. Não atribuir a tarefa de comparecimento a Amanda Leite Mendes, Suhiane ou `automático`.
+- Não usar a coluna `Cidade` do CSV nem o endereço ou município do local da perícia para presumir a filial.
+- Se a Controladoria não informar a cidade da filial ou ela não estiver na tabela, não excluir a tarefa por esse motivo. No TXT, preencher exatamente `RESPONSÁVEIS: incluir responsável pela cidade identificada`. Data, horário e local da perícia continuam indispensáveis; se faltarem, informar a pendência específica.
+- A tarefa de quesitos e indicação de assistente técnico é separada e segue a responsável do Previdenciário, Suhiane; manter seu prazo e condições de lançamento próprios.
 
 #### Social previdenciária
 
@@ -403,7 +375,7 @@ Conferir em conjunto departamento, responsável atual, auxiliar e providência; 
 | Suhiane/SUH | Trabalhista Reclamante ou Previdenciário | Diferenciar por partes, teor, órgão e CNJ |
 | Ianna/IANN (Ianna Brena) | Cível — demandas da Casa no Celular/Casa do Celular | Responsável confirmada pela usuária para todas as demandas dessa carteira; corrigir auxiliares antigos sem repetir consulta |
 | Tamira/TAMI | Execução | Se efetivamente responsável, usar tarefa de Execução; se o caso/tarefa for previdenciário, corrigir para Suhiane |
-| Johnys/JOHN | Trabalhista Reclamada | Substituir Carlos/CARL em tarefa trabalhista; Carlos não integra mais o Trabalhista |
+| Johnys/JOHN | Trabalhista Reclamada | Atribuir a Johnys também quando o auxiliar informado for CARL, exceto se o cliente for CALTECH, caso em que CARL permanece com Carlos; usar o nome completo no TXT |
 | Breno | Petições intermediárias da Execução da Tamira | Marcar como responsável operacional, preservando Tamira como auxiliar |
 
 SUH em processo da Justiça do Trabalho: usar Trabalhista Reclamante, inclusive na fase executiva, salvo transferência interna confirmada. SUH em benefício/INSS: Previdenciário, ressalvada a mesma confirmação. Palavra “execução” ou classe judicial não basta para mudar o setor.
@@ -449,7 +421,7 @@ Reconhecer ITBN TELEFONIA LTDA (MATRIZ), A M AGUIAR TELEFONIA LTDA e RAV HOLDING
 
 - Identificar separadamente natureza, fase, departamento confirmado/provável e auxiliar.
 - Se só houver auxiliar, sem prova de departamento compatível, registrar o setor provável como hipótese. Não apresentar essa hipótese como cadastro validado.
-- Tarefa previdenciária cadastrada para Tamira: corrigir para Suhiane. Tarefa trabalhista cadastrada para Carlos: corrigir para Johnys. Não bloquear essas correções já autorizadas pelo usuário.
+- Tarefa previdenciária cadastrada para Tamira: corrigir para Suhiane quando a orientação institucional comprovar o setor. Encaminhar tarefas com auxiliar CARL a JOHN, exceto quando o cliente for CALTECH, caso em que a tarefa permanece com Carlos.
 - Auxiliar de outra área com providência executiva: confirmar se houve transferência; não trocar setor apenas pelo conteúdo executivo.
 - Divergência não resolvida impede lançamento da tarefa afetada; entregar a providência identificada e as alternativas oficiais. Se o usuário/documento confirmar a transferência e o responsável, registrar a evidência e não repetir pedido de confirmação.
 - Sem setor seguro: `PENDENTE – CONFIRMAR ÁREA CADASTRADA NO VIOS.`
@@ -515,34 +487,13 @@ Aplicar a dados bancários, documentos, RPV, alvará, prosseguimento, penhora e 
 
 ### Ausência de responsável
 
-Nenhuma tarefa de intimação pode ser atribuída a AMANDA LEITE MENDES, que realiza o lançamento, mas não acompanha nem executa as tarefas. Não usar `automático` no TXT, pois esse valor direciona a tarefa para Amanda.
-
-Usar o nome completo do advogado auxiliar. Se não houver auxiliar, usar o nome completo do advogado responsável; qualquer outro advogado responsável identificado pode receber a tarefa. A única exceção a esse fallback é RONIELLE FEITOSA: se não houver auxiliar e ele constar como responsável pelo processo, não atribuir a tarefa a ele. Registrar `NÃO LANÇAR — VERIFICAR QUEM É O ADVOGADO AUXILIAR OU O ADVOGADO RESPONSÁVEL CORRETO; PROCESSO SEM AUXILIAR E COM RONIELLE FEITOSA COMO RESPONSÁVEL`, bloquear a tarefa e listá-la fora do TXT para conferência da usuária.
-
-Também não atribuir nenhuma tarefa a Sarah Pontes/Controladoria. Se não houver responsável identificável pelas regras institucionais, registrar `RESPONSÁVEL NÃO IDENTIFICADO`, bloquear a tarefa e listar a pendência fora do arquivo. Não presumir responsável de outra área.
-
-### Responsável da perícia médica judicial por filial
-
-Somente para a tarefa `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`, o roteamento por filial prevalece sobre auxiliar e advogado responsável do processo. Não atribuir essa tarefa a AMANDA LEITE MENDES nem a Suiane/Suhiane.
-
-| Filial/cidade vinculada à perícia | Responsável |
-| --- | --- |
-| Camocim | FRANCISCO VICTOR HORA DO NASCIMENTO |
-| Tianguá | JOÃO JÂNIO |
-| Jijoca de Jericoacoara/Jijoca | GUIVIA VASCONCELOS |
-| Sobral | ANA LETÍCIA DA SILVA LEITAO |
-
-Não estender esta regra a perícia técnica/médica trabalhista, perícia técnica cível, aviso, instrução, quesitos, indicação de assistente técnico, manifestação sobre laudo ou qualquer outra tarefa. Nessas tarefas, Suiane/Suhiane não é excluída por esta regra; permanece apenas a proibição geral de atribuição a Amanda. Se não for possível identificar inequivocamente uma das quatro filiais na perícia médica judicial previdenciária, bloquear a tarefa e registrar `NÃO LANÇAR — CONFIRMAR FILIAL/RESPONSÁVEL DA PERÍCIA MÉDICA JUDICIAL.` Não escolher responsável por semelhança de cidade ou por mera presença de nome no cadastro.
+Não atribuir tarefa de intimação a Amanda Leite Mendes/Controladoria. Se não houver responsável identificável pelas regras institucionais, registrar `RESPONSÁVEL NÃO IDENTIFICADO`, bloquear a tarefa e listar a pendência fora do arquivo. Não presumir responsável de outra área.
 
 ## Referência — Tarefas VIOS e Modelos de Descrição
 
 Use esta lista para escolher a tarefa VIOS e montar a descrição. Preserve o nome da tarefa quando possível.
 
-Aplicar obrigatoriamente as datas, cabeçalhos exclusivos e modelos curtos da parte principal desta skill e POP. Análise/ciência observam o corte das 12h. Prioridades são agendadas no próximo dia de expediente do escritório; a descrição preserva controle D-2. Se a `DATA` operacional ajustável coincidir com feriado nacional ou local aplicável à filial, antecipar para o dia de trabalho anterior, sem alterar as datas de referência da descrição. Responsáveis e auxiliares ficam fora da descrição.
-
-Somente em `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`, usar o responsável da filial definido na parte principal desta skill: Camocim — `FRANCISCO VICTOR HORA DO NASCIMENTO`; Tianguá — `JOÃO JÂNIO`; Jijoca de Jericoacoara/Jijoca — `GUIVIA VASCONCELOS`; Sobral — `ANA LETÍCIA DA SILVA LEITAO`. Nunca atribuir essa tarefa a Amanda Leite Mendes ou Suiane/Suhiane. Todas as demais tarefas seguem seus fluxos próprios; nelas, esta regra não exclui Suiane/Suhiane.
-
-Em qualquer tarefa de intimação, nunca usar `automático` no campo `RESPONSÁVEIS`: informar o advogado auxiliar; na ausência dele, usar qualquer advogado responsável identificado, exceto Ronielle Feitosa. Se não houver auxiliar e Ronielle for o responsável, bloquear e sinalizar para a usuária conferir o auxiliar ou o responsável correto, conforme a parte principal desta skill.
+Aplicar obrigatoriamente as datas, cabeçalhos exclusivos e modelos curtos da parte principal desta skill e POP. Análise/ciência observam o corte das 12h. Prioridades são agendadas no próximo dia de expediente do escritório; a descrição preserva controle D-2. Responsáveis e auxiliares ficam fora da descrição.
 
 Índice: Trabalhista; Previdenciário; Execução; Cível; Gerais e complementares; Fluxo de pagamento; Pendências de saneamento.
 
@@ -668,13 +619,11 @@ Nos campos externos de controle, identificar `Prazo previsto em lei: N dias úte
 
 ### Calendário e contagem
 
-- Aplicar o calendário simplificado da parte principal desta skill a todas as contagens de prazos em dias úteis: contar segunda a sexta e excluir somente sábados e domingos, inclusive em embargos, recursos e manifestações. Incluir feriados, pontos facultativos, recesso e suspensões. Não usar calendário de feriados para excluir dias da contagem; consultar fonte oficial somente para verificar se a `DATA` operacional candidata coincide com feriado aplicável.
+- Aplicar o calendário simplificado da parte principal desta skill a todas as contagens de prazos em dias úteis: contar segunda a sexta e excluir somente sábados e domingos, inclusive em embargos, recursos e manifestações. Incluir feriados, pontos facultativos, recesso e suspensões. Não exigir consulta de feriados nem bloquear pela ausência de calendário oficial.
 - Excluir o dia da publicação/ciência informada e iniciar no próximo dia de segunda a sexta. Preservar o marco documental e a duração expressa ou legal pertinente. Não atribuir ao cliente obrigação da parte contrária; para o marco operacional, aplicar a publicação fornecida e a orientação expressa de 11/11/2026 da parte principal desta skill.
-- D-2: retroceder dois dias de segunda a sexta do vencimento de referência, incluindo feriados. Análises/ciências e prioridades usam esse mesmo calendário para obter a data candidata, com o corte das 12h previsto na parte principal desta skill. Depois, se a `DATA` candidata coincidir com feriado nacional ou feriado local aplicável à filial responsável, antecipar somente a `DATA` do VIOS para o dia de trabalho anterior. Não antecipar por ponto facultativo nem por feriado exclusivo de outro estado/município sem aplicação à filial.
+- D-2: retroceder dois dias de segunda a sexta do vencimento de referência, incluindo feriados. Análises/ciências e prioridades usam esse mesmo calendário para agendamento, com o corte das 12h previsto na parte principal desta skill.
 - Identificar uma vez, fora dos resumos: `Contagem solicitada: segunda a sexta, incluindo feriados; vencimentos sem validação do calendário judicial oficial.` Não chamar o resultado de vencimento jurídico oficial confirmado.
 - Preservar datas-limite expressamente fixadas pelo juízo e data/hora exatas dos eventos. Prazos em horas ou dias corridos mantêm a unidade e regime próprios, inclusive no Criminal; o calendário simplificado não converte dias corridos em dias úteis.
-- A antecipação por feriado não modifica vencimento de referência nem D-2 calculado; registrar o ajuste da `DATA` fora do resumo. Audiência, perícia, sustentação e outro ato com data/hora fixas permanecem na data real, sem antecipação e sem alerta por coincidência com feriado.
-- Para o recuo, usar o primeiro dia anterior de segunda a sexta que não seja feriado nacional nem feriado estadual/municipal aplicável à filial. Confirmar em fonte oficial se a data é feriado, ponto facultativo e qual sua abrangência territorial. Se a aplicabilidade estiver incerta, sinalizar a pendência em vez de presumir.
 - Se o usuário pedir especificamente validação jurídica oficial, distinguir essa conferência da contagem simplificada e consultar as regras e fontes oficiais do órgão competente.
 
 ### Casos especiais
@@ -703,7 +652,7 @@ Aplicar integralmente os cabeçalhos e datas da parte principal desta skill. Em 
 
 Usar embargos + recurso OU prazo fatal, nunca os três na mesma descrição. Minutas: `PRAZO FATAL D -2:` (exceção de apresentação da minuta prioritária de requisitórios conforme a parte principal desta skill). Análises operacionais com prazo objetivo e sem controle recursal: somente prazo fatal. Preservar prazo de obrigação distinta em campo externo/tarefa própria.
 
-Analisar/ciência: mesmo dia de expediente do escritório até 12h; após 12h, próximo dia de segunda a sexta. Prioridades: próximo dia de segunda a sexta. Aplicar segunda a sexta, inclusive feriados, à contagem e ao D-2; depois, se a `DATA` operacional candidata coincidir com feriado nacional ou local aplicável à filial, antecipá-la para o dia de trabalho anterior. Ponto facultativo e feriado exclusivo de outra localidade não provocam recuo. Audiência/perícia/sustentação: data e hora exatas do ato; inscrição/envio são prazos preparatórios separados. Se faltarem elementos de cálculo ou dados necessários de ID/evento/expediente, bloquear a tarefa e listar a pendência fora do arquivo. Não afirmar que editar a Skill alterou o programa do bot.
+Analisar/ciência: mesmo dia de expediente do escritório até 12h; após 12h, próximo dia de expediente do escritório. Prioridades: próximo dia de expediente do escritório. Não excluir feriados do agendamento interno nem da contagem simplificada. Aplicar segunda a sexta, inclusive feriados, à contagem e ao D-2, conforme a regra simplificada da parte principal desta skill. Audiência/perícia/sustentação: data e hora exatas do ato; inscrição/envio são prazos preparatórios separados. Se faltarem elementos de cálculo ou dados necessários de ID/evento/expediente, bloquear a tarefa e listar a pendência fora do arquivo. Não afirmar que editar a Skill alterou o programa do bot.
 
 ## Referência — Validação para lançamento e comparação com o bot
 
@@ -719,8 +668,7 @@ Corrigir inconsistência interna detectável. Se a solução exigir documento/da
 
 - Teor ausente, comunicação que só aponta evento (“Evento 23 — PETIÇÃO”), ou impossibilidade de escolher tarefa sem abrir o evento. Não usar ciência como substituto. Ressalvar a inclusão expressamente solicitada de análise de sentença quando o evento informa inequivocamente o resultado, conforme a parte principal desta skill: não inventar dispositivo nem valores.
 - Cliente/vínculo/posição processual ainda não identificados com segurança.
-- Departamento/responsável incerto ou divergência não resolvida. Aplicar antes as correções autorizadas: Carlos trabalhista → Johnys; Tamira previdenciário → Suhiane; responsável Tamira em Execução → tarefa de Execução. Nunca usar `automático` nem atribuir a Amanda Leite Mendes ou Sarah/Controladoria. Usar primeiro o advogado auxiliar; se ele não existir, usar o advogado responsável. Exceção: se não houver auxiliar e o responsável for Ronielle Feitosa, bloquear a tarefa e sinalizar à usuária para verificar o auxiliar ou o responsável correto. Qualquer outro advogado responsável identificado pode receber a tarefa.
-- `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026` sem cidade/filial inequivocamente identificada entre Camocim, Tianguá, Jijoca de Jericoacoara/Jijoca e Sobral. Somente essa tarefa deve ser atribuída ao responsável da filial e nunca a Amanda Leite Mendes ou Suiane/Suhiane. Esta regra não se estende a qualquer outra tarefa. Se a filial não puder ser determinada, registrar `NÃO LANÇAR — CONFIRMAR FILIAL/RESPONSÁVEL DA PERÍCIA MÉDICA JUDICIAL.`
+- Departamento/responsável incerto ou divergência não resolvida. Aplicar as correções específicas autorizadas e a tabela de nomes de `saida-txt-bot.md`: tarefas com auxiliar CARL são atribuídas a JOHN, exceto se o cliente for CALTECH, quando são atribuídas a Carlos. Na tarefa de comparecimento à perícia médica, a ausência de filial não bloqueia o TXT: usar o texto específico autorizado em `saida-txt-bot.md`. Nunca atribuir a Amanda Leite Mendes/Controladoria. O TXT não pode conter `automático` nem abreviação no campo de responsável.
 - Audiência sem tipo/modelo, data, hora, formato ou link/local; perícia com comparecimento sem data/hora/local; sustentação sem data/horário ou outros dados indispensáveis ao cadastro. Em sustentação e viabilidade, link/local são opcionais e sua ausência não bloqueia o TXT. ID e senha são opcionais: sua ausência, por si só, não bloqueia audiência. Omitir campos ausentes sem afirmar acesso livre. Listar precisamente os dados essenciais faltantes.
 - Tarefa com horário sem horário confirmado. Exceção: aviso/instrução social possuem data operacional própria e podem existir sem data/hora da visita.
 - Prazo necessário ao lançamento sem termo inicial ou duração identificados; a falta de calendário oficial não bloqueia a contagem simplificada. Preservar controle preventivo identificado, sem chamá-lo de vencimento validado.
@@ -732,7 +680,7 @@ Esses bloqueios restringem o lançamento da tarefa afetada, não impedem entrega
 
 ### Alertas com contexto
 
-- Feriados e suspensões: contar como dias úteis na contagem simplificada. Depois de obter a `DATA` operacional candidata, verificar em fonte oficial somente se ela coincide com feriado nacional ou feriado estadual/municipal aplicável à filial responsável. Nessa coincidência, antecipar a `DATA` para o dia de trabalho anterior. Não antecipar por ponto facultativo nem por feriado exclusivo de outro estado/município. Indicar uma vez, fora dos resumos, o critério solicitado e a ausência de validação do calendário judicial oficial.
+- Feriados e suspensões: contar como dias úteis na contagem simplificada; não pesquisar nem exigir calendário oficial para esse cálculo. Indicar uma vez, fora dos resumos, o critério solicitado e a ausência de validação do calendário judicial oficial.
 - Ato mais próximo do que a data operacional preparatória: antecipar o trabalho e justificar.
 - Divergência de grafia de cliente comprovadamente identificado: registrar a prova; não presumir equivalência de outras empresas.
 - Se a informação necessária depender de leitura de ID/evento/expediente ainda não disponível, não lançar a tarefa afetada; a Controladoria confere primeiro. Não criar tarefa para suprir essa falta.
@@ -741,11 +689,10 @@ Esses bloqueios restringem o lançamento da tarefa afetada, não impedem entrega
 
 - Antes de calcular recursos, conferir se o ato é somente ciência pelo filtro de providência concreta. Suspensão de obrigação com consulta/diligência a cargo do juízo, sem providência atual do cliente nem questão jurídica concreta, não gera análise ou prazos recursais por cautela abstrata. Preservar hipóteses específicas de análise obrigatória.
 
-- Análise e ciência: mesmo dia de expediente do escritório até 12h; após 12h ou fora de expediente, próximo dia de segunda a sexta, ressalvadas prioridades e urgência concreta. Se a data operacional candidata coincidir com feriado oficial aplicável, antecipar para o dia de trabalho anterior, salvo impossibilidade temporal já consumada, que deve ser sinalizada como urgência/atraso sem backdating fictício.
+- Análise e ciência: mesmo dia de expediente do escritório até 12h; após 12h ou fora de expediente, próximo dia de expediente do escritório, ressalvadas prioridades e urgência concreta. Feriados não são excluídos do agendamento nem da contagem simplificada.
 - RPV e prioridades SUH: primeiro dia de expediente do escritório seguinte. Cabeçalho da descrição controla D-2; não é a data de lançamento prioritário.
-- Regra geral: D-2 retrocedendo dois dias de segunda a sexta, inclusive feriados; excluir apenas sábados e domingos. Se a `DATA` operacional resultante for feriado aplicável, antecipá-la sem alterar o D-2 calculado nos controles.
+- Regra geral: D-2 retrocedendo dois dias de segunda a sexta, inclusive feriados; excluir apenas sábados e domingos.
 - Eventos com horário: dia e hora exatos nos campos do VIOS e na descrição; sessão virtual no início. Término e prazo de envio/inscrição ficam fora da descrição curta.
-- Feriado nacional ou local aplicável: recuar até o primeiro dia anterior de segunda a sexta que não seja feriado aplicável. Feriado de outro estado/município não aplicável e ponto facultativo não alteram a `DATA`. Confirmar classificação e abrangência em fonte oficial; se incertas, registrar pendência objetiva.
 - Ciência: não inventar vencimento.
 - Nenhum agendamento interno pode alongar prazo jurídico ou ocultar atraso.
 - Recalcular de forma independente quando o bot apresentar data. Conta correta não confirma termo inicial, cabimento nem calendário.
@@ -754,7 +701,7 @@ Esses bloqueios restringem o lançamento da tarefa afetada, não impedem entrega
 
 Informar por CI se está pronta, duplicada ou pendente, sem misturar conclusões. Na revisão, separar erro confirmado, inconsistência, provável duplicidade e pendência documental. Não repetir avisos obsoletos quando a fonte oficial já foi localizada.
 
-Excluir do arquivo importável todas as tarefas bloqueadas. Entregar no chat uma lista separada por CI/processo com o dado faltante e a consulta necessária. Conferir descrições curtas, responsáveis fora do resumo e cabeçalhos exclusivos: duas datas recursais OU prazo fatal. Confirmar que nenhuma `DATA` operacional ajustável permaneceu em feriado oficial aplicável, sem alterar datas fixas de atos. Confirmar também que nenhum campo `RESPONSÁVEIS` contém `automático` ou AMANDA LEITE MENDES e que toda tarefa `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026` usa o responsável da filial, sem Suiane/Suhiane. Não omitir CIs da conferência interna.
+Excluir do arquivo importável todas as tarefas bloqueadas. Entregar no chat uma lista separada por CI/processo com o dado faltante e a consulta necessária. Conferir descrições curtas, responsáveis fora do resumo e cabeçalhos exclusivos: duas datas recursais OU prazo fatal. Não omitir CIs da conferência interna.
 
 No pagamento cível, conferir somente análise e minuta. Excluir tarefa separada de contato com o cliente, pois esse contato já é gerado automaticamente pelo fluxo da análise.
 
@@ -779,7 +726,7 @@ O robô não refaz a análise: ele lança no VIOS exatamente as tarefas do arqui
 - Responsável que não existe no VIOS (nome diferente do cadastro).
 - `RESPONSÁVEIS` em branco, `automático` ou AMANDA LEITE MENDES (o VIOS manda a tarefa para a Amanda, que só lança).
 - Responsável único RONIELLE FEITOSA (RONEELY FEITOSA no VIOS): sem auxiliar e com ele como responsável a tarefa não vai no arquivo.
-- `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026` sem o responsável da filial (Camocim, Tianguá, Jijoca ou Sobral).
+- `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026` com responsável que não é o da filial (Camocim, Tianguá, Jijoca ou Sobral) nem o texto `incluir responsável pela cidade identificada`. Sem filial no arquivo, o texto vai ao TXT e não bloqueia; no lançamento, o robô confere o "Escritório atual" do processo no VIOS e, sem filial ali, não lança.
 - Descrição vazia ou linha solta antes de `DESCRIÇÃO:`.
 - CI já lançada pelo robô antes, ou que já tem tarefa ativa no VIOS.
 - CI que é cópia de outra (mesmo processo e mesmo teor): se a original está no arquivo ou já foi lançada, a cópia não é gravada; se não, vira erro para a Controladoria conferir.
@@ -807,10 +754,8 @@ Avisos (a CI é lançada, mas a página mostra para conferir): data já passada,
 
 ### Feriado na DATA da tarefa
 
-Quando a `DATA` operacional de uma tarefa cai em feriado nacional (ou do estado/município do escritório, se configurado), o robô
-da análise pela API recua só a `DATA` para o dia de trabalho anterior, como a skill manda; o D-2 e os vencimentos da descrição
-não mudam. Audiência, perícia e sustentação oral ficam na data real. No arquivo do chat a `DATA` já deve vir ajustada; o robô só
-confere de novo a data que o corte das 12h empurra para o próximo dia de segunda a sexta.
+Sem ajuste: a skill de 18/11/2026 não antecipa a `DATA` por feriado. A contagem é segunda a sexta, feriado conta, e o robô não
+recua nem pesquisa feriado. Vale também para o próximo dia útil do corte das 12h.
 
 ## Arquivo para o robô (.txt)
 
@@ -865,9 +810,9 @@ Regras do arquivo:
 - `CI`: só o número da CI do VIOS.
 - `PROCESSO`: **sempre** o número do processo da CI no padrão CNJ (`0000000-00.0000.0.00.0000`), como está no campo Números da intimação (ou no teor). A página de envio mostra esse número em cada CI; se faltar, ela usa o número capturado do VIOS e avisa quando não acha nenhum.
 - `TAREFA`: o nome exato da lista oficial (seção "Referência — Tarefas VIOS e Modelos de Descrição").
-- `DATA`: a data da tarefa no VIOS (DD/MM/AAAA), já calculada pelas regras de data da skill (D-2; prioridade RPV/Suhiane no próximo dia de segunda a sexta; análise e ciência no mesmo dia até 12h ou no próximo dia depois das 12h; data exata do ato), sempre com a contagem simplificada (só sábado e domingo ficam de fora). Se a data ajustável cair em feriado nacional ou local da filial, a skill manda antecipar para o dia de trabalho anterior (só a `DATA`; o D-2 da descrição não muda). Só `CIÊNCIA` pode ficar com `DATA:` vazia (vai para o dia do envio).
+- `DATA`: a data da tarefa no VIOS (DD/MM/AAAA), já calculada pelas regras de data da skill (D-2; prioridade RPV/Suhiane no próximo dia de segunda a sexta; análise e ciência no mesmo dia até 12h ou no próximo dia depois das 12h; data exata do ato), sempre com a contagem simplificada (só sábado e domingo ficam de fora). Feriado não altera a `DATA` (skill de 18/11/2026). Só `CIÊNCIA` pode ficar com `DATA:` vazia (vai para o dia do envio).
 - `HORA`: HH:MM em audiência, perícia e sustentação oral (na sessão virtual, o horário de início); vazia nas demais tarefas.
-- `RESPONSÁVEIS`: **nunca `automático`** (o VIOS manda a tarefa para AMANDA LEITE MENDES, que só lança e não executa). Nome completo do advogado auxiliar, como aparece no VIOS; sem auxiliar, o advogado responsável pelo processo (exceto RONIELLE FEITOSA: sem auxiliar e com ele como responsável, a tarefa fica fora do arquivo). Na `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`, o responsável da filial (Camocim, Tianguá, Jijoca ou Sobral). Vários nomes separados por vírgula. Na petição da Execução da Tamira: `TAMIRA LOIOLA, BRENO SILVA MOTA`.
+- `RESPONSÁVEIS`: **nunca `automático`** (o VIOS manda a tarefa para AMANDA LEITE MENDES, que só lança e não executa). Nome completo do advogado auxiliar, como aparece no VIOS; sem auxiliar, o advogado responsável pelo processo (exceto RONIELLE FEITOSA: sem auxiliar e com ele como responsável, a tarefa fica fora do arquivo). Na `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`, o responsável da filial (Camocim, Tianguá, Jijoca ou Sobral) ou, sem filial mapeada, o texto exato `incluir responsável pela cidade identificada`. CARL vai como JOHN (FRANCISCO JOHNYS VASCONCELOS BARBOSA), salvo cliente CALTECH (CARLOS AUGUSTO ALVES CAMILO BRANDÃO). Vários nomes separados por vírgula. Na petição da Execução da Tamira: `TAMIRA LOIOLA, BRENO SILVA MOTA`.
 - `DESCRIÇÃO`: sempre a última linha de campo; tudo abaixo dela vai para a Observação da tarefa, exatamente como escrito. Incluir os cabeçalhos de prazo da skill seguidos do texto do modelo da tarefa: `PRAZO DE EMBARGOS:` e `PRAZO DE RECURSO:` na análise jurídica de sentença/acórdão/decisão; `PRAZO FATAL D -2:` nas minutas; `PRAZO FATAL:` + `PRIORIDADE RPV` nas prioridades de RPV/precatório (exceto a minuta de dados de requisitórios, como no exemplo). Nunca os três cabeçalhos juntos. Não incluir `Responsável a marcar na tarefa` nem `Advogada auxiliar` (responsáveis vão em `RESPONSÁVEIS`).
 - Duas tarefas da mesma CI (ex.: verificar viabilidade de sustentação + sustentação oral): dois blocos seguidos com o mesmo `CI`.
 - **Não colocar no arquivo**: CI duplicada (vale a original), CI que não deve ser lançada (falta informação, evento sem teor, área divergente do auxiliar, tarefa pendente de definição). Listar essas CIs fora do bloco, com o motivo, para a Controladoria tratar à mão.

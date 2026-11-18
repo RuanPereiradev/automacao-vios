@@ -12,6 +12,21 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Skill de análise de intimações atualizada (pacote da Controladoria, 18/11/2026)
+- `doc/analise-intimacoes-controladoria/` (skill do projeto, lida pelo bot via `SKILL_PASTA`) trocada pelo pacote
+  `analise-intimacoes-controladoria-atualizada-2026-11-18.zip`. Cópia guardada em `doc/skill-original/9_2026-11-18_atualizada/`
+  e registrada como versão 9 em `doc/skill-original/LEIAME.md`.
+- Saiu a antecipação da `DATA` por feriado (versão 8). Perícia médica sem filial não bloqueia mais a tarefa. CARL vai para JOHN, exceto CALTECH.
+- `doc/skill-unica/` regenerado (`gerar_skill_unica.py`).
+
+### Alterado — código alinhado à skill de 18/11/2026 (18/11/2026)
+- Feriado: a `DATA` da tarefa não é mais antecipada por feriado (`bot/analise.py`, `bot/lancamento.py`). Saíram `prazos.antecipar()`, `feriado_aplicavel()`, `locais_escritorio()` e o `ESCRITORIO_LOCAIS` do `.env.example`.
+- Perícia médica sem filial mapeada na análise: a tarefa vai com `incluir responsável pela cidade identificada` e não bloqueia. A filial vem só do teor da intimação, não mais da cidade do CSV (`bot/responsaveis.py`).
+- Envio (página do TXT): aceita o texto `incluir responsável pela cidade identificada` na perícia médica (`bot/envio_txt.py`).
+- CARL vai para JOHNYS em qualquer área; cliente CALTECH fica com Carlos (`bot/responsaveis.py`).
+- No lançamento, a perícia médica continua conferida pelo "Escritório atual" do VIOS; sem filial ali, a tarefa não é lançada (decisão do código: o bot não consegue identificar a cidade sozinho).
+- Testes atualizados (`tests/test_responsaveis.py`): 38 OK.
+
 ### Corrigido — Sam relê o `.env` a cada envio: senha do VIOS trocada vale sem reiniciar (17/11/2026)
 - No Mac, depois de trocar a senha do VIOS no `.env`, o Sam continuava dando "senha incorreta". O servidor da página
   (`bot/envio_web.py`, ligado sem parar pelo `servidor_mac.sh`) lia o `.env` uma vez só, ao ligar, e usava a senha

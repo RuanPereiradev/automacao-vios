@@ -699,6 +699,15 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   (Carnaval, Corpus Christi...) não é feriado e não recua.
 - Testes: `.venv/bin/python -m unittest tests.test_responsaveis`.
 
+### Passo 43 — Skill de 18/11/2026 (pacote atualizado da Controladoria)
+- A skill do projeto (`doc/analise-intimacoes-controladoria/`) foi trocada pelo pacote `analise-intimacoes-controladoria-atualizada-2026-11-18.zip`.
+  Cópia em `doc/skill-original/9_2026-11-18_atualizada/`; resumo na seção 9 de `doc/skill-original/LEIAME.md`. `doc/skill-unica/` regenerado.
+- Mudanças que a skill traz: sem antecipação da `DATA` por feriado; perícia médica sem filial não bloqueia (texto `incluir responsável pela cidade identificada`);
+  CARL → JOHN (exceto CALTECH); análise/ciência após 12h vai para o próximo dia de expediente do escritório.
+- **Código alinhado (18/11/2026):** a `DATA` não recua mais por feriado (saíram `prazos.antecipar()` e o `ESCRITORIO_LOCAIS` do `.env`).
+  Perícia médica sem filial mapeada vai com o texto `incluir responsável pela cidade identificada` e não bloqueia na análise nem no TXT;
+  no lançamento, o "Escritório atual" do VIOS define a filial e, sem ela, a tarefa não é lançada. CARL → JOHN, exceto CALTECH.
+
 ### Passo 42 — Vila 06: a muralha do bot do Previdenciário
 - A Vila 06 é a casa do bot de WhatsApp do setor previdenciário (repositório próprio, `bot-previdenciario`, RN28). A cena
   é **vídeo** pré-renderizado (Blender): plantão de dia, fora do expediente à noite e, a cada evento do bot, um clipe curto
@@ -1470,7 +1479,6 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `LLM_PRECOS` | não | Corrige preços da tabela: `modelo=entrada/saída` por milhão de tokens, separados por vírgula | vazio |
 | `FERIADOS_PESQUISA` | não | Pesquisa feriados na internet antes da análise (`true`/`false`); só roda com `PRAZO_CONTAGEM=feriados` | `true` |
 | `DUPLICIDADE_ATIVA` | não | `true` liga o detector de duplicadas (Passo 17); `false` = desligado (a Controladoria tira as duplicadas no VIOS) | `false` |
-| `ESCRITORIO_LOCAIS` | não | Onde fica o escritório que executa as tarefas, `CIDADE/UF` separados por `;` (ou só `UF`); o feriado estadual/municipal desses locais recua a `DATA` da tarefa. Vazio = só feriados nacionais | `SOBRAL/CE;CE` |
 | `PRAZO_CONTAGEM` | não | `simplificada` = só sábado e domingo ficam de fora (feriados e recesso contam como dia útil); `feriados` = calendário antigo por tribunal (Passo 13) | `simplificada` |
 | `SAIDA_PASTA` | não | Pasta dos `.txt` | `saida` |
 | `HEADLESS` | não | Chrome sem janela | `false` |

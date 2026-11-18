@@ -89,3 +89,19 @@ Pacote `analise-intimacoes-controladoria-atualizada-2026-11-13.zip`, da Controla
 - `CIÊNCIA (CÍVEL) 2026` também vale para Criminal. Novas equivalências de clientes de 11 e 12/11 (roteamento).
 - `modelo-analise-vios.md` marcado como histórico; ícone novo.
 
+
+## 9 — 18/11/2026 — skill atualizada (pacote da Controladoria)
+Pacote `analise-intimacoes-controladoria-atualizada-2026-11-18.zip` (nesta pasta), com a estrutura de referências separada
+(`SKILL.md` enxuto + 6 arquivos em `references/`). Passou a ser a skill do projeto (`doc/analise-intimacoes-controladoria/`).
+- **Feriado na DATA do VIOS:** a regra de antecipação por feriado (versão 8) saiu da skill. A contagem continua
+  segunda a sexta, inclusive feriados, sem exigir calendário oficial. O código ainda antecipa a `DATA` (`bot/prazos.py`
+  `antecipar()`); ver pendência em `DOCUMENTACAO.md`.
+- **Perícia médica por filial:** a tarefa de comparecimento usa o responsável da filial indicada e mapeada; sem filial,
+  usa o texto `incluir responsável pela cidade identificada` e **não bloqueia**. A tabela de filiais saiu de `SKILL.md`
+  e `tarefas-vios.md` e continua em `pop-fluxo-intimacoes.md`.
+- **Responsáveis:** `CARL` (Carlos) vai para JOHN (nome completo), exceto cliente CALTECH. Regra de Amanda, `automático`
+  e RONEELY FEITOSA sem auxiliar mantidas (com o nome correto do VIOS: RONEELY).
+- **Análise e ciência:** após 12h, próximo dia de expediente do escritório (antes: próximo dia de segunda a sexta).
+- Sem alteração de texto de tarefas oficiais: `tarefas_oficiais()` lê as mesmas 55 tarefas.
+- `doc/skill-unica/` regenerado com `gerar_skill_unica.py`.
+- Código alinhado a esta versão (ver CHANGELOG, 18/11/2026).

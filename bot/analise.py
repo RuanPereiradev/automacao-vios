@@ -51,7 +51,6 @@ LAUDO_PREV_ANTIGA = "MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUD
 LAUDO_PREV = "MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026"
 INTERMEDIARIA_PREV = "MINUTAR PETIÇÃO INTERMEDIÁRIA (PREVIDENCIÁRIO)"  # substitui Carlos (CARL) nas tarefas trabalhistas
 # tarefas cuja DATA (sem hora fixa) recua para o dia de trabalho anterior quando cai em feriado (skill de 13/11/2026)
-AJUSTAVEIS_POR_FERIADO = {"D-2", "PRIORIDADE_RPV", "PRIORIDADE_EMENDA_SUHIANE", "MESMO_DIA", "DIA_SEGUINTE"}
 # sentença e acórdão sempre geram ANALISAR (o advogado decide se recorre)
 ATOS_DE_ANALISE = {"SENTENÇA", "ACÓRDÃO"}
 
@@ -332,21 +331,6 @@ class Agente:
             if t["nome"] == LAUDO_PREV_ANTIGA:
                 laudo = r["ato"] in ("LAUDO", "PERÍCIA") or "LAUDO" in prazos.normalizar(t["finalidade"] + " " + t["resumo"])
                 t["nome"] = LAUDO_PREV if laudo and r["ato"] != "PROPOSTA DE ACORDO" else INTERMEDIARIA_PREV
-        # DATA da tarefa em feriado nacional (ou do local do escritório): recua para o dia de trabalho anterior
-        # (skill de 13/11/2026). Só a DATA: o D-2 e os vencimentos da descrição não mudam. Ato com data/hora fixas não recua.
-        locais = prazos.locais_escritorio()
-        for t in tarefas:
-            dia = _data(t["data_tarefa"])
-            if t["tipo_data"] not in AJUSTAVEIS_POR_FERIADO or t["nome"].startswith(COM_HORARIO) or not dia:
-                continue
-            novo, feriado, aviso = prazos.antecipar(dia, hoje, self.tabela, locais)
-            if feriado:
-                t["data_tarefa"] = _br(novo)
-                t["ajuste_feriado"] = f"{_br(dia)} → {_br(novo)} ({feriado})"
-                alertas.append(f"{t['nome']}: DATA antecipada de {_br(dia)} para {_br(novo)} por causa do feriado "
-                               f"{feriado} (o vencimento e o D-2 da descrição não mudam).")
-            elif aviso:
-                alertas.append(f"{t['nome']}: {aviso}")
         # responsáveis: auxiliar (nome completo do VIOS) ou o advogado responsável; nunca "automático" nem Amanda
         pessoas = responsaveis.carregar(os.getenv("SAIDA_PASTA", "saida").strip() or "saida")
         bloqueios_resp = []

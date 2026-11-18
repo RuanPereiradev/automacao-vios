@@ -15,7 +15,7 @@ O robô não refaz a análise: ele lança no VIOS exatamente as tarefas do arqui
 - Responsável que não existe no VIOS (nome diferente do cadastro).
 - `RESPONSÁVEIS` em branco, `automático` ou AMANDA LEITE MENDES (o VIOS manda a tarefa para a Amanda, que só lança).
 - Responsável único RONIELLE FEITOSA (RONEELY FEITOSA no VIOS): sem auxiliar e com ele como responsável a tarefa não vai no arquivo.
-- `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026` sem o responsável da filial (Camocim, Tianguá, Jijoca ou Sobral).
+- `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026` com responsável que não é o da filial (Camocim, Tianguá, Jijoca ou Sobral) nem o texto `incluir responsável pela cidade identificada`. Sem filial no arquivo, o texto vai ao TXT e não bloqueia; no lançamento, o robô confere o "Escritório atual" do processo no VIOS e, sem filial ali, não lança.
 - Descrição vazia ou linha solta antes de `DESCRIÇÃO:`.
 - CI já lançada pelo robô antes, ou que já tem tarefa ativa no VIOS.
 - CI que é cópia de outra (mesmo processo e mesmo teor): se a original está no arquivo ou já foi lançada, a cópia não é gravada; se não, vira erro para a Controladoria conferir.
@@ -43,7 +43,5 @@ Avisos (a CI é lançada, mas a página mostra para conferir): data já passada,
 
 ### Feriado na DATA da tarefa
 
-Quando a `DATA` operacional de uma tarefa cai em feriado nacional (ou do estado/município do escritório, se configurado), o robô
-da análise pela API recua só a `DATA` para o dia de trabalho anterior, como a skill manda; o D-2 e os vencimentos da descrição
-não mudam. Audiência, perícia e sustentação oral ficam na data real. No arquivo do chat a `DATA` já deve vir ajustada; o robô só
-confere de novo a data que o corte das 12h empurra para o próximo dia de segunda a sexta.
+Sem ajuste: a skill de 18/11/2026 não antecipa a `DATA` por feriado. A contagem é segunda a sexta, feriado conta, e o robô não
+recua nem pesquisa feriado. Vale também para o próximo dia útil do corte das 12h.

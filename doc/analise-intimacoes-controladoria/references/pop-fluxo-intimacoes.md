@@ -55,10 +55,6 @@ Usar título exato como `AUDIÊNCIA UNA`, sem explicação entre parênteses. Se
 
 ## Perícias
 
-Antes de gerar especificamente `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`, identificar a filial pela cidade vinculada à perícia. Preencher o responsável pelo seguinte mapa: Camocim — `FRANCISCO VICTOR HORA DO NASCIMENTO`; Tianguá — `JOÃO JÂNIO`; Jijoca de Jericoacoara/Jijoca — `GUIVIA VASCONCELOS`; Sobral — `ANA LETÍCIA DA SILVA LEITAO`. Esta regra prevalece sobre auxiliar e advogado responsável do processo. Não atribuir essa tarefa a Amanda Leite Mendes nem a Suiane/Suhiane.
-
-Se a filial estiver ausente, ambígua ou fora do mapa, não lançar a tarefa de perícia médica judicial e sinalizar `NÃO LANÇAR — CONFIRMAR FILIAL/RESPONSÁVEL DA PERÍCIA MÉDICA JUDICIAL.` Não aplicar esse roteamento nem a exclusão de Suiane/Suhiane a perícia trabalhista, perícia técnica cível, aviso, instrução ou minutas; essas tarefas continuam em seus fluxos próprios.
-
 ```text
 TIPO:
 DATA:
@@ -74,6 +70,22 @@ Indicar duas tarefas em blocos próprios:
 2. `MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026`, para quesitos e assistente técnico.
 
 Para a segunda, usar prazo específico confirmado ou marcar pendência. Se o ato apenas designar a perícia, ainda indicar a complementar com prazo pendente; não presumir data. Não confundir com manifestação sobre laudo já produzido.
+
+#### Responsável pela tarefa de comparecimento à perícia médica
+
+Quando a Controladoria informar uma cidade de filial mapeada, preencher o responsável operacional correspondente. Se a filial não estiver informada ou não estiver na tabela, o bot identificará a filial, conforme orientação da usuária: preencher o campo de responsável com o texto determinado abaixo. Esta regra específica prevalece sobre a atribuição geral ao advogado auxiliar na tarefa de comparecimento.
+
+| Cidade da filial | Responsável no TXT, conforme informado no cadastro VIOS |
+| --- | --- |
+| Sobral | Ana Letícia da Silva Leitao |
+| Jijoca ou Jijoca de Jericoacoara | Guivia Vasconcelos |
+| Tianguá | João Jânio |
+| Camocim | Francisco Victor Hora do Nascimento |
+
+- Usar os nomes exatamente como informados. Não atribuir a tarefa de comparecimento a Amanda Leite Mendes, Suhiane ou `automático`.
+- Não usar a coluna `Cidade` do CSV nem o endereço ou município do local da perícia para presumir a filial.
+- Se a Controladoria não informar a cidade da filial ou ela não estiver na tabela, não excluir a tarefa por esse motivo. No TXT, preencher exatamente `RESPONSÁVEIS: incluir responsável pela cidade identificada`. Data, horário e local da perícia continuam indispensáveis; se faltarem, informar a pendência específica.
+- A tarefa de quesitos e indicação de assistente técnico é separada e segue a responsável do Previdenciário, Suhiane; manter seu prazo e condições de lançamento próprios.
 
 ### Social previdenciária
 
