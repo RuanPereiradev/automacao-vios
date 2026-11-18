@@ -779,12 +779,24 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   (log em `logs/servidor.log`).
 - `instalar` também serve para reiniciar. Se a porta 5001 estiver ocupada (um
   `./rodar_envio.sh` aberto), ele avisa e para.
+- **Bot de WhatsApp e coletor no mesmo script (18/11/2026).** O bot do Previdenciário continua no repositório
+  privado `bot-previdenciario` (clonado à parte no Mac; nunca copiar o código, a mídia da Vila 06 ou o histórico
+  dele para cá). Com `BOT_WHATSAPP_PASTA=<pasta do clone>` no `.env`, o `servidor_mac.sh` também cuida dele:
+  - `./servidor_mac.sh whatsapp instalar | status | atualizar | log | desinstalar` chama os scripts do próprio bot
+    (`scripts/mac/`; `instalar` e `atualizar` pedem a senha de administrador do Mac);
+  - `./servidor_mac.sh coletor instalar | parar | status | log` é o mesmo que `consulta/servico_mac.sh`;
+  - `./servidor_mac.sh tudo` mostra os três serviços (página dos bots, coletor, bot de WhatsApp);
+  - `./servidor_mac.sh atualizar-tudo` atualiza **o bot primeiro** e só depois faz o `git pull` daqui e reinicia a
+    página e o coletor (o bot antigo recusa campo novo do coletor). Se o pull trouxe dependência nova, rodar
+    `./instalar.sh` e `./servidor_mac.sh coletor instalar`.
+  - A Vila 06 não muda: continua lendo os vídeos de `VILA06_CLIPES` e o estado de `VILA06_URL`/`VILA06_TOKEN`.
 - Login do VIOS (`SISTEMA_USUARIO`, `SISTEMA_SENHA`, seletores, `HEADLESS`, `TIMEOUT`): o Sam relê o `.env`
   a cada envio (manual e automático), então trocar a senha no `.env` vale já no próximo envio, **sem
   reiniciar**. Outras variáveis (`ENVIO_SENHA`, `ENVIO_REDE`, `SISTEMA_URL`, `SAIDA_PASTA`, pastas dos
   outros bots) só valem depois de reiniciar com `./servidor_mac.sh instalar`.
-- A `saida/` **não vai para o GitHub** (o repositório é privado, mas ela tem dados
-  de clientes): copiar com `rsync` ou pendrive (Passo 21).
+- A `saida/` **não vai para o GitHub** (o repositório é **público** e ela tem dados
+  de clientes): copiar com `rsync` ou pendrive (Passo 21). Nada com dado de cliente, senha,
+  token ou mídia de terceiros entra neste repositório.
 - Para funcionar sem ninguém por perto:
   - o Mac precisa estar **com o usuário logado** (o serviço roda na sessão
     dele, porque o robô abre o Chrome). Para voltar sozinho depois de faltar

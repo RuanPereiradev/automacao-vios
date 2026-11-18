@@ -12,6 +12,17 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — `servidor_mac.sh` cuida também do bot de WhatsApp e do coletor (18/11/2026)
+- Novos comandos: `whatsapp instalar|status|atualizar|log|desinstalar` (chama `scripts/mac/` do repositório privado
+  `bot-previdenciario`, pasta em `BOT_WHATSAPP_PASTA`), `coletor ...` (= `consulta/servico_mac.sh`), `tudo` (status dos
+  três serviços) e `atualizar-tudo` (bot primeiro, depois `git pull` e reinício da página e do coletor).
+- `.env.example`: `BOT_WHATSAPP_PASTA`. DOCUMENTACAO, Passo 22. O código do bot continua no repositório dele.
+
+### Adicionado — Consulta: campo `atualizacao` por processo (18/11/2026, commit 216574f)
+- O coletor manda `atualizacao: true` quando a ficha tem tarefa aberta (não concluída e não cancelada), a linha que o
+  VIOS pinta de amarelo; só o booleano, nenhum dado da tarefa (`consulta/fases.py`, `montagem.py`, `coletor.py`,
+  `CONTRATO.md`, testes). Atualizar o bot (bot-previdenciario 0cd0e23) **antes** do coletor.
+
 ### Alterado — Skill de análise de intimações atualizada (pacote da Controladoria, 18/11/2026)
 - `doc/analise-intimacoes-controladoria/` (skill do projeto, lida pelo bot via `SKILL_PASTA`) trocada pelo pacote
   `analise-intimacoes-controladoria-atualizada-2026-11-18.zip`. Cópia guardada em `doc/skill-original/9_2026-11-18_atualizada/`
