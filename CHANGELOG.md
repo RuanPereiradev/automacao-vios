@@ -12,6 +12,12 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — envio automático órfão depois de reiniciar o servidor (18/11/2026)
+- `bot/envio_auto.py` (`andamento()`): se `saida/automatico_execucao.json` diz "rodando" mas o servidor não tem
+  thread dessa execução (reiniciou no meio), marca como "parou" com o motivo "servidor reiniciado durante a execução"
+  e regrava o arquivo. Antes o botão "Enviar automaticamente" ficava desativado para sempre.
+- Os lotes da IA (`lote_analise_*.json`) não são tocados: uma nova execução com o mesmo modelo e as mesmas CIs ainda retoma o lote.
+
 ### Alterado — Skill de análise de intimações atualizada (pacote da Controladoria, 18/11/2026)
 - `doc/analise-intimacoes-controladoria/` (skill do projeto, lida pelo bot via `SKILL_PASTA`) trocada pelo pacote
   `analise-intimacoes-controladoria-atualizada-2026-11-18.zip`. Cópia guardada em `doc/skill-original/9_2026-11-18_atualizada/`
