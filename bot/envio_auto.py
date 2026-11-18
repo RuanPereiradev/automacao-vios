@@ -42,9 +42,24 @@ def _ler(pasta_saida):
 
 
 def andamento(pasta_saida):
-    """Andamento da execução atual ou da última (dicionário vazio se nunca rodou)."""
+    """Andamento da execução atual ou da última (dicionário vazio se nunca rodou).
+
+    Se o arquivo diz "rodando" mas esta página não tem thread viva (o servidor reiniciou no meio),
+    a execução ficou órfã: marca como "parou" e grava, para o botão voltar a funcionar.
+    """
     with _trava:
-        return dict(_atual) if _atual else _ler(pasta_saida)
+        if _atual:
+            return dict(_atual)
+        dados = _ler(pasta_saida)
+        if dados.get("estado") == "rodando":
+            dados.update(estado="parou", fase="", fim=dados.get("fim") or f"{datetime.now():%Y-%m-%d %H:%M:%S}",
+                         motivo="servidor reiniciado durante a execução")
+            log.warning("Envio automático órfão (servidor reiniciado): marcado como parado")
+            try:
+                (Path(pasta_saida) / ARQUIVO).write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+            except OSError:
+                log.exception("Não consegui gravar a correção do envio automático órfão")
+        return dados
 
 
 def _atualizar(pasta_saida, **campos):

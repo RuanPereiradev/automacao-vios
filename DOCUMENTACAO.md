@@ -676,6 +676,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   mostra tudo como antes. Sem intimação nova, termina sem gastar IA.
 - Só funciona se o Sam estiver rodando (`./rodar_envio.sh`) com o `.env` completo (login do VIOS e chave da IA).
   Reiniciar a página depois de atualizar.
+- Se o servidor for reiniciado no meio de uma execução, ela fica marcada como "parou" (motivo "servidor reiniciado
+  durante a execução") e o botão volta a funcionar. Para retomar a análise que já foi enviada à IA, clique de novo
+  com o mesmo modelo (`LLM_MODELO`) e as mesmas CIs; se o modelo mudou, um lote novo é enviado e o anterior é pago à parte.
 - Ainda não agenda horário: o clique é manual.
 
 ### Passo 41 — Skill de 13/11/2026 (responsáveis, feriado, marco pela publicação)

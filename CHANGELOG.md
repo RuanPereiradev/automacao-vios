@@ -22,6 +22,19 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 - O coletor manda `atualizacao: true` quando a ficha tem tarefa aberta (não concluída e não cancelada), a linha que o
   VIOS pinta de amarelo; só o booleano, nenhum dado da tarefa (`consulta/fases.py`, `montagem.py`, `coletor.py`,
   `CONTRATO.md`, testes). Atualizar o bot (bot-previdenciario 0cd0e23) **antes** do coletor.
+### Adicionado — pje-busca: login no PJe do TRT7 pelo Presto (18/11/2026)
+- `pje-busca/src/acesso_pje.py`: `entrar_trt7()` entra no PJe do TRT7 pelo Presto no Chrome aberto do Mac
+  (AppleScript), reaproveitando o login do Albi (`albi/presto.py`, função `login`). Para com "captcha" e não tenta resolver.
+- `pje-busca/src/chrome_mac.py`: cópia do `albi/chrome_mac.py` (só biblioteca padrão), para o projeto não depender do Albi.
+- `pje-busca/.env.example`: `PRESTO_CREDENCIAL` e `PRESTO_PIN` (sem valores).
+- Decisão: AppleScript em vez de Selenium, como no Albi (o perfil copiado pede confirmação da conta Google).
+- Ainda não testado no Mac com o TRT7 real; falta a busca por CNPJ (pendência 3.1 do `PROJETO (1).md`).
+
+### Corrigido — envio automático órfão depois de reiniciar o servidor (18/11/2026)
+- `bot/envio_auto.py` (`andamento()`): se `saida/automatico_execucao.json` diz "rodando" mas o servidor não tem
+  thread dessa execução (reiniciou no meio), marca como "parou" com o motivo "servidor reiniciado durante a execução"
+  e regrava o arquivo. Antes o botão "Enviar automaticamente" ficava desativado para sempre.
+- Os lotes da IA (`lote_analise_*.json`) não são tocados: uma nova execução com o mesmo modelo e as mesmas CIs ainda retoma o lote.
 
 ### Alterado — Skill de análise de intimações atualizada (pacote da Controladoria, 18/11/2026)
 - `doc/analise-intimacoes-controladoria/` (skill do projeto, lida pelo bot via `SKILL_PASTA`) trocada pelo pacote
