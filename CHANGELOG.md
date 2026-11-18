@@ -18,6 +18,7 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 - `pje-busca/src/chrome_mac.py`: cópia do `albi/chrome_mac.py` (só biblioteca padrão), para o projeto não depender do Albi.
 - `pje-busca/.env.example`: `PRESTO_CREDENCIAL` e `PRESTO_PIN` (sem valores).
 - Decisão: AppleScript em vez de Selenium, como no Albi (o perfil copiado pede confirmação da conta Google).
+- Corrigido: o botão "Login via Presto" do TRT7 é procurado por até 20 s (a página pode demorar a mostrar), e cada decisão é impressa.
 - Ainda não testado no Mac com o TRT7 real; falta a busca por CNPJ (pendência 3.1 do `PROJETO (1).md`).
 
 ### Corrigido — envio automático órfão depois de reiniciar o servidor (18/11/2026)
