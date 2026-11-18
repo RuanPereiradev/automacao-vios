@@ -13,7 +13,7 @@ from consulta.leitura import AREAS
 
 STATUS = ("ok", "nao_encontrado", "erro")
 CAMPOS_RESULTADO = ("id", "status", "lidoEm", "telefones", "processos")
-CAMPOS_PROCESSO = ("ref", "area", "situacao", "fase", "desde", "proximo", "encaminhar")
+CAMPOS_PROCESSO = ("ref", "area", "situacao", "fase", "desde", "proximo", "encaminhar", "atualizacao")
 _ISO_DATA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _HEX = re.compile(r"^[0-9a-f]{64}$")
 _REF = re.compile(r"^P\d+$")
@@ -25,7 +25,7 @@ def agora_iso(agora=None):
     return a.replace(microsecond=0).isoformat()
 
 
-def montar_processo(n, area, fase, desde, proximo, encaminhar):
+def montar_processo(n, area, fase, desde, proximo, encaminhar, atualizacao):
     """Um processo do contrato. `n` começa em 1 -> ref "P1"."""
     return {
         "ref": f"P{n}",
@@ -35,6 +35,7 @@ def montar_processo(n, area, fase, desde, proximo, encaminhar):
         "desde": desde.isoformat() if isinstance(desde, date) else None,
         "proximo": ({"tipo": proximo["tipo"], "data": proximo["data"].isoformat()} if proximo else None),
         "encaminhar": bool(encaminhar),
+        "atualizacao": bool(atualizacao),
     }
 
 
@@ -77,4 +78,5 @@ def validar_resultado(r):
         exigir(prox is None or (isinstance(prox, dict) and set(prox) == {"tipo", "data"}
                                 and prox["tipo"] in PROXIMOS and _ISO_DATA.match(prox["data"])), "proximo")
         exigir(isinstance(p["encaminhar"], bool), "encaminhar")
+        exigir(isinstance(p["atualizacao"], bool), "atualizacao")
     return r

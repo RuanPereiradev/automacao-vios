@@ -82,6 +82,19 @@ class TestListaBranca(unittest.TestCase):
         self.assertEqual((p["fase"], p["desde"], p["proximo"]),
                          ("aguardando_pericia_judicial", "2026-11-02", {"tipo": "pericia", "data": "2026-11-25"}))
 
+    def test_atualizacao_so_booleano_conforme_tarefas_abertas(self):
+        fichas = {
+            "9101": h.ficha([h.tarefa("3", h.previ("PRESTAÇÃO DE CONTAS (FINANCEIRO)"), "Para conclusão 20/11/2026"),
+                             h.tarefa("2", h.previ("PROTOCOLAR INICIAL"), "Concluída em: 20/10/2026")]),
+            "9102": h.ficha([h.tarefa("2", h.previ("ANALISAR EXIGÊNCIA"), "Para conclusão 20/11/2026", selo="CANCELADA"),
+                             h.tarefa("1", h.previ("PROTOCOLAR INICIAL"), "Concluída em: 20/10/2026")]),
+        }
+        r = consultar(fonte(processos=(("9101", "Previdenciário"), ("9102", "Previdenciário"),
+                                       ("9103", "Previdenciário")), fichas=fichas))
+        montagem.validar_resultado(r)
+        # 9103 não tem ficha: não lida -> false
+        self.assertEqual([p["atualizacao"] for p in r["processos"]], [True, False, False])
+
     def test_nao_ok_nunca_leva_dados(self):
         for status in ("erro", "nao_encontrado"):
             r = montagem.montar_resultado("x", status, [{"lixo": 1}], ["a" * 64], AGORA)
@@ -159,6 +172,32 @@ class TestEstados(unittest.TestCase):
         f = fonte()
         consultar(f)
         self.assertEqual([a[0] for a in f.acessos], ["lista_processos", "lista_pessoas", "form_pessoa", "ficha"])
+
+
+class TestContratoAtualizacao(unittest.TestCase):
+    def resultado(self, **mudancas):
+        p = montagem.montar_processo(1, "previdenciario", "exigencia_inss", None, None, False, True)
+        p.update(mudancas)
+        return montagem.montar_resultado("x", "ok", [p], [], AGORA)
+
+    def test_aceita_booleano(self):
+        montagem.validar_resultado(self.resultado())
+        montagem.validar_resultado(self.resultado(atualizacao=False))
+
+    def test_recusa_sem_o_campo(self):
+        r = self.resultado()
+        del r["processos"][0]["atualizacao"]
+        with self.assertRaises(ValueError):
+            montagem.validar_resultado(r)
+
+    def test_recusa_valor_nao_booleano(self):
+        for valor in (1, 0, "true", None):
+            with self.subTest(valor=valor), self.assertRaises(ValueError):
+                montagem.validar_resultado(self.resultado(atualizacao=valor))
+
+    def test_montar_processo_forca_booleano(self):
+        self.assertIs(montagem.montar_processo(1, "civel", "desconhecida", None, None, True, 1)["atualizacao"], True)
+        self.assertIs(montagem.montar_processo(1, "civel", "desconhecida", None, None, True, 0)["atualizacao"], False)
 
 
 class TestProcessarPedido(unittest.TestCase):

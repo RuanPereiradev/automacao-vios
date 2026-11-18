@@ -8,7 +8,7 @@ login, bloqueio de envios) sem alterá-la.
 
 CPF em claro, nome, telefone em claro, número CNJ, CI, texto de tarefa, comentário, valor, observação.
 Para o bot vão só: `status`, `lidoEm`, os telefones do cadastro já em HMAC, e por processo `ref` (P1, P2),
-`area`, `situacao`, `fase`, `desde`, `proximo` e `encaminhar`. O JSON é montado campo a campo (lista branca,
+`area`, `situacao`, `fase`, `desde`, `proximo`, `encaminhar` e `atualizacao` (booleano: há tarefa aberta, a marca amarela do VIOS). O JSON é montado campo a campo (lista branca,
 `montagem.py`). O CPF chega cifrado (RSA); a chave privada fica neste Mac. O log tem só id do pedido,
 status e tempos (e um filtro mascara qualquer sequência com cara de CPF ou telefone).
 

@@ -115,6 +115,7 @@ class Decisao:
     desde: date = None
     proximo: dict = None      # {"tipo": ..., "data": date} ou None
     encaminhar: bool = True
+    atualizacao: bool = False  # há tarefa aberta de QUALQUER tipo (a marca amarela do VIOS); só o booleano sai
 
 
 def _chave_ci(t):
@@ -161,6 +162,7 @@ def decidir(leitura, hoje, mapa, segredo=False):
         desde = max(datas) if datas else None
 
     return Decisao(fase=fase, desde=desde, proximo=_proximo(abertas, hoje, mapa),
+                   atualizacao=any(t.aberta for t in tarefas),   # conta também os tipos "ignorar"
                    encaminhar=bool(segredo) or fase in mapa.encaminhar or fase == DESCONHECIDA)
 
 

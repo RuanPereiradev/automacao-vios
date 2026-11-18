@@ -75,7 +75,8 @@ def consultar(cpf, fonte, op, hoje, mapa, pedido_id, agora=None):
         if leit is not None and not leit.erro and leit.achou_tabela:
             lidas += 1
         d = fases.decidir(leit, hoje, mapa, segredo=p.segredo or lei.tem_segredo(textos))
-        processos.append(montagem.montar_processo(n, p.area, d.fase, d.desde, d.proximo, d.encaminhar))
+        processos.append(montagem.montar_processo(n, p.area, d.fase, d.desde, d.proximo, d.encaminhar,
+                                                    d.atualizacao))
     if not lidas:
         raise ConsultaErro("nenhuma ficha de processo foi lida (a tela mudou?)")
     return montagem.montar_resultado(pedido_id, "ok", processos, hashes, agora=agora)

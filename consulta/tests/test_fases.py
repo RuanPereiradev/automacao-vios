@@ -204,6 +204,31 @@ class TestDecisao(unittest.TestCase):
                           info="Mostrando 1 a 1 de 7 registros")
         self.assertEqual((cortada.fase, cortada.encaminhar), (DESCONHECIDA, True))
 
+    def test_atualizacao_tarefa_aberta_de_tipo_mapeado(self):
+        d = decidir(tarefa("1", previ("ANALISAR EXIGÊNCIA"), "Para conclusão 20/11/2026"))
+        self.assertTrue(d.atualizacao)
+
+    def test_atualizacao_so_tarefa_aberta_de_tipo_ignorado(self):
+        d = decidir(tarefa("1", previ("PRESTAÇÃO DE CONTAS (FINANCEIRO)"), "Para conclusão 20/11/2026"),
+                    tarefa("0", previ("PROTOCOLAR INICIAL"), "Concluída em: 20/10/2026"))
+        self.assertTrue(d.atualizacao)
+        self.assertEqual(d.fase, "acao_protocolada")
+
+    def test_atualizacao_so_concluidas_ou_canceladas_e_false(self):
+        d = decidir(tarefa("2", previ("ANALISAR EXIGÊNCIA"), "Para conclusão 20/11/2026", selo="CANCELADA"),
+                    tarefa("1", previ("PROTOCOLAR INICIAL"), "Concluída em: 20/10/2026"))
+        self.assertIs(d.atualizacao, False)
+        self.assertEqual(d.fase, "acao_protocolada")
+        self.assertIs(decidir().atualizacao, False)
+
+    def test_atualizacao_false_quando_ficha_nao_lida_ou_cortada(self):
+        self.assertIs(fases.decidir(None, HOJE, MAPA).atualizacao, False)
+        sem_tabela = parados.ler_tarefas_html("<html><body>nada</body></html>")
+        self.assertIs(fases.decidir(sem_tabela, HOJE, MAPA).atualizacao, False)
+        cortada = decidir(tarefa("1", previ("ANALISAR EXIGÊNCIA"), "Para conclusão 20/11/2026"),
+                          info="Mostrando 1 a 1 de 7 registros")
+        self.assertIs(cortada.atualizacao, False)
+
     def test_ficha_sem_tarefas(self):
         d = decidir()
         self.assertEqual((d.fase, d.desde, d.proximo, d.encaminhar), (DESCONHECIDA, None, None, True))

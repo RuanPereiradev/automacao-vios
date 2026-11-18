@@ -53,7 +53,8 @@ Corpo (JSON, validado com zod **estrito** — campo extra em qualquer nível = 4
       "fase": "aguardando_pericia_inss",
       "desde": "2026-10-03",
       "proximo": { "tipo": "pericia", "data": "2026-11-20" },
-      "encaminhar": false
+      "encaminhar": false,
+      "atualizacao": true
     }
   ]
 }
@@ -72,6 +73,10 @@ Corpo (JSON, validado com zod **estrito** — campo extra em qualquer nível = 4
   `CONSULTA_MOSTRAR_DATA=sim` (padrão: não mostra; pergunta aberta 4 do plano v1).
 - `encaminhar`: `true` quando o coletor já sabe que é caso de gente (segredo de justiça, fase sensível,
   dado incompleto).
+- `atualizacao`: `true` se há ao menos uma tarefa aberta (não concluída e não cancelada) na ficha, de qualquer
+  tipo (inclusive os que o mapa ignora): a marca amarela do VIOS. Booleano puro, nenhum dado da tarefa.
+  `false` também quando a ficha não foi lida ou veio cortada (aí `encaminhar` é `true`).
+  **Ordem de implantação:** atualizar o bot ANTES do coletor (o bot antigo recusa o campo novo, zod estrito).
 - Resposta 200 `{ "ok": true }`. Id desconhecido ou expirado: 410.
 
 Telefone normalizado (os dois lados, idêntico): só dígitos; tira `0` e `55` do começo; precisa sobrar
@@ -99,6 +104,8 @@ Por pedido:
    tarefa **aberta** mais recente (o passo atual) → senão a **concluída** mais recente (sem canceladas). O
    **tipo** da tarefa (nunca o comentário/descrição) passa por `consulta/fases_vios.yaml` (seção 4) → código.
    `proximo`: tarefa aberta cujo tipo é perícia ou audiência com data prevista ≥ hoje.
+   `atualizacao`: `true` se existe qualquer tarefa aberta (não concluída, não cancelada), mesmo de tipo ignorado;
+   só o booleano sai. Ficha não lida ou cortada: `false`.
    Se a ficha indicar segredo de justiça (rótulo com "segredo" ou "sigilo"), `encaminhar: true`.
 5. Monta o JSON da seção 2 por **lista branca** (só os campos do contrato), assina e envia.
 

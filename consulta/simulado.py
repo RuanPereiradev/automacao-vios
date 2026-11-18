@@ -77,6 +77,8 @@ class BotFalso:
                     problemas.append("o telefone do cadastro não veio no resultado")
                 if len(r["processos"]) != 2:
                     problemas.append("esperava 2 processos")
+                elif [p["atualizacao"] for p in r["processos"]] != [True, False]:
+                    problemas.append("atualizacao esperada: [true, false]")
         return problemas
 
     def resumo(self):
