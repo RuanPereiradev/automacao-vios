@@ -23,7 +23,7 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   VIOS pinta de amarelo; só o booleano, nenhum dado da tarefa (`consulta/fases.py`, `montagem.py`, `coletor.py`,
   `CONTRATO.md`, testes). Atualizar o bot (bot-previdenciario 0cd0e23) **antes** do coletor.
 ### Adicionado — pje-busca: login no PJe do TRT7 pelo Presto (18/11/2026)
-- `pje-busca/src/acesso_pje.py`: `entrar_trt7()` entra no PJe do TRT7 pelo Presto no Chrome aberto do Mac
+- `pje-busca/src/acesso_pje.py`: `entrar_trt7()` passa pelo console do Presto (login com `PRESTO_EMAIL`/`PRESTO_SENHA`, Sites > "Pje TRT 07 1g") e depois entra no PJe do TRT7 pelo Presto, no Chrome aberto do Mac
   (AppleScript), reaproveitando o login do Albi (`albi/presto.py`, função `login`). Para com "captcha" e não tenta resolver.
 - `pje-busca/src/chrome_mac.py`: cópia do `albi/chrome_mac.py` (só biblioteca padrão), para o projeto não depender do Albi.
 - `pje-busca/.env.example`: `PRESTO_CREDENCIAL` e `PRESTO_PIN` (sem valores).

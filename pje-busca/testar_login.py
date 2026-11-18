@@ -16,7 +16,7 @@ import acesso_pje as A  # noqa: E402
 
 def main():
     cfg = A.config_presto()
-    faltam = [k for k in ("PRESTO_PIN",) if not cfg.get(k)]
+    faltam = [k for k in ("PRESTO_EMAIL", "PRESTO_SENHA", "PRESTO_PIN") if not cfg.get(k)]
     if faltam:
         print("Falta no pje-busca/.env:", ", ".join(faltam), "(veja .env.example)")
         return 2
