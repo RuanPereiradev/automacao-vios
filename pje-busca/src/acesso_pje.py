@@ -4,7 +4,8 @@ Reaproveita o que já funciona no Albi (albi/presto.py, função login, e albi/c
 para src/chrome_mac.py). Não usa Selenium: o perfil copiado pede confirmação da conta Google
 (ver o docstring de chrome_mac.py).
 
-Fluxo: abre o login do TRT7 > clica em "Login via Presto" (se houver) > espera o quadro do Presto >
+Fluxo: console do Presto (PRESTO_EMAIL/PRESTO_SENHA) > Sites > TRT 07 1g > login do TRT7 > clica em
+"Login via Presto" (se houver) > espera o quadro do Presto >
 escolhe a credencial (PRESTO_CREDENCIAL) > preenche o PIN (PRESTO_PIN) > espera sair da tela de login.
 
 Se a página mostrar captcha, PARA e devolve "captcha": não tenta resolver (o captcha é pela pessoa,
@@ -21,6 +22,8 @@ import chrome_mac as CM
 AQUI = Path(__file__).resolve().parent.parent
 LOGS = AQUI / "logs" / "acesso"
 TRT7_LOGIN = "https://pje.trt7.jus.br/primeirograu/login.seam"
+CONSOLE = "https://console.presto.oystr.com.br/"
+SITE_TRT7 = "Pje TRT 07 1g"  # nome do TRT7 na página Sites do console do Presto
 PADRAO_CAPTCHA = re.compile(r"captcha|recaptcha|não sou (um )?robô|nao sou (um )?robo", re.I)
 
 
@@ -63,6 +66,107 @@ def _pede_pin(quadro):
     return None
 
 
+def _estado_console(w, t, maximo):
+    """Espera o console do Presto mostrar o login ou a lista de sites (o site carrega aos poucos)."""
+    ultimo = {}
+
+    def pronto():
+        ultimo.update(CM.console_estado(w, t))
+        return ultimo.get("estado") in ("login", "sites")
+    _esperar(pronto, maximo)
+    return ultimo
+
+
+def _entrar_console(w, t, cfg, destino):
+    """Login do console do Presto com PRESTO_EMAIL/PRESTO_SENHA do .env. Aceita 1 tela (e-mail e senha) ou
+    2 (e-mail, Continuar, senha). Se o JavaScript não pegar, digita com o teclado de verdade. Senha nunca impressa."""
+    email, senha = cfg.get("PRESTO_EMAIL", ""), cfg.get("PRESTO_SENHA", "")
+    if not (email and senha):
+        raise AcessoErro("o console do Presto pediu login, mas PRESTO_EMAIL/PRESTO_SENHA não estão no pje-busca/.env")
+    _salvar(destino, "0_console_login", CM.capturar(w, t))
+    print("Console do Presto pediu login; entrando com o e-mail do .env...")
+    for _ in range(3):  # no máximo: e-mail, senha e mais uma tentativa
+        antes = CM.console_estado(w, t)
+        r = CM.console_login(w, t, email, senha)
+        if not r.get("ok"):
+            raise AcessoErro("login do console: " + r.get("erro", "?"))
+        _esperar(lambda: (lambda e: e.get("estado") == "sites" or e.get("estado") != "login"
+                          or (e.get("senha") and not antes.get("senha")))(CM.console_estado(w, t)), 15, passo=1.5)
+        agora = CM.console_estado(w, t)
+        if agora.get("estado") != "login":
+            return
+        if agora.get("senha") and not antes.get("senha"):
+            continue  # passou do e-mail para a senha
+        break  # mesma tela: o JavaScript não pegou
+    print("O preenchimento por JavaScript não entrou; digitando com o teclado de verdade...")
+    CM.para_frente(w, t)
+    agora = CM.console_estado(w, t)
+    for qual, texto in (("email", email), ("senha", senha)):
+        if (qual == "email" and not agora.get("email")) or (qual == "senha" and not agora.get("senha")):
+            continue
+        onde = CM.console_onde(w, t, qual)
+        if onde.get("ok"):
+            CM.clicar_tela(onde["x"], onde["y"])
+            time.sleep(0.4)
+            CM.digitar_tela(texto, enter=(qual == "senha" or not agora.get("senha")))
+            time.sleep(1)
+    if not agora.get("senha"):  # login em 2 etapas
+        if _esperar(lambda: CM.console_estado(w, t).get("senha"), 15):
+            onde = CM.console_onde(w, t, "senha")
+            if onde.get("ok"):
+                CM.clicar_tela(onde["x"], onde["y"])
+                time.sleep(0.4)
+                CM.digitar_tela(senha)
+    if not _esperar(lambda: CM.console_estado(w, t).get("estado") != "login", 30, passo=2):
+        _salvar(destino, "0_console_login_depois", CM.capturar(w, t))
+        raise AcessoErro("o console do Presto continua na tela de login (senha errada, 2FA ou captcha?)")
+
+
+def _abrir_pelo_console(cfg, destino):
+    """Console do Presto > Sites > TRT 07 1g: é assim que a extensão entra no tribunal.
+    Devolve (janela, aba) do TRT7, com o login do tribunal aberto."""
+    sites = CONSOLE.rstrip("/") + "/sites"
+    print("Abrindo o console do Presto (Sites)...")
+    w, t = CM.abrir_aba(sites)
+    CM.esperar(w, t, folga=3)
+    estado = _estado_console(w, t, 25)
+    if estado.get("estado") == "carregando":
+        _salvar(destino, "0_console", CM.capturar(w, t))
+        raise AcessoErro(f"o console do Presto não carregou em 25 s ({estado.get('url')})")
+    if estado.get("estado") == "login":
+        _entrar_console(w, t, cfg, destino)
+        if "/sites" not in CM.url(w, t):
+            CM.ir(w, t, sites)
+            CM.esperar(w, t, folga=3)
+        estado = _estado_console(w, t, 25)
+        if estado.get("estado") != "sites":
+            _salvar(destino, "0_console_depois_login", CM.capturar(w, t))
+            raise AcessoErro(f"entrei no console, mas a lista de sites não apareceu ({estado.get('url')})")
+    else:
+        print("Console do Presto: já estava logado.")
+    CM.console_site(w, t, SITE_TRT7)  # digita no filtro
+    achou = _esperar(lambda: CM.console_site(w, t, SITE_TRT7).get("ok") and CM.console_site(w, t, SITE_TRT7), 20)
+    _salvar(destino, "0_console_sites", CM.capturar(w, t))
+    if not achou:
+        r = CM.console_site(w, t, SITE_TRT7)
+        raise AcessoErro(f"{r.get('erro')}; parecidos: {', '.join(r.get('parecidos', [])) or 'nenhum'}")
+    antes = {(a[0], a[1]) for a in CM.todas_abas()}
+    r = CM.console_site(w, t, SITE_TRT7, clicar=True)
+    print(f"Console: cliquei em {r.get('nome')}")
+    time.sleep(5)
+    if "presto.oystr" in CM.url(w, t):
+        # o console abriu o tribunal numa aba nova: só conta aba http fora do console
+        novas = [a for a in CM.todas_abas() if (a[0], a[1]) not in antes and a[2].startswith("http")
+                 and "presto.oystr" not in a[2] and a[0] < 2 ** 29 and a[1] < 2 ** 29]
+        if novas:
+            w, t = novas[-1][0], novas[-1][1]
+        else:  # o clique não saiu do console: abre o login do TRT7 nesta aba
+            link = r.get("link") or ""
+            CM.ir(w, t, link if link.startswith("http") else TRT7_LOGIN)
+    CM.esperar(w, t)
+    return w, t
+
+
 def entrar_trt7(cfg, destino=None):
     """Entra no PJe do TRT7 pelo Presto. Devolve (janela, aba, url_final).
 
@@ -74,7 +178,7 @@ def entrar_trt7(cfg, destino=None):
     if CM.acessibilidade_ok() is False:
         raise AcessoErro(CM.SEM_ACESSIBILIDADE)
     destino = destino or LOGS / datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    w, t = CM.abrir_aba(TRT7_LOGIN)
+    w, t = _abrir_pelo_console(cfg, destino)
     CM.esperar(w, t)
     ja = _logado(w, t)
     if ja:
