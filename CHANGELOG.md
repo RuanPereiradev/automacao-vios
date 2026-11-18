@@ -12,6 +12,14 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — pje-busca: login no PJe do TRT7 pelo Presto (18/11/2026)
+- `pje-busca/src/acesso_pje.py`: `entrar_trt7()` entra no PJe do TRT7 pelo Presto no Chrome aberto do Mac
+  (AppleScript), reaproveitando o login do Albi (`albi/presto.py`, função `login`). Para com "captcha" e não tenta resolver.
+- `pje-busca/src/chrome_mac.py`: cópia do `albi/chrome_mac.py` (só biblioteca padrão), para o projeto não depender do Albi.
+- `pje-busca/.env.example`: `PRESTO_CREDENCIAL` e `PRESTO_PIN` (sem valores).
+- Decisão: AppleScript em vez de Selenium, como no Albi (o perfil copiado pede confirmação da conta Google).
+- Ainda não testado no Mac com o TRT7 real; falta a busca por CNPJ (pendência 3.1 do `PROJETO (1).md`).
+
 ### Corrigido — envio automático órfão depois de reiniciar o servidor (18/11/2026)
 - `bot/envio_auto.py` (`andamento()`): se `saida/automatico_execucao.json` diz "rodando" mas o servidor não tem
   thread dessa execução (reiniciou no meio), marca como "parou" com o motivo "servidor reiniciado durante a execução"
