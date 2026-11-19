@@ -22,6 +22,10 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 - O coletor manda `atualizacao: true` quando a ficha tem tarefa aberta (não concluída e não cancelada), a linha que o
   VIOS pinta de amarelo; só o booleano, nenhum dado da tarefa (`consulta/fases.py`, `montagem.py`, `coletor.py`,
   `CONTRATO.md`, testes). Atualizar o bot (bot-previdenciario 0cd0e23) **antes** do coletor.
+### Corrigido — pje-busca: leitura das movimentações na página de detalhes do TRT7 (19/11/2026)
+- Aba de detalhes ignorada: o filtro de id de aba (2**29) descartava a aba do PJe (ids do Chrome passam de 1 bilhão). Agora `_aba_detalhes()` acha a aba do número e fecha a aba ao terminar (`src/chrome_mac.py`: `fechar_aba`); limite corrigido também em `src/acesso_pje.py`.
+- Texto do PDF: o visualizador do PJe não expõe `PDFViewerApplication`; o bot lê a camada de texto (`.textLayer`), rola página a página e ordena os trechos pela posição na folha. Traz a aba para frente (aba oculta não desenha o PDF).
+- PDF digitalizado sai marcado como sem camada de texto (precisa de OCR); documento em HTML é lido pelo painel.
 
 ### Alterado — Envio automático mostra o andamento do lote da IA (18/11/2026)
 - Antes, enquanto o lote da IA não terminava, a página do Sam ficava só em "A IA está analisando", sem sinal de vida,

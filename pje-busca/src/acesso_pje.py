@@ -157,7 +157,7 @@ def _abrir_pelo_console(cfg, destino):
     if "presto.oystr" in CM.url(w, t):
         # o console abriu o tribunal numa aba nova: só conta aba http fora do console
         novas = [a for a in CM.todas_abas() if (a[0], a[1]) not in antes and a[2].startswith("http")
-                 and "presto.oystr" not in a[2] and a[0] < 2 ** 29 and a[1] < 2 ** 29]
+                 and "presto.oystr" not in a[2] and a[0] < 2 ** 31 and a[1] < 2 ** 31]
         if novas:
             w, t = novas[-1][0], novas[-1][1]
         else:  # o clique não saiu do console: abre o login do TRT7 nesta aba

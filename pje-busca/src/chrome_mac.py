@@ -201,6 +201,11 @@ def ir(w, t, endereco):
           'end run'], w, t, endereco)
 
 
+def fechar_aba(w, t):
+    """Fecha a aba."""
+    _osa(['on run argv', 'tell application "Google Chrome"', f'close {_ABA}', 'end tell', 'end run'], w, t)
+
+
 def url(w, t):
     return _osa(['on run argv', 'tell application "Google Chrome"', f'return URL of {_ABA}', 'end tell', 'end run'],
                 w, t)
