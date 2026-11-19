@@ -89,6 +89,31 @@ JS_TEXTO_PDF = r"""(function(){
 })()"""
 
 
+# foca o botão "Detalhes do Processo <número>" (para o Enter)
+JS_FOCAR_KZ = r"""(function(numero){
+  var b = [].filter.call(document.querySelectorAll('button[aria-label]'), function(x) {
+    return (x.getAttribute('aria-label') || '').indexOf(numero) >= 0 && /^Detalhes do Processo/i.test(x.getAttribute('aria-label'));
+  })[0];
+  if (!b) return JSON.stringify({ok: false});
+  b.focus();
+  return JSON.stringify({ok: true});
+})(%s)"""
+
+
+def _apertar_enter():
+    """Enter de verdade no que está com o foco (precisa da Acessibilidade, como os outros cliques)."""
+    import subprocess
+    subprocess.run(["osascript", "-e", 'tell application "System Events" to key code 36'],
+                   capture_output=True, timeout=20)
+
+
+def _abriu(w, t, antes, url_antes):
+    """O clique abriu os detalhes? (aba nova de site, ou a mesma aba saiu da lista do acervo)."""
+    novas = [a for a in CM.todas_abas() if (a[0], a[1]) not in antes and a[2].startswith("http")
+             and "presto.oystr" not in a[2]]
+    return bool(novas) or (CM.url(w, t) != url_antes and "/processo/" in CM.url(w, t))
+
+
 def abrir_decisao(w, t, destino):
     """Na página de detalhes: acha o link da Decisão, abre o documento e grava o texto da camada de texto."""
     k = json.loads(CM.js(w, t, JS_LINK_DOCUMENTO % json.dumps(DOC_TIPO)))
@@ -173,9 +198,17 @@ def main(numeros):
             print(f"{numero}: {k.get('erro')}; botões vistos: {k.get('botoes')}; veja {destino}")
             continue
         antes = {(a[0], a[1]) for a in CM.todas_abas()}
+        url_antes = CM.url(w, t)
         CM.para_frente(w, t)
         CM.clicar_tela(k["x"], k["y"])  # clique de mouse de verdade no ícone KZ
         time.sleep(6)
+        if not _abriu(w, t, antes, url_antes):
+            # o clique não navegou: foca o botão por JavaScript e aperta Enter (o botão do PJe aceita Enter)
+            CM.js(w, t, JS_FOCAR_KZ % json.dumps(formatar(numero)))
+            CM.para_frente(w, t)
+            _apertar_enter()
+            time.sleep(6)
+            print(f"  {numero}: o clique de mouse não abriu; tentei Enter no botão")
         novas = [a for a in CM.todas_abas() if (a[0], a[1]) not in antes and a[2].startswith("http")
                  and "presto.oystr" not in a[2] and a[0] < 2 ** 29 and a[1] < 2 ** 29]
         if novas:  # o PJe abriu os detalhes numa aba nova: segue nela
@@ -186,6 +219,9 @@ def main(numeros):
         A._salvar(destino, "detalhe", cap)
         if not A._logado(w, t):
             print(f"{numero}: a tela mandou para o login ({atual}); veja {destino}")
+            continue
+        if "/processo/" not in atual:
+            print(f"{numero}: NÃO abriu os detalhes (ainda em {atual}); veja {destino}")
             continue
         abrir_decisao(w, t, destino)
         titulo = " ".join((cap.get("titulo") or "").split())[:100]
