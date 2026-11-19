@@ -54,6 +54,76 @@ JS_ONDE_KZ = r"""(function(numero){
 })(%s)"""
 LOGS = AQUI / "logs" / "processos"
 
+# link do documento "Decisão" na linha do tempo da página de detalhes (abre /pjekz/processo/<id>/documento/<id>/conteudo)
+DOC_TIPO = "Decisão"
+JS_LINK_DOCUMENTO = r"""(function(tipo){
+  var links = [].filter.call(document.querySelectorAll('a[href*="/documento/"][href$="/conteudo"]'), function(a) {
+    return (a.getAttribute('aria-label') || '').indexOf(tipo) >= 0;
+  });
+  if (!links.length) return JSON.stringify({ok: false, erro: 'link do documento ' + tipo + ' não achado'});
+  var a = links[0];
+  return JSON.stringify({ok: true, href: a.getAttribute('href'), aria: a.getAttribute('aria-label')});
+})(%s)"""
+# texto da camada de texto do visualizador (pdf.js): uma linha por <br>, uma página por .page
+JS_TEXTO_PDF = r"""(function(){
+  function docs(raiz, out) {
+    out.push(raiz);
+    [].forEach.call(raiz.querySelectorAll('iframe'), function(f) { try { if (f.contentDocument) docs(f.contentDocument, out); } catch (e) {} });
+    return out;
+  }
+  var pags = [];
+  docs(document, []).forEach(function(doc) {
+    [].forEach.call(doc.querySelectorAll('.page[data-page-number]'), function(pg) {
+      var tl = pg.querySelector('.textLayer');
+      if (!tl) return;
+      var txt = '';
+      [].forEach.call(tl.childNodes, function(n) {
+        if (n.nodeName === 'BR') txt += '\n';
+        else if (n.nodeType === 1) txt += n.textContent;
+      });
+      pags.push({pagina: parseInt(pg.getAttribute('data-page-number'), 10), texto: txt});
+    });
+  });
+  pags.sort(function(a, b) { return a.pagina - b.pagina; });
+  return JSON.stringify({paginas: pags});
+})()"""
+
+
+def abrir_decisao(w, t, destino):
+    """Na página de detalhes: acha o link da Decisão, abre o documento e grava o texto da camada de texto."""
+    k = json.loads(CM.js(w, t, JS_LINK_DOCUMENTO % json.dumps(DOC_TIPO)))
+    if not k.get("ok"):
+        print("  decisão:", k.get("erro"))
+        return None
+    doc_id = re.search(r"ID: ([0-9a-fA-F]+)", k.get("aria") or "")
+    doc_id = doc_id.group(1) if doc_id else "documento"
+    href = k["href"] if k["href"].startswith("http") else "https://pje.trt7.jus.br" + k["href"]
+    CM.ir(w, t, href)
+    CM.esperar(w, t, maximo=45, folga=3)
+    texto_paginas = []
+    fim = time.monotonic() + 40  # o visualizador carrega a camada de texto aos poucos
+    while time.monotonic() < fim:
+        v = json.loads(CM.js(w, t, JS_TEXTO_PDF))
+        texto_paginas = [p for p in v.get("paginas", []) if p["texto"].strip()]
+        if texto_paginas:
+            break
+        time.sleep(2)
+    if not texto_paginas:
+        A._salvar(destino, "documento_sem_texto", CM.capturar(w, t))
+        print(f"  decisão {doc_id}: a página não mostrou texto (veja {destino})")
+        return None
+    linhas = [f"DECISÃO - documento {doc_id} (capturada do PJe)", f"Origem: {href}", ""]
+    for p in texto_paginas:
+        limpo = re.sub(r"[ \t]+", " ", p["texto"])
+        limpo = re.sub(r" *\n *", "\n", limpo).strip()
+        linhas += [f"--- página {p['pagina']} ---", limpo, ""]
+    arq = destino / f"decisao_{doc_id}.txt"
+    arq.write_text("\n".join(linhas), encoding="utf-8")
+    print(f"  decisão {doc_id}: {len(texto_paginas)} página(s) gravada(s) em {arq}")
+    return arq
+
+
+
 
 def so_digitos(v):
     return re.sub(r"\D", "", v or "")
@@ -117,6 +187,7 @@ def main(numeros):
         if not A._logado(w, t):
             print(f"{numero}: a tela mandou para o login ({atual}); veja {destino}")
             continue
+        abrir_decisao(w, t, destino)
         titulo = " ".join((cap.get("titulo") or "").split())[:100]
         print(f"{numero}: {titulo} · {atual} · {len(cap.get('elementos', []))} elementos · {destino}")
     print("Capturas em:", pasta)
