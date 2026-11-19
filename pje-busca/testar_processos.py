@@ -118,6 +118,14 @@ JS_INICIAR_TEXTO = r"""(function(){
 
 JS_LER_TEXTO = "(function(){ return window.__pjeTexto || ''; })()"
 
+# diagnóstico quando a linha do tempo não aparece: quantos elementos o script está vendo
+JS_DIAGNOSTICO = r"""(function(){
+  return JSON.stringify({url: location.pathname, li_doc: document.querySelectorAll('li[id^="doc_"]').length,
+    links_documento: document.querySelectorAll('a[href*="/documento/"]').length,
+    links_conteudo: document.querySelectorAll('a[href$="/conteudo"]').length,
+    tem_timeline: !!document.querySelector('.pje-timeline'), titulo: document.title});
+})()"""
+
 # cabeçalho do documento aberto ("Id abfbdad - Petição Inicial", "Juntado por ... em 29/07/2026 16:33")
 JS_CABECALHO = r"""(function(){
   var t = document.querySelector('.cabecalho-esquerda mat-card-title');
@@ -155,6 +163,7 @@ def _ler_movimentacao(w, t, href):
     """Abre o documento da movimentação e devolve (cabeçalho, texto por página ou erro)."""
     CM.ir(w, t, href)
     CM.esperar(w, t, maximo=45, folga=2)
+    print("      documento carregado; aguardando o visualizador do PDF ...", flush=True)
     ini, fim = {}, time.monotonic() + 60
     while time.monotonic() < fim:  # o visualizador demora a carregar o PDF
         ini = json.loads(CM.js(w, t, JS_INICIAR_TEXTO))
@@ -212,15 +221,21 @@ def escrever_txt(numero, url_detalhe, registros):
 def capturar_movimentacoes(w, t, numero):
     """Na página de detalhes: abre cada documento da linha do tempo, lê o texto e volta para a lista."""
     url_detalhe = CM.url(w, t).split("#")[0]
+    print(f"  {numero}: lendo a linha do tempo de {url_detalhe} ...", flush=True)
     lista = json.loads(CM.js(w, t, JS_LISTA_MOVIMENTACOES))
-    print(f"  {numero}: {len(lista)} movimentações com documento")
+    print(f"  {numero}: {len(lista)} movimentações com documento", flush=True)
+    if not lista:
+        diag = json.loads(CM.js(w, t, JS_DIAGNOSTICO))
+        A._salvar(LOGS / "diagnostico" / numero, "detalhe_sem_lista", CM.capturar(w, t))
+        print(f"  {numero}: nenhuma movimentação achada. Na página: {diag}", flush=True)
     registros = []
     for n, item in enumerate(lista, 1):
         href = item["href"] if item["href"].startswith("http") else "https://pje.trt7.jus.br" + item["href"]
+        print(f"    {n}/{len(lista)} abrindo: {item['aria'][:70]} ...", flush=True)
         cab, texto = _ler_movimentacao(w, t, href)
         registros.append({"n": n, **item, "cabecalho": cab, "texto": texto})
         status = "texto lido" if texto.get("ok") else f"SEM TEXTO ({texto.get('erro')})"
-        print(f"    {n}/{len(lista)} {item['aria'][:70]}: {status}")
+        print(f"    {n}/{len(lista)} {item['aria'][:70]}: {status}", flush=True)
         CM.ir(w, t, url_detalhe)  # volta para a linha do tempo para o próximo
         CM.esperar(w, t, maximo=45, folga=3)
         time.sleep(2)
