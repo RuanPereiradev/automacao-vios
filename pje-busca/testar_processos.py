@@ -303,9 +303,11 @@ def main(numeros):
             continue
         antes = {(a[0], a[1]) for a in CM.todas_abas()}
         url_antes = CM.url(w, t)
+        print(f"  {numero}: botão achado ({k.get('aria')}) em x={k['x']} y={k['y']}; URL antes: {url_antes}", flush=True)
         CM.para_frente(w, t)
         CM.clicar_tela(k["x"], k["y"])  # clique de mouse de verdade no ícone KZ
         time.sleep(6)
+        print(f"  {numero}: depois do clique, URL: {CM.url(w, t)}; abas: {len(CM.todas_abas())}", flush=True)
         if not _abriu(w, t, antes, url_antes):
             # o clique não navegou: foca o botão por JavaScript e aperta Enter
             CM.js(w, t, JS_FOCAR_KZ % json.dumps(formatar(numero)))
