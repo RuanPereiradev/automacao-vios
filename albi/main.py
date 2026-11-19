@@ -113,7 +113,6 @@ def carregar(caminho_env):
         "url": os.getenv("SONAR_URL").strip(), "cpf": cpf, "email": os.getenv("SONAR_EMAIL").strip(),
         "senha": os.getenv("SONAR_SENHA"),  # sem strip: espaço pode fazer parte da senha
         **{k.lower(): seletor(os.getenv(k, "").strip() or v) for k, v in PADROES.items()},
-        "headless": os.getenv("HEADLESS", "false").strip().lower() in ("true", "1", "sim"),
         "timeout": int(os.getenv("TIMEOUT", "20").strip() or 20),
         "sacado": os.getenv("SONAR_SACADO", "").strip() or SACADO_PADRAO,
         # quanto tempo esperar o Sonar terminar os pedidos antes de desistir (minutos)
@@ -890,8 +889,9 @@ def main(*args):
             return 2
     log.info("Entrando no Sonar com CPF/CNPJ final %s e e-mail %s", cfg["cpf"][-2:], cfg["email"])
     opcoes = webdriver.ChromeOptions()
-    if cfg["headless"]:
-        opcoes.add_argument("--headless=new")
+    # sem janela sempre: o Chrome do Sonar não aparece na tela, não tira o foco nem o mouse do bot do
+    # PJe (que usa o Chrome logado no Google). O HEADLESS do .env não desliga isso.
+    opcoes.add_argument("--headless=new")
     opcoes.add_argument("--window-size=1600,1000")
     opcoes.add_experimental_option("prefs", {"download.prompt_for_download": False,
                                              "plugins.always_open_pdf_externally": True})

@@ -1484,7 +1484,7 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `DUPLICIDADE_ATIVA` | não | `true` liga o detector de duplicadas (Passo 17); `false` = desligado (a Controladoria tira as duplicadas no VIOS) | `false` |
 | `PRAZO_CONTAGEM` | não | `simplificada` = só sábado e domingo ficam de fora (feriados e recesso contam como dia útil); `feriados` = calendário antigo por tribunal (Passo 13) | `simplificada` |
 | `SAIDA_PASTA` | não | Pasta dos `.txt` | `saida` |
-| `HEADLESS` | não | Chrome sem janela | `false` |
+| `HEADLESS` | não | Chrome sem janela (ignorado no Albi: o Sonar roda sempre sem janela) | `true` |
 | `TIMEOUT` | não | Espera máxima (s) | `20` |
 | `MANTER_ABERTO` | não | Não fecha o Chrome no fim | `true` |
 | `NAVEGADOR_RAPIDO` | não | O Chrome não espera recursos do VIOS que o robô não usa (ganho pequeno, ~3%) | `true` (padrão) |
