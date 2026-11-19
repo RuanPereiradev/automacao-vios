@@ -3,8 +3,8 @@
   cd pje-busca && python3 testar_processos.py 0001368-02.2026.5.07.0038 0002754-04.2025.5.07.0038
 
 Faz o login (console do Presto > Sites > TRT7 > Login via Presto) e, na mesma aba, abre o acervo geral do
-PJe (painel do usuário externo), digita o número de cada processo, aperta Enter, clica no botão "Detalhes do Processo" do número e salva a página de
-detalhes (/pjekz/processo/<id>/detalhe). Não baixa autos.
+PJe (painel do usuário externo), digita o número de cada processo, aperta Enter, clica de mouse no ícone KZ (botão "Detalhes do Processo" do número); os detalhes abrem em aba nova e o
+script segue nela, salvando a página de detalhes (/pjekz/processo/<id>/detalhe). Não baixa autos.
 Salva print, HTML, texto e a lista de elementos de cada tela em logs/processos/<data_hora>/<número>/.
 """
 import json
@@ -34,9 +34,10 @@ JS_PESQUISAR = r"""(function(numero){
   });
   return JSON.stringify({ok: true, valor: i.value});
 })(%s)"""
-# clica no botão "Detalhes do Processo <classe> <número>" da linha do resultado (role=link; abre
-# /pjekz/processo/<id>/detalhe). O número vai junto para não pegar o botão de outro processo.
-JS_CLICAR_KZ = r"""(function(numero){
+# onde fica o ícone KZ do botão "Detalhes do Processo <classe> <número>" (role=link) na tela, em coordenadas
+# da tela. O clique é de mouse de verdade (o botão do PJe não responde a click() por JavaScript). Ao clicar,
+# o PJe abre os detalhes numa aba nova.
+JS_ONDE_KZ = r"""(function(numero){
   var botoes = [].filter.call(document.querySelectorAll('button[aria-label]'), function(b) {
     var r = b.getBoundingClientRect();
     return r.width > 0 && r.height > 0 && /^Detalhes do Processo/i.test(b.getAttribute('aria-label') || '');
@@ -44,8 +45,12 @@ JS_CLICAR_KZ = r"""(function(numero){
   var alvo = botoes.filter(function(b) { return (b.getAttribute('aria-label') || '').indexOf(numero) >= 0; })[0];
   if (!alvo) return JSON.stringify({ok: false, erro: 'botão Detalhes do Processo não achado para ' + numero,
                                     botoes: botoes.map(function(b) { return b.getAttribute('aria-label'); })});
-  alvo.click();
-  return JSON.stringify({ok: true, aria: alvo.getAttribute('aria-label')});
+  var el = alvo.querySelector('img') || alvo;
+  el.scrollIntoView({block: 'center'});
+  var r = el.getBoundingClientRect();
+  return JSON.stringify({ok: true, aria: alvo.getAttribute('aria-label'),
+                         x: Math.round(window.screenX + r.left + r.width / 2),
+                         y: Math.round(window.screenY + (window.outerHeight - window.innerHeight) + r.top + r.height / 2)});
 })(%s)"""
 LOGS = AQUI / "logs" / "processos"
 
@@ -93,11 +98,19 @@ def main(numeros):
             continue
         time.sleep(8)  # a lista de resultados vem depois do Enter
         A._salvar(destino, "resultado", CM.capturar(w, t))
-        k = json.loads(CM.js(w, t, JS_CLICAR_KZ % json.dumps(formatar(numero))))
+        k = json.loads(CM.js(w, t, JS_ONDE_KZ % json.dumps(formatar(numero))))
         if not k.get("ok"):
-            print(f"{numero}: {k.get('erro')}; veja {destino}")
+            print(f"{numero}: {k.get('erro')}; botões vistos: {k.get('botoes')}; veja {destino}")
             continue
-        time.sleep(8)  # a página de detalhes carrega depois do clique
+        antes = {(a[0], a[1]) for a in CM.todas_abas()}
+        CM.para_frente(w, t)
+        CM.clicar_tela(k["x"], k["y"])  # clique de mouse de verdade no ícone KZ
+        time.sleep(6)
+        novas = [a for a in CM.todas_abas() if (a[0], a[1]) not in antes and a[2].startswith("http")
+                 and "presto.oystr" not in a[2] and a[0] < 2 ** 29 and a[1] < 2 ** 29]
+        if novas:  # o PJe abriu os detalhes numa aba nova: segue nela
+            w, t = novas[-1][0], novas[-1][1]
+        CM.esperar(w, t, maximo=45, folga=3)
         atual = CM.url(w, t)
         cap = CM.capturar(w, t)
         A._salvar(destino, "detalhe", cap)
