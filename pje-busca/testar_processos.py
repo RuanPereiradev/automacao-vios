@@ -3,7 +3,8 @@
   cd pje-busca && python3 testar_processos.py 0001368-02.2026.5.07.0038 0002754-04.2025.5.07.0038
 
 Faz o login (console do Presto > Sites > TRT7 > Login via Presto) e, na mesma aba, abre o acervo geral do
-PJe (painel do usuário externo), digita o número de cada processo e aperta Enter. Não baixa autos.
+PJe (painel do usuário externo), digita o número de cada processo, aperta Enter, clica no ícone KZ (Detalhes do Processo) e salva a página de
+detalhes (/pjekz/processo/<id>/detalhe). Não baixa autos.
 Salva print, HTML, texto e a lista de elementos de cada tela em logs/processos/<data_hora>/<número>/.
 """
 import json
@@ -33,6 +34,19 @@ JS_PESQUISAR = r"""(function(numero){
   });
   return JSON.stringify({ok: true, valor: i.value});
 })(%s)"""
+# clica no ícone KZ "Detalhes do Processo" da linha do resultado (abre /pjekz/processo/<id>/detalhe)
+JS_CLICAR_KZ = r"""(function(){
+  var imgs = [].filter.call(document.querySelectorAll('img'), function(im) {
+    var r = im.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && (/ícone kz/i.test(im.alt || '') || /Detalhes do Processo/i.test(im.getAttribute('mattooltip') || ''));
+  });
+  if (!imgs.length) return JSON.stringify({ok: false, erro: 'ícone KZ não achado (a lista ainda não carregou ou não achou o processo)'});
+  var im = imgs[0];
+  var alvo = im.closest('a, button') || im;
+  var href = (im.closest('a') || {}).href || '';
+  alvo.click();
+  return JSON.stringify({ok: true, href: href, quantos: imgs.length});
+})()"""
 LOGS = AQUI / "logs" / "processos"
 
 
@@ -78,14 +92,24 @@ def main(numeros):
             print(f"{numero}: {r.get('erro')}; veja {destino}")
             continue
         time.sleep(8)  # a lista de resultados vem depois do Enter
+        A._salvar(destino, "resultado", CM.capturar(w, t))
+        k = json.loads(CM.js(w, t, JS_CLICAR_KZ))
+        if not k.get("ok"):
+            print(f"{numero}: {k.get('erro')}; veja {destino}")
+            continue
+        time.sleep(8)  # a página de detalhes carrega depois do clique
+        atual = CM.url(w, t)
+        if "/processo/" not in atual and k.get("href"):
+            CM.ir(w, t, k["href"])  # o clique não navegou: vai direto pelo link do ícone
+            CM.esperar(w, t, maximo=45, folga=3)
+            atual = CM.url(w, t)
         cap = CM.capturar(w, t)
         A._salvar(destino, "detalhe", cap)
-        atual = CM.url(w, t)
         if not A._logado(w, t):
             print(f"{numero}: a tela mandou para o login ({atual}); veja {destino}")
             continue
         titulo = " ".join((cap.get("titulo") or "").split())[:100]
-        print(f"{numero}: {titulo} · {len(cap.get('elementos', []))} elementos · {destino}")
+        print(f"{numero}: {titulo} · {atual} · {len(cap.get('elementos', []))} elementos · {destino}")
     print("Capturas em:", pasta)
     return 0
 
