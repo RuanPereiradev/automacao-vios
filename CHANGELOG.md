@@ -22,6 +22,12 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 - O coletor manda `atualizacao: true` quando a ficha tem tarefa aberta (não concluída e não cancelada), a linha que o
   VIOS pinta de amarelo; só o booleano, nenhum dado da tarefa (`consulta/fases.py`, `montagem.py`, `coletor.py`,
   `CONTRATO.md`, testes). Atualizar o bot (bot-previdenciario 0cd0e23) **antes** do coletor.
+
+### Corrigido — Albi roda o Sonar em segundo plano, sem janela (18/11/2026)
+- `albi/main.py`: o Chrome do Sonar sempre sem janela (`--headless=new`). Antes ele abria uma janela nova, sem login no Google,
+  e tirava o foco e o mouse do bot do PJe (`pje-busca`), que usa o Chrome logado. O `HEADLESS` do `albi/.env` deixou de valer.
+- Continua: o `presto.py` (AppleScript no Chrome logado) ainda usa o Chrome do escritório; não rode os dois ao mesmo tempo.
+
 ### Adicionado — pje-busca: login no PJe do TRT7 pelo Presto (18/11/2026)
 - `pje-busca/src/acesso_pje.py`: `entrar_trt7()` passa pelo console do Presto (login com `PRESTO_EMAIL`/`PRESTO_SENHA`, Sites > "Pje TRT 07 1g") e depois entra no PJe do TRT7 pelo Presto, no Chrome aberto do Mac
   (AppleScript), reaproveitando o login do Albi (`albi/presto.py`, função `login`). Para com "captcha" e não tenta resolver.
