@@ -162,6 +162,13 @@ def _apertar_enter():
                    capture_output=True, timeout=20)
 
 
+def _atalho_d():
+    """Control+Option+D (atalho do botão Detalhes do Processo). Precisa da Acessibilidade."""
+    import subprocess
+    subprocess.run(["osascript", "-e", 'tell application "System Events" to keystroke "d" using {control down, option down}'],
+                   capture_output=True, timeout=20)
+
+
 def _abriu(w, t, antes, url_antes):
     """O clique abriu os detalhes? (aba nova de site, ou a mesma aba saiu da lista do acervo)."""
     novas = [a for a in CM.todas_abas() if (a[0], a[1]) not in antes and a[2].startswith("http")
@@ -306,6 +313,12 @@ def main(numeros):
             _apertar_enter()
             time.sleep(6)
             print(f"  {numero}: o clique de mouse não abriu; tentei Enter no botão")
+        if not _abriu(w, t, antes, url_antes):
+            # último recurso: a tecla de atalho do botão (accesskey="d" no PJe = Control+Option+D no Chrome do Mac)
+            CM.para_frente(w, t)
+            _atalho_d()
+            time.sleep(6)
+            print(f"  {numero}: tentei o atalho Control+Option+D")
         novas = [a for a in CM.todas_abas() if (a[0], a[1]) not in antes and a[2].startswith("http")
                  and "presto.oystr" not in a[2] and a[0] < 2 ** 29 and a[1] < 2 ** 29]
         if novas:  # o PJe abriu os detalhes numa aba nova: segue nela
