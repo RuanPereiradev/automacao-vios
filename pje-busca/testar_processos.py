@@ -80,12 +80,22 @@ JS_LISTA_MOVIMENTACOES = r"""(function(){
     var titulo = li.querySelector('a.tl-documento[href*="/detalhe"]');
     var partes = titulo ? [].map.call(titulo.querySelectorAll('span'), function(s) { return s.textContent.trim(); })
                              .filter(function(s) { return s; }) : [];
+    var abrir = li.querySelector('a.tl-documento[id^="abrirdoc_"]');
     out.push({href: a.getAttribute('href'), aria: a.getAttribute('aria-label') || '',
+              abrir: abrir ? abrir.id : '', curto: abrir ? abrir.id.replace('abrirdoc_', '') : '',
               hora: hora ? hora.getAttribute('aria-label') : '', quem: quem ? quem.getAttribute('aria-label') : '',
               partes: partes});
   });
   return JSON.stringify(out);
 })()"""
+
+# clica no link "abrirdoc_<id>" da linha: o PJe mostra o documento no painel da direita (mesma página)
+JS_CLICAR_DOC = r"""(function(id){
+  var a = document.getElementById(id);
+  if (!a) return JSON.stringify({ok: false, erro: 'link ' + id + ' não achado'});
+  a.click();
+  return JSON.stringify({ok: true});
+})(%s)"""
 
 # inicia a leitura do texto de todas as páginas do PDF (API do pdf.js dentro do visualizador do PJe)
 JS_INICIAR_TEXTO = r"""(function(){
@@ -159,18 +169,25 @@ def _abriu(w, t, antes, url_antes):
     return bool(novas) or (CM.url(w, t) != url_antes and "/processo/" in CM.url(w, t))
 
 
-def _ler_movimentacao(w, t, href):
-    """Abre o documento da movimentação e devolve (cabeçalho, texto por página ou erro)."""
-    CM.ir(w, t, href)
-    CM.esperar(w, t, maximo=45, folga=2)
-    print("      documento carregado; aguardando o visualizador do PDF ...", flush=True)
+def _ler_na_linha(w, t, item):
+    """Clica na linha do tempo, espera o painel da direita trocar para o documento e lê o texto do PDF."""
+    r = json.loads(CM.js(w, t, JS_CLICAR_DOC % json.dumps(item["abrir"])))
+    if not r.get("ok"):
+        return {}, {"ok": False, "erro": r.get("erro", "linha sem link de documento")}
+    cab, fim = {}, time.monotonic() + 40
+    while time.monotonic() < fim:  # o painel troca para o documento clicado
+        cab = json.loads(CM.js(w, t, JS_CABECALHO))
+        if cab.get("titulo", "").startswith("Id " + item["curto"]):
+            break
+        time.sleep(2)
+    else:
+        return cab, {"ok": False, "erro": f"o painel não mostrou o documento {item['curto']}"}
     ini, fim = {}, time.monotonic() + 60
     while time.monotonic() < fim:  # o visualizador demora a carregar o PDF
         ini = json.loads(CM.js(w, t, JS_INICIAR_TEXTO))
         if ini.get("ok"):
             break
         time.sleep(3)
-    cab = json.loads(CM.js(w, t, JS_CABECALHO))
     if not ini.get("ok"):
         return cab, {"ok": False, "erro": ini.get("erro", "sem visualizador")}
     fim = time.monotonic() + 240  # documentos longos levam mais tempo para ler
@@ -230,15 +247,11 @@ def capturar_movimentacoes(w, t, numero):
         print(f"  {numero}: nenhuma movimentação achada. Na página: {diag}", flush=True)
     registros = []
     for n, item in enumerate(lista, 1):
-        href = item["href"] if item["href"].startswith("http") else "https://pje.trt7.jus.br" + item["href"]
         print(f"    {n}/{len(lista)} abrindo: {item['aria'][:70]} ...", flush=True)
-        cab, texto = _ler_movimentacao(w, t, href)
+        cab, texto = _ler_na_linha(w, t, item)
         registros.append({"n": n, **item, "cabecalho": cab, "texto": texto})
         status = "texto lido" if texto.get("ok") else f"SEM TEXTO ({texto.get('erro')})"
         print(f"    {n}/{len(lista)} {item['aria'][:70]}: {status}", flush=True)
-        CM.ir(w, t, url_detalhe)  # volta para a linha do tempo para o próximo
-        CM.esperar(w, t, maximo=45, folga=3)
-        time.sleep(2)
     arq = escrever_txt(numero, url_detalhe, registros)
     print(f"  {numero}: TXT gravado em {arq}")
     return arq
