@@ -19,6 +19,7 @@ from datetime import datetime
 from pathlib import Path
 
 from bot import eventos, skill
+from bot import analise as analise_mod
 from bot.analise import analisar_arquivo
 from bot.lancamento import REGISTRO, RESULTADOS, lancar
 from bot.login import fazer_login
@@ -175,7 +176,11 @@ def rodar(cfg, caminho_env, pasta_saida, confirmar, liberar):
         # 2) análise com IA (no navegador não há nada aberto: a análise em lote pode levar um tempo)
         _atualizar(pasta_saida, fase="analisando")
         emitir("fase", fase="analisando")
-        _, total, falhas = analisar_arquivo(arquivo, caminho_env)
+        analise_mod.progresso_lote = lambda txt: _atualizar(pasta_saida, detalhe=txt)
+        try:
+            _, total, falhas = analisar_arquivo(arquivo, caminho_env)
+        finally:
+            analise_mod.progresso_lote = None
         analise = arquivo.parent / arquivo.name.replace("intimacoes_", "analise_", 1)
         resultados = json.loads(analise.read_text(encoding="utf-8"))
         _atualizar(pasta_saida, analisadas=total)

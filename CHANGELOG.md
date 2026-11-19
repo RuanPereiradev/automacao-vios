@@ -12,6 +12,13 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Envio automático mostra o andamento do lote da IA (18/11/2026)
+- Antes, enquanto o lote da IA não terminava, a página do Sam ficava só em "A IA está analisando", sem sinal de vida,
+  e a espera ia até `LLM_LOTE_ESPERA_MIN` (360 min por padrão).
+- `bot/analise.py`: `progresso_lote` recebe o andamento do lote (status, prontas, com erro, minutos de espera).
+- `bot/envio_auto.py` liga esse andamento em `detalhe`; `bot/templates/envio.html` mostra o texto ao lado de "A IA está analisando".
+- Para não esperar 6 h, baixe `LLM_LOTE_ESPERA_MIN` no `.env` (ex.: 60). Se estourar, o lote é cancelado e o resto vai uma a uma.
+
 ### Corrigido — Albi roda o Sonar em segundo plano, sem janela (18/11/2026)
 - `albi/main.py`: o Chrome do Sonar sempre sem janela (`--headless=new`). Antes ele abria uma janela nova, sem login no Google,
   e tirava o foco e o mouse do bot do PJe (`pje-busca`), que usa o Chrome logado. O `HEADLESS` do `albi/.env` deixou de valer.

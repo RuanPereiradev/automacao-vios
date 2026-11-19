@@ -152,7 +152,7 @@
           if (rodando) {
             const fases = { capturando: "Capturando as intimações no VIOS…", analisando: "A IA está analisando " + (a.intimacoes || "") + " intimação(ões)…",
               lancando: "Criando as tarefas: CI " + (a.feitas_cis || 0) + " de " + (a.total_cis || "?") + " · " + (a.gravadas || 0) + " tarefa(s) " + (a.modo === "teste" ? "no quadro" : "gravada(s)") + (a.erros ? " · " + a.erros + " barrada(s)" : "") };
-            t.textContent = fases[a.fase] || "Trabalhando…";
+            t.textContent = (fases[a.fase] || "Trabalhando…") + (a.fase === "analisando" && a.detalhe ? " · " + a.detalhe : "");
           } else resumoAnterior(a);
         }
         function resumoAnterior(a) {

@@ -22,6 +22,8 @@ from bot.custo import LimiteGasto
 from bot.ia import IAErro
 
 log = logging.getLogger(__name__)
+# quem quiser acompanhar o lote (o envio automático mostra na página): função(texto) ou None
+progresso_lote = None
 
 MODELO_PADRAO = {"openai": "gpt-5.6", "anthropic": "claude-opus-5-5"}
 
@@ -794,12 +796,19 @@ def _receber_lote(agente, cliente, modelo, grupo, estado, prazo, hoje):
     """Espera o lote terminar (cancela depois do prazo) e devolve {ci: resultado} do que veio."""
     lote_id = estado["lote_id"]
     intervalo = float(os.getenv("LLM_LOTE_INTERVALO_S", "60"))
-    ultimo, cancelado = None, False
+    ultimo, cancelado, inicio = None, False, time.monotonic()
     while True:
         status, prontos, falhas, total = cliente.status(lote_id)
         if (status, prontos, falhas) != ultimo:
             log.info("Lote %s: %s — %d de %d prontas, %d com erro", modelo, status, prontos, total, falhas)
             ultimo = (status, prontos, falhas)
+        if progresso_lote:
+            minutos = int((time.monotonic() - inicio) / 60)
+            try:
+                progresso_lote(f"Lote da IA ({modelo}): {status}, {prontos} de {total} prontas, "
+                               f"{falhas} com erro, há {minutos} min esperando")
+            except Exception:  # a página não pode derrubar a análise
+                log.exception("Não consegui atualizar o andamento do lote")
         if status in ("completed", "failed", "expired", "cancelled"):
             break
         if not cancelado and time.monotonic() > prazo:
