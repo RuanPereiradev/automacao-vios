@@ -688,6 +688,15 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         log.info("Albi disparado pela página (%s, modo %s) por %s", envio_id, modo, request.remote_addr)
         return redirect(url_for("albi_pagina"))
 
+    @app.route("/albi/de-novo/<envio_id>", methods=["POST"])
+    def albi_de_novo(envio_id):
+        """Arquivo já confirmado: nova conferência do mesmo .txt (a trava de 1 dia do Albi decide quem é comprado)."""
+        try:
+            novo_id = albi.conferir_de_novo(pasta_albi, pasta_saida, _id_albi(envio_id))
+        except albi.AlbiErro as e:
+            return redirect(url_for("albi_pagina", erro=str(e)))
+        return redirect(url_for("albi_conferir", envio_id=novo_id))
+
     @app.route("/albi/arquivo/<envio_id>/<path:nome>")
     def albi_arquivo(envio_id, nome):
         """resultado.txt ou uma planilha baixada do Sonar."""

@@ -12,6 +12,14 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Albi: arquivo já confirmado pode ser pesquisado de novo pela página (23/11/2026)
+- Depois que a trava de pedido repetido passou de 30 dias para 1, a tela de um arquivo já confirmado
+  continuava sem botão de pesquisa/confirmar ("Este arquivo já foi confirmado"): essa é uma trava do
+  arquivo, separada da trava de 1 dia, e só saía soltando o .txt outra vez.
+- Novo botão **Conferir de novo** nessa tela (`POST /albi/de-novo/<id>`, `albi.conferir_de_novo` em
+  `bot/albi.py`): confere o mesmo .txt de novo (novo id). Quem foi pesquisado há menos de 1 dia continua
+  "já pesquisado"; os outros voltam a "Vai pesquisar". A compra continua pedindo os dois cliques.
+
 ### Adicionado — `servidor_mac.sh` cuida também do bot de WhatsApp e do coletor (18/11/2026)
 - Novos comandos: `whatsapp instalar|status|atualizar|log|desinstalar` (chama `scripts/mac/` do repositório privado
   `bot-previdenciario`, pasta em `BOT_WHATSAPP_PASTA`), `coletor ...` (= `consulta/servico_mac.sh`), `tudo` (status dos

@@ -185,6 +185,17 @@ def receber(p, pasta_saida, texto, nome_arquivo):
     return envio_id
 
 
+def conferir_de_novo(p, pasta_saida, envio_id):
+    """Arquivo já confirmado: confere o mesmo .txt de novo, como se fosse solto outra vez (novo id). Quem foi
+    pesquisado há menos de 1 dia (DIAS_REPETIDO do Albi) continua "já pesquisado"; os outros voltam a
+    "vai pesquisar". Nada é comprado aqui: a compra continua pedindo os dois cliques. Devolve o novo id."""
+    meta = _meta(pasta_saida, envio_id)
+    txt = _pasta_envio(pasta_saida) / f"{envio_id}.txt"
+    if not meta or not txt.exists():
+        raise AlbiErro("arquivo não encontrado: solte o .txt de novo")
+    return receber(p, pasta_saida, txt.read_text(encoding="utf-8"), meta.get("arquivo") or txt.name)
+
+
 def conferencia(pasta_saida, envio_id):
     """O que foi guardado no 1.º passo ({} se o id não existe)."""
     return _meta(pasta_saida, envio_id)
