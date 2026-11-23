@@ -12,6 +12,10 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Branch relatorio-processos atualizada com a main (23/11/2026)
+- Merge da `origin/main` (Albi, Orelha, Sam, Consulta, pje-busca) para começar as próximas mudanças do Jarvis
+  em cima do código mais novo. Só o CHANGELOG teve conflito (entradas dos dois lados mantidas).
+
 ### Adicionado — Subagentes do Claude Code em `.claude/agents/` (11/11/2026)
 - `backend-specialist`: Python, integrações (Selenium/VIOS, IA, Datajud, Presto), arquitetura e
   dados. Pode editar.
@@ -23,6 +27,582 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   lançamento. Somente leitura (Read, Grep, Glob).
 - Todos seguem as regras do `CLAUDE.md` (CHANGELOG, documentação em português, nada de senha ou
   `.env` em textos).
+
+### Adicionado — pje-busca: plano do vigia diário VIOS → PJe (19 e 23/11/2026)
+- `pje-busca/PROJETO (1).md`, seção 4.2 (só planejamento, sem código): 1x por dia o robô lê no VIOS a lista de
+  processos trabalhistas em que o cliente é a parte passiva (só leitura), compara com a foto anterior, detecta
+  empresas e processos novos e põe os números do TRT7 numa fila de verificação periódica no PJe, com leitura
+  incremental da linha do tempo. Fluxo, configuração prevista, comandos, indicadores (janela de exposição: 112 dias
+  no caso real), riscos e pendências.
+- 23/11/2026, filtros e volume conferidos no VIOS (só contagens): Área 3 = Trabalhista + `pesq[tipos_partes_id]=P`
+  + ativos = 363 processos, 161 clientes, 239 no TRT7; sem filtro de advogado (dois advogados principais); a lista
+  do VIOS para em 500 linhas (dividir a pesquisa se chegar a 500).
+
+### Corrigido — Albi: aviso "Pesquisa Duplicada" do Sonar (23/11/2026)
+- Quando o CPF/CNPJ já tinha sido pesquisado no Sonar (por qualquer usuário), o Sonar abre, depois do **Continuar**,
+  o aviso "Pesquisa Duplicada · ... já foram pesquisados no pedido N em DD/MM/AAAA ... Deseja realizar a pesquisa
+  novamente?" (`.p-confirm-dialog`, botões Cancelar/Confirmar). O Albi esperava ir direto ao passo 2 e dava erro.
+- `albi/main.py`: `aviso_duplicada()` e `confirmar_duplicada()`; `preencher_pedido()` espera o passo 2 **ou** o aviso,
+  clica só no botão de texto exato "Confirmar" (nunca "Confirmar Pedido") e segue. Anota no log o pedido anterior e a
+  data; `preencher_pedido()` devolve também `duplicada` ({pedido, data} ou None). A compra continua só com `--confirmar`.
+- Teste real (CPF 753.340.971-04, aviso do pedido 1512114 de 17/11/2026): aviso confirmado, passo 2 com o documento
+  certo, Sacado do escritório e "Confirmar Pedido" ligado (R$ 15,70), sem comprar. `albi/README.md` atualizado.
+
+### Corrigido — Orelha: contagem por responsável e painel semanal com todas as tarefas (23/11/2026)
+- **Contagem por pessoa**: tarefa com mais de um responsável contava só para o primeiro nome
+  (`responsavel_principal`). Agora conta para cada um (`prazos.responsaveis`) no quadro "Atrasadas por
+  responsável" (`funcoes/prazos.py`), na página da semana (`nucleo/semana.py`) e na carga do painel. O total
+  de atrasadas continua contando cada tarefa uma vez. Na leitura de 23/11/2026, 26 de 250 atrasadas dos
+  últimos 30 dias tinham 2 ou mais responsáveis.
+- **Painel semanal**: a fila só pegava tarefas que começam com "MINUTAR" ou "AUDIÊNCIA". Agora entram todos
+  os tipos; os outros viram a categoria "Outras" (coluna nova na carga, "Carga por responsável").
+  `ORELHA_PAINEL_OUTRAS=nao` volta ao comportamento antigo. O registro da semana guarda `"tipos"` e só compara
+  com registro do mesmo conjunto: a 1ª edição com todos os tipos sai sem comparação.
+- Conferido no VIOS (só leitura): a lista de tarefas que o Orelha lê não filtra responsável nem tipo
+  (o filtro de responsáveis vem vazio = todos). O responsável desmarcado visto na tela era do navegador de
+  quem conferiu, não do bot.
+
+### Corrigido — Albi: arquivo já confirmado pode ser pesquisado de novo pela página (23/11/2026)
+- Depois que a trava de pedido repetido passou de 30 dias para 1, a tela de um arquivo já confirmado
+  continuava sem botão de pesquisa/confirmar ("Este arquivo já foi confirmado"): essa é uma trava do
+  arquivo, separada da trava de 1 dia, e só saía soltando o .txt outra vez.
+- Novo botão **Conferir de novo** nessa tela (`POST /albi/de-novo/<id>`, `albi.conferir_de_novo` em
+  `bot/albi.py`): confere o mesmo .txt de novo (novo id). Quem foi pesquisado há menos de 1 dia continua
+  "já pesquisado"; os outros voltam a "Vai pesquisar". A compra continua pedindo os dois cliques.
+
+### Adicionado — `servidor_mac.sh` cuida também do bot de WhatsApp e do coletor (18/11/2026)
+- Novos comandos: `whatsapp instalar|status|atualizar|log|desinstalar` (chama `scripts/mac/` do repositório privado
+  `bot-previdenciario`, pasta em `BOT_WHATSAPP_PASTA`), `coletor ...` (= `consulta/servico_mac.sh`), `tudo` (status dos
+  três serviços) e `atualizar-tudo` (bot primeiro, depois `git pull` e reinício da página e do coletor).
+- `.env.example`: `BOT_WHATSAPP_PASTA`. DOCUMENTACAO, Passo 22. O código do bot continua no repositório dele.
+
+### Adicionado — Consulta: campo `atualizacao` por processo (18/11/2026, commit 216574f)
+- O coletor manda `atualizacao: true` quando a ficha tem tarefa aberta (não concluída e não cancelada), a linha que o
+  VIOS pinta de amarelo; só o booleano, nenhum dado da tarefa (`consulta/fases.py`, `montagem.py`, `coletor.py`,
+  `CONTRATO.md`, testes). Atualizar o bot (bot-previdenciario 0cd0e23) **antes** do coletor.
+### Corrigido — pje-busca: leitura das movimentações na página de detalhes do TRT7 (19/11/2026)
+- Aba de detalhes ignorada: o filtro de id de aba (2**29) descartava a aba do PJe (ids do Chrome passam de 1 bilhão). Agora `_aba_detalhes()` acha a aba do número e fecha a aba ao terminar (`src/chrome_mac.py`: `fechar_aba`); limite corrigido também em `src/acesso_pje.py`.
+- Texto do PDF: o visualizador do PJe não expõe `PDFViewerApplication`; o bot lê a camada de texto (`.textLayer`), rola página a página e ordena os trechos pela posição na folha. Traz a aba para frente (aba oculta não desenha o PDF).
+- PDF digitalizado sai marcado como sem camada de texto (precisa de OCR); documento em HTML é lido pelo painel.
+
+### Alterado — Envio automático mostra o andamento do lote da IA (18/11/2026)
+- Antes, enquanto o lote da IA não terminava, a página do Sam ficava só em "A IA está analisando", sem sinal de vida,
+  e a espera ia até `LLM_LOTE_ESPERA_MIN` (360 min por padrão).
+- `bot/analise.py`: `progresso_lote` recebe o andamento do lote (status, prontas, com erro, minutos de espera).
+- `bot/envio_auto.py` liga esse andamento em `detalhe`; `bot/templates/envio.html` mostra o texto ao lado de "A IA está analisando".
+- Para não esperar 6 h, baixe `LLM_LOTE_ESPERA_MIN` no `.env` (ex.: 60). Se estourar, o lote é cancelado e o resto vai uma a uma.
+
+### Corrigido — Albi roda o Sonar em segundo plano, sem janela (18/11/2026)
+- `albi/main.py`: o Chrome do Sonar sempre sem janela (`--headless=new`). Antes ele abria uma janela nova, sem login no Google,
+  e tirava o foco e o mouse do bot do PJe (`pje-busca`), que usa o Chrome logado. O `HEADLESS` do `albi/.env` deixou de valer.
+- Continua: o `presto.py` (AppleScript no Chrome logado) ainda usa o Chrome do escritório; não rode os dois ao mesmo tempo.
+
+### Adicionado — pje-busca: login no PJe do TRT7 pelo Presto (18/11/2026)
+- `pje-busca/src/acesso_pje.py`: `entrar_trt7()` passa pelo console do Presto (login com `PRESTO_EMAIL`/`PRESTO_SENHA`, Sites > "Pje TRT 07 1g") e depois entra no PJe do TRT7 pelo Presto, no Chrome aberto do Mac
+  (AppleScript), reaproveitando o login do Albi (`albi/presto.py`, função `login`). Para com "captcha" e não tenta resolver.
+- `pje-busca/src/chrome_mac.py`: cópia do `albi/chrome_mac.py` (só biblioteca padrão), para o projeto não depender do Albi.
+- `pje-busca/.env.example`: `PRESTO_CREDENCIAL` e `PRESTO_PIN` (sem valores).
+- Decisão: AppleScript em vez de Selenium, como no Albi (o perfil copiado pede confirmação da conta Google).
+- Corrigido: o botão "Login via Presto" do TRT7 é procurado por até 20 s (a página pode demorar a mostrar), e cada decisão é impressa.
+- `pje-busca/testar_processos.py`: depois do login, abre o acervo geral do PJe (usuário externo), digita o número de cada processo no campo de consulta, aperta Enter, clica de mouse no ícone KZ da linha do número (os detalhes abrem em aba nova, e o script segue nela) e salva as capturas da página de detalhes (`/pjekz/processo/<id>/detalhe`) em `logs/processos/`.
+- `pje-busca/testar_processos.py`: na página de detalhes, abre o documento de cada movimentação da linha do tempo, lê o texto de todas as páginas pelo visualizador do PJe (pdf.js) e grava `saida/<número>.txt` com a tabela de movimentações e o texto de cada uma.
+- Ainda não testado no Mac com o TRT7 real; falta a busca por CNPJ (pendência 3.1 do `PROJETO (1).md`).
+
+### Corrigido — envio automático órfão depois de reiniciar o servidor (18/11/2026)
+- `bot/envio_auto.py` (`andamento()`): se `saida/automatico_execucao.json` diz "rodando" mas o servidor não tem
+  thread dessa execução (reiniciou no meio), marca como "parou" com o motivo "servidor reiniciado durante a execução"
+  e regrava o arquivo. Antes o botão "Enviar automaticamente" ficava desativado para sempre.
+- Os lotes da IA (`lote_analise_*.json`) não são tocados: uma nova execução com o mesmo modelo e as mesmas CIs ainda retoma o lote.
+
+### Alterado — Skill de análise de intimações atualizada (pacote da Controladoria, 18/11/2026)
+- `doc/analise-intimacoes-controladoria/` (skill do projeto, lida pelo bot via `SKILL_PASTA`) trocada pelo pacote
+  `analise-intimacoes-controladoria-atualizada-2026-11-18.zip`. Cópia guardada em `doc/skill-original/9_2026-11-18_atualizada/`
+  e registrada como versão 9 em `doc/skill-original/LEIAME.md`.
+- Saiu a antecipação da `DATA` por feriado (versão 8). Perícia médica sem filial não bloqueia mais a tarefa. CARL vai para JOHN, exceto CALTECH.
+- `doc/skill-unica/` regenerado (`gerar_skill_unica.py`).
+
+### Alterado — código alinhado à skill de 18/11/2026 (18/11/2026)
+- Feriado: a `DATA` da tarefa não é mais antecipada por feriado (`bot/analise.py`, `bot/lancamento.py`). Saíram `prazos.antecipar()`, `feriado_aplicavel()`, `locais_escritorio()` e o `ESCRITORIO_LOCAIS` do `.env.example`.
+- Perícia médica sem filial mapeada na análise: a tarefa vai com `incluir responsável pela cidade identificada` e não bloqueia. A filial vem só do teor da intimação, não mais da cidade do CSV (`bot/responsaveis.py`).
+- Envio (página do TXT): aceita o texto `incluir responsável pela cidade identificada` na perícia médica (`bot/envio_txt.py`).
+- CARL vai para JOHNYS em qualquer área; cliente CALTECH fica com Carlos (`bot/responsaveis.py`).
+- No lançamento, a perícia médica continua conferida pelo "Escritório atual" do VIOS; sem filial ali, a tarefa não é lançada (decisão do código: o bot não consegue identificar a cidade sozinho).
+- Testes atualizados (`tests/test_responsaveis.py`): 38 OK.
+
+### Corrigido — Sam relê o `.env` a cada envio: senha do VIOS trocada vale sem reiniciar (17/11/2026)
+- No Mac, depois de trocar a senha do VIOS no `.env`, o Sam continuava dando "senha incorreta". O servidor da página
+  (`bot/envio_web.py`, ligado sem parar pelo `servidor_mac.sh`) lia o `.env` uma vez só, ao ligar, e usava a senha
+  antiga em todo envio até ser reiniciado.
+- Agora o envio manual (`_rodar`) e o envio automático (`/automatico/rodar`) chamam `config.carregar()` de novo antes de
+  entrar no VIOS. Se o `.env` estiver incompleto, o envio automático nem começa e a página mostra o erro.
+- `ENVIO_SENHA`, `ENVIO_REDE`, `SISTEMA_URL`, `SAIDA_PASTA` e as pastas dos outros bots continuam lidos só ao ligar.
+
+### Removido — Zips repetidos da skill e caches do Python (17/11/2026)
+- Saíram os `analise-intimacoes-controladoria.zip` de `doc/skill-original/1_…` a `8_…`: cada um era idêntico à pasta
+  `analise-intimacoes-controladoria/` extraída ao lado, que continua (conferido arquivo a arquivo).
+- Saiu `doc/analise-intimacoes-controladoria.zip`, idêntico ao zip da versão 7 (`doc/skill-original/7_2026-11-10_txt-bot-duplicadas/`).
+- Saiu `doc/analise-intimacoes-controladoria(1).zip` (fora do Git), versão intermediária de 11/11 substituída pela versão 8.
+- Saíram as pastas `__pycache__/` do projeto (o Python recria sozinho).
+- Ficou tudo que o código usa: `doc/skill-unica/analise-intimacoes-controladoria.zip` (gerado por `gerar_skill_unica.py`),
+  `doc/mascote/`, timbrados, fixtures, `saida/`, `orelha/saida/` e logs.
+
+### Segurança — Limpeza de arquivos de teste e `.gitignore` dos resultados do Albi e do Jarvis (17/11/2026)
+- `albi/resultado/` e `jarvis/resultado/` entraram no `.gitignore`. Estavam fora dele, neste repositório público, com
+  arquivos de teste que tinham CPF, nome de cliente e relatório de cliente.
+- Arquivos de teste e prints soltos foram para a lixeira (fora do Git, nada versionado foi apagado): `brag-output/`,
+  `orelha/saida/simulado-*`, `albi/resultado/`, `jarvis/resultado/`, os prints de `logs/*.png` e `albi/logs/*.png`,
+  as imagens soltas na raiz de `doc/` (Screenshot e WhatsApp) e a cópia duplicada
+  `albi/mascote/zangao-transforma_att (1).html`.
+- Ficaram os arquivos que o código usa: timbrados do Jarvis e da Orelha, `logs/bot.log` (lido por `jarvis/gastos.py`),
+  `saida/` do Sam, relatórios reais da Orelha em `orelha/saida/<data>/` e o modelo do painel.
+
+### Adicionado — Pasta `bot-previdenciario/` (bot do WhatsApp) dentro do projeto (16/11/2026)
+- O bot do WhatsApp do setor previdenciário (e a mídia da Vila 06, Mikasa) fica em `bot-previdenciario/`, ao lado dos outros bots
+  (`albi/`, `jarvis/`, `orelha/`, `autobots/`). É um clone de `joaotabosa3599/bot-previdenciario`, repositório **privado**,
+  versionado à parte: a pasta está no `.gitignore` e **nunca** entra neste repositório, que é público. Clone uma vez com
+  `git clone https://github.com/joaotabosa3599/bot-previdenciario.git bot-previdenciario` e atualize com `git pull` dentro dela.
+  Instalação no Mac: `bash bot-previdenciario/scripts/mac/instalar.sh`.
+
+### Adicionado — Sam: segunda checagem da perícia pelo "Escritório atual" do processo (17/11/2026)
+- A tarefa `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026` saía com a filial de Sobral por padrão (a cidade vinha do teor
+  da intimação) e era direcionada para a pessoa errada. Agora, na hora de lançar (`lancamento.conferir_pericia()`), o robô
+  abre a tela Lançar Intimação da CI, segue o link do martelo ("Visualizar processo") e lê o campo **Escritório atual** da
+  ficha do processo (`lancamento.ler_escritorio()`, só leitura). O responsável passa a ser o da filial desse escritório
+  (`responsaveis.da_pericia_pelo_escritorio()`); o bloqueio de filial da análise é refeito com essa informação.
+- Escritório sem filial conhecida (Camocim, Tianguá, Jijoca, Sobral) ou campo não encontrado: a CI não é lançada e o motivo
+  mostra o escritório lido. Vale para todos os caminhos que lançam (envio automático, página de envio e `lancar.py`), também
+  no modo teste. CI sem perícia médica não abre a ficha.
+- Testes em `tests/test_responsaveis.py`.
+
+### Adicionado — `consulta/servico_mac.sh`: coletor sempre ligado no Mac pelo launchd (16/11/2026)
+- `instalar` põe as dependências de `consulta/requirements.txt` na `.venv` da Orelha, confere o `consulta/.env`
+  (campos obrigatórios, certificado do bot, chave privada com permissão 600) e liga o coletor com `KeepAlive`
+  (sobe no login, reinicia se cair). Também `status`, `log` e `parar`.
+
+### Adicionado — Coletor confia no certificado próprio do bot no Mac (`CONSULTA_CERTIFICADO`) (16/11/2026)
+- No Mac do escritório o bot roda com HTTPS de certificado próprio (RN22 do bot). Com `CONSULTA_CERTIFICADO`
+  apontando para `dados/certificado/certificado.pem` do bot, o coletor valida a conexão só contra esse
+  certificado (`CONSULTA_BOT_URL=https://localhost:3000`). Vazio: validação padrão (bot com certificado público).
+
+### Adicionado — Coletor da consulta de processo pelo WhatsApp, pasta `consulta/` (16/11/2026)
+- Robô Python que lê o VIOS só por leitura (reaproveita `orelha/nucleo` e a leitura da tabela de tarefas da
+  ficha) e responde aos pedidos do bot de WhatsApp: busca pedidos (`GET /consulta/pendentes`, assinado com
+  HMAC), decifra o CPF (RSA-OAEP SHA-256), acha processos e telefones do cadastro, calcula a fase e devolve
+  só a ficha mínima por lista branca (`POST /consulta/resultado`); telefones só como HMAC. Especificação em
+  `consulta/CONTRATO.md`; uso em `consulta/README.md`. `python -m consulta [--uma-vez] [--simulado]`.
+- `consulta/fases_vios.yaml`: mapa tipo de tarefa -> fase para TODAS as áreas (551 tipos de
+  `consulta/tipos-todos.txt`; `tipos-previdenciario.txt` guarda o catálogo do previdenciário); tipo fora do
+  mapa vira `desconhecida` e o bot encaminha para a equipe.
+- Testes `unittest` em `consulta/tests/` (fixtures fictícias em `consulta/fixtures/`), incluindo log sem CPF,
+  telefone, nome ou CI. Dependências novas (`consulta/requirements.txt`): `cryptography`, `PyYAML`.
+- Configuração: `consulta/.env` (modelo `consulta/.env.example`), incluindo `ORELHA_PARADOS_LIBERAR_XHR=auto`
+  (a tabela de tarefas da ficha carrega por XHR POST; sem isso vem vazia).
+- Corrigido ao fechar a sessão: o leitor é fechado antes do Chrome (evita o traceback de conexão recusada).
+
+### Alterado — Albi: trava de pedido repetido passa de 30 dias para 1 dia (16/11/2026)
+- `DIAS_REPETIDO` em `albi/main.py` agora é 1: CPF + empresa só são bloqueados (usa o pedido anterior)
+  se foram pesquisados nas últimas 24 h; depois disso o Albi compra de novo. Textos atualizados em
+  `albi/README.md`, `DOCUMENTACAO.md` e `bot/templates/albi.html`.
+
+### Adicionado — Vila 06: a muralha do bot do Previdenciário (13/11/2026)
+- Aba **06 · Mikasa** na Vila dos Bots (`doc/vila/ligar_vila06_muralha.py`), com a cena `bot/vila/muralha.html` em
+  `/vila/previdenciario`: vídeos de plantão (dia), fora do expediente (noite) e um clipe por evento do bot (respondida /
+  passada para a equipe / não entendida), com os contadores do dia.
+- `bot/vila06.py` + rota `/vila/previdenciario/estado`: o servidor da vila consulta o bot (`VILA06_URL`, `VILA06_TOKEN`,
+  `VILA06_CERTIFICADO`) e repassa só contagens e eventos sem dado pessoal; sem configuração, simulação.
+- Vídeos fora do git (`VILA06_CLIPES`, padrão `<SAIDA_PASTA>/vila06_clipes`), servidos só pelos 5 nomes da lista.
+- Caixa de diálogo da Mikasa (estilo RPG) com uma fala por evento; retratos `retrato-<expressão>.png` na mesma pasta, fora do git.
+- Testes: `tests/test_vila06.py`.
+
+### Adicionado — Vila 06: som (voz da Mikasa, música, ambiente e efeitos) (16/11/2026)
+- A Mikasa fala em voz alta cada frase da caixa de diálogo (`sons/fala-<hash>.mp3`; a música abaixa enquanto ela fala).
+- Música de fundo original em laço (com fusão), vento da muralha e efeitos sincronizados com os vídeos: sino e passo do
+  titã na chegada; gás, gancho, cortes de lâmina, vapor, esquiva e pouso na resposta; canhão e sino ao passar para a equipe.
+- Botão **Som** na placa (o navegador só deixa tocar depois de um clique; a escolha fica salva no navegador).
+- `doc/vila/gerar_sons_vila06.py` gera tudo na ElevenLabs (chave só por variável de ambiente); arquivos em
+  `<VILA06_CLIPES>/sons/`, fora do git, servidos só pelos nomes da lista (`/vila/previdenciario/sons/<nome>.mp3`).
+- Falas sem número (as contagens ficam no painel), para a voz gravada valer sempre; subtítulo da placa: bot da recepção.
+
+### Adicionado — Regras da skill de 13/11/2026 no robô: responsáveis, filial da perícia e feriado na DATA (13/11/2026)
+- **Responsáveis na análise pela API** (`bot/responsaveis.py`): a sigla do auxiliar (SUH, TAMI, JOHN, JOAN...) vira o nome completo
+  pela lista do VIOS (`saida/responsaveis.json`); sem auxiliar, o advogado responsável do processo. Sigla ambígua (CARL) não é
+  adivinhada; Carlos só no Trabalhista vai para o Johnys, como antes. A petição da Execução da Tamira leva também o Breno.
+  Com isso o **Envio automático volta a lançar** (as tarefas não saem mais sem responsável).
+- **Exceção Ronielle:** sem auxiliar e com RONIELLE FEITOSA (RONEELY FEITOSA no VIOS) como responsável, a tarefa é bloqueada com a
+  mensagem da skill; no `.txt`, o arquivo que traz só ele como responsável é barrado.
+- **Perícia médica judicial previdenciária:** responsável da filial (Camocim, Tianguá, Jijoca, Sobral), nunca Amanda nem Suhiane;
+  cidade pelo teor (senão pela comarca); nenhuma ou mais de uma filial = `NÃO LANÇAR — CONFIRMAR FILIAL/RESPONSÁVEL...`. No `.txt`,
+  só aceita o responsável da filial.
+- **Feriado na `DATA`:** `prazos.antecipar()` recua a `DATA` da tarefa (D-2, prioridades, mesmo dia, dia seguinte) para o dia de trabalho
+  anterior quando cai em feriado nacional, ou do local de `ESCRITORIO_LOCAIS` (novo no `.env`; vazio = só nacionais). Só a `DATA`:
+  D-2 e vencimentos da descrição não mudam; ato com hora fixa e data informada não recuam; nunca volta antes de hoje (alerta de
+  urgência). Vale na análise e depois do corte das 12h, no lançamento. Exemplo da skill: 02/11 vai para 30/10.
+- Testes: `tests/test_responsaveis.py` (18 casos). Conferido em análise real de 09/11 (sem chamar a IA): 38 de 39 tarefas com
+  responsável; 1 CI bloqueada pela regra do Ronielle; 20/11 (Consciência Negra) recuou para 19/11.
+- `DOCUMENTACAO.md` (Passo 41 e tabela do `.env`), `.env.example` e a skill única atualizados.
+
+### Adicionado — Trava de responsável: nada de `automático` nem Amanda (13/11/2026)
+- Pela skill de 13/11/2026, o VIOS manda a tarefa de `RESPONSÁVEIS: automático` para AMANDA LEITE MENDES, que só lança.
+  Agora a CI é barrada quando algum responsável está em branco, é `automático` ou é a Amanda:
+  - página de envio de .txt (`bot/envio_txt.py`): vira "problema" na conferência (não vai ao VIOS); o campo Responsáveis da
+    edição não vem mais preenchido com "automático" e o formato de exemplo mostra o nome do auxiliar;
+  - lançamento (`bot/lancamento.py`, `responsavel_proibido()`): CI fica "bloqueada" com o motivo, também no `lancar.py` e no
+    Envio automático (`/automatico` mostra o motivo).
+- **Efeito no Envio automático:** a análise pela API deixava os responsáveis vazios; resolvido logo em seguida (item abaixo).
+- Skill única (`regras-do-programa.md`) e `DOCUMENTACAO.md` (Passo 41) atualizados.
+
+### Alterado — Skill da Controladoria de 13/11/2026 (responsáveis, feriado e marco pela publicação)
+- Pacote `analise-intimacoes-controladoria-atualizada-2026-11-13.zip` vira a skill do projeto
+  (`doc/analise-intimacoes-controladoria/`); versão guardada em `doc/skill-original/8_2026-11-13_responsaveis-feriado/`
+  (explicada no `LEIAME.md`) e skill única regerada (`gerar_skill_unica.py`).
+- Mudanças de regra: **nunca `automático`** em `RESPONSÁVEIS` (vai para AMANDA LEITE MENDES): auxiliar, senão o advogado
+  responsável, exceto RONIELLE FEITOSA sem auxiliar (não lança); perícia médica judicial previdenciária com o responsável
+  da filial (Camocim, Tianguá, Jijoca, Sobral); `DATA` antecipada para o dia de trabalho anterior quando cair em feriado
+  nacional ou da filial (D-2 e vencimento não mudam; audiência/perícia/sustentação ficam na data real); marco pela
+  publicação do DJEN/CSV, inclusive Fazenda Pública; `CIÊNCIA (CÍVEL)` vale para Criminal; novas equivalências de clientes.
+- O pacote já trazia o campo `PROCESSO` do TXT (alterações que estavam pendentes na pasta da skill).
+- `doc/skill-unica/arquivo-para-o-robo.md` e `regras-do-programa.md`: exemplos e regra de `RESPONSÁVEIS` sem `automático`.
+- A análise pela API (`./rodar_analise.sh` e o Envio automático) já lê a skill nova no prompt. **O código aplica essas regras:** ver o item seguinte; ver a lista no passo 41 do `DOCUMENTACAO.md`.
+
+### Adicionado — Envio automático em um clique na página do Sam, com animação (13/11/2026)
+- Na `/sam`, cartão **Envio automático em um clique**: botão **▶ Enviar automaticamente** e **Ensaio (não grava)**.
+  Os dois perguntam **"Você tem certeza?"** antes de ativar o Sam; o servidor também exige a confirmação e
+  recusa pedido de outro site (`POST /automatico/rodar`).
+- O Sam faz o fluxo inteiro sozinho: captura as intimações de ontem sem tarefa, analisa com a IA e lança as tarefas
+  no VIOS CI por CI, com as mesmas travas e a mesma Conferência do envio de .txt. No ensaio para no quadro de
+  tarefas (não grava). Sem intimação nova, termina sem chamar a IA. Uma execução por vez (mesma trava dos envios).
+- Animações: o cartão mostra 4 passos (Capturar, Analisar, Criar tarefas, Conferir), barra e números ao vivo;
+  a Fortaleza do Dragão ganhou os momentos de captura e análise (eventos `automatico`, fases `capturando` e
+  `analisando`) e segue com o dragão acordando e a vida da Torre VIOS caindo a cada tarefa criada.
+- Novos: `bot/envio_auto.py`, rotas `POST /automatico/rodar` e `GET /automatico/andamento`, andamento em
+  `saida/automatico_execucao.json`. `main.py` ganhou a função `capturar()` (a captura que o `main` já fazia, sem mudar o
+  comportamento). Contrato de eventos e `DOCUMENTACAO.md` (Passo 40) atualizados.
+- Testado com a captura, a IA e o lançamento simulados (eventos, contagens e travas) e as rotas (recusas de
+  segurança); **ainda não rodado de verdade no VIOS**: fazer primeiro um Ensaio.
+
+### Adicionado — Roteiro do motion do Sam: fluxo do modo automático (13/11/2026)
+- `doc/motion-sam/roteiro-motion-sam.md`: briefing para um profissional de motion criar o vídeo do Sam.
+  Traz os personagens (Fortaleza do Dragão), o fluxo em 7 cenas (captura, análise da IA, travas de
+  segurança, lançamento, conferência e relatório `/automatico`), textos de tela, números de exemplo e o que
+  ainda falta confirmar (horário do disparo automático). Só documentação; o código não mudou.
+
+### Adicionado — Albi: pesquisa digitada na página, sem precisar de .txt (13/11/2026)
+- Na `/albi`, abaixo da caixa de soltar o arquivo, o cartão **Pesquisa digitada**: empresa (com sugestão dos
+  clientes já cadastrados), CPF/CNPJ e nome, com "+ Adicionar outra pessoa" e "Tirar" para mais de uma. Serve
+  para uma pesquisa única ou poucas.
+- Vai pelo mesmo caminho do arquivo: a página monta o texto no mesmo formato (`EMPRESA: X` e `CPF ; nome`),
+  guarda como `digitado-AAAA-MM-DD_HHMM.txt` e abre a conferência (CPF/CNPJ válidos, já pesquisados e total em
+  R$) antes de qualquer compra. O pedido aparece normalmente no bloco do cliente e nas mensagens por dia.
+- `bot/albi.py`: `texto_digitado()` (exige empresa, CPF/CNPJ e nome; tira quebras de linha e ";" para um campo
+  não virar outra linha; máximo de pessoas igual ao do arquivo); `bot/envio_web.py`: rota `POST /albi/digitar`.
+  O botão fica desligado enquanto o Albi está trabalhando, como a caixa de soltar.
+
+### Adicionado — Albi: blocos de clientes e tela de cada cliente com os pedidos e as mensagens (12/11/2026)
+- Na `/albi`, abaixo da caixa "Solte o .txt", um bloco por cliente (empresa) que pediu pesquisa: nome,
+  quantos pedidos e pessoas, quantas mensagens com e sem processos e a data do último pedido, com busca por
+  nome. O botão do topo agora é "← Voltar à Vila".
+- Clicar no cliente abre `/albi/cliente?empresa=NOME`: cada **pedido** dele (um arquivo enviado, ex.: 25 CPFs
+  hoje e outros 25 na semana seguinte) em ordem da data mais recente, com o resultado de cada pessoa
+  (com processos, não consta, erro), os links do relatório/PDF/.zip e a mensagem da análise (com o parágrafo do
+  Gemini) pronta para copiar, com a escolha da atendente. Pedido sem mensagens ainda tem o botão "Gerar as
+  mensagens deste pedido".
+- `bot/albi.py`: `clientes()` agrupa as execuções por empresa; `bot/envio_web.py`: rota `albi_cliente`.
+
+### Adicionado — Albi: tela "Mensagens" com as mensagens da CAC por dia (12/11/2026)
+- Nova tela `/albi/mensagens` (botão "Mensagens" no topo da página do Albi): o produto final, as mensagens
+  prontas para copiar e enviar ao cliente, **de um dia** (`?dia=AAAA-MM-DD`; sem ele, hoje ou o dia mais
+  recente com mensagens). Escolha o dia no calendário ou nos botões "Dias com mensagens" (data · quantidade).
+- Mostra o total do dia, quantas têm processos e quantas não, filtro "Todas / Com processos / Sem processos",
+  busca por nome ou empresa, mensagens agrupadas por empresa, escolha da atendente (troca o nome no começo de
+  todas), "Copiar mensagem" em cada uma e "Copiar todas as que estão na tela". Mensagens com processos vêm
+  recolhidas ("Ver e editar a mensagem"); as de "nenhum processo" já vêm abertas.
+- Não precisa mais clicar em "Capturar resumo": o relatório (e as mensagens) já são gerados no fim de cada
+  execução. Quem foi pesquisado de novo no mesmo dia fica com a mensagem da execução mais recente.
+- `bot/albi.py`: `mensagens_por_dia()`; `bot/envio_web.py`: rota `albi_mensagens`; o card da execução ganhou
+  o botão "Ver as mensagens para copiar".
+
+### Alterado — Albi: página no tema da Arena (Dragon Ball Z) (12/11/2026)
+- A página `/albi` (`bot/templates/albi.html`, `<body class="tema-arena">`) deixa o fundo escuro e rosa e
+  passa a usar o tema da vila 03 (Arena do Albi, `albi/mascote/fundo-arena-albi.html`): céu em degradê, nuvens
+  de pixel passando devagar, faixa de lago embaixo, cabeçalho bege com telhado laranja (a casa em domo),
+  cartões bege com moldura de madeira, botões laranja, barra de andamento em ki ciano e o rosa do Albi na
+  marca (fonte Silkscreen). O quadro da vila ganhou moldura de madeira/bege/laranja. Nuvens somem no celular
+  e o `prefers-reduced-motion` continua parando as animações.
+- Tela "Mensagens prontas": o texto de ajuda e o título ("uma por pessoa pesquisada") agora descrevem o
+  formato fixo, a mensagem de "nenhum processo" e o parágrafo do Gemini; quem não tem processo mostra
+  "sem processos" em vez de "0 processo(s)".
+
+### Adicionado — Albi: parágrafo explicativo de cada processo escrito pelo Gemini (12/11/2026)
+- `explicacao_ia.paragrafo(classe, posição, situação)`: o Gemini escreve 2 a 4 frases explicando o tipo de
+  ação, o que significa a posição da pessoa (ex.: réu não é condenação) e o que significa a situação. Só
+  esses três dados são enviados (nunca nome, CPF ou número). Cada combinação é gerada uma vez e guardada
+  em `explicacoes_classe.json` (chave `P|…`). O prompt proíbe inventar fatos e dizer que alguém ganhou,
+  perdeu, pagou ou foi condenado; respostas com essas palavras, com markdown ou cortadas são descartadas.
+  O parágrafo entra no lugar da explicação fixa; sem chave ou com erro, volta a explicação fixa.
+
+### Corrigido — Albi: Gemini e português da mensagem, testados com um relatório real (12/11/2026)
+- `explicacao_ia.py`: o modelo padrão `gemini-2.5-flash` foi aposentado pelo Google. Agora usa
+  `gemini-flash-latest` e, se estiver sobrecarregado (503), tenta `gemini-3.5-flash` e
+  `gemini-3.1-flash-lite`. Respostas cortadas ou fora do formato (frase curta começando em minúscula)
+  não são aceitas nem guardadas no cache; o limite de tokens subiu para 1024.
+- `mensagem_cac.py`: "Estado do Ceará / da Bahia / de Sergipe" (antes era sempre "de"), plural quando há
+  mais de uma parte do outro lado ("figuram como reclamados") e mais palavras com acento (provisório,
+  decisão, consórcio…).
+
+### Adicionado — Albi: explicação de tipos de ação novos pelo Gemini (12/11/2026)
+- `albi/explicacao_ia.py`: para a classe processual que não está no dicionário fixo, pede ao Gemini
+  (chave gratuita, `GEMINI_API_KEY` no `albi/.env`) uma frase simples para "Esse tipo de processo é…".
+  Só o nome da classe é enviado (nunca nome, CPF, número ou partes). A resposta fica em
+  `albi/explicacoes_classe.json` (uma chamada por classe, texto igual em todas as mensagens, editável).
+  Sem chave, sem internet ou com erro, a mensagem sai sem esse parágrafo. Novas variáveis no
+  `.env.example`: `GEMINI_API_KEY` e `GEMINI_MODEL`.
+
+### Alterado — Albi: mensagem da CAC com formato fixo (12/11/2026)
+- A atendente confirmou que todas as mensagens seguem o mesmo formato (com e sem processos). O texto
+  agora é sempre igual e só mudam os campos: saíram os parágrafos opcionais (valor da causa, assunto,
+  segredo de justiça, aviso de processo criminal, instância, observação do status) e a ressalva final,
+  que não existem no modelo. Entraram o nome completo do tribunal ("Tribunal de Justiça do Estado de
+  Sergipe (TJSE)"), "Comarca de X, Estado de Y", o papel da outra parte (requerido, executado…) e o aviso
+  fixo de que *exequente não é quem está sendo cobrado*. A conclusão traz sempre a mesma frase sobre
+  condenação.
+
+### Alterado — Albi: novo modelo de mensagem da CAC, sem entrar em tribunal (12/11/2026)
+- A mensagem passa a seguir o novo modelo do escritório: "*Beatriz Vasconcelos:* Informamos que, após
+  consulta aos registros processuais disponibilizados, foram localizados *N processos judiciais*
+  relacionados a *NOME*, CPF nº …, todos vinculados ao *TJ…*", período e área, quantos arquivados/em
+  tramitação, um bloco por processo (partes, "*Processo nº … — TJ…*", posição da pessoa, o que a pesquisa
+  não traz, andamento e "*Conclusão:*") e a ressalva final.
+- Não consulta mais tribunal nem o DataJud: o texto usa só a planilha do Sonar (`mensagem_cac.gerar`
+  ignora `datajud`; `datajud.py` fica só para consulta manual).
+
+### Adicionado — Albi: mensagem para quem não tem processo (12/11/2026)
+- Quem o Sonar respondeu "não consta" ganha a mensagem "Informamos que após consulta ao sistema do Poder
+  Judiciário, não localizamos *nenhum processo* em nome de *NOME*." Pessoa com falha ao ler a planilha
+  continua sem mensagem.
+
+### Alterado — Skill da Controladoria pede o número do processo no TXT do robô (11/11/2026)
+- A skill `doc/analise-intimacoes-controladoria/` proibia o número do processo no TXT, e os arquivos
+  chegavam ao Sam sem ele. Agora cada bloco traz `PROCESSO:` logo abaixo de `CI:` (padrão
+  0000000-00.0000.0.00.0000), no modelo (`assets/pedido-arquivo-robo.txt`, com o exemplo), em
+  `references/saida-txt-bot.md` (sete campos) e no `SKILL.md`. O resto da skill não mudou. O Sam já lia
+  esse campo e mostra o número na conferência.
+
+### Corrigido — Histórico perdia o resultado do envio conferido de novo depois (11/11/2026)
+- "Salvar e conferir" num envio já enviado apagava o resultado das CIs e o histórico mostrava
+  "Conferido, não enviado" com "—" (caso de `analise_2026-11-10_complementar.txt`, que gravou 10 CIs
+  às 16:56 de 10/11 e foi conferido de novo às 16:57). Agora o histórico e o `/sam` mostram o resultado
+  do último envio (lido do `envio_fim` em `saida/eventos.jsonl`, `eventos.fins_por_envio`) com a nota
+  "conferido de novo depois", e a página do envio avisa que ele já foi enviado. Vale para os envios
+  antigos, sem mexer nos arquivos.
+
+### Alterado — Fortaleza do Dragão também na Vila dos Bots (11/11/2026)
+- Na página inicial (`/`) e em `/vila`, a aba **01 · Sam** mostra a Fortaleza do Dragão por cima da
+  Vila 01 antiga; a barra de abas fica por cima e as abas 02 a 05 não mudam. Patch novo
+  `doc/vila/ligar_vila01_fortaleza.py`, aplicado em `bot/vila/vila.html`.
+
+### Alterado — Vila do Sam vira a Fortaleza do Dragão, no estilo Senhor dos Anéis (11/11/2026)
+- Novo design (`doc/desing_sam/fortaleza-dragao.html`) instalado em `bot/vila/fortaleza.html`, servido
+  em `/vila/sam` e mostrado no topo do `/sam` e da página de cada envio, no lugar da Vila 01.
+- A cena do design era só simulação; agora assiste aos eventos reais do Sam (`/eventos`): a missão
+  avança a cada etapa (TXT recebido, CIs conferidas, duplicatas, tarefas criadas n/N), o dragão desperta
+  quando as tarefas começam a ser criadas, cada tarefa gravada tira vida dele, erro faz o dragão cuspir
+  fogo e o fim mostra "Missão cumprida" com as contagens. Ao abrir, mostra o último envio.
+  "Simular envio" virou "Demonstração" (desligada durante um envio real).
+- Páginas do Sam no estilo da fortaleza (tema `tema-vila`): troca a grama da vila antiga por noite,
+  pedra e dourado, com as fontes Lora e Silkscreen do design. O relatório do envio automático ganhou
+  a moldura dourada.
+
+### Adicionado — Relatório de conferência no Envio automático do Sam (11/11/2026)
+- A tela `/automatico` virou o relatório de conferência, com foco nos prazos (`bot/conferencia.py`):
+  números do dia, nota "como ler os prazos" (com os feriados nacionais que contaram como dia útil),
+  visão geral por CI e um cartão por intimação com prazos, conta de cada prazo refeita por fora,
+  tarefa da análise × tarefa gravada no VIOS, o que a IA entendeu, pendências, teor e pontos de
+  atenção (não lançada com prazo próximo, tarefa em feriado ou depois do fatal, CIÊNCIA com prazo...).
+- Filtro por **dia de envio** (dia em que as tarefas foram gravadas no VIOS), não mais pelo arquivo da
+  análise; análise nunca enviada aparece como "não enviada". Filtros de lançadas, não lançadas e com
+  atenção, busca e botão Imprimir / PDF.
+- Página `/sam`: cartão **Envio automático** com o último envio e os outros dias.
+- A conta refeita só vale para análise feita pela contagem simplificada: as de antes de 10/11/2026
+  (calendário de feriados de cada tribunal) acusavam divergência falsa (ex.: 28/10 com "6/57") e agora
+  ficam sem a conta, com o aviso na nota "como ler os prazos".
+
+### Alterado — Páginas do Sam com as cores da vila (11/11/2026)
+- `/sam`, histórico, envio e envio automático trocaram o fundo azul escuro pelas cores da vila 01:
+  grama com tufos e flores, mata nas bordas, cabeçalho de mata com a estrada de terra, cartões escuros
+  como as placas da vila e botão principal dourado (classe `tema-vila` em `_estilo.html`). As outras
+  páginas não mudam.
+
+### Corrigido — Lançamento bloqueia tarefa com data que já passou (11/11/2026)
+- As datas D-2, dia seguinte e data informada vêm prontas da análise e não eram conferidas no
+  lançamento: uma análise de um dia lançada em outro (ex.: `lancar.py` dias depois) gravava a tarefa
+  numa data já passada, sem aviso. Agora `lancar()` (`bot/lancamento.py`, usado pelo `lancar.py` e
+  pela página web) não lança a CI se alguma tarefa ficar antes de hoje: ela fica **bloqueada** com o
+  motivo, para refazer a análise. O envio automático do Sam (análise e lançamento no mesmo dia) não muda.
+
+### Corrigido — Nomes novos da tarefa de laudo previdenciário no VIOS (10/11/2026)
+- O VIOS dividiu "MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026" (nome
+  que a skill ainda usa) em duas. A análise troca sozinha: laudo -> "MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO
+  (PREVIDENCIÁRIO) 2026"; outro ato (ex.: proposta de acordo do INSS) -> "MINUTAR PETIÇÃO INTERMEDIÁRIA
+  (PREVIDENCIÁRIO)". No `.txt` do chat o nome antigo vira o de laudo (`APELIDOS` em `bot/lancamento.py`).
+  Os dois nomes novos entram na lista oficial (`NOVAS_NO_VIOS` em `bot/skill.py`).
+- 09/11/2026 fechado: as 5 CIs com esse nome e as 2 corrigidas para CIÊNCIA (EXECUÇÃO) (42825 e 42820,
+  correção registrada no alerta da análise) foram lançadas — 28 de 38 no total; 10 ficam para a
+  Controladoria por falta de informação que só o PJe tem.
+
+### Alterado — Detector de duplicadas desligado (10/11/2026)
+- A Controladoria já tira as duplicadas na tela de intimações do VIOS, e o detector marcava como
+  cópia CIs que não eram. Novo `DUPLICIDADE_ATIVA` no `.env` (padrão `false`): desligado, nenhuma CI
+  é cópia na captura, na análise, na página de revisão, no envio do `.txt` (sem ler o teor no VIOS
+  antes de gravar) e no lançamento. Religar: `DUPLICIDADE_ATIVA=true`.
+
+### Adicionado — Tela "Envio automático" na página do Sam (`/automatico`) (10/11/2026)
+- Mostra, para cada dia analisado (`saida/analise_<dia>.json`), cada intimação em três colunas:
+  **Intimação** (cliente, auxiliar, datas, teor) → **Análise** (ato, área, tarefas com data e
+  descrição, alertas, modelo da IA) → **O que foi** (lançada, com as tarefas gravadas e o link
+  "Ver no VIOS" para a Conferência; ou não lançada, com o motivo e o link "Lançar no VIOS").
+- Resumo no topo (intimações, lançadas, não lançadas, gasto da IA), filtro Todas/Lançadas/Não
+  lançadas, busca e escolha do dia. Botão "Envio automático" no topo da página de envio.
+- `bot/lancamento.py` grava o resultado de cada CI em `saida/automatico_resultados.json` quando
+  lança com `--confirmar` (gravada, bloqueada, duplicada, já no VIOS, conferência, erro com a mensagem).
+  O dia 09/11/2026 foi preenchido a partir do log do lançamento.
+
+### Corrigido — Primeira análise com o Haiku (09/11/2026, 38 intimações, US$ 0,12) (10/11/2026)
+- A IA às vezes escreve a linha de prazo no resumo ("PRAZO FATAL D -2 PENDENTE DE CÁLCULO PELO
+  PROGRAMA; ..."): o programa tira essas linhas, porque insere as suas com as datas calculadas.
+- Auxiliar CARL em tarefa trabalhista: responsável vai para FRANCISCO JOHNYS VASCONCELOS BARBOSA
+  (a skill diz que Carlos não está mais no Trabalhista), com alerta no relatório.
+- O lote da Batch API ficou 7 min em 0 de 38; a análise foi refeita uma a uma (~18 s por intimação).
+- Lançamento real (`--confirmar`) de 26 CIs: 21 tarefas gravadas e conferidas no VIOS; 5 não
+  lançadas (42807, 42805, 42808, 42810, 42811) porque o VIOS trocou a tarefa
+  "MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026" por
+  "MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026" e "MINUTAR PETIÇÃO INTERMEDIÁRIA
+  (PREVIDENCIÁRIO)". CIs 42825 e 42820 ficaram para a Controladoria (o Haiku indicou análise; a
+  skill pede CIÊNCIA para despacho que só manda aguardar).
+
+### Alterado — Skill de 10/11/2026 instalada e análise pela API nas regras novas (10/11/2026)
+- Skill nova da Controladoria em `doc/analise-intimacoes-controladoria/` (cópia em
+  `doc/skill-original/7_2026-11-10_txt-bot-duplicadas/`).
+- `bot/analise.py`: análise de sentença/acórdão/decisão sempre com `PRAZO PARA EMBARGOS:` e
+  `PRAZO PARA RECURSO:` em D-2 (sem `NÃO CABE`, sem `PRAZO FATAL` junto); minutas com
+  `PRAZO FATAL D -2:`; RPV no próximo dia útil com `PRAZO FATAL:` = D-2 do prazo; emenda da
+  Suhiane no próximo dia útil com `PRAZO FATAL D -2:`. Sem linhas `PRIORIDADE ...` na descrição.
+- Bloqueia (não lança) a análise sem prazo de embargos ou de recurso e a tarefa com prazo sem data.
+- Instruções do modo automático (prompt) atualizadas para a contagem simplificada e os rótulos novos.
+- `.env` deste computador: `LLM_MODELO=claude-haiku-5-5`, `LLM_MODELO_SIMPLES` e `LLM_MODELO_FERIADOS` vazios.
+
+### Corrigido — Análise pela API com o Claude Haiku 5.5 (10/11/2026)
+- A chamada uma a uma (`bot/ia/anthropic_ia.py`) pedia o fallback de recusa do servidor
+  (`fallbacks: "default"`), que o Haiku 5.5 não tem. Com modelo Haiku o pedido vai sem esse campo;
+  Opus e Sonnet continuam com o fallback.
+
+### Alterado — Feriado passa a contar como dia útil nos prazos do código (10/11/2026)
+- `bot/prazos.py` usa a contagem simplificada da skill (`PRAZO_CONTAGEM=simplificada`, padrão):
+  só sábado e domingo ficam de fora; feriados, pontos facultativos, recesso (20/12 a 20/01) e
+  suspensões contam como dia útil. Vale para prazo fatal, D-2 e próximo dia útil na análise pela
+  API (`./rodar_analise.sh`) e nas datas refeitas na página de revisão.
+- Conferido com o exemplo da skill: publicação 29/10/2026 + 5 dias = 05/11/2026, D-2 = 03/11/2026
+  (o calendário antigo dava 06/11 por causa de Finados).
+- No relatório, o calendário vira "Contagem solicitada: segunda a sexta, incluindo feriados;
+  vencimentos sem validação do calendário judicial oficial." Sem lista de feriados considerados.
+- Com a contagem simplificada, a pesquisa de feriados na internet não roda (sem gasto) e sai o
+  alerta de feriado municipal não cadastrado.
+- Voltar ao calendário antigo: `PRAZO_CONTAGEM=feriados` no `.env`.
+
+### Adicionado — Jarvis: PDF do relatório no timbrado entra na main (10/11/2026)
+- A branch `relatorio-processos` (PDF no papel timbrado, "Resumo do mês" pela IA, tipo de processo
+  pela Área) foi juntada à `main`. Até aqui o PDF só existia nessa branch, e o Jarvis do Mac gerava só
+  a planilha.
+- Cada relatório gera `<GRUPO>.xlsx` + `<GRUPO>.pdf` (+ `.json`), e a página `/jarvis` lista os dois.
+- O "Resumo do mês" (uma chamada à IA por grupo) entra no gasto do grupo na aba Metadados.
+- No Mac: `cd jarvis && ./instalar.sh` uma vez, para instalar reportlab, pillow e chardet.
+
+### Adicionado — Jarvis: gasto da IA por cliente (`gastos.py`) (10/11/2026)
+- `cd jarvis && .venv/bin/python gastos.py [--mes AAAA-MM]` lê o `logs/bot.log` e mostra, por Grupo
+  Cliente, os relatórios, os processos, o gasto e o gasto por processo, e depois cada relatório. Não
+  entra no VIOS nem chama a IA, e serve para os relatórios antigos.
+- O gasto do log é acumulado da execução: o script separa cada grupo pela diferença. Uma execução
+  nova é reconhecida pela linha nova "Execução iniciada" ou por mais de 20 min sem processo.
+- Corrigido: a aba Metadados mostrava em "Gasto estimado com IA" o acumulado da execução. Com vários
+  grupos, o 2º somava o do 1º. Agora mostra o gasto daquele grupo (e o da execução, se não for o
+  primeiro). O fim de cada grupo no log diz "gasto do grupo US$ X".
+
+### Corrigido — Jarvis: `--grupos --salvar` com a linha PROCESSOS_GRUPOS repetida no `.env` (10/11/2026)
+- Se o `jarvis/.env` tinha duas linhas `PROCESSOS_GRUPOS=`, os grupos iam para a primeira. A página
+  `/jarvis` lê a última, e só os grupos antigos apareciam.
+- Agora o `--salvar` deixa uma linha só, com a lista completa. Também regrava quando não há grupo novo
+  mas há linha repetida.
+
+### Corrigido — Jarvis: data "DD/01/YYYY" e motivo do erro da IA na planilha (10/11/2026)
+- A coluna "Data da distribuição" usava o formato `DD/MM/YYYY` (maiúsculo). O Excel entende, mas o
+  Numbers (Mac) e o Google Planilhas mostravam "DD/01/YYYY". Agora usa `dd/mm/yyyy`.
+- As células da IA que falharam mostram o motivo: `ERRO NA IA: conferir (sem crédito na conta da
+  Anthropic)`, teto de gasto, chave inválida, modelo inexistente, limite por minuto, demora. Nunca
+  levam o texto do processo. O erro completo continua no `jarvis/logs/bot.log`.
+
+### Adicionado — Orelha: escolher o período do painel semanal na página `/orelha` (09/11/2026)
+- Campos **De** e **Até** ao lado do botão "Gerar painel semanal". Já vêm de hoje a 7 dias depois; se
+  "De" passar de "Até", o "Até" vai para 7 dias depois. O Sam recusa data inválida e período de mais de
+  120 dias.
+- O Sam passa o período ao Orelha (`main.py --painel-de AAAA-MM-DD --painel-ate AAAA-MM-DD`, também pela
+  linha de comando). Sem período, vale o padrão (de hoje até `ORELHA_PAINEL_DIAS_FILA` dias).
+- O painel mostra "Semana de <De> a <Até>". A fila traz as tarefas com prazo no período e as vencidas
+  que continuam abertas. A agenda de audiências traz as do período.
+- Um painel que não começa no dia do pedido não vira base da comparação da semana seguinte (o PDF avisa).
+- 7 testes novos no Orelha (263 no total).
+
+### Alterado — Orelha: painel semanal vai do dia do pedido até 7 dias depois (09/11/2026)
+- O painel semanal mostrava "Semana de" a semana anterior até hoje. Agora a semana começa no dia em
+  que o painel é pedido e vai até 7 dias depois. Exemplo: pedido em 09/11 → "Semana de 09/11 a 16/11".
+- A fila pega as tarefas com prazo até esse fim: `ORELHA_PAINEL_DIAS_FILA` passou de 14 para 7.
+- As vencidas que continuam abertas seguem na fila (a comparação "não feitas" depende delas).
+- Testes do painel ajustados para a janela nova.
+
+### Adicionado — Albi/Presto: TRT7 pelo botão "Login via Presto" (09/11/2026)
+- No TRT7 (PJe-JT), o `primeirograu/login.seam` mostra o botão "Login via Presto" (`onLoginSSO()`),
+  que leva ao SSO (`sso.cloud.pje.jus.br`, `client_id=pje-trt07-1g`), onde aparece o quadro do Presto.
+- Na tela de login do tribunal, se o quadro ainda não está lá e existe esse botão, o robô clica nele
+  e espera o SSO. Depois segue igual ao TJCE: credencial, PIN, entrou.
+- `logado()` não confunde mais o `authenticateSSO.seam` (passagem do SSO de volta ao tribunal) com
+  o tribunal já logado.
+
+### Corrigido — Albi/Presto: espera as credenciais no quadro e não pega aba errada (09/11/2026)
+- No Mac, o quadro "Credenciais Disponíveis" apareceu primeiro vazio e o robô parou com "nenhuma
+  credencial". Agora espera até 45 s as credenciais chegarem e avisa enquanto espera.
+- Depois do clique no tribunal, pegou uma janela interna do Chrome com id gigante, que o AppleScript
+  não aceita ("Não é possível obter tab id 1.26E+9"). Agora usa a própria aba quando ela já saiu do
+  console e só considera abas novas de site (http) com id válido.
+- O aviso de Acessibilidade diz o nome do app onde o bot está rodando (Terminal, VS Code ou iTerm).
+
+### Corrigido — Albi/Presto: clique de verdade no número da credencial (09/11/2026)
+- O quadro "Credenciais Disponíveis" (v0.143.0) só abre o campo do PIN com clique de mouse de verdade
+  no número (`a.prs-text-presto-blue`).
+- O `entrar` agora avisa logo no começo quando o macOS não deu a permissão Acessibilidade ao app onde
+  o bot roda. Sem ela, o clique de verdade é descartado sem erro nenhum.
+- A posição do número na tela não soma mais a largura do DevTools aberto ao lado.
+- O tribunal aberto pelo console é encontrado também quando abre numa janela nova.
+
+### Corrigido — Albi/Presto: login do console do Presto de verdade (e-mail, Acessar, senha, Login) (09/11/2026)
+- No console real, o login fica na própria página `/sites` (`#login-page`). O campo de e-mail é um
+  `<input type="text">` com o rótulo "Email" num `<label>` ao lado. O robô achava que era o filtro de
+  Sites e digitava o nome do tribunal no campo de e-mail.
+- Agora reconhece a tela de login pelo `#login-page`, pelo rótulo do campo e pelo "esqueci minha senha".
+- Clica no botão "Acessar" só depois que ele habilita.
+- Nunca digita o tribunal enquanto a tela de login estiver aberta.
+- Testado no console real: e-mail, Acessar, senha, Login, Sites, TJCE 1º Grau e a tela de login do PJe.
+
+### Corrigido — Albi/Presto: o robô não pula mais o login do console do Presto (09/11/2026)
+- O `entrar` e o `processos` olhavam só 6 s se o console pedia login, e só reconheciam o login pelo
+  campo de senha. Com o site lento ou com o login em duas etapas (e-mail primeiro), achavam que já
+  estavam logados e iam direto para Sites.
+- Agora esperam até 25 s o console mostrar o login ou a lista de sites. O login é reconhecido pelo
+  campo de e-mail, pelo campo de senha ou pela URL, e aceita uma tela (e-mail e senha) ou duas
+  (e-mail, Continuar, senha).
+- Se o preenchimento por JavaScript não pegar, clicam nos campos e digitam com o teclado de verdade.
+- Se continuar no login, param com o print `0_console_login_depois`. A senha nunca é impressa nem salva.
+
+### Alterado — Albi/Presto: aviso de Acessibilidade cita o Visual Studio Code (09/11/2026)
+- Quando o clique de verdade precisa da permissão Acessibilidade do macOS, a mensagem agora diz para
+  ligar o app onde o bot roda (Terminal ou Visual Studio Code), e não só o Terminal.
 
 ### Alterado — Branch relatorio-processos atualizada com a main: PDF dentro de `jarvis/` (09/11/2026)
 - Com o Jarvis na pasta própria, o PDF foi junto: `bot/relatorio_pdf.py` → `jarvis/nucleo/relatorio_pdf.py`

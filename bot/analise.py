@@ -17,11 +17,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from bot import custo, duplicidade, feriados_web, ia, prazos, skill
+from bot import custo, duplicidade, feriados_web, ia, prazos, responsaveis, skill
 from bot.custo import LimiteGasto
 from bot.ia import IAErro
 
 log = logging.getLogger(__name__)
+# quem quiser acompanhar o lote (o envio automático mostra na página): função(texto) ou None
+progresso_lote = None
 
 MODELO_PADRAO = {"openai": "gpt-5.6", "anthropic": "claude-opus-5-5"}
 
@@ -40,8 +42,17 @@ HORA = re.compile(r"\b([01]?\d|2[0-3]) *(?::|H) *([0-5]\d)\b", re.I)
 # eproc: "O ato refere-se ao seguinte evento: Evento 23 - 22/10/2026 - PETICAO" (sem o teor do evento)
 SO_EVENTO = re.compile(r"refere-se ao seguinte evento: *(Evento \d+[^|]*)", re.I)
 # linhas que não vão na descrição da tarefa (responsável vai no campo Responsáveis; revisão de 29/10).
-# "PRIORIDADE RPV" voltou a ir na descrição com a skill de 30/10
-FORA_DA_DESCRICAO = re.compile(r"^\s*(RESPONSÁVEL A MARCAR NA TAREFA|ADVOGADA? AUXILIAR)\b", re.I)
+# Skill de 10/11/2026: "PRIORIDADE ..." também não vai (a prioridade fica só na DATA da tarefa)
+FORA_DA_DESCRICAO = re.compile(r"^\s*(RESPONSÁVEL A MARCAR NA TAREFA|ADVOGADA? AUXILIAR|PRIORIDADE)\b", re.I)
+# rótulos das linhas de prazo da descrição (skill de 10/11/2026)
+ROTULO_D2 = "PRAZO FATAL D -2"
+JOHNYS = "FRANCISCO JOHNYS VASCONCELOS BARBOSA"
+# Em 10/11/2026 o VIOS dividiu a tarefa da skill em duas (a skill ainda usa o nome antigo):
+# laudo -> "MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO"; o resto (ex.: proposta de acordo do INSS) -> petição intermediária
+LAUDO_PREV_ANTIGA = "MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026"
+LAUDO_PREV = "MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026"
+INTERMEDIARIA_PREV = "MINUTAR PETIÇÃO INTERMEDIÁRIA (PREVIDENCIÁRIO)"  # substitui Carlos (CARL) nas tarefas trabalhistas
+# tarefas cuja DATA (sem hora fixa) recua para o dia de trabalho anterior quando cai em feriado (skill de 13/11/2026)
 # sentença e acórdão sempre geram ANALISAR (o advogado decide se recorre)
 ATOS_DE_ANALISE = {"SENTENÇA", "ACÓRDÃO"}
 
@@ -69,7 +80,8 @@ Campos de entrada: `ci`, `auxiliares` (auxiliar da planilha), `cliente`,
 decisão) e `texto` (teor integral). A data de hoje vem em `data_analise`.
 
 Datas — NÃO calcule datas de prazo. O programa calcula prazo fatal, D-2,
-próximo dia útil e prazos de embargos/recurso com calendário de feriados.
+próximo dia útil e prazos de embargos/recurso pela contagem simplificada da
+skill (só sábado e domingo ficam de fora).
 Você informa apenas:
 - `prazo`: o prazo principal da providência (manifestação, emenda, pagamento,
   contrarrazões, quesitos...). `dias` = número de dias; se o ato não disser,
@@ -79,8 +91,9 @@ Você informa apenas:
 - `embargos` e `recurso`: `situacao` e `dias` (0 quando não couber). Em
   `recurso.nome` diga qual recurso ("" se não couber). Quando o ato não
   informar os dias, use o prazo previsto em lei da skill, também se o
-  cabimento estiver pendente. Se couber ou puder caber embargos ou recurso,
-  `dias` nunca fica 0: o advogado decide se recorre e precisa da data.
+  cabimento estiver pendente. Em toda tarefa ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO
+  os `dias` de embargos e de recurso nunca ficam 0, mesmo que pareça não caber:
+  a skill exige as duas datas como controle preventivo (o advogado decide).
 - em cada tarefa, `tipo_data`:
   - `D-2`: data operacional = D-2 do prazo principal;
   - `PRIORIDADE_RPV`: RPV/precatório (dia útil seguinte à publicação);
@@ -102,11 +115,11 @@ Você informa apenas:
 
 Tarefas — `nome` deve ser exatamente um item da lista oficial. Em `resumo`
 escreva a descrição que vai na tarefa do VIOS seguindo o modelo da tarefa, mas
-SEM as linhas "PRAZO FATAL (D-2):", "PRAZO PARA EMBARGOS:", "PRAZO PARA RECURSO:",
+SEM as linhas "PRAZO FATAL D -2:", "PRAZO PARA EMBARGOS:", "PRAZO PARA RECURSO:",
 "PRAZO FATAL:" e "DATA DA TAREFA NO VIOS" — o programa insere essas linhas com
 as datas calculadas. Também não escreva "Responsável a marcar na tarefa:",
-"Advogada auxiliar:" nem "PRIORIDADE RPV/PRECATÓRIO": responsáveis vão no campo
-Responsáveis do VIOS. Audiência: exatamente o padrão da skill (AUDIÊNCIA [TIPO],
+"Advogada auxiliar:" nem "PRIORIDADE ...": responsáveis vão no campo
+Responsáveis do VIOS e a prioridade vai só na data da tarefa. Audiência: exatamente o padrão da skill (AUDIÊNCIA [TIPO],
 DATA, HORA, FORMATO, LINK/LOCAL, ID da reunião, SENHA), uma informação por linha,
 sem parágrafos nem OBS. Coloque a tarefa principal primeiro e as complementares
 depois.
@@ -255,8 +268,9 @@ class Agente:
 
     def _meio(self, meio, publicacao, corridos):
         """Devolve (texto da linha, D-2, fatal) para embargos/recurso.
-        Cabimento pendente também leva data: o advogado decide se recorre e precisa dela."""
-        if meio["situacao"] not in ("CABE", "PENDENTE_CONFIRMAR_CABIMENTO"):
+        Skill de 10/11/2026: a data vale como controle preventivo mesmo quando parece não caber
+        (nunca "NÃO CABE"); sem dias para contar, fica PENDENTE (a análise é bloqueada)."""
+        if meio["situacao"] not in ("CABE", "PENDENTE_CONFIRMAR_CABIMENTO") and not meio["dias"]:
             return TEXTO_SITUACAO[meio["situacao"]], None, None
         fatal = self._fatal(publicacao, meio["dias"], corridos)
         if not fatal:
@@ -283,11 +297,15 @@ class Agente:
         for t in r["tarefas"]:
             rotulo, data_tarefa = "", ""
             tipo = t["tipo_data"]
+            data_rotulo = ""  # data da linha de prazo da descrição, quando difere da data da tarefa
             if tipo == "D-2":
-                rotulo, data_tarefa = "PRAZO FATAL (D-2)", _br(d2) if d2 else PENDENTE
+                rotulo, data_tarefa = ROTULO_D2, _br(d2) if d2 else PENDENTE
             elif tipo in ("PRIORIDADE_RPV", "PRIORIDADE_EMENDA_SUHIANE"):
-                rotulo = "PRAZO FATAL"
+                # tarefa no próximo dia útil; a descrição guarda o D-2 do prazo (skill de 10/11/2026):
+                # RPV "PRAZO FATAL: [D-2]", emenda da Suhiane "PRAZO FATAL D -2: [D-2]"
+                rotulo = "PRAZO FATAL" if tipo == "PRIORIDADE_RPV" else ROTULO_D2
                 data_tarefa = _br(self.cal.proximo_util(publicacao)) if publicacao else PENDENTE
+                data_rotulo = _br(d2) if d2 else PENDENTE
             elif tipo == "MESMO_DIA":
                 data_tarefa = _br(hoje)
             elif tipo == "DIA_SEGUINTE":
@@ -306,16 +324,31 @@ class Agente:
                 hora = _hora(t.get("hora_informada", "")) or _hora_do_resumo(t["resumo"])
             tarefas.append({
                 "nome": t["nome"], "finalidade": t["finalidade"], "tipo_data": tipo,
-                "data_tarefa": data_tarefa, "hora": hora, "rotulo_data": rotulo, "resumo": _limpar_resumo(t["resumo"]),
+                "data_tarefa": data_tarefa, "hora": hora, "rotulo_data": rotulo, "data_rotulo": data_rotulo,
+                "resumo": _limpar_resumo(t["resumo"]),
                 "marcar_breno": "MINUTAR PETIÇÃO EXECUÇÃO" in t["nome"],
             })
 
+        for t in tarefas:
+            if t["nome"] == LAUDO_PREV_ANTIGA:
+                laudo = r["ato"] in ("LAUDO", "PERÍCIA") or "LAUDO" in prazos.normalizar(t["finalidade"] + " " + t["resumo"])
+                t["nome"] = LAUDO_PREV if laudo and r["ato"] != "PROPOSTA DE ACORDO" else INTERMEDIARIA_PREV
+        # responsáveis: auxiliar (nome completo do VIOS) ou o advogado responsável; nunca "automático" nem Amanda
+        pessoas = responsaveis.carregar(os.getenv("SAIDA_PASTA", "saida").strip() or "saida")
+        bloqueios_resp = []
+        for t in tarefas:
+            nomes, bloqueio, avisos_resp = responsaveis.da_tarefa(item, t, pessoas)
+            t["responsaveis"] = nomes
+            alertas += avisos_resp
+            if bloqueio:
+                bloqueios_resp.append(f"{t['nome']}: {bloqueio}")
         alertas += self._conferir(item, tarefas, d2)
         considerados, avisos_cal = self._feriados_do_periodo(publicacao, [fatal, embargos_fatal, recurso_fatal], alertas)
 
         # motivos para NÃO lançar no VIOS (falta informação que só o PJe ou a Controladoria têm)
         bloqueios = [f"Falta no documento: {f}" for f in r.get("faltam_dados", [])]
         bloqueios += self._conferir_area(item, tarefas)
+        bloqueios += bloqueios_resp
         evento = SO_EVENTO.search(item.get("texto", ""))
         if evento:
             bloqueios.append(f"A intimação só indica o {evento.group(1).strip()}, sem o teor: "
@@ -328,8 +361,12 @@ class Agente:
                              "o advogado é quem decide se cabe recurso.")
         if any(t["nome"].startswith("ANALISAR SENTENÇA") for t in tarefas):
             for nome, texto in (("embargos", embargos), ("recurso", recurso)):
-                if texto == PENDENTE:
-                    bloqueios.append(f"Cabe {nome}, mas sem prazo para calcular a data.")
+                if not _data(texto):
+                    bloqueios.append(f"Análise sem prazo de {nome} para calcular a data "
+                                     "(a skill exige as duas datas).")
+        for t in tarefas:
+            if t["rotulo_data"] and PENDENTE in (t["data_rotulo"] or t["data_tarefa"]):
+                bloqueios.append(f"{t['nome']}: sem prazo para calcular a linha {t['rotulo_data']}.")
 
         for t in tarefas:
             t["descricao"] = _descricao(t, r["embargos"]["situacao"], r["recurso"]["situacao"], embargos, recurso, d2)
@@ -376,7 +413,7 @@ class Agente:
         for a in avisos:
             alertas.append(f"Dia não contado como feriado no prazo: {a}. Se o tribunal suspendeu o expediente, "
                            "os prazos vencem depois — conferir a portaria e cadastrar em doc/feriados.txt.")
-        if not self.cal.federal and (self.cal.cidade, self.cal.uf) not in self.tabela.cidades() and not any(
+        if not self.cal.simplificada and not self.cal.federal and (self.cal.cidade, self.cal.uf) not in self.tabela.cidades() and not any(
             e == f"{self.cal.cidade}/{self.cal.uf}" for _, e, _, _ in self.tabela.manuais
         ):
             alertas.append(f"Feriados municipais de {self.cal.cidade}/{self.cal.uf} não cadastrados "
@@ -439,10 +476,7 @@ class Agente:
 
 
 def _tabela_do_env():
-    return prazos.Tabela(
-        os.getenv("FERIADOS_TABELA", "doc/feriados-brasil-2026-2027.md").strip(),
-        os.getenv("FERIADOS_ARQUIVO", "doc/feriados.txt").strip(),
-    )
+    return prazos.tabela_do_env()
 
 
 def _br(dia):
@@ -495,22 +529,33 @@ def _processo(item):
     return numero_processo(item.get("numeros", ""), item.get("texto", "")) or PENDENTE
 
 
+# linha (ou começo de linha até o ";") de prazo escrita pela IA: o programa já insere a sua
+# (ex.: "PRAZO FATAL D -2 PENDENTE DE CÁLCULO PELO PROGRAMA; MINUTAR ..." — Haiku, 10/11/2026)
+PRAZO_DA_IA = re.compile(r"^\s*\**\s*PRAZO (FATAL|PARA|DE)\b[^;\n]*(;\s*|$)", re.I)
+
+
 def _limpar_resumo(resumo):
-    """Tira do texto da IA as linhas que não vão na descrição (FORA_DA_DESCRICAO)."""
-    return "\n".join(l for l in resumo.strip().splitlines() if not FORA_DA_DESCRICAO.match(l)).strip()
+    """Tira do texto da IA as linhas que não vão na descrição (FORA_DA_DESCRICAO) e as linhas
+    de prazo que ela escreveu (o programa insere as suas, com as datas calculadas)."""
+    linhas = []
+    for l in resumo.strip().splitlines():
+        if FORA_DA_DESCRICAO.match(l):
+            continue
+        l = PRAZO_DA_IA.sub("", l)
+        if l.strip():
+            linhas.append(l)
+    return "\n".join(linhas).strip()
 
 
 def _descricao(t, sit_embargos, sit_recurso, embargos, recurso, d2=None):
-    """Na análise (tarefa do mesmo dia): se cabe (ou pode caber) embargos ou recurso, as
-    duas linhas com data em D-2; se não cabe nenhum, o PRAZO FATAL (D-2) do ato, se houver."""
+    """Skill de 10/11/2026: a análise de sentença/acórdão/decisão leva sempre as duas linhas
+    (PRAZO PARA EMBARGOS e PRAZO PARA RECURSO, em D-2), nunca PRAZO FATAL junto; as outras
+    tarefas com prazo levam a sua linha (PRAZO FATAL D -2, ou PRAZO FATAL na prioridade de RPV)."""
     linhas = []
     if t["nome"].startswith("ANALISAR SENTENÇA"):
-        if {sit_embargos, sit_recurso} & {"CABE", "PENDENTE_CONFIRMAR_CABIMENTO"}:
-            linhas += [f"PRAZO PARA EMBARGOS: {embargos}", f"PRAZO PARA RECURSO: {recurso}"]
-        elif d2:
-            linhas.append(f"PRAZO FATAL (D-2): {_br(d2)}")
+        linhas += [f"PRAZO PARA EMBARGOS: {embargos}", f"PRAZO PARA RECURSO: {recurso}"]
     elif t["rotulo_data"]:
-        linhas.append(f"{t['rotulo_data']}: {t['data_tarefa']}")
+        linhas.append(f"{t['rotulo_data']}: {t.get('data_rotulo') or t['data_tarefa']}")
     linhas.append(t["resumo"])
     return "\n".join(linhas)
 
@@ -751,12 +796,19 @@ def _receber_lote(agente, cliente, modelo, grupo, estado, prazo, hoje):
     """Espera o lote terminar (cancela depois do prazo) e devolve {ci: resultado} do que veio."""
     lote_id = estado["lote_id"]
     intervalo = float(os.getenv("LLM_LOTE_INTERVALO_S", "60"))
-    ultimo, cancelado = None, False
+    ultimo, cancelado, inicio = None, False, time.monotonic()
     while True:
         status, prontos, falhas, total = cliente.status(lote_id)
         if (status, prontos, falhas) != ultimo:
             log.info("Lote %s: %s — %d de %d prontas, %d com erro", modelo, status, prontos, total, falhas)
             ultimo = (status, prontos, falhas)
+        if progresso_lote:
+            minutos = int((time.monotonic() - inicio) / 60)
+            try:
+                progresso_lote(f"Lote da IA ({modelo}): {status}, {prontos} de {total} prontas, "
+                               f"{falhas} com erro, há {minutos} min esperando")
+            except Exception:  # a página não pode derrubar a análise
+                log.exception("Não consegui atualizar o andamento do lote")
         if status in ("completed", "failed", "expired", "cancelled"):
             break
         if not cancelado and time.monotonic() > prazo:
@@ -834,7 +886,7 @@ def relatorio_md(resultados, agente, origem):
             linhas += ["```text", t["descricao"], "```"]
         linhas += ["", f"**Prazo fatal:** {r['prazo_fatal'] or 'Não há'}"]
         if r["prazo_d2"]:
-            linhas.append(f"**PRAZO FATAL (D-2):** {r['prazo_d2']}")
+            linhas.append(f"**{ROTULO_D2}:** {r['prazo_d2']}")
         if r["prazo_trecho"]:
             linhas.append(f"Trecho: \"{r['prazo_trecho']}\"")
         if r.get("calendario"):
@@ -882,6 +934,9 @@ def pesquisar_feriados(agente, itens, pasta_saida):
     """Pesquisa na internet feriados/suspensões dos tribunais do lote (FERIADOS_PESQUISA=true,
     padrão) e recarrega o calendário. Falha na pesquisa não impede a análise."""
     if os.getenv("FERIADOS_PESQUISA", "true").strip().lower() in ("false", "0", "nao", "não"):
+        return
+    if prazos.contagem_simplificada():
+        log.info("Contagem simplificada (só fim de semana fica de fora): sem pesquisa de feriados")
         return
     try:
         feriados_web.pesquisar(agente.ia_feriados, itens, agente.tabela,

@@ -67,7 +67,7 @@ muda se o site mudar — só o `.env`.
 - Primeira execução real: **35 cards extraídos, 0 com erro**.
 
 ### Passo 8 — Regras para gerar tarefas (material recebido)
-- Recebido `doc/analise-intimacoes-controladoria.zip`, com as regras da
+- Recebido `analise-intimacoes-controladoria.zip` (hoje extraído em `doc/skill-original/<versão>/`), com as regras da
   Controladoria: fluxo de intimações (POP), roteamento interno, regras de
   prazos/recursos e a lista de **Tarefas VIOS com modelos de descrição**.
 - Esse material será a base das etapas 4 e 5.
@@ -117,7 +117,7 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - Se um filtro configurado não existir na tela, o log mostra um aviso.
 
 ### Passo 12 — Agente de análise (IA + skill da Controladoria)
-- A skill do ChatGPT (`doc/analise-intimacoes-controladoria.zip`) foi extraída em
+- A skill do ChatGPT (`analise-intimacoes-controladoria.zip`) foi extraída em
   `doc/analise-intimacoes-controladoria/` e virou as **instruções do agente**.
 - **Por que IA e não regras em código?** As regras exigem interpretar a decisão
   (desfavorável? encerra o processo? quem recorreu? para quem é a ordem?). Em
@@ -134,6 +134,10 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 
 - **Trocar de IA:** `LLM_PROVEDOR=openai` ou `anthropic` no `.env` (+ a chave).
   Cada provedor fica num arquivo em `bot/ia/`; os dois devolvem o mesmo JSON.
+- **Modelo mais barato (10/11/2026):** `LLM_MODELO=claude-haiku-5-5` e `LLM_MODELO_SIMPLES=`
+  vazio (um modelo só). Custo estimado com os tokens reais de 26–27/10, em lote: ~US$ 0,0013
+  por intimação (~US$ 0,70 por mês), contra ~US$ 0,05 do Opus. O Haiku não tem fallback de
+  recusa no servidor: o bot manda o pedido sem esse campo.
 - **Disponibilização × publicação:** os arquivos `intimacoes_*`/`analise_*` levam
   a data de **disponibilização** pesquisada no VIOS; a publicação é o 1º dia útil
   seguinte (Lei 11.419/2006, art. 4º, § 3º). O relatório mostra as duas datas no
@@ -289,6 +293,12 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - **Contra duplicidade:** não lança se a CI já tem tarefa ativa no VIOS
   (tarefa apagada não conta) ou se já está em `saida/lancamentos.json`; não
   lança se a análise pediu conferência humana.
+- **Data que já passou:** as datas (D-2, dia seguinte, data informada) vêm
+  prontas da análise. Se alguma tarefa da CI ficar com data anterior ao dia do
+  lançamento (análise de um dia lançada em outro), nada é lançado: a CI fica
+  **bloqueada** com o motivo e é preciso refazer a análise. Vale para o
+  `lancar.py` e para a página web. Tarefa do mesmo dia e ciência sem data não
+  entram nisso (são sempre o dia do lançamento).
 - **Modo teste é o padrão:** sem `--confirmar` o bot adiciona ao quadro e tira
   print (`logs/lancamento_ci<CI>_*.png`), mas **não grava**.
 - Lição do 1º teste: clicar só em *Adicionar* não grava nada, e a CI 42431 tinha
@@ -379,6 +389,12 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - A página só escuta em 127.0.0.1 (sem login ainda).
 
 ### Passo 17 — Duplicatas
+> **Desligado desde 10/11/2026** (`DUPLICIDADE_ATIVA=false`, o padrão): a Controladoria já tira as
+> duplicadas na tela de intimações do VIOS, e o detector marcava como cópia CIs que não eram.
+> Desligado, nenhuma CI é tratada como cópia: nem na captura, nem na análise, nem no envio do
+> `.txt` (o robô também deixa de ler o teor no VIOS antes de gravar). Religar:
+> `DUPLICIDADE_ATIVA=true` no `.env`.
+
 - Antes do robô, a advogada pedia o CSV das intimações, perguntava ao ChatGPT
   se havia duplicatas e apagava no VIOS a que não estava no nome do cliente.
 - Agora o código detecta (`bot/duplicidade.py`): mesmo processo e texto
@@ -467,6 +483,12 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   carrega tudo ao iniciar. O botão **Histórico** (`/historico`) mostra todos os
   envios e todas as tarefas gravadas no VIOS (`saida/lancamentos.json`), com busca.
   Os envios de 29 e 30/10 anteriores a isso foram reconstruídos do log (só leitura).
+- **Envio conferido de novo depois de enviado** ("Salvar e conferir" num envio já concluído): a
+  conferência nova apaga o resultado de cada CI e o envio volta a "conferido". O histórico e o `/sam`
+  mostram mesmo assim o resultado do último envio (Concluído, gravadas, já no VIOS), com a nota
+  "conferido de novo depois", e a página do envio avisa "Este arquivo já foi enviado em ...". O
+  resultado vem do último `envio_fim` desse envio em `saida/eventos.jsonl` (vale também para os
+  envios antigos). Caso real: `analise_2026-11-10_complementar.txt` (10/11, 10 gravadas e 2 já no VIOS).
 - **Velocidade (medida em 31/10/2026, teste sem gravar):** quem manda no tempo é o
   servidor do VIOS. Cada Adicionar leva ~1,5 s, abrir a tela de lançamento ~1,2 s e a
   Conferência ~0,7 s nos horários bons, e o dobro ou mais nos horários lentos (o mesmo
@@ -524,10 +546,200 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `regras-do-programa.md`, `arquivo-para-o-robo.md` e `pedido-arquivo-robo.txt`
   foram reescritos para as regras novas (exemplos conferidos pelo leitor do
   robô) e a skill única foi regerada.
-- **Pendente:** a análise pela API (`./rodar_analise.sh`, `bot/prazos.py` e
-  `bot/analise.py`) ainda calcula as datas e monta a descrição pelas regras
-  antigas (feriados, `NÃO CABE`, rótulos antigos). O fluxo em uso (análise no
-  chat + página de envio) já segue a skill nova.
+- ~~Pendente: a análise pela API ainda monta a descrição pelas regras antigas~~ —
+  resolvido no Passo 37 (10/11/2026).
+- **Feriado é dia útil no código (10/11/2026):** `bot/prazos.py` passou a usar a
+  contagem simplificada (`PRAZO_CONTAGEM=simplificada`, o padrão): só sábado e
+  domingo ficam de fora; feriados, pontos facultativos, **recesso de 20/12 a 20/01**
+  e suspensões contam como dia útil. Vale para prazo fatal, D-2, próximo dia útil
+  (prioridade RPV/emenda, aviso de perícia social) e para as datas refeitas na
+  página de revisão. Exemplo da skill: publicação 29/10/2026 + 5 dias = 05/11/2026,
+  D-2 = 03/11/2026. O relatório mostra no lugar do calendário a frase "Contagem
+  solicitada: segunda a sexta, incluindo feriados; vencimentos sem validação do
+  calendário judicial oficial." Com a contagem simplificada, a pesquisa de feriados
+  na internet (Passo 13) não roda e não há mais alerta de feriado municipal não
+  cadastrado. Para voltar ao calendário antigo: `PRAZO_CONTAGEM=feriados` no `.env`.
+
+### Passo 37 — Skill de 10/11/2026 na análise pela API (Claude Haiku 5.5)
+- A Controladoria mandou a skill revisada (`doc/skill-original/7_2026-11-10_txt-bot-duplicadas/`),
+  que passou a ser a skill do projeto (`doc/analise-intimacoes-controladoria/`). Ela traz
+  `references/saida-txt-bot.md` (formato do `.txt` do chat), que o bot não usa no prompt.
+- A análise pela API (`./rodar_analise.sh`) segue as regras novas:
+
+| Tarefa | DATA no VIOS | Linha de prazo na descrição |
+| --- | --- | --- |
+| ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO | mesmo dia (corte das 12h no lançamento) | `PRAZO PARA EMBARGOS:` e `PRAZO PARA RECURSO:`, sempre os dois, em D-2 (nunca `NÃO CABE` nem `PRAZO FATAL`) |
+| Minutas e demais tarefas com prazo | D-2 | `PRAZO FATAL D -2:` |
+| RPV/precatório (prioridade) | próximo dia útil após a publicação | `PRAZO FATAL:` com o D-2 do prazo |
+| Emenda da Suhiane (prioridade) | próximo dia útil após a publicação | `PRAZO FATAL D -2:` com o D-2 do prazo |
+
+- Análise sem prazo para calcular embargos ou recurso, ou tarefa com prazo sem data para a
+  linha, não é lançada (bloqueio). Linhas `PRIORIDADE ...` saem da descrição.
+- Modelo: `LLM_MODELO=claude-haiku-5-5`, `LLM_MODELO_SIMPLES=` vazio (ver Passo 12).
+
+### Passo 38 — Tela "Envio automático" (`/automatico`): relatório de conferência
+- Na página do Sam (`./rodar_envio.sh`): cartão **Envio automático** (último envio com os números e os
+  outros dias) e botão **Envio automático** no topo. Endereço: `http://<IP>:5001/automatico`.
+- **Filtro por dia de envio**: o dia em que as tarefas foram gravadas (ou barradas) no VIOS, não o dia
+  das intimações. Cada análise do dia inteiro (`saida/analise_<dia>.json`) entra no dia de envio da
+  maioria das CIs dela (o "quando" de `lancamentos.json` / `automatico_resultados.json`); duas análises
+  enviadas no mesmo dia aparecem juntas. Análise que nunca foi enviada fica no dia em que foi feita,
+  marcada **não enviada**. Outro dia: `/automatico/2026-11-10`.
+- O relatório (`bot/conferencia.py`), com foco nos prazos:
+  - números do dia: intimações, lançadas, não lançadas, contas de prazo conferidas, com ponto de
+    atenção, gasto da IA;
+  - "Como ler os prazos": contagem simplificada, D-2, corte das 12h e os **feriados nacionais** do
+    período, que contaram como dia útil (a data fica 1 dia útil antes do vencimento real);
+  - visão geral: uma linha por CI com tarefa, data da tarefa, prazo fatal, D-2, embargos e recurso;
+  - um cartão por CI: prazos (trecho, dias lidos pela IA, fatal, D-2, embargos, recurso, cabimento),
+    **conferência da conta** (cada data refeita por fora a partir dos dias que a IA leu: ✓ bate,
+    ✗ diverge), tarefas (data da análise × data no VIOS, responsáveis, observação com as linhas de
+    prazo em vermelho), o que a IA entendeu, pendências e o teor da intimação;
+  - **pontos de atenção**: não lançada (com a data de prazo mais próxima, para conferir se a
+    Controladoria lançou à mão), tarefa em feriado nacional ou depois do prazo fatal, CIÊNCIA com
+    prazo calculado, prazo no texto sem data, data no VIOS diferente da análise (fora o corte das 12h)
+    e os alertas da análise.
+- Não lançadas primeiro, depois as lançadas, cada grupo pela data mais próxima. Filtros: todas, não
+  lançadas, lançadas, com atenção, e busca. **Imprimir / PDF** sai só o relatório, em papel claro.
+- A conta refeita segue a contagem simplificada: só vale para a análise feita por ela (linha "Contagem"
+  = "Contagem solicitada: segunda a sexta, incluindo feriados..."). As análises de antes de 10/11/2026
+  usaram o calendário de feriados de cada tribunal e ficam sem a conta refeita (nem divergência falsa).
+
+| O que foi | De onde vem |
+| --- | --- |
+| Lançada no VIOS (tarefas, data, responsáveis, link "Ver no VIOS") | `saida/lancamentos.json` |
+| Não lançada — falta informação / erro / duplicada / já tinha tarefa / conferência humana / tirada da lista | `saida/automatico_resultados.json` (o lançamento com `--confirmar` grava o motivo de cada CI) |
+| Ainda não enviada | análise feita, lançamento ainda não rodou |
+
+- A página lê a pasta `saida/` do computador onde roda: o que foi analisado e lançado em outro
+  computador não aparece nela.
+- Visual: ver o Passo 39 (Fortaleza do Dragão). O relatório fica num pergaminho claro com moldura
+  dourada.
+
+### Passo 39 — Vila do Sam: a Fortaleza do Dragão (estilo Senhor dos Anéis)
+- Design: `doc/desing_sam/fortaleza-dragao.html` (cena lateral em pixel art: fortaleza, montanhas, o
+  dragão no salão do tesouro, a comitiva). Instalado em **`bot/vila/fortaleza.html`**, servido em
+  **`/vila/sam`** e mostrado no topo das páginas do Sam (`/sam` e a página de cada envio), no lugar
+  da Vila 01 (macro `fortaleza_cartao()` em `bot/templates/_vila.html`).
+- Ligada aos **eventos reais do Sam** (`GET /eventos` a cada 2 s, só os do bot `ultron`; contrato em
+  `doc/vila/contrato-eventos.md`). Ao abrir, monta o estado do último envio sem animar; depois anima
+  cada evento novo, um por vez:
+
+| Evento | Na fortaleza |
+| --- | --- |
+| `arquivo_subido` | Missão: TXT recebido ✓. O Mensageiro avisa que o TXT chegou |
+| `conferido` | CIs conferidas ✓; "Tarefas criadas 0/N" (N = tarefas das CIs prontas). A Arqueira dá as contagens |
+| `envio_iniciado` | Rumo à Torre VIOS (ou "Ensaio: nada é gravado" no modo teste) |
+| `fase` | entrando no VIOS (Ferreiro), conferindo duplicatas (Mago), criando tarefas: **o dragão desperta** |
+| `ci` gravada (no teste: `no_quadro`) | +1 em "Tarefas criadas", faixa "Tarefa n/N criada" e a vida da Torre VIOS cai na mesma proporção |
+| `ci` erro | a Torre diz o motivo e o dragão cospe fogo num herói |
+| `ci` ja_tinha / duplicata | o Mago avisa e segue |
+| `envio_fim` | "Missão cumprida" (ou "Ensaio concluído" / "A missão parou"), com as contagens; o dragão volta ao covil |
+
+- Fora de um envio a cena continua viva como no design (o dragão às vezes acorda e ataca, os comandos
+  Atacar / Magia / Escudo funcionam e **Demonstração** roda o envio de mentira). Durante um envio real
+  a demonstração fica desligada e a vida do dragão segue os eventos. Sem conexão com `/eventos`, o
+  quadro da missão mostra "Sem conexão" e tenta de novo.
+- As páginas do Sam (`/sam`, histórico, envio, envio automático) seguem o estilo da fortaleza pela
+  classe `tema-vila` de `bot/templates/_estilo.html`: noite azul sobre fundo escuro, quadros escuros com
+  moldura dourada, botões dourados, fontes Lora (texto) e Silkscreen (marca e dias do relatório).
+- **Na Vila dos Bots** (página inicial `/` e `/vila`): a aba **01 · Sam** também mostra a Fortaleza,
+  por cima da Vila 01 antiga; a barra do topo (Órbita, status, abas 01 a 05) continua por cima e as
+  outras abas não mudam. Patch: `doc/vila/ligar_vila01_fortaleza.py bot/vila/vila.html` (rodar de
+  novo não repete; rodar outra vez se `bot/vila/vila.html` for baixado de novo).
+- As páginas dos outros bots não mudam.
+- Para atualizar o design: trocar o desenho em `bot/vila/fortaleza.html` mantendo o bloco
+  "eventos reais do Sam" do fim do script e os ganchos `emEnvio()` (o dragão não acorda nem recua
+  sozinho durante um envio). Não precisa reiniciar a página.
+
+### Passo 40 — Envio automático em um clique (botão na página do Sam)
+- Na página `/sam`, cartão **Envio automático em um clique** logo abaixo da Fortaleza: botão **▶ Enviar
+  automaticamente** e **Ensaio (não grava)**. Os dois abrem a pergunta **"Você tem certeza?"** (com o que
+  vai acontecer); só o "Sim" dispara. O servidor também exige a confirmação (`POST /automatico/rodar` com
+  `{"modo": "gravar", "confirmado": true}`; `{"modo": "teste"}` é o ensaio) e recusa pedido de outro site.
+- O que o Sam faz sozinho (`bot/envio_auto.py`, numa thread da página, com a mesma trava de um envio por vez):
+  1. **Captura** as intimações de ontem sem tarefa (na segunda, sexta a domingo): é a mesma captura do
+     `main.py` (`capturar()`), com o navegador fechado no fim;
+  2. **Analisa com a IA** (`analisar_arquivo`, a mesma da `./rodar_analise.sh`; usa a chave de API do `.env`
+     e gasta créditos; leva o tempo do lote);
+  3. **Lança** CI por CI com `lancar()`: as mesmas travas do envio de .txt (falta de informação, já tem
+     tarefa no VIOS, conferência humana, data que já passou, duplicada) e a Conferência do VIOS depois de
+     gravar. Quem não passa nas travas fica de fora e aparece como "barrada".
+  No ensaio faz tudo igual, mas para no quadro de tarefas do VIOS (não grava).
+- **Animação:** o andamento vira eventos da vila (bot `ultron`; ver `doc/vila/contrato-eventos.md`) e a
+  Fortaleza do Dragão anima: o Sam acorda, o Mensageiro traz as intimações capturadas, a IA analisa, a Arqueira
+  dá as contagens, o dragão desperta na criação das tarefas e a vida da Torre VIOS cai a cada tarefa criada.
+  No cartão, quatro passos acendem (Capturar, Analisar, Criar tarefas, Conferir) com barra de progresso e os
+  números ao vivo; ao terminar a página se atualiza.
+- Andamento em `saida/automatico_execucao.json` (também em `GET /automatico/andamento`); o resultado de cada CI
+  continua em `saida/lancamentos.json` e `saida/automatico_resultados.json`, então o relatório `/automatico`
+  mostra tudo como antes. Sem intimação nova, termina sem gastar IA.
+- Só funciona se o Sam estiver rodando (`./rodar_envio.sh`) com o `.env` completo (login do VIOS e chave da IA).
+  Reiniciar a página depois de atualizar.
+- Se o servidor for reiniciado no meio de uma execução, ela fica marcada como "parou" (motivo "servidor reiniciado
+  durante a execução") e o botão volta a funcionar. Para retomar a análise que já foi enviada à IA, clique de novo
+  com o mesmo modelo (`LLM_MODELO`) e as mesmas CIs; se o modelo mudou, um lote novo é enviado e o anterior é pago à parte.
+- Ainda não agenda horário: o clique é manual.
+
+### Passo 41 — Skill de 13/11/2026 (responsáveis, feriado, marco pela publicação)
+- A Controladoria mandou a skill revisada (`doc/skill-original/8_2026-11-13_responsaveis-feriado/`), que passou a ser a
+  skill do projeto. Resumo das regras novas na seção 8 de `doc/skill-original/LEIAME.md`.
+- O que já vale sem mexer no código: a skill entra no prompt da análise pela API (`bot/skill.py`) e na skill única do chat.
+- **O que o código faz (13/11/2026):**
+
+| Regra nova da skill | No código |
+| --- | --- |
+| `RESPONSÁVEIS` nunca `automático` (vai para a Amanda) | `bot/envio_txt.py` e `bot/lancamento.py` (`responsavel_proibido()`) barram a CI com responsável em branco, `automático` ou AMANDA LEITE MENDES |
+| Nome completo do auxiliar / advogado responsável na análise pela API | `bot/responsaveis.py`: a sigla do auxiliar (SUH, TAMI, JOHN...) vira o nome completo pela lista do VIOS (`saida/responsaveis.json`; sigla ambígua como CARL não é adivinhada); sem auxiliar, o advogado responsável do processo. Carlos (CARL) só no Trabalhista vai para o Johnys |
+| Sem auxiliar e com RONIELLE FEITOSA (no VIOS: RONEELY FEITOSA) como responsável: não lançar | Análise: bloqueio com a mensagem da skill. Página de envio: barra o `.txt` que traz só ele como responsável |
+| Perícia médica judicial previdenciária: responsável da filial (Camocim, Tianguá, Jijoca, Sobral) | Análise: a cidade vem do teor (senão da comarca/cidade do processo); nenhuma ou mais de uma filial = bloqueio `NÃO LANÇAR — CONFIRMAR FILIAL...`. Página de envio: só aceita o responsável da filial. **Segunda checagem no lançamento** (`lancamento.conferir_pericia()`): antes de lançar a CI com essa tarefa, o robô abre a tela Lançar Intimação, segue o martelo ("Visualizar processo") e lê o campo **Escritório atual** da ficha (ex.: `Roneely Feitosa - Sobral`); o responsável passa a ser o da filial desse escritório (vale mais que o palpite do teor, que caía em Sobral por padrão). Escritório sem filial conhecida ou campo não lido: a CI não é lançada |
+| `DATA` antecipada quando cair em feriado | `prazos.antecipar()`: feriado **nacional** recua a `DATA` para o dia de trabalho anterior; feriado estadual/municipal só dos locais de `ESCRITORIO_LOCAIS` (`.env`). Só a `DATA`: D-2 e vencimentos da descrição ficam. Ato com hora fixa (audiência, perícia, sustentação) e data informada não recuam. Nunca volta antes de hoje (avisa a urgência). Vale na análise e depois do corte das 12h no lançamento |
+| Marco pela publicação, inclusive Fazenda Pública | O código já conta da publicação do DJEN/CSV; os dias (embargos 10, recurso 30 na Fazenda) a IA lê pela skill (prompt) |
+
+- `ESCRITORIO_LOCAIS` (`.env`): onde fica o escritório que executa as tarefas, `CIDADE/UF` separados por `;` (ou só `UF`).
+  **Vazio = só feriados nacionais recuam a `DATA`.** Preencher para valer também o feriado do estado/município do escritório.
+- Os feriados nacionais são os do código (fixos e Sexta-feira Santa) e da tabela `doc/feriados-brasil-*.md`; ponto facultativo
+  (Carnaval, Corpus Christi...) não é feriado e não recua.
+- Testes: `.venv/bin/python -m unittest tests.test_responsaveis`.
+
+### Passo 43 — Skill de 18/11/2026 (pacote atualizado da Controladoria)
+- A skill do projeto (`doc/analise-intimacoes-controladoria/`) foi trocada pelo pacote `analise-intimacoes-controladoria-atualizada-2026-11-18.zip`.
+  Cópia em `doc/skill-original/9_2026-11-18_atualizada/`; resumo na seção 9 de `doc/skill-original/LEIAME.md`. `doc/skill-unica/` regenerado.
+- Mudanças que a skill traz: sem antecipação da `DATA` por feriado; perícia médica sem filial não bloqueia (texto `incluir responsável pela cidade identificada`);
+  CARL → JOHN (exceto CALTECH); análise/ciência após 12h vai para o próximo dia de expediente do escritório.
+- **Código alinhado (18/11/2026):** a `DATA` não recua mais por feriado (saíram `prazos.antecipar()` e o `ESCRITORIO_LOCAIS` do `.env`).
+  Perícia médica sem filial mapeada vai com o texto `incluir responsável pela cidade identificada` e não bloqueia na análise nem no TXT;
+  no lançamento, o "Escritório atual" do VIOS define a filial e, sem ela, a tarefa não é lançada. CARL → JOHN, exceto CALTECH.
+
+### Passo 42 — Vila 06: a muralha do bot do Previdenciário
+- A Vila 06 é a casa do bot de WhatsApp do setor previdenciário (repositório próprio, `bot-previdenciario`, RN28). A cena
+  é **vídeo** pré-renderizado (Blender): plantão de dia, fora do expediente à noite e, a cada evento do bot, um clipe curto
+  (mensagem chegando → respondida pelo bot, ou → passada para a equipe). A cena **só assiste**.
+- Página: **`bot/vila/muralha.html`**, servida em **`/vila/previdenciario`**; aparece por cima do palco quando a aba
+  **06 · Mikasa** é escolhida (patch `doc/vila/ligar_vila06_muralha.py`, rodar depois do da Fortaleza). O mapa
+  continua com 5 lotes: a aba 06 é só a camada.
+- Estado: a página consulta **`/vila/previdenciario/estado`** a cada 3 s. Este servidor pergunta ao bot
+  (`GET <VILA06_URL>/vila/estado`, com `Authorization: Bearer <VILA06_TOKEN>`) e repassa **só** horário, conexão,
+  contagens do dia, conversas com a equipe e eventos novos (`n`, tipo, horário) — nada de número, nome ou texto de cliente
+  (`bot/vila06.py`, `limpar`). O token nunca vai ao navegador. Sem `VILA06_URL`/`VILA06_TOKEN` a cena roda em **simulação**.
+- Vídeos: **fora do git**. Ficam em `VILA06_CLIPES` (padrão `<SAIDA_PASTA>/vila06_clipes`, já ignorada) com os nomes
+  `plantao.mp4`, `fora.mp4`, `chegou.mp4`, `respondendo.mp4` e `equipe.mp4`; só esses nomes são servidos
+  (`/vila/previdenciario/clipes/<nome>.mp4`). Sem os vídeos a página mostra a muralha vazia com o aviso.
+- Caixa de diálogo (estilo RPG): nome, retrato e texto letra por letra, com uma fala por evento (chegou, respondida, passada
+  à equipe, não entendida, conexão caída ou de volta, horário, a cada 10 respondidas e de espera). Os retratos ficam na mesma
+  pasta dos vídeos, fora do git: `retrato-neutro.png`, `retrato-alerta.png`, `retrato-firme.png`, `retrato-sereno.png`
+  (`/vila/previdenciario/retratos/<nome>.png`); sem eles, a caixa usa um rosto em pixel art de reserva.
+- Som: botão **Som** na placa (o navegador exige um clique antes de tocar; a escolha fica salva). Arquivos em
+  `<VILA06_CLIPES>/sons/`, fora do git: `musica.mp3` (laço com fusão de 3 s), `ambiente.mp3` (vento, em laço), efeitos
+  `sfx-<nome>.mp3` (gancho, gas, corte, esquiva, pouso, vapor, passo, canhao, sino; os tempos de cada vídeo ficam em
+  `EFEITOS_CLIPE` na página) e a voz de cada fala, `fala-<hash>.mp3` (FNV-1a de 32 bits do texto). Mudou o texto de uma fala
+  = ela fica sem voz até gerar de novo (nunca toca a versão velha). Para gerar ou atualizar:
+  `ELEVENLABS_API_KEY=... .venv/bin/python doc/vila/gerar_sons_vila06.py <VILA06_CLIPES> --aplicar` (só o que falta;
+  `--so falas|efeitos|musica`, `--refazer`). Sem `--aplicar` mostra o que seria gerado e o custo. Sem os arquivos, a cena
+  segue muda.
+- No bot: `VILA_TOKEN` no `.env` dele (24+ caracteres, `openssl rand -hex 24`); o mesmo valor vai em `VILA06_TOKEN` aqui.
+  Bot com HTTPS de certificado próprio (RN22.4): copiar o certificado para cá e apontar `VILA06_CERTIFICADO`.
+- Testes: `.venv/bin/python -m unittest tests.test_vila06`.
 
 ### Passo 21 — Rodar no Mac e no Linux
 - O projeto roda nos dois sistemas com os mesmos arquivos e comandos.
@@ -568,10 +780,26 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   a `saida/` copiada do computador antigo.
 - Comandos: `./servidor_mac.sh instalar` | `parar` | `status` | `log`
   (log em `logs/servidor.log`).
-- `instalar` também serve para reiniciar (ex.: depois de mudar o `.env`). Se a
-  porta 5001 estiver ocupada (um `./rodar_envio.sh` aberto), ele avisa e para.
-- A `saida/` **não vai para o GitHub** (o repositório é público e ela tem dados
-  de clientes): copiar com `rsync` ou pendrive (Passo 21).
+- `instalar` também serve para reiniciar. Se a porta 5001 estiver ocupada (um
+  `./rodar_envio.sh` aberto), ele avisa e para.
+- **Bot de WhatsApp e coletor no mesmo script (18/11/2026).** O bot do Previdenciário continua no repositório
+  privado `bot-previdenciario` (clonado à parte no Mac; nunca copiar o código, a mídia da Vila 06 ou o histórico
+  dele para cá). Com `BOT_WHATSAPP_PASTA=<pasta do clone>` no `.env`, o `servidor_mac.sh` também cuida dele:
+  - `./servidor_mac.sh whatsapp instalar | status | atualizar | log | desinstalar` chama os scripts do próprio bot
+    (`scripts/mac/`; `instalar` e `atualizar` pedem a senha de administrador do Mac);
+  - `./servidor_mac.sh coletor instalar | parar | status | log` é o mesmo que `consulta/servico_mac.sh`;
+  - `./servidor_mac.sh tudo` mostra os três serviços (página dos bots, coletor, bot de WhatsApp);
+  - `./servidor_mac.sh atualizar-tudo` atualiza **o bot primeiro** e só depois faz o `git pull` daqui e reinicia a
+    página e o coletor (o bot antigo recusa campo novo do coletor). Se o pull trouxe dependência nova, rodar
+    `./instalar.sh` e `./servidor_mac.sh coletor instalar`.
+  - A Vila 06 não muda: continua lendo os vídeos de `VILA06_CLIPES` e o estado de `VILA06_URL`/`VILA06_TOKEN`.
+- Login do VIOS (`SISTEMA_USUARIO`, `SISTEMA_SENHA`, seletores, `HEADLESS`, `TIMEOUT`): o Sam relê o `.env`
+  a cada envio (manual e automático), então trocar a senha no `.env` vale já no próximo envio, **sem
+  reiniciar**. Outras variáveis (`ENVIO_SENHA`, `ENVIO_REDE`, `SISTEMA_URL`, `SAIDA_PASTA`, pastas dos
+  outros bots) só valem depois de reiniciar com `./servidor_mac.sh instalar`.
+- A `saida/` **não vai para o GitHub** (o repositório é **público** e ela tem dados
+  de clientes): copiar com `rsync` ou pendrive (Passo 21). Nada com dado de cliente, senha,
+  token ou mídia de terceiros entra neste repositório.
 - Para funcionar sem ninguém por perto:
   - o Mac precisa estar **com o usuário logado** (o serviço roda na sessão
     dele, porque o robô abre o Chrome). Para voltar sozinho depois de faltar
@@ -602,6 +830,17 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `saida/vila_pendentes.jsonl` dele).
 - Se a vila for baixada de novo do site: `python3 doc/vila/ligar_zangao.py bot/vila/vila.html`.
 
+### Passo 37 — Consulta de processo pelo WhatsApp: o coletor (pasta `consulta/`)
+- Quinto robô, ao lado da Orelha (usa o `.venv` e o núcleo dela, sem alterá-la). Roda no Mac, só com saída
+  HTTPS para o bot: a cada `CONSULTA_INTERVALO` s busca pedidos, lê o VIOS só por leitura e devolve a ficha
+  mínima (fase, área, datas, telefones em HMAC). Nunca sai do Mac: CPF, nome, CNJ, CI, comentários, valores.
+- Especificação: `consulta/CONTRATO.md`. Instalar e rodar: `consulta/README.md`
+  (`orelha/.venv/bin/pip install -r consulta/requirements.txt`; `cp consulta/.env.example consulta/.env`;
+  `consulta/rodar.sh --simulado --uma-vez` para ver sem VIOS).
+- Configuração: variáveis `CONSULTA_*` em `consulta/.env.example`. `ORELHA_PARADOS_LIBERAR_XHR=auto` é
+  necessário: a tabela de tarefas da ficha carrega por XHR POST e o bloqueio de envios a deixaria vazia.
+- Mapa tipo de tarefa -> fase: `consulta/fases_vios.yaml` (todas as áreas, revisão do setor).
+
 ### Passo 33 — Orelha, o relatório do dia que só lê o VIOS (pasta `orelha/`) e a Vila 05
 - Quarto bot, separado como o Albi: fica em `orelha/`, com `.venv`, `.env`, `logs/` e `saida/`
   próprios, e não importa nada de `bot/` nem de `albi/`. **Detalhes em `orelha/README.md`**:
@@ -625,8 +864,12 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 ### Painel semanal do Orelha (PDF no papel timbrado)
 - Botão **Gerar painel semanal** na página `/orelha` do Sam (ou `./rodar.sh --funcoes painel` dentro de
   `orelha/`), sem agendamento, gera `saida/<data>/painel-semanal.pdf`:
-  resumo executivo, taxa de resolução, carga por advogado, agenda de audiências e tarefas não feitas,
-  no papel timbrado do escritório. Não entra no relatório do dia. A 1ª edição não tem semana anterior; a
+  resumo executivo, taxa de resolução, carga por responsável (peças, audiências e outras tarefas; desde
+  23/11/2026 a fila tem todos os tipos de tarefa e a tarefa com mais de um responsável conta para cada um),
+  agenda de audiências e tarefas não feitas,
+  no papel timbrado do escritório. O período é escolhido nos campos **De** e **Até** da página (vêm de
+  hoje a 7 dias depois; até 120 dias); pela linha de comando, `--painel-de`/`--painel-ate`. Sem escolha,
+  vai do dia do pedido até `ORELHA_PAINEL_DIAS_FILA` dias depois (padrão 7). Não entra no relatório do dia. A 1ª edição não tem semana anterior; a
   comparação começa na 2ª. Detalhes e variáveis `ORELHA_PAINEL_*`: `orelha/README.md` e
   `orelha/.env.example`.
 
@@ -674,39 +917,57 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   andamento com número e vara) e quem não tem, com a assinatura do escritório e o CPF
   mascarado. Dá para editar no campo, clicar em "Copiar mensagem" e mandar junto o
   relatório PDF.
-- **Mensagens da CAC** (na mesma tela do "Capturar resumo"): uma mensagem por pessoa com
-  processos, no padrão da Central de Atendimento ao Cliente (abertura com a atendente,
-  "*1️⃣ Autor x Réu*", "Trata-se de…", assunto, valor, situação atual, conclusão e ressalva).
-  Escolha a atendente (Beatriz Vasconcelos ou Renara Kathleem), revise e clique em "Copiar
-  mensagem". Arquivos: `mensagens_cac.txt` e `.json` (`albi/mensagem_cac.py`). **Sem IA**:
-  o texto sai de regras fixas, no roteiro do prompt da CAC:
-  - do que se trata (classe, número, data, vara, posição da pessoa) e por que o processo existe
-    (o que é esse tipo de ação, os assuntos cadastrados pelo tribunal explicados em palavras
-    simples e o valor da causa);
-  - os acontecimentos com data (citação/notificação, contestação, réplica, audiências, liminar,
-    gratuidade, recursos) e as decisões (sentença de procedência/improcedência/parcial, acordo,
-    embargos, julgamento do recurso, trânsito em julgado, cumprimento de sentença, alvará,
-    penhora), tirados das **movimentações oficiais** de cada processo na API pública do CNJ
-    (DataJud, `albi/datajud.py`). Só o número do processo é enviado; o resultado fica em
-    `datajud/` na pasta da execução e não é consultado de novo;
-  - a situação atual pelo movimento mais recente (arquivado, em recurso, aguardando audiência,
-    em cumprimento de sentença…), com aviso quando o status do Sonar diz outra coisa, e um
-    resumo de cada processo; com mais de um, a conclusão diz se há sentença desfavorável.
-  - O que **não** aparece: os fatos narrados nas petições (ex.: jornada, valores recebidos) e
-    os fundamentos das decisões, porque o texto dos autos não está no Sonar nem no DataJud; a
-    data marcada da audiência; processos em segredo de justiça. Sem resposta do DataJud, o
-    processo sai só com o cadastro do Sonar.
-  - No `albi/.env` (opcional): `DATAJUD=false` desliga a consulta; `DATAJUD_PRAZO` (segundos,
-    padrão 150) limita o tempo total; `DATAJUD_CHAVE` troca a chave pública, se o CNJ mudar.
-    Pelo terminal: `relatorio.py <pasta> --sem-datajud`, ou `.venv/bin/python datajud.py
-    <número>` para ver o que o CNJ tem de um processo.
+- **Mensagens da CAC** (na mesma tela do "Capturar resumo"): uma mensagem por pessoa pesquisada, no
+  padrão da Central de Atendimento ao Cliente. Escolha a atendente (Beatriz Vasconcelos ou Renara
+  Kathleem), revise e clique em "Copiar mensagem". Arquivos: `mensagens_cac.txt` e `.json`
+  (`albi/mensagem_cac.py`). **Sem IA e sem entrar em tribunal nenhum**: o texto sai de regras fixas e
+  só usa os registros da planilha do Sonar.
+  - **Com processos**: abertura ("após consulta aos registros processuais disponibilizados, foram
+    localizados *N processos judiciais* relacionados a *NOME*, CPF nº …, todos vinculados ao *TJ…*"),
+    o período e a área dos processos, quantos estão arquivados/em tramitação e, por processo:
+    "*1️⃣ Autor x Réu*", "*Processo nº … — TJ…*", o que é a ação, a posição da pessoa (requerente,
+    exequente, parte ré…), o que a pesquisa não traz (petição, valores, provas, decisões), o andamento
+    e a "*Conclusão:*". O formato é fixo (sem parágrafos opcionais e sem ressalva final): só mudam os campos.
+  - **Sem processos** ("não consta" no Sonar): "Informamos que após consulta ao sistema do Poder
+    Judiciário, não localizamos *nenhum processo* em nome de *NOME*." Pessoa com falha ao ler a
+    planilha não ganha mensagem.
+  - **Parágrafo explicativo por processo (Gemini)**: com `GEMINI_API_KEY`, cada processo ganha um
+    parágrafo que explica o tipo de ação, a posição da pessoa e a situação, gerado só a partir desses
+    três dados e guardado em `albi/explicacoes_classe.json` (editável). Sem chave, vale a explicação fixa.
+  - **Tipos de ação fora do dicionário**: com `GEMINI_API_KEY` no `albi/.env` (chave gratuita), o
+    `albi/explicacao_ia.py` pede ao Gemini uma frase para "Esse tipo de processo é…". Só o nome da
+    classe é enviado; a resposta fica em `albi/explicacoes_classe.json` (uma vez por classe) e pode ser
+    editada. Modelo: `gemini-flash-latest` (com dois reservas); `GEMINI_MODEL` fixa um. Sem chave ou com
+    erro, o parágrafo é omitido.
+  - O que **não** aparece: os fatos das petições, as sentenças e os pagamentos. O DataJud
+    (`albi/datajud.py`) deixou de ser usado na mensagem; o arquivo continua para consulta manual
+    (`.venv/bin/python datajud.py <número>`).
 - **Baixar de novo** (não compra): na execução já confirmada, o botão "Baixar de novo
   os resultados de cada um" (ou `./rodar.sh --arquivo X --baixar`) pega o número de
   cada pedido no registro e baixa de novo o PDF e a planilha, sem abrir a Nova
   Pesquisa. Quem não tem pedido no registro fica como "Sem pedido no registro".
-- Não compra duas vezes: CPF já pesquisado para a mesma empresa nos últimos 30
-  dias usa o pedido anterior (registro `albi/saida/pedidos_confirmados.json`).
+- Não compra duas vezes: CPF já pesquisado para a mesma empresa no último dia
+  (24 h) usa o pedido anterior (registro `albi/saida/pedidos_confirmados.json`).
+- Arquivo já confirmado não aparece com o botão de compra (para não comprar duas vezes o mesmo
+  arquivo). Para pesquisar de novo: botão **Conferir de novo** na tela dele (ou soltar o .txt outra
+  vez). Ele faz uma conferência nova: quem foi pesquisado há mais de 1 dia volta a "Vai pesquisar".
 - Pela página: `http://<IP do Mac>:5001/albi` (link "Albi" no topo do Ultron).
+  A página usa o tema da Arena do Albi (Dragon Ball Z): céu, nuvens, lago, cabeçalho bege com telhado laranja
+  e cartões com moldura de madeira (`<body class="tema-arena">` em `bot/templates/albi.html`).
+- **Pesquisa digitada** (abaixo da caixa "Solte o .txt"): para uma pesquisa única ou poucas, sem arquivo. Digite a
+  empresa (cliente), o CPF/CNPJ e o nome; "+ Adicionar outra pessoa" cria mais linhas. A página monta o mesmo
+  texto do .txt (`EMPRESA: X` e `CPF ; nome`), guarda como `digitado-AAAA-MM-DD_HHMM.txt` e abre a **conferência**,
+  como no arquivo: nada é comprado antes de você confirmar. Todos os campos são obrigatórios.
+- **Clientes** (abaixo da caixa "Solte o .txt"): um bloco por empresa que pediu pesquisa. Clicar abre a tela do
+  cliente (`/albi/cliente?empresa=NOME`) com **cada pedido** dele (um arquivo enviado) por data, o resultado de
+  cada pessoa e as mensagens da CAC (com o parágrafo do Gemini) para copiar. Um cliente que pediu 25 CPFs hoje e
+  mais 25 na semana seguinte tem dois pedidos, cada um com sua data.
+- **Tela "Mensagens"** (botão no topo da página do Albi, `/albi/mensagens?dia=AAAA-MM-DD`): o produto final do
+  Albi. Junta as mensagens da CAC (`mensagens_cac.json` de cada execução) **por dia da execução**: escolha o dia
+  no calendário ou nos botões de dias com mensagens, filtre por "com processos / sem processos", busque por nome
+  ou empresa, troque a atendente e use "Copiar mensagem" (ou "Copiar todas as que estão na tela"). As mensagens
+  já existem no fim de cada execução (o Albi gera o relatório sozinho); "Capturar resumo" só serve para
+  execuções antigas sem elas. Quem foi pesquisado de novo no mesmo dia fica com a mensagem mais recente.
   Soltar o `.txt` na caixa: o Albi **só confere** e mostra quem vai ser
   pesquisado e o **total em R$**. "Só testar" faz tudo menos confirmar;
   "Confirmar e pesquisar" (dois cliques) compra. Roda em segundo plano (um por
@@ -886,7 +1147,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   **Planilhas (.csv)**. Os simulados ficam à parte. Os arquivos continuam em `orelha/saida/<data>/`.
 - **Relatório mais compacto e a semana** (06/11/2026): as atrasadas vêm agrupadas por **dia do
   vencimento** (ontem, anteontem… depois por faixa de 7 dias, por mês e por ano), cada grupo fechado
-  com o total; clica no grupo e abrem as tarefas. O quadro "Atrasadas por responsável" fecha a seção.
+  com o total; clica no grupo e abrem as tarefas. O quadro "Atrasadas por responsável" fecha a seção
+  (desde 23/11/2026, tarefa com mais de um responsável conta para cada um).
   Junto sai `semana.html`, **Atrasadas da semana**: de segunda até hoje, um grupo por dia com as
   tarefas que venciam nele e continuam abertas (na segunda-feira, a semana passada). Na página
   `/orelha`, o último relatório aparece **dentro da página**, com as abas "Relatório do dia" e
@@ -931,7 +1193,15 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - **Tribunal aberto pelo console do Presto:** o `entrar` e o `processos` abrem o tribunal como a
   atendente faz: console do Presto > **Sites** > procura o tribunal na lista > clica. Se o console
   pedir login, o robô usa `PRESTO_EMAIL` e `PRESTO_SENHA` do `albi/.env` (preencher no Mac; nunca vão
-  para o git nem para a documentação). `--direto` pula o console e abre a URL de login como antes.
+  para o git nem para a documentação). Antes de procurar o tribunal, o robô espera até 25 s o console
+  mostrar o login ou a lista de sites (não pula mais o login quando o site demora); aceita o login em
+  uma tela (e-mail e senha) ou em duas (no console real: e-mail, **Acessar**, senha, **Login**) e, se o preenchimento não pegar,
+  clica nos campos e digita com o teclado de verdade (precisa da Acessibilidade). Se continuar no
+  login, para e salva o print `0_console_login_depois`. No quadro "Credenciais Disponíveis" do Presto, o
+  número da credencial só abre o campo do PIN com clique de mouse de verdade: o `entrar` avisa no começo
+  se falta a permissão Acessibilidade (Terminal ou Visual Studio Code). Feche o DevTools antes de rodar. No TRT7, a tela
+  `primeirograu/login.seam` tem o botão "Login via Presto": o robô clica nele e o quadro aparece no SSO. `--direto` pula o console e abre a URL de
+  login como antes.
 - **Procurar nos tribunais os processos do último relatório:** `cd albi && .venv/bin/python presto.py
   processos --conferir` mostra, sem abrir o Chrome, qual relatório ele pegou (o `processos.csv` mais novo
   que tem processos, em `albi/saida/` ou em `saida/albi/`, onde a página `/albi` guarda; `--listar` mostra todos) e em qual tribunal está cada
@@ -1189,7 +1459,8 @@ O chromedriver é baixado automaticamente pelo Selenium Manager.
 
 ### Segundo usuário do VIOS — Relatório de processos por Grupo Cliente
 
-O Jarvis, com outro login do VIOS, gera uma planilha .xlsx por grupo de clientes. Fica na pasta
+O Jarvis, com outro login do VIOS, gera por grupo de clientes uma planilha .xlsx e um PDF no papel
+timbrado (com o "Resumo do mês" feito pela IA). Fica na pasta
 própria `jarvis/`; documentação em [jarvis/README.md](jarvis/README.md).
 
 ---
@@ -1227,9 +1498,11 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `LLM_MODELO_FERIADOS` | não | Modelo da pesquisa de feriados (vazio = `LLM_MODELO`) | vazio |
 | `LLM_LIMITE_US` | não | Teto de gasto com IA por execução, em US$ (vazio/0 = sem teto) | vazio |
 | `LLM_PRECOS` | não | Corrige preços da tabela: `modelo=entrada/saída` por milhão de tokens, separados por vírgula | vazio |
-| `FERIADOS_PESQUISA` | não | Pesquisa feriados na internet antes da análise (`true`/`false`) | `true` |
+| `FERIADOS_PESQUISA` | não | Pesquisa feriados na internet antes da análise (`true`/`false`); só roda com `PRAZO_CONTAGEM=feriados` | `true` |
+| `DUPLICIDADE_ATIVA` | não | `true` liga o detector de duplicadas (Passo 17); `false` = desligado (a Controladoria tira as duplicadas no VIOS) | `false` |
+| `PRAZO_CONTAGEM` | não | `simplificada` = só sábado e domingo ficam de fora (feriados e recesso contam como dia útil); `feriados` = calendário antigo por tribunal (Passo 13) | `simplificada` |
 | `SAIDA_PASTA` | não | Pasta dos `.txt` | `saida` |
-| `HEADLESS` | não | Chrome sem janela | `false` |
+| `HEADLESS` | não | Chrome sem janela (ignorado no Albi: o Sonar roda sempre sem janela) | `true` |
 | `TIMEOUT` | não | Espera máxima (s) | `20` |
 | `MANTER_ABERTO` | não | Não fecha o Chrome no fim | `true` |
 | `NAVEGADOR_RAPIDO` | não | O Chrome não espera recursos do VIOS que o robô não usa (ganho pequeno, ~3%) | `true` (padrão) |
@@ -1238,6 +1511,10 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `ZANGAO_PASTA` | não | Pasta do Zangão neste computador (com `.venv` e `.env` dele); liga os botões da Vila 02 | `~/zangao` |
 | `ALBI_PASTA` | não | Pasta do Albi (com `.venv` e `.env` dele); vazio = `albi/` deste repositório | `~/albi` |
 | `ORELHA_PASTA` | não | Pasta do Orelha, de onde o Sam lê o horário e os relatórios (`/orelha`); vazio = `orelha/` deste repositório | `~/orelha` |
+| `VILA06_URL` | não | Endereço do bot do Previdenciário para a Vila 06 (vazio = simulação) | vazio |
+| `VILA06_TOKEN` | não | Mesmo `VILA_TOKEN` do `.env` do bot (RN28) | (no `.env`) |
+| `VILA06_CERTIFICADO` | não | Certificado próprio do bot (HTTPS na rede interna) | vazio |
+| `VILA06_CLIPES` | não | Pasta dos vídeos da Vila 06 (fora do git) | `<SAIDA_PASTA>/vila06_clipes` |
 
 **Site com certificado vencido.** Se o certificado do VIOS (ou do Sonar, no Albi) vencer, o Chrome
 mostra "Sua conexão não é particular" no lugar do login. O Sam, o Orelha, o Jarvis e o Albi clicam

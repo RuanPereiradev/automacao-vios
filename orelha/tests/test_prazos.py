@@ -90,7 +90,11 @@ class TestPlacar(unittest.TestCase):
         itens, numeros = prazos.placar(tarefas, HOJE)
         self.assertEqual([i.grupo for i in itens], ["Terça-feira, 03/11 · ontem", "De 21/10 a 27/10 · há 8 a 14 dias"])  # o dia mais recente primeiro
         self.assertIn("responsável: Bruno Fictício, Carla Fictícia", itens[1].detalhe)
-        self.assertEqual(list(numeros["por_responsavel"]), ["Bruno Fictício", "Ana Fictícia"])  # quem tem grave primeiro
+        # tarefa com dois responsáveis conta para os dois; quem tem grave primeiro
+        self.assertEqual(list(numeros["por_responsavel"]), ["Bruno Fictício", "Carla Fictícia", "Ana Fictícia"])
+        self.assertEqual(numeros["por_responsavel"]["Carla Fictícia"], {"atrasadas": 1, "graves": 1})
+        self.assertEqual(numeros["atrasadas"], 2)  # o total conta cada tarefa uma vez
+        self.assertEqual(prazos.responsaveis("Eva Fictícia e Davi Fictício, Eva Fictícia"), ["Eva Fictícia", "Davi Fictício"])
         self.assertEqual(prazos.responsavel_principal("Eva Fictícia e Davi Fictício"), "Eva Fictícia")
         self.assertEqual(prazos.responsavel_principal(""), "")
 
@@ -220,8 +224,9 @@ class TestExecutar(unittest.TestCase):
             ("Quinta-feira, 29/10 · há 6 dias", "atencao"),
             ("De 21/10 a 27/10 · há 8 a 14 dias", "grave")])                                          # grave = mais de 7 dias de atraso
         self.assertTrue(s.recolher)
-        self.assertEqual(s.quadro["linhas"], [["Bruno Fictício", 2, 1], ["Ana Fictícia", 2, 0], ["Eva Fictícia", 1, 0],
-                                              ["Sem responsável identificado", 1, 0]])  # Eva veio da ficha
+        # Carla é a 2ª responsável da tarefa grave do Bruno: conta para os dois
+        self.assertEqual(s.quadro["linhas"], [["Bruno Fictício", 2, 1], ["Carla Fictícia", 1, 1], ["Ana Fictícia", 2, 0],
+                                              ["Eva Fictícia", 1, 0], ["Sem responsável identificado", 1, 0]])  # Eva veio da ficha
         self.assertTrue((ctx.saida / "semana.html").exists())
         n = s.numeros
         self.assertEqual((n["atrasadas"], n["graves"], n["vencem_hoje"], n["lidas"]), (6, 1, 1, 8))

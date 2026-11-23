@@ -1,0 +1,5 @@
+.env
+logs/
+dados/
+__pycache__/
+saida/

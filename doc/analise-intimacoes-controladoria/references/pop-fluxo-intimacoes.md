@@ -12,12 +12,13 @@ Aplicar primeiro as regras do SKILL.md e o roteamento, incluindo prioridade, dup
 | Sentença, acórdão ou decisão com avaliação jurídica, inclusive favorável | Análise da área; advogado decide a próxima providência |
 | Manifestação objetiva determinada ao cliente | Minuta oficial correspondente |
 | Distribuição simples ou mero aviso sem providência | Ciência da área confirmada |
-| Mero aviso de movimentação na Execução, sem avaliação jurídica nem efeito sobre o cliente | Ciência; decisões que exigem avaliação seguem análise |
+| Mero aviso de movimentação na Execução, sem avaliação jurídica concreta | Ciência; decisões que exigem avaliação seguem análise |
+| Despacho que suspende obrigação e determina diligência ao juízo/secretaria, sem providência atual do cliente nem questão jurídica concreta | Ciência da área, sem controles recursais; aguardar nova intimação |
 | Laudo previdenciário/proposta de acordo do INSS | Petição intermediária/réplica/impugnação laudo |
 | Cálculos trabalhistas sem tarefa específica | Petição intermediária diversa trabalhista |
 | RPV em qualquer etapa pertinente | Tarefa conforme etapa, com prioridade do próximo dia de expediente do escritório |
 
-Não abrir recurso diretamente quando depender de avaliação. Não transformar prazo da parte contrária em tarefa de pagamento/minuta para o cliente.
+Aplicar primeiro o filtro de providência concreta do SKILL.md, inclusive antes da regra genérica de análise de decisão favorável. Preservar as análises obrigatórias de sentença/acórdão e demais hipóteses específicas. Não abrir recurso diretamente quando depender de avaliação. Não transformar prazo da parte contrária em tarefa de pagamento/minuta para o cliente.
 
 ## Pagamentos pelo cliente
 
@@ -50,7 +51,7 @@ ID da reunião:
 SENHA:
 ```
 
-Usar título exato como `AUDIÊNCIA UNA`, sem explicação entre parênteses. Separar link, ID e senha em linhas próprias. Não acrescentar OBS genérica, alertas de ausência, instruções de testemunhas ou transcrição extensa. Omitir campo comprovadamente não aplicável (como ID/senha em audiência presencial). Faltando dado exigido para o lançamento, não inventar; indicar a conferência necessária. Em audiência cível com cliente réu, conferir contestação no VIOS/PJe e, se ausente, indicar também a tarefa oficial de inicial/contestação/embargos à execução, especificando que é contestação.
+Usar título exato como `AUDIÊNCIA UNA`, sem explicação entre parênteses. Separar link, ID e senha em linhas próprias. Não acrescentar OBS genérica, alertas de ausência, instruções de testemunhas ou transcrição extensa. Exigir somente tipo/modelo, data, hora, formato e link ou local. Omitir ID e senha quando não informados, inclusive em audiência virtual; são opcionais e não bloqueiam o lançamento. Não afirmar acesso livre apenas por ausência de senha. Faltando dado exigido para o lançamento, não inventar; indicar a conferência necessária. Em audiência cível com cliente réu, conferir contestação no VIOS/PJe e, se ausente, indicar também a tarefa oficial de inicial/contestação/embargos à execução, especificando que é contestação.
 
 ## Perícias
 
@@ -69,6 +70,22 @@ Indicar duas tarefas em blocos próprios:
 2. `MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026`, para quesitos e assistente técnico.
 
 Para a segunda, usar prazo específico confirmado ou marcar pendência. Se o ato apenas designar a perícia, ainda indicar a complementar com prazo pendente; não presumir data. Não confundir com manifestação sobre laudo já produzido.
+
+#### Responsável pela tarefa de comparecimento à perícia médica
+
+Quando a Controladoria informar uma cidade de filial mapeada, preencher o responsável operacional correspondente. Se a filial não estiver informada ou não estiver na tabela, o bot identificará a filial, conforme orientação da usuária: preencher o campo de responsável com o texto determinado abaixo. Esta regra específica prevalece sobre a atribuição geral ao advogado auxiliar na tarefa de comparecimento.
+
+| Cidade da filial | Responsável no TXT, conforme informado no cadastro VIOS |
+| --- | --- |
+| Sobral | Ana Letícia da Silva Leitao |
+| Jijoca ou Jijoca de Jericoacoara | Guivia Vasconcelos |
+| Tianguá | João Jânio |
+| Camocim | Francisco Victor Hora do Nascimento |
+
+- Usar os nomes exatamente como informados. Não atribuir a tarefa de comparecimento a Amanda Leite Mendes, Suhiane ou `automático`.
+- Não usar a coluna `Cidade` do CSV nem o endereço ou município do local da perícia para presumir a filial.
+- Se a Controladoria não informar a cidade da filial ou ela não estiver na tabela, não excluir a tarefa por esse motivo. No TXT, preencher exatamente `RESPONSÁVEIS: incluir responsável pela cidade identificada`. Data, horário e local da perícia continuam indispensáveis; se faltarem, informar a pendência específica.
+- A tarefa de quesitos e indicação de assistente técnico é separada e segue a responsável do Previdenciário, Suhiane; manter seu prazo e condições de lançamento próprios.
 
 ### Social previdenciária
 
@@ -108,7 +125,7 @@ HORA: [horário inicial]
 LINK:
 ```
 
-Faltando dado indispensável, registrar a tarefa afetada como não pronta e a conferência da Controladoria. Não afirmar que a sustentação foi realizada por apenas agendá-la.
+Link/local são opcionais tanto na viabilidade quanto na sustentação: omitir o campo quando ausente, manter data e horário confirmados e incluir as tarefas no TXT sem exigir nova dispensa. Não inventar endereço, afirmar acesso livre ou tratar a agenda como confirmação de cabimento/inscrição. A análise de viabilidade permite ao advogado avaliar as regras do recurso e da sessão. Continuam indispensáveis os demais dados que determinam o cadastro, como processo, cliente, responsável, data e horário da sessão. Não afirmar que a sustentação foi realizada por apenas agendá-la.
 
 ## Recurso/agravo trabalhista genérico
 

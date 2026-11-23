@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vila 06 · Mikasa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500&family=Silkscreen&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#0b0a09;color:#f3ead8;font-family:Lora,Georgia,serif;height:100%;overflow:hidden}
+#cena{position:relative;width:100%;aspect-ratio:16/9;max-height:100vh;margin:0 auto;overflow:hidden;background:#000;
+  border:3px solid #c8963a;box-shadow:inset 0 0 0 2px #3a2c14;font-size:clamp(10px,1.45vw,18px)}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .35s linear}
+video.on{opacity:1}
+.px{font-family:Silkscreen,monospace;letter-spacing:.06em;text-transform:uppercase}
+.caixa{position:absolute;background:rgba(21,18,15,.88);border:.12em solid #c8963a;box-shadow:inset 0 0 0 .14em #15120f,
+  inset 0 0 0 .22em #6b4f22,0 .3em .9em rgba(0,0,0,.55);border-radius:.2em;padding:.55em .8em}
+#placa{left:1.4%;top:3%;min-width:15em}
+#placa .t{font-size:.95em;color:#f0c46a}
+#placa .s{font-size:.72em;color:#a99a7a;margin-top:.15em}
+#estado{display:flex;align-items:center;gap:.5em;margin-top:.45em;font-size:.72em;color:#d9cdb4}
+#ponto{width:.6em;height:.6em;border-radius:50%;background:#5a5f67;flex:none}
+#som{margin-top:.5em;font:inherit;font-size:.62em;color:#f0c46a;background:#15120f;border:.12em solid #6b4f22;border-radius:.2em;padding:.25em .6em;cursor:pointer}
+#som:hover{border-color:#c8963a}#som.pede{animation:pisca 1.2s steps(1) infinite}
+#avisoSom{left:50%;top:3%;transform:translateX(-50%);display:none;font-size:.8em;color:#f0c46a;cursor:pointer}#avisoSom.on{display:block}
+#contas{right:1.4%;top:3%;display:grid;grid-template-columns:auto auto;gap:.25em 1em;font-size:.78em}
+#contas b{font-family:Silkscreen,monospace;font-weight:400;color:#f0c46a;text-align:right;font-feature-settings:'tnum'}
+/* caixa de diálogo de RPG em pixel art: preta, borda clara dupla, retrato à esquerda, texto letra por letra */
+#fala{position:absolute;left:3%;right:3%;bottom:4%;height:25%;display:flex;gap:1.1em;align-items:stretch;padding:.9em 1.2em;
+  background:#05050c;border:.2em solid #e9e9f2;box-shadow:0 0 0 .2em #000,inset 0 0 0 .2em #000,inset 0 0 0 .34em #5d5d80;
+  border-radius:.15em;image-rendering:pixelated}
+#nome{position:absolute;left:1.2em;top:-1.35em;background:#05050c;border:.18em solid #e9e9f2;box-shadow:0 0 0 .16em #000;
+  padding:.15em .7em;font-size:.8em;color:#fff1a8}
+#moldura{flex:none;height:100%;aspect-ratio:1;border:.18em solid #e9e9f2;box-shadow:inset 0 0 0 .16em #000;background:#1c1c33;padding:.3em}
+#retrato{display:block;width:100%;height:100%;image-rendering:pixelated}
+#foto{display:none;width:100%;height:100%;object-fit:cover;object-position:50% 20%}
+#moldura.pintado{padding:0;background:#c9c6c0}#moldura.pintado #foto{display:block}#moldura.pintado #retrato{display:none}
+#texto{flex:1;font-family:Lora,Georgia,serif;font-size:1.35em;line-height:1.35;color:#fff;white-space:pre-wrap;
+  overflow:hidden;padding-top:.15em;text-shadow:.06em .06em 0 #2a2a48}
+#seta{position:absolute;right:1em;bottom:.45em;font-size:.9em;color:#fff;opacity:0}
+#seta.on{animation:pisca .8s steps(1) infinite}
+@keyframes pisca{0%{opacity:1}50%{opacity:0}}
+#vazio{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:.6em;
+  text-align:center;padding:0 12% 14%;background:linear-gradient(#1d2433 0%,#3a3a44 55%,#2c2a25 56%,#1a1815 100%)}
+#vazio.on{display:flex}
+#vazio .muro{position:absolute;left:0;right:0;bottom:22%;height:20%;background:repeating-linear-gradient(90deg,#3b352d 0 9%,#332e27 9% 10%);
+  border-top:.4em solid #4a4238}
+#vazio p{position:relative;font-size:.85em;color:#d9cdb4;max-width:34em}
+#vazio code{font-family:ui-monospace,monospace;color:#f0c46a}
+</style>
+</head>
+<body>
+<div id="cena">
+  <video id="va" muted playsinline preload="auto"></video>
+  <video id="vb" muted playsinline preload="auto"></video>
+  <div id="vazio"><div class="muro"></div>
+    <p class="px" style="color:#f0c46a">Muralha sem vídeos</p>
+    <p>Os vídeos da Vila 06 ficam fora do repositório. Copie <code>plantao.mp4</code>, <code>fora.mp4</code>,
+      <code>chegou.mp4</code>, <code>respondendo.mp4</code> e <code>equipe.mp4</code> para a pasta
+      <code>VILA06_CLIPES</code> deste computador (veja a DOCUMENTACAO).</p>
+  </div>
+  <div id="placa" class="caixa">
+    <div class="t px">Vila 06 · Mikasa</div>
+    <div class="s">a muralha do bot da recepção</div>
+    <div id="estado"><span id="ponto"></span><span id="estadoTxt">Conectando…</span></div>
+    <button id="som" class="px" type="button">Som: desligado</button>
+  </div>
+  <div id="avisoSom" class="caixa px">Clique na tela para ligar o som</div>
+  <div id="contas" class="caixa">
+    <span>Respondidas hoje</span><b id="cResp">–</b>
+    <span>Passadas à equipe</span><b id="cEnc">–</b>
+    <span>Com a equipe agora</span><b id="cEq">–</b>
+    <span>Não entendidas</span><b id="cNao">–</b>
+  </div>
+  <div id="fala">
+    <div id="nome" class="px">Mikasa</div>
+    <div id="moldura"><img id="foto" alt=""><canvas id="retrato" width="16" height="16"></canvas></div>
+    <div id="texto"></div>
+    <span id="seta">▼</span>
+  </div>
+</div>
+<script>
+'use strict';
+const BASE = '/vila/previdenciario';
+// cada evento vira uma sequência de clipes
+const SEQ = { respondeu: ['chegou', 'respondendo'], encaminhou: ['chegou', 'equipe'], nao_entendeu: ['chegou'] };
+const MAX_FILA = 4;
+
+// ---------- falas (texto próprio, sem número: cada frase tem a voz gravada em sons/fala-<hash>.mp3; as contagens ficam no painel) ----------
+const FALAS = {
+  inicio_aberto: ['Muralha em silêncio. Estou de olho no portão.', 'Plantão começado. Pode mandar mensagem que eu seguro.'],
+  inicio_fechado: ['Expediente encerrado. Eu sigo respondendo o menu; a equipe volta às 8h.'],
+  chegou: ['Mensagem chegando no portão!', 'Lá vem mais uma. Deixa comigo.', 'Movimento no campo. Indo lá.'],
+  respondeu: ['Resolvido. Era coisa do menu.', 'Respondida. Mais uma para a conta de hoje.', 'Pronto. Mais uma que não precisou esperar.'],
+  encaminhou: ['Essa é com a equipe. Passei a conversa adiante.', 'Assunto para gente de verdade: chamei a equipe.',
+    'Passei para a equipe. Eles continuam daqui.'],
+  nao_entendeu: ['Não entendi essa. Vou pedir para dizer de outro jeito.', 'Hm. Não reconheci. Perguntei de novo.'],
+  marco: ['Mais dez respondidas! A muralha aguenta.', 'Mais uma dezena! Ninguém ficou esperando no portão.'],
+  ocioso: ['Tudo calmo por aqui.', 'Ninguém no portão. Sigo atenta.', 'Os canhões estão prontos, só por precaução.'],
+  ocioso_noite: ['Noite tranquila. O menu continua aberto.', 'A equipe foi descansar. Eu fico de vigia.'],
+  desconectado: ['Perdi o WhatsApp! Alguém precisa ler o QR no painel do bot.'],
+  reconectando: ['Sinal fraco... reconectando ao WhatsApp.'],
+  voltou: ['Conexão de volta. Retomando o plantão.'],
+  erro: ['Sem notícias do bot. O computador dele está ligado?'],
+  token: ['O bot recusou a minha senha. Confiram o VILA06_TOKEN.'],
+  simulado: ['(Simulação) Ainda não estou ligada ao bot de verdade. Estes recados são de mentira.'],
+};
+
+// ---------- retrato: imagem pintada da pasta dos vídeos (retrato-<expressão>.png); sem ela, pixel art de reserva ----------
+const COR = { k: '#1a1210', h: '#3b2418', H: '#6a4630', s: '#b8794f', S: '#95603d', e: '#1a1210', w: '#f3ead8',
+  m: '#7a3a2c', t: '#3a9a9c', T: '#24595b', j: '#6b5238', J: '#3d2f23', b: '#2a1810', r: '#c98a62' };
+const ROSTO = [
+  '....kHHhk.......', '...kHhhhhk......', '....khhhk.......', '...khhHhhhhk....',
+  '..khHhhhhhhhk...', '..khhssssssshk..', '..khsbbsssbbshk.', '..khswesssewshk.',
+  '..khssssSssssk..', '..khsssmmmsssk..', '...khrsssssrk...', '....kSsssssSk...',
+  '...ktTtttttTtk..', '..kjtttTtTtttjk.', '.kjjjJtttttJjjjk', '.kjjjjJtttJjjjjk'];
+const EXPRESSOES = {
+  neutro: {},
+  alerta: { 6: '..khbbsssssbbhk.', 7: '..khswwsssswwhk.', 9: '..khssssksssk...' },
+  firme: { 6: '..khsbbbsbbbshk.', 9: '..khssmmmmmssk..' },
+  feliz: { 9: '..khsmsssssmsk..', 10: '...khrmmmmmrk...' },
+};
+function desenharRetrato(expr) {
+  const pintados = (estado && estado.retratos) || [];
+  const nome = pintados.includes(expr) ? expr : pintados.includes('neutro') ? 'neutro' : '';
+  document.getElementById('moldura').classList.toggle('pintado', !!nome);
+  if (nome) { const f = document.getElementById('foto'); const src = `${BASE}/retratos/${nome}.png`; if (!f.src.endsWith(src)) f.src = src; return; }
+  if (expr === 'sereno') expr = 'neutro';
+  const c = document.getElementById('retrato').getContext('2d');
+  c.clearRect(0, 0, 16, 16);
+  const ov = EXPRESSOES[expr] || {};
+  ROSTO.forEach((linha, y) => {
+    [...(ov[y] || linha)].forEach((ch, x) => { if (COR[ch]) { c.fillStyle = COR[ch]; c.fillRect(x, y, 1, 1); } });
+  });
+}
+
+const $ = (id) => document.getElementById(id);
+const videos = [$('va'), $('vb')];
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+let ativo = 0, estado = null, desde = 0, fila = [], tocando = false, baseAtual = '', chaveConexao = '', horarioAntes = '';
+
+// ---------- som: voz das falas, música, ambiente e efeitos (arquivos em sons/, ver gerar_sons_vila06.py) ----------
+// O navegador só deixa tocar som depois de um clique na página: o botão "Som" liga e desliga (a escolha fica salva).
+const VOLUME = { musica: 0.2, ambiente: 0.45, efeitos: 0.6, voz: 1, abaixaMusica: 0.4 };
+// efeitos de cada vídeo: [segundos depois do início, som] (tempos medidos nos quadros do filme)
+const EFEITOS_CLIPE = {
+  chegou: [[0.05, 'sino'], [0.45, 'passo']],
+  respondendo: [[0.5, 'gas'], [1.08, 'gancho'], [1.5, 'gas'], [2.33, 'corte'], [2.45, 'vapor'], [2.58, 'esquiva'], [3.55, 'pouso']],
+  equipe: [[0.6, 'canhao'], [1.4, 'sino']],
+};
+const som = { ctx: null, ligado: false, buffers: {}, geral: null, musica: null, voz: null, efeitos: null, fundoTocando: false };
+const PREF_SOM = 'vila06-som';
+// som ligado por padrão; só fica mudo se alguém desligou no botão
+function lerPref() { try { return localStorage.getItem(PREF_SOM) !== '0'; } catch (_) { return true; } }
+function salvarPref(v) { try { localStorage.setItem(PREF_SOM, v ? '1' : '0'); } catch (_) {} }
+/** FNV-1a de 32 bits do texto (mesmo cálculo do gerador): nome do arquivo da voz de cada fala. */
+function hashFala(t) {
+  let h = 0x811c9dc5;
+  for (const b of new TextEncoder().encode(t)) { h ^= b; h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(16).padStart(8, '0');
+}
+function temSom(nome) { return !!(estado && estado.sons && estado.sons.includes(nome)); }
+function carregarSom(nome) {
+  if (!som.buffers[nome]) {
+    som.buffers[nome] = fetch(`${BASE}/sons/${nome}.mp3`)
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      .then((b) => som.ctx.decodeAudioData(b))
+      .catch(() => { delete som.buffers[nome]; return null; });
+  }
+  return som.buffers[nome];
+}
+/** Toca um som uma vez no canal pedido; resolve quando termina (ou na hora, se não há som). */
+async function tocarSom(nome, canal, atraso = 0) {
+  if (!som.ligado || !temSom(nome)) return;
+  const b = await carregarSom(nome);
+  if (!b || !som.ligado) return;
+  const f = som.ctx.createBufferSource();
+  f.buffer = b; f.connect(canal);
+  // com o som desligado no meio (contexto suspenso) o "ended" não vem: o relógio garante que a fala segue
+  await new Promise((r) => { f.onended = r; f.start(som.ctx.currentTime + atraso); setTimeout(r, (atraso + b.duration + 0.5) * 1000); });
+}
+/** Música em laço com 3 s de fusão entre o fim e o começo; ambiente em laço direto (já é gerado para repetir). */
+async function tocarFundo() {
+  if (som.fundoTocando) return;
+  som.fundoTocando = true;
+  if (temSom('ambiente')) {
+    const b = await carregarSom('ambiente');
+    if (b) { const f = som.ctx.createBufferSource(); f.buffer = b; f.loop = true; const g = som.ctx.createGain();
+      g.gain.value = VOLUME.ambiente; f.connect(g).connect(som.geral); f.start(); }
+  }
+  if (temSom('musica')) {
+    const b = await carregarSom('musica');
+    if (!b) return;
+    const FUSAO = 3;
+    const vez = (t0) => {
+      const f = som.ctx.createBufferSource(), g = som.ctx.createGain();
+      f.buffer = b; f.connect(g).connect(som.musica);
+      g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(1, t0 + FUSAO);
+      g.gain.setValueAtTime(1, t0 + b.duration - FUSAO); g.gain.linearRampToValueAtTime(0, t0 + b.duration);
+      f.start(t0);
+      const proxima = t0 + b.duration - FUSAO;
+      setTimeout(() => vez(Math.max(proxima, som.ctx.currentTime + 0.05)), Math.max(0, (proxima - som.ctx.currentTime - 2) * 1000));
+    };
+    vez(som.ctx.currentTime + 0.1);
+  }
+}
+function botaoSom(pede) {
+  const b = $('som');
+  b.textContent = som.ligado && !pede ? 'Som: ligado' : pede ? 'Clique para ligar o som' : 'Som: desligado';
+  b.classList.toggle('pede', !!pede);
+  $('avisoSom').classList.toggle('on', !!pede);
+}
+async function ligarSom() {
+  if (!som.ctx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    som.ctx = new Ctx();
+    som.geral = som.ctx.createGain(); som.geral.connect(som.ctx.destination);
+    som.musica = som.ctx.createGain(); som.musica.gain.value = VOLUME.musica; som.musica.connect(som.geral);
+    som.voz = som.ctx.createGain(); som.voz.gain.value = VOLUME.voz; som.voz.connect(som.geral);
+    som.efeitos = som.ctx.createGain(); som.efeitos.gain.value = VOLUME.efeitos; som.efeitos.connect(som.geral);
+  }
+  try { await Promise.race([som.ctx.resume(), espera(300)]); } catch (_) {}  // sem clique, o resume fica pendente
+  if (som.ctx.state !== 'running') { botaoSom(true); return; }  // sem clique ainda: o navegador barrou
+  som.ligado = true; som.geral.gain.value = 1;
+  botaoSom(false);
+  if (estado) tocarFundo();
+}
+function desligarSom() {
+  som.ligado = false;
+  if (som.ctx) { som.geral.gain.value = 0; som.ctx.suspend().catch(() => {}); }
+  botaoSom(false);
+}
+$('som').addEventListener('click', () => {
+  if (som.ligado) { desligarSom(); salvarPref(false); } else { salvarPref(true); ligarSom(); }
+});
+// tenta ligar na carga; o navegador barra até o primeiro clique ou tecla, e aí qualquer lugar da tela liga
+// (o próprio botão fica de fora: ele tem o clique dele, que liga e desliga)
+if (lerPref()) ligarSom();
+const destravar = (ev) => { if (ev.target !== $('som') && lerPref() && !som.ligado) ligarSom(); };
+document.addEventListener('pointerdown', destravar);
+document.addEventListener('keydown', destravar);
+/** Voz da fala (se o arquivo dela existe), com a música mais baixa enquanto ela fala. */
+async function vozDaFala(texto) {
+  const nome = `fala-${hashFala(texto)}`;
+  if (!som.ligado || !temSom(nome)) return;
+  const t = som.ctx.currentTime, alvo = som.musica.gain;
+  alvo.cancelScheduledValues(t); alvo.setTargetAtTime(VOLUME.musica * VOLUME.abaixaMusica, t, 0.15);
+  await tocarSom(nome, som.voz);
+  alvo.setTargetAtTime(VOLUME.musica, som.ctx.currentTime, 0.6);
+}
+function efeitosDoClipe(nome) {
+  for (const [seg, efeito] of EFEITOS_CLIPE[nome] || []) tocarSom(`sfx-${efeito}`, som.efeitos, seg);
+}
+
+// ---------- caixa de diálogo ----------
+const fala = { fila: [], ativa: false, ultima: 0 };
+function escolher(chave) {
+  const lista = FALAS[chave] || [''];
+  const h = (estado && estado.hoje) || {};
+  return lista[Math.floor(Math.random() * lista.length)]
+    .replace('{r}', h.respondidas ?? 0).replace('{e}', estado ? estado.comEquipe ?? 0 : 0).replace('{n}', h.naoEntendidas ?? 0);
+}
+function dizer(chave, expr = 'neutro', urgente = false) {
+  if (urgente) fala.fila.length = 0;
+  fala.fila.push({ texto: escolher(chave), expr });
+  if (fala.fila.length > 3) fala.fila.splice(0, fala.fila.length - 3);
+  if (!fala.ativa) falarFila();
+}
+async function falarFila() {
+  fala.ativa = true;
+  while (fala.fila.length) {
+    const { texto, expr } = fala.fila.shift();
+    desenharRetrato(expr);
+    $('seta').classList.remove('on');
+    const alvo = $('texto');
+    alvo.textContent = '';
+    const voz = vozDaFala(texto);       // a voz começa junto com o texto
+    for (const ch of texto) {           // letra por letra; pausa maior na pontuação
+      alvo.textContent += ch;
+      await espera('.!?'.includes(ch) ? 180 : ch === ',' ? 90 : 32);
+    }
+    $('seta').classList.add('on');
+    await voz;                          // não corta a voz no meio
+    await espera(som.ligado ? 1600 : Math.max(1800, texto.length * 40));
+  }
+  fala.ativa = false; fala.ultima = Date.now();
+}
+
+// ---------- vídeos ----------
+function instalado(nome) { return !!(estado && estado.clipes && estado.clipes.includes(nome)); }
+function base() {
+  const pref = estado && estado.horario === 'fechado' ? 'fora' : 'plantao';
+  const outro = pref === 'fora' ? 'plantao' : 'fora';
+  return instalado(pref) || !instalado(outro) ? pref : outro;  // sem o loop do horário, usa o outro
+}
+
+/** Toca um clipe no vídeo de trás e troca com fade. Em clipe sem loop, resolve quando termina. */
+function tocar(nome, loop) {
+  return new Promise((resolve) => {
+    const v = videos[1 - ativo], velho = videos[ativo];
+    let feito = false;
+    const fim = () => { if (!feito) { feito = true; resolve(); } };
+    v.loop = loop; v.muted = true;
+    v.onended = loop ? null : fim;
+    v.onerror = fim;
+    v.src = `${BASE}/clipes/${nome}.mp4`;
+    v.onplaying = () => { v.onplaying = null; if (!loop) efeitosDoClipe(nome); };
+    v.oncanplay = () => {
+      v.oncanplay = null;
+      v.currentTime = 0;
+      v.play().catch(() => {});
+      v.classList.add('on'); velho.classList.remove('on');
+      ativo = 1 - ativo;
+      setTimeout(() => { velho.pause(); }, 400);
+      if (!loop) setTimeout(fim, ((v.duration || 8) + 1.5) * 1000);  // garantia se o "ended" não vier
+    };
+    v.load();
+    if (loop) setTimeout(fim, 50);
+  });
+}
+
+async function voltarBase() {
+  const b = base();
+  $('vazio').classList.toggle('on', !instalado(b));
+  if (baseAtual === b && !tocando) return;
+  baseAtual = b;
+  if (instalado(b)) await tocar(b, true);
+}
+
+async function rodarFila() {
+  if (tocando) return;
+  tocando = true;
+  while (fila.length) {
+    const ev = fila.shift();
+    dizer('chegou', 'alerta');
+    if (instalado('chegou')) { $('vazio').classList.remove('on'); baseAtual = ''; await tocar('chegou', false); }
+    if (ev.tipo === 'respondeu') {
+      const r = (estado.hoje || {}).respondidas || 0;
+      dizer(r > 0 && r % 10 === 0 ? 'marco' : 'respondeu', 'neutro');
+    } else if (ev.tipo === 'encaminhou') dizer('encaminhou', 'firme');
+    else dizer('nao_entendeu', 'neutro');
+    const final = (SEQ[ev.tipo] || [])[1];
+    if (final && instalado(final)) { $('vazio').classList.remove('on'); baseAtual = ''; await tocar(final, false); }
+  }
+  tocando = false;
+  await voltarBase();
+}
+
+// ---------- estado do bot ----------
+function chaveDe(e) {
+  if (e.fonte === 'erro') return e.erro === 'token recusado' ? 'token' : 'erro';
+  if (e.fonte === 'simulado') return 'simulado';
+  return e.conexao;  // conectado | reconectando | desconectado
+}
+
+function mostrarEstado() {
+  const e = estado, h = e.hoje || {};
+  $('cResp').textContent = h.respondidas ?? 0;
+  $('cEnc').textContent = h.encaminhadas ?? 0;
+  $('cEq').textContent = e.comEquipe ?? 0;
+  $('cNao').textContent = h.naoEntendidas ?? 0;
+  let cor = '#5a5f67', txt = 'Sem contato com o bot';
+  if (e.fonte === 'simulado') { cor = '#f0c46a'; txt = 'Simulação (bot não configurado)'; }
+  else if (e.fonte === 'erro') { cor = '#c0533a'; txt = e.erro === 'token recusado' ? 'Token recusado pelo bot' : 'Sem contato com o bot'; }
+  else if (e.conexao === 'conectado') { cor = '#7fd47f'; txt = (e.horario === 'fechado' ? 'Fora do horário' : 'Em atendimento') + (e.modo === 'teste' ? ' · modo teste' : ''); }
+  else if (e.conexao === 'reconectando') { cor = '#e0a040'; txt = 'Reconectando ao WhatsApp'; }
+  else { cor = '#c0533a'; txt = 'WhatsApp desconectado'; }
+  $('ponto').style.background = cor; $('estadoTxt').textContent = txt;
+}
+
+/** Falas que não vêm de evento: primeira carga, conexão que cai ou volta, mudança de horário. */
+function falasDeEstado(primeira) {
+  const chave = chaveDe(estado), inicio = estado.horario === 'fechado' ? 'inicio_fechado' : 'inicio_aberto';
+  if (primeira) {
+    if (chave === 'simulado') dizer('simulado', 'neutro');
+    else if (chave !== 'conectado') dizer(chave, 'firme');
+    dizer(inicio, estado.horario === 'fechado' ? 'sereno' : 'neutro');
+  } else if (chave !== chaveConexao) {
+    if (chave === 'conectado' || chave === 'simulado') dizer(chaveConexao === 'reconectando' || chaveConexao === 'desconectado' ? 'voltou' : inicio, 'neutro', true);
+    else dizer(chave, chave === 'reconectando' ? 'alerta' : 'firme', true);
+  } else if (estado.horario !== horarioAntes) dizer(inicio, estado.horario === 'fechado' ? 'sereno' : 'neutro');
+  chaveConexao = chave; horarioAntes = estado.horario;
+}
+
+async function consultar() {
+  try {
+    const r = await fetch(`${BASE}/estado${desde ? `?desde=${desde}` : ''}`, { cache: 'no-store', credentials: 'same-origin' });
+    if (!r.ok) throw new Error(r.status);
+    const novo = await r.json();
+    const primeira = estado === null;
+    estado = novo;
+    mostrarEstado();
+    if (som.ligado) tocarFundo();
+    falasDeEstado(primeira);
+    if (!primeira && Array.isArray(novo.eventos) && novo.eventos.length) {
+      fila.push(...novo.eventos);
+      if (fila.length > MAX_FILA) fila = fila.slice(-MAX_FILA);
+    }
+    if (typeof novo.ultimo === 'number' && novo.ultimo >= desde) desde = novo.ultimo;
+    if (fila.length) rodarFila(); else if (!tocando) voltarBase();
+  } catch (_) {
+    $('ponto').style.background = '#c0533a'; $('estadoTxt').textContent = 'Sem contato com a vila';
+  }
+}
+
+// fala de espera quando nada acontece há um tempo
+setInterval(() => {
+  if (!estado || fala.ativa || tocando || fila.length || Date.now() - fala.ultima < 45000) return;
+  dizer(estado.horario === 'fechado' ? 'ocioso_noite' : 'ocioso', estado.horario === 'fechado' ? 'sereno' : 'neutro');
+}, 5000);
+
+desenharRetrato('neutro');
+consultar();
+setInterval(consultar, 3000);
+</script>
+</body>
+</html>

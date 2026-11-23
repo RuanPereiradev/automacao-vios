@@ -6,9 +6,9 @@
 
 Identificar cliente destinatário, meio/providência, rito, órgão que praticou o ato, prazo expresso ou legal, termo inicial e calendário aplicável. Separar prazo da parte contrária. Não afirmar ausência geral de recurso só porque o ato favorece o cliente: avaliar interesse e vícios próprios.
 
-Distinguir disponibilização, publicação e ciência eletrônica. Não tratar data de captura/geração do relatório como publicação. No DJEN, confirmar a publicação efetiva e contar do primeiro dia útil subsequente, conforme as regras aplicáveis. Intimação pessoal/portal pode ter regra distinta: verificar a modalidade antes de substituir o termo inicial.
+Distinguir disponibilização, publicação e ciência eletrônica. Não tratar captura/geração como publicação. Por orientação expressa de 11/11/2026, usar sempre a publicação informada no DJEN/CSV para os controles operacionais solicitados, inclusive para Fazenda Pública, sem perguntar a ciência do portal nem bloquear somente por sua ausência. Excluir o dia da publicação e iniciar no próximo dia de segunda a sexta. Não apresentar essa escolha operacional como validação de que a publicação substitui a intimação pessoal exigida em lei. Se a usuária pedir validação jurídica oficial, conferir o marco legal próprio; se faltar publicação, não inventá-la.
 
-Aplicar prazo expresso confirmado para a providência; se divergir da regra legal, registrar a divergência e a necessidade de conferência, sem alongar silenciosamente o controle. Se faltar prazo no texto, usar o legal apenas quando confirmada sua aplicação ao rito e inexistir prazo específico pertinente nos autos. Preservar controle preventivo identificado se a validação ainda estiver pendente.
+Aplicar prazo expresso confirmado para a providência; se divergir da regra legal, registrar a divergência e a necessidade de conferência, sem alongar silenciosamente o controle. Se faltar prazo no expediente completo, indicar o prazo legal aplicável ao rito/providência, identificando eventual aplicação subsidiária. A ausência de prazo expresso, por si só, não bloqueia a tarefa nem exige consulta. Exigir conferência apenas se faltar termo inicial, não houver regra aplicável identificável ou existir indicação concreta de prazo especial ainda não disponível. Preservar controle preventivo identificado se a validação ainda estiver pendente.
 
 ## Prazos legais de referência
 
@@ -18,6 +18,7 @@ Conferir a legislação vigente e as exceções do caso. A tabela não prova cab
 | --- | --- |
 | CPC: apelação, agravo de instrumento/interno, REsp e RE | 15 dias úteis, quando cabíveis |
 | Embargos de declaração cíveis/previdenciários/JEC | 5 dias úteis, quando cabíveis |
+| Fazenda Pública no CPC (fora do JEC/JEF) | Embargos: 10 dias; recursos em regra: 30 dias, observada a prerrogativa do art. 183. Impugnação do art. 535: 30 dias expressos, sem nova duplicação. Marco dos controles internos pela publicação conforme orientação de 11/11/2026. |
 | Sentença de JEC/JEF: recurso inominado | 10 dias úteis, ressalvadas exceções de cabimento |
 | Manifestação sobre laudo, art. 477, §1º, CPC | 15 dias úteis, se aplicável e sem prazo específico confirmado |
 | Trabalhista: RO, RR, agravo de instrumento/petição e embargos ao TST | 8 dias úteis, observados pressupostos e regras especiais |
@@ -30,7 +31,7 @@ Nos campos externos de controle, identificar `Prazo previsto em lei: N dias úte
 ## Calendário e contagem
 
 - Aplicar o calendário simplificado do SKILL.md a todas as contagens de prazos em dias úteis: contar segunda a sexta e excluir somente sábados e domingos, inclusive em embargos, recursos e manifestações. Incluir feriados, pontos facultativos, recesso e suspensões. Não exigir consulta de feriados nem bloquear pela ausência de calendário oficial.
-- Excluir o dia da publicação/ciência informada e iniciar no próximo dia de segunda a sexta. Preservar o marco documental e a duração expressa ou legal pertinente. Não inventar ciência do cliente a partir de intimação exclusiva da parte contrária.
+- Excluir o dia da publicação/ciência informada e iniciar no próximo dia de segunda a sexta. Preservar o marco documental e a duração expressa ou legal pertinente. Não atribuir ao cliente obrigação da parte contrária; para o marco operacional, aplicar a publicação fornecida e a orientação expressa de 11/11/2026 do SKILL.md.
 - D-2: retroceder dois dias de segunda a sexta do vencimento de referência, incluindo feriados. Análises/ciências e prioridades usam esse mesmo calendário para agendamento, com o corte das 12h previsto no SKILL.md.
 - Identificar uma vez, fora dos resumos: `Contagem solicitada: segunda a sexta, incluindo feriados; vencimentos sem validação do calendário judicial oficial.` Não chamar o resultado de vencimento jurídico oficial confirmado.
 - Preservar datas-limite expressamente fixadas pelo juízo e data/hora exatas dos eventos. Prazos em horas ou dias corridos mantêm a unidade e regime próprios, inclusive no Criminal; o calendário simplificado não converte dias corridos em dias úteis.
@@ -55,6 +56,8 @@ Antes de sugerir omissão ou majoração do art. 85, §11, CPC, conferir honorá
 A tarefa é de manifestação sobre laudo, não de comparecimento a perícia ou de análise de sentença. Usar quinze dias do art. 477, §1º, CPC apenas sob premissa de aplicação subsidiária adequada e inexistência de prazo específico no expediente/decisão. Identificar essa premissa quando só houver trecho resumido.
 
 ## Apresentar os resultados
+
+Definir primeiro a tarefa pelo filtro de providência concreta do SKILL.md. Se o despacho resultar apenas em CIÊNCIA, sem providência atual do cliente nem questão jurídica concreta, não calcular nem inserir controles de embargos/recurso. A exigência de duas datas aplica-se às tarefas de análise jurídica, não a todo expediente intitulado despacho.
 
 Aplicar integralmente os cabeçalhos e datas do SKILL.md. Em análise jurídica de sentença/acórdão/decisão, calcular e mostrar ambas as datas em D-2, inclusive como controle preventivo quando houver restrição de cabimento; reservar a decisão ao advogado. Não substituir datas por `NÃO CABE`. Indicar a ressalva jurídica nos campos externos, sem afirmar admissibilidade. Na homologação de conciliação em JEC, conservar a ressalva do art. 41 fora da descrição e não chamar o controle preventivo de recurso validado.
 

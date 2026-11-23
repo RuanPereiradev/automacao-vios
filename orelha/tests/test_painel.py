@@ -72,17 +72,20 @@ class TestFila(unittest.TestCase):
             tarefa("MINUTAR CONTESTAÇÃO (TRABALHISTA) 2026", -2, n=1),
             tarefa("AUDIÊNCIA UNA/INSTRUÇÃO (CÍVEL) 2026", 3, n=2, hora="09:50"),
             tarefa("C: MINUTAR PARECER 2026", 1, n=3),                       # consultoria: entra como peça
-            tarefa("INFORMAR AUDIÊNCIA (CÍVEL) 2026", 1, n=4),               # sobre a audiência: fora
-            tarefa("ANALISAR PROCESSO (CÍVEL) 2026", 1, n=5),                # outro tipo: fora
+            tarefa("INFORMAR AUDIÊNCIA (CÍVEL) 2026", 1, n=4),               # sobre a audiência: "outra"
+            tarefa("ANALISAR PROCESSO (CÍVEL) 2026", 1, n=5),                # outro tipo: "outra"
             tarefa("MINUTAR RECURSO 2026", 30, n=6),                         # além de 14 dias: fora
             tarefa("MINUTAR EMBARGOS 2026", 2, n=7, etiqueta="CANCELADA"),   # cancelada: fora
             tarefa("MINUTAR INICIAL 2026", 2, n=8, concluida=True),          # concluída: fora
             tarefa("MINUTAR CONTESTAÇÃO (TRABALHISTA) 2026", -2, n=1),       # repetida: uma só
         ]
         fila, ignoradas = fila_de(tarefas)
-        self.assertEqual([e.chave for e in fila], ["910001", "910003", "910002"])
-        self.assertEqual([e.categoria for e in fila], ["peca", "peca", "audiencia"])
+        self.assertEqual([e.chave for e in fila], ["910001", "910005", "910003", "910004", "910002"])
+        self.assertEqual([e.categoria for e in fila], ["peca", "outra", "peca", "outra", "audiencia"])
         self.assertEqual(ignoradas, {"sem_data": 0})
+        # ORELHA_PAINEL_OUTRAS=nao: só peças e audiências, como antes de 23/11/2026
+        fila, _ = fila_de(tarefas, outras=False)
+        self.assertEqual([e.chave for e in fila], ["910001", "910003", "910002"])
 
     def test_sem_data_e_so_limite(self):
         sem = tarefa("MINUTAR A", 0, n=1)
@@ -97,18 +100,46 @@ class TestFila(unittest.TestCase):
         fila, _ = fila_de([tarefa("MINUTAR A", 5, "BRUNO FICTÍCIO", 1), tarefa("MINUTAR B", -1, "", 2),
                            tarefa("MINUTAR C", 5, "ANA FICTÍCIA, BRUNO FICTÍCIO", 3)])
         self.assertEqual([(e.dias, e.responsavel) for e in fila],
-                         [(-1, "Sem responsável"), (5, "Ana Fictícia"), (5, "Bruno Fictício")])
+                         [(-1, "Sem responsável"), (5, "Ana Fictícia, Bruno Fictício"), (5, "Bruno Fictício")])
+        self.assertEqual(fila[1].responsaveis, ("Ana Fictícia", "Bruno Fictício"))
 
     def test_carga(self):
         tarefas = ([tarefa("MINUTAR X", dias, "ANA FICTÍCIA", i) for i, dias in enumerate((-1, 2, 9), 1)]
                    + [tarefa("AUDIÊNCIA A 2026", 4, "ANA FICTÍCIA", 10), tarefa("MINUTAR Y", 1, "BRUNO FICTÍCIO", 11),
-                      tarefa("MINUTAR Z", 3, "", 12)])
+                      tarefa("MINUTAR Z", 3, "", 12), tarefa("ANALISAR PROCESSO 2026", 2, "ANA FICTÍCIA, BRUNO FICTÍCIO", 13)])
         fila, _ = fila_de(tarefas)
         c = {x["nome"]: x for x in painel.carga(fila, urgente_alto=3)}
-        self.assertEqual(c["Ana Fictícia"], {"nome": "Ana Fictícia", "pecas": 3, "audiencias": 1, "total": 4,
-                                             "vencidas": 1, "urgente": 3, "destaque": True})
+        # a MINUTAR de daqui a 9 dias fica fora da semana do painel (até 7 dias depois do pedido)
+        # a tarefa com dois responsáveis conta para os dois
+        self.assertEqual(c["Ana Fictícia"], {"nome": "Ana Fictícia", "pecas": 2, "audiencias": 1, "outras": 1,
+                                             "total": 4, "vencidas": 1, "urgente": 4, "destaque": True})
+        self.assertEqual((c["Bruno Fictício"]["pecas"], c["Bruno Fictício"]["outras"], c["Bruno Fictício"]["total"]), (1, 1, 2))
         self.assertFalse(c["Bruno Fictício"]["destaque"])
         self.assertEqual([x["nome"] for x in painel.carga(fila)], ["Ana Fictícia", "Bruno Fictício", "Sem responsável"])
+
+    def test_periodo_escolhido(self):
+        tarefas = [tarefa("MINUTAR VENCIDA", -2, n=1), tarefa("MINUTAR HOJE", 0, n=2), tarefa("MINUTAR D3", 3, n=3),
+                   tarefa("MINUTAR D10", 10, n=4), tarefa("MINUTAR D20", 20, n=5)]
+        # de hoje até daqui a 14 dias: a vencida (aberta) entra; a de 20 dias não
+        fila, _ = fila_de(tarefas, de=HOJE, ate=d(14))
+        self.assertEqual([e.tarefa for e in fila], ["MINUTAR VENCIDA", "MINUTAR HOJE", "MINUTAR D3", "MINUTAR D10"])
+        # de daqui a 5 dias até daqui a 12: as de hoje e de 3 dias ficam fora; a vencida continua
+        fila, _ = fila_de(tarefas, de=d(5), ate=d(12))
+        self.assertEqual([e.tarefa for e in fila], ["MINUTAR VENCIDA", "MINUTAR D10"])
+
+    def test_periodo_padrao_e_escolhido(self):
+        ctx, _ = contexto()
+        self.assertEqual(painel.periodo(ctx, 7), (HOJE, d(7)))
+        ctx.painel_ate = d(14)
+        self.assertEqual(painel.periodo(ctx, 7), (HOJE, d(14)))
+        ctx.painel_de, ctx.painel_ate = d(2), None
+        self.assertEqual(painel.periodo(ctx, 7), (d(2), d(9)))
+
+    def test_agenda_no_periodo_escolhido(self):
+        tarefas = [tarefa("AUDIÊNCIA UNA 2026", 3, n=1), tarefa("AUDIÊNCIA UNA 2026", 12, n=2)]
+        fila, _ = fila_de(tarefas, ate=d(14))
+        self.assertEqual(len(painel.agenda_audiencias(fila, HOJE, 7)), 1)
+        self.assertEqual(len(painel.agenda_audiencias(fila, HOJE, 7, HOJE, d(14))), 2)
 
     def test_agenda(self):
         tarefas = [tarefa("AUDIÊNCIA UNA/INSTRUÇÃO (CÍVEL) 2026", 1, n=1, hora="14:00"),
@@ -143,18 +174,25 @@ class TestComparacao(unittest.TestCase):
         ctx.simulado = False
 
         def grava(dia, **extra):
-            ctx.gravar_historico(painel.nome_registro(dia), {"data": dia.isoformat(), "fila": ["1"], **extra})
+            ctx.gravar_historico(painel.nome_registro(dia), {"data": dia.isoformat(), "fila": ["1"], "tipos": "todas",
+                                                             **extra})
         grava(d(-2))    # novo demais (execução de teste no meio da semana)
+        grava(d(-6), tipos=painel.TIPOS_PECAS)  # só peças e audiências: não compara com a fila de todos os tipos
         grava(d(-7), total=7)
         grava(d(-9))
         grava(d(-60))   # velho demais
         ctx.gravar_historico("painel-simulado-" + d(-6).isoformat() + ".json", {"data": d(-6).isoformat(), "fila": ["x"]})
         self.assertEqual(painel.ler_base(ctx)["data"], d(-7).isoformat())
+        self.assertEqual(painel.ler_base(ctx, painel.TIPOS_PECAS)["data"], d(-6).isoformat())
+        # registro de antes do campo "tipos" é de peças e audiências
+        ctx.gravar_historico(painel.nome_registro(d(-5)), {"data": d(-5).isoformat(), "fila": ["1"]})
+        self.assertEqual(painel.ler_base(ctx, painel.TIPOS_PECAS)["data"], d(-5).isoformat())
+        self.assertEqual(painel.ler_base(ctx)["data"], d(-7).isoformat())
 
     def test_registro_corrompido_cai_para_o_anterior(self):
         ctx, _ = contexto()
         ctx.simulado = False
-        ctx.gravar_historico(painel.nome_registro(d(-9)), {"data": d(-9).isoformat(), "fila": ["1"]})
+        ctx.gravar_historico(painel.nome_registro(d(-9)), {"data": d(-9).isoformat(), "fila": ["1"], "tipos": "todas"})
         (ctx.historico / painel.nome_registro(d(-7))).write_text("{quebrado", encoding="utf-8")
         self.assertEqual(painel.ler_base(ctx)["data"], d(-9).isoformat())
 
@@ -171,15 +209,17 @@ class TestExecutar(unittest.TestCase):
         self.assertEqual(secao.chave, "painel")
         self.assertEqual(secao.erro, "")
         n = secao.numeros
-        self.assertEqual(n["fila"], 43)  # o que a fixture tem de peça e audiência, dentro de 14 dias, sem cancelada
+        self.assertEqual(n["fila"], 36)  # o que a fixture tem (todos os tipos), até 7 dias depois, sem cancelada
         self.assertEqual(n["nao_feitas"] + n["novas"], n["fila"])
         self.assertEqual(n["destaque"], n["fila"])
         html = (ctx.saida / "painel-semanal.html").read_text(encoding="utf-8")
-        self.assertIn("Painel Semanal — Semana de 30/10 a 06/11/2026", html)
+        self.assertIn("Painel Semanal — Semana de 06/11 a 13/11/2026", html)  # do dia do pedido até 7 dias depois
         self.assertIn("NÃO FEITAS", html)
         self.assertFalse((ctx.saida / "painel-semanal.pdf").exists())  # pdf=False
         registro = json.loads((ctx.historico / painel.nome_registro(HOJE, True)).read_text(encoding="utf-8"))
         self.assertEqual(registro["total"], n["fila"])
+        self.assertEqual(registro["tipos"], "todas")
+        self.assertIn("<th>Outras</th>", html)
         self.assertEqual(len(registro["semanas"]), 3)
 
     def test_nao_expoe_nomes_nos_numeros_da_vila(self):
@@ -187,6 +227,21 @@ class TestExecutar(unittest.TestCase):
         secao = painel.executar(ctx)
         self.assertEqual(secao.numeros_seguros(), secao.numeros)
         self.assertTrue(all(isinstance(v, (int, float)) for v in secao.numeros.values()))
+
+    def test_simulado_com_periodo_escolhido(self):
+        ctx, _ = contexto()
+        ctx.painel_de, ctx.painel_ate = HOJE, d(14)
+        painel.executar(ctx)
+        html = (ctx.saida / "painel-semanal.html").read_text(encoding="utf-8")
+        self.assertIn("Painel Semanal — Semana de 06/11 a 20/11/2026", html)
+        self.assertIn("Agenda de audiências — 06/11 a 20/11", html)
+
+    def test_periodo_que_nao_comeca_hoje_nao_vira_base(self):
+        ctx, _ = contexto()
+        ctx.painel_de, ctx.painel_ate = d(7), d(14)
+        secao = painel.executar(ctx)
+        self.assertFalse((ctx.historico / painel.nome_registro(HOJE, True)).exists())
+        self.assertTrue(any("não entra na comparação" in a for a in secao.avisos))
 
     def test_primeira_edicao_lista_a_fila_toda(self):
         ctx, _ = contexto()
@@ -202,9 +257,9 @@ class TestExecutar(unittest.TestCase):
         ctx, _ = contexto()
         original = painel._ler
 
-        def lendo(ctx_, dias, avisos):
+        def lendo(ctx_, dias, avisos, ate=None):
             avisos.append("a lista de tarefas não apareceu")
-            return original(ctx_, dias, avisos)
+            return original(ctx_, dias, avisos, ate)
         with mock.patch.object(painel, "_ler", side_effect=lendo):
             secao = painel.executar(ctx)
         self.assertFalse((ctx.historico / painel.nome_registro(HOJE, True)).exists())

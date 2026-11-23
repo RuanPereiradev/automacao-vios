@@ -11,7 +11,7 @@ import unicodedata
 from datetime import datetime
 from pathlib import Path
 
-from bot import prazos
+from bot import duplicidade, prazos
 
 AGUARDANDO, NA_FILA, LANCANDO, LANCADA, ERRO, DESCARTADA, DUPLICADA = (
     "aguardando", "na_fila", "lancando", "lancada", "erro", "descartada", "duplicada",
@@ -68,7 +68,7 @@ def importar(con, arquivo_analise):
         if not ci:
             continue
         analise = {k: v for k, v in r.items() if k != "ia"}
-        estado = DUPLICADA if r.get("duplicada_de") else AGUARDANDO
+        estado = DUPLICADA if r.get("duplicada_de") and duplicidade.ligado() else AGUARDANDO
         existente = con.execute("SELECT estado, editado_em FROM cis WHERE ci = ?", (ci,)).fetchone()
         if existente:
             con.execute("UPDATE cis SET analise = ?, intimacao = ? WHERE ci = ?",

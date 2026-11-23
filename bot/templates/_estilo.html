@@ -194,4 +194,43 @@
   @media (max-width: 860px) { .grade { grid-template-columns: 1fr 1fr; } .grade .largo { grid-column: 1 / -1; } }
   @media (max-width: 640px) { .painel { flex-direction: column; text-align: center; } header .sub { display: none; } }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+  /* Sam (<body class="tema-vila">): o estilo da Fortaleza do Dragão (bot/vila/fortaleza.html), no lugar do
+     azul escuro. Noite sobre a pedra, molduras douradas como os quadros da cena, Lora no texto e
+     Silkscreen na marca. */
+  body.tema-vila { --fundo: #0b0a09; --cartao: #15120f; --cartao2: #1d1914; --borda: #3a2f20; --texto: #f3ead8;
+    --suave: #a99a7a; --metal: #f0c46a; --red: #c8963a; --red-escuro: #6b4f22; --azul: #9fd0ff; --ouro: #c8963a;
+    font-family: Lora, Georgia, serif;
+    background: radial-gradient(ellipse 120% 60% at 50% -10%, #22336a 0%, #141a33 35%, transparent 70%) fixed,
+                radial-gradient(ellipse 80% 40% at 50% 110%, rgba(200, 150, 58, .16), transparent 70%) fixed, #0b0a09; }
+  .tema-vila header { background: #15120f; border-bottom: 3px solid #c8963a; box-shadow: 0 3px 0 #3a2c14, 0 10px 30px rgba(0, 0, 0, .5);
+                      backdrop-filter: none; }
+  .tema-vila header .sub { color: #a99a7a; font-family: Lora, Georgia, serif; }
+  .tema-vila .marca-sam { font-family: Silkscreen, monospace; font-weight: 400; letter-spacing: .3em; color: #f3ead8; }
+  .tema-vila .marca-sam b { color: #e8b923; font-weight: 400; text-shadow: 0 0 12px rgba(232, 185, 35, .5); }
+  .tema-vila h1, .tema-vila h2 { font-family: Lora, Georgia, serif; font-weight: 500; color: #f0c46a; letter-spacing: .01em; }
+  .tema-vila .cartao { border: 1.5px solid #6b4f22; border-radius: 4px;
+                       box-shadow: inset 0 0 0 3px #15120f, inset 0 0 0 4px #3a2c14, 0 10px 30px rgba(0, 0, 0, .45); }
+  .tema-vila .botao, .tema-vila button { font-family: Lora, Georgia, serif; border-radius: 3px; }
+  .tema-vila .primario { background: linear-gradient(180deg, #f0c46a, #c8963a); color: #15120f; border-color: #6b4f22;
+                         box-shadow: inset 0 1px 0 #fff1a8, 0 3px 0 #3a2c14; }
+  .tema-vila .primario:hover:not(:disabled) { box-shadow: inset 0 1px 0 #fff1a8, 0 3px 0 #3a2c14, 0 0 18px rgba(240, 196, 106, .45); }
+  .tema-vila .secundario { background: #15120f; color: #d9cdb4; border-color: #6b4f22; }
+  .tema-vila .secundario:hover:not(:disabled) { border-color: #f0c46a; color: #fff1a8; }
+  .tema-vila pre, .tema-vila input:not([type=checkbox]), .tema-vila textarea, .tema-vila .barra { background: #0e0c0a; }
+  .tema-vila input:focus, .tema-vila textarea:focus { border-color: #c8963a; box-shadow: 0 0 0 3px rgba(240, 196, 106, .18); }
+  .tema-vila code { background: #1d1914; }
+  .tema-vila .soltar { border-color: #6b4f22; border-radius: 4px; background: rgba(240, 196, 106, .02); }
+  .tema-vila .soltar:hover, .tema-vila .soltar.arrastando { border-color: #f0c46a; background: rgba(240, 196, 106, .06);
+                                                            box-shadow: inset 0 0 40px rgba(240, 196, 106, .08); }
+  .tema-vila .barra-salvar { background: linear-gradient(transparent, rgba(11, 10, 9, .95) 40%); }
+  .tema-vila .lista > li.atual { box-shadow: 0 0 18px rgba(240, 196, 106, .25); }
+  .tema-vila .hist tr:hover td { background: rgba(240, 196, 106, .04); }
+  .tema-vila .hist th { color: #a99a7a; }
+  .tema-vila .numero { border-color: #3a2f20; border-radius: 3px; }
+  .numero b.ok, .cartao b.ok { color: var(--verde); }
+  .dias-auto { margin: 4px 0 0; font-size: 14px; }
+  /* a Fortaleza no topo: a própria cena tem a moldura dourada */
+  .fortaleza-cartao { padding: 0; border: 0 !important; background: #0b0a09; box-shadow: 0 0 0 2px #0b0a09, 0 0 0 5px #3a2c14, 0 20px 60px rgba(0, 0, 0, .6) !important; }
+  .fortaleza-quadro { aspect-ratio: 16 / 9; }
 </style>

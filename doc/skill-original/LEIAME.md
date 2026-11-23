@@ -54,7 +54,7 @@ Pacote recebido da Controladoria (arquivos de 20/10), antes do robô. Idêntico 
 - Duplicatas: o robô confere na captura e no envio; o chat também não deve colocar
   a cópia no arquivo para o robô.
 
-## 6 — 30/10/2026 — contagem simplificada (atual)
+## 6 — 30/10/2026 — contagem simplificada
 Skill revisada pela Controladoria (pacote "skill att de verdade agora").
 - **Contagem simplificada:** só sábado e domingo ficam de fora; feriados, pontos
   facultativos, recesso e suspensões contam como dias úteis. Não pesquisar feriados.
@@ -69,3 +69,39 @@ Skill revisada pela Controladoria (pacote "skill att de verdade agora").
 - Correções de responsável: Carlos trabalhista → Johnys; Tamira previdenciário → Suhiane.
 - Audiência: usar o link encurtado quando houver.
 - Nova referência `validacao-lancamento.md` (quando não lançar e checagem final).
+
+## 7 — 10/11/2026 — TXT do bot com PROCESSO e duplicadas
+Pacote "txt-bot-duplicadas": o TXT do chat passou a trazer o campo `PROCESSO` (sete campos) e as regras de duplicadas.
+
+## 8 — 13/11/2026 — responsáveis, feriado e marco pela publicação (atual)
+Pacote `analise-intimacoes-controladoria-atualizada-2026-11-13.zip`, da Controladoria.
+- **Responsáveis:** nunca `automático` (o VIOS manda a tarefa para AMANDA LEITE MENDES, que só lança). Usar o nome
+  completo do advogado auxiliar; sem auxiliar, o advogado responsável. Exceção: sem auxiliar e com RONIELLE FEITOSA
+  como responsável, a tarefa não vai no TXT (`NÃO LANÇAR — VERIFICAR QUEM É O ADVOGADO AUXILIAR...`).
+- **Perícia médica judicial previdenciária:** responsável pela filial (Camocim, Tianguá, Jijoca, Sobral); sem filial
+  identificada, não lançar. Não vale para as outras tarefas de perícia.
+- **Feriado na DATA do VIOS:** a contagem continua simplificada, mas se a `DATA` ajustável cair em feriado nacional ou
+  local da filial, antecipa para o dia de trabalho anterior (só a `DATA`; vencimento e D-2 da descrição não mudam).
+  Ponto facultativo e feriado de outro estado não antecipam. Audiência, perícia e sustentação ficam na data real.
+- **Marco pela publicação:** usar sempre a publicação do DJEN/CSV como marco dos controles internos, inclusive Fazenda
+  Pública (embargos 10 dias, recurso 30), sem pedir a ciência do portal.
+- Análise de sentença pode ser incluída com o resultado conhecido quando o evento o indica (ex.: "Julgada procedente").
+- `CIÊNCIA (CÍVEL) 2026` também vale para Criminal. Novas equivalências de clientes de 11 e 12/11 (roteamento).
+- `modelo-analise-vios.md` marcado como histórico; ícone novo.
+
+
+## 9 — 18/11/2026 — skill atualizada (pacote da Controladoria)
+Pacote `analise-intimacoes-controladoria-atualizada-2026-11-18.zip` (nesta pasta), com a estrutura de referências separada
+(`SKILL.md` enxuto + 6 arquivos em `references/`). Passou a ser a skill do projeto (`doc/analise-intimacoes-controladoria/`).
+- **Feriado na DATA do VIOS:** a regra de antecipação por feriado (versão 8) saiu da skill. A contagem continua
+  segunda a sexta, inclusive feriados, sem exigir calendário oficial. O código ainda antecipa a `DATA` (`bot/prazos.py`
+  `antecipar()`); ver pendência em `DOCUMENTACAO.md`.
+- **Perícia médica por filial:** a tarefa de comparecimento usa o responsável da filial indicada e mapeada; sem filial,
+  usa o texto `incluir responsável pela cidade identificada` e **não bloqueia**. A tabela de filiais saiu de `SKILL.md`
+  e `tarefas-vios.md` e continua em `pop-fluxo-intimacoes.md`.
+- **Responsáveis:** `CARL` (Carlos) vai para JOHN (nome completo), exceto cliente CALTECH. Regra de Amanda, `automático`
+  e RONEELY FEITOSA sem auxiliar mantidas (com o nome correto do VIOS: RONEELY).
+- **Análise e ciência:** após 12h, próximo dia de expediente do escritório (antes: próximo dia de segunda a sexta).
+- Sem alteração de texto de tarefas oficiais: `tarefas_oficiais()` lê as mesmas 55 tarefas.
+- `doc/skill-unica/` regenerado com `gerar_skill_unica.py`.
+- Código alinhado a esta versão (ver CHANGELOG, 18/11/2026).

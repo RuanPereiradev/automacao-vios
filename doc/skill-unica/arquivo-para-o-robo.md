@@ -21,7 +21,7 @@ PROCESSO: 0000456-78.2026.5.07.0001
 TAREFA: AUDIÊNCIA UNA/INSTRUÇÃO (TRABALHISTA) 2026
 DATA: 22/01/2027
 HORA: 08:20
-RESPONSÁVEIS: automático
+RESPONSÁVEIS: NOME COMPLETO DO ADVOGADO AUXILIAR
 DESCRIÇÃO:
 AUDIÊNCIA UNA
 DATA: 22/01/2027
@@ -36,7 +36,7 @@ PROCESSO: 0000789-01.2025.8.06.0001
 TAREFA: ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026
 DATA: 29/10/2026
 HORA:
-RESPONSÁVEIS: automático
+RESPONSÁVEIS: NOME COMPLETO DO ADVOGADO AUXILIAR
 DESCRIÇÃO:
 PRAZO DE EMBARGOS: 02/11/2026
 PRAZO DE RECURSO: 16/11/2026
@@ -51,9 +51,9 @@ Regras do arquivo:
 - `CI`: só o número da CI do VIOS.
 - `PROCESSO`: **sempre** o número do processo da CI no padrão CNJ (`0000000-00.0000.0.00.0000`), como está no campo Números da intimação (ou no teor). A página de envio mostra esse número em cada CI; se faltar, ela usa o número capturado do VIOS e avisa quando não acha nenhum.
 - `TAREFA`: o nome exato da lista oficial (seção "Referência — Tarefas VIOS e Modelos de Descrição").
-- `DATA`: a data da tarefa no VIOS (DD/MM/AAAA), já calculada pelas regras de data da skill (D-2; prioridade RPV/Suhiane no próximo dia de segunda a sexta; análise e ciência no mesmo dia até 12h ou no próximo dia depois das 12h; data exata do ato), sempre com a contagem simplificada (só sábado e domingo ficam de fora). Só `CIÊNCIA` pode ficar com `DATA:` vazia (vai para o dia do envio).
+- `DATA`: a data da tarefa no VIOS (DD/MM/AAAA), já calculada pelas regras de data da skill (D-2; prioridade RPV/Suhiane no próximo dia de segunda a sexta; análise e ciência no mesmo dia até 12h ou no próximo dia depois das 12h; data exata do ato), sempre com a contagem simplificada (só sábado e domingo ficam de fora). Feriado não altera a `DATA` (skill de 18/11/2026). Só `CIÊNCIA` pode ficar com `DATA:` vazia (vai para o dia do envio).
 - `HORA`: HH:MM em audiência, perícia e sustentação oral (na sessão virtual, o horário de início); vazia nas demais tarefas.
-- `RESPONSÁVEIS`: `automático` (o VIOS marca o auxiliar da intimação) ou os nomes completos, separados por vírgula, como aparecem no VIOS. Na petição da Execução da Tamira: `TAMIRA LOIOLA, BRENO SILVA MOTA`.
+- `RESPONSÁVEIS`: **nunca `automático`** (o VIOS manda a tarefa para AMANDA LEITE MENDES, que só lança e não executa). Nome completo do advogado auxiliar, como aparece no VIOS; sem auxiliar, o advogado responsável pelo processo (exceto RONIELLE FEITOSA: sem auxiliar e com ele como responsável, a tarefa fica fora do arquivo). Na `PERÍCIA MÉDICA JUDICIAL (PREVIDENCIÁRIO) 2026`, o responsável da filial (Camocim, Tianguá, Jijoca ou Sobral) ou, sem filial mapeada, o texto exato `incluir responsável pela cidade identificada`. CARL vai como JOHN (FRANCISCO JOHNYS VASCONCELOS BARBOSA), salvo cliente CALTECH (CARLOS AUGUSTO ALVES CAMILO BRANDÃO). Vários nomes separados por vírgula. Na petição da Execução da Tamira: `TAMIRA LOIOLA, BRENO SILVA MOTA`.
 - `DESCRIÇÃO`: sempre a última linha de campo; tudo abaixo dela vai para a Observação da tarefa, exatamente como escrito. Incluir os cabeçalhos de prazo da skill seguidos do texto do modelo da tarefa: `PRAZO DE EMBARGOS:` e `PRAZO DE RECURSO:` na análise jurídica de sentença/acórdão/decisão; `PRAZO FATAL D -2:` nas minutas; `PRAZO FATAL:` + `PRIORIDADE RPV` nas prioridades de RPV/precatório (exceto a minuta de dados de requisitórios, como no exemplo). Nunca os três cabeçalhos juntos. Não incluir `Responsável a marcar na tarefa` nem `Advogada auxiliar` (responsáveis vão em `RESPONSÁVEIS`).
 - Duas tarefas da mesma CI (ex.: verificar viabilidade de sustentação + sustentação oral): dois blocos seguidos com o mesmo `CI`.
 - **Não colocar no arquivo**: CI duplicada (vale a original), CI que não deve ser lançada (falta informação, evento sem teor, área divergente do auxiliar, tarefa pendente de definição). Listar essas CIs fora do bloco, com o motivo, para a Controladoria tratar à mão.

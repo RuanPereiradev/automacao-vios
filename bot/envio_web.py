@@ -9,15 +9,15 @@ import re
 import threading
 import uuid
 import zipfile
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from flask import (Flask, Response, abort, jsonify, redirect, render_template, request, send_file,
                    send_from_directory, url_for)
 
-from bot import albi, config, duplicidade, envio_txt, eventos, jarvis, orelha, skill, zangao
-from bot.lancamento import REGISTRO, lancar, ler_intimacao
+from bot import albi, conferencia, config, duplicidade, envio_auto, envio_txt, eventos, jarvis, orelha, skill, vila06, zangao
+from bot.lancamento import REGISTRO, RESULTADOS, lancar, ler_intimacao
 from bot.login import fazer_login
 from bot.navegador import criar_driver
 
@@ -30,6 +30,10 @@ FINAIS = ("gravada", "testada", "pulada", "duplicada", "erro")
 # 1ª linha "MODO: TESTE": o arquivo só pode ser testado (o botão de gravar some e o servidor recusa)
 MODO_TESTE = re.compile(r"\A\s*MODO\s*:\s*TESTE\s*(\r?\n|\Z)", re.I)
 ARQUIVO_VILA = Path(__file__).parent / "vila" / "vila.html"  # HTML único da vila (servido em /vila)
+# vila do Sam: a Fortaleza do Dragão (servida em /vila/sam, no topo das páginas do Sam)
+ARQUIVO_FORTALEZA = Path(__file__).parent / "vila" / "fortaleza.html"
+# Vila 06: a muralha do bot do Previdenciário (servida em /vila/previdenciario; vídeos fora do git)
+ARQUIVO_MURALHA = Path(__file__).parent / "vila" / "muralha.html"
 PASTA_ENVIOS = "envios"  # dentro da pasta de saída: um .json por envio (histórico que não some)
 DATAS = ("criado", "inicio", "fim", "editado")
 
@@ -103,12 +107,18 @@ def _editavel(envio):
     return envio["estado"] in EDITAVEIS and not envio.get("reconstruido")
 
 
-def resumo_envio(envio):
-    """Contagem por resultado, para o histórico."""
+def resumo_envio(envio, fim=None):
+    """Contagem por resultado, para o histórico. fim = o último envio_fim deste envio (eventos.fins_por_envio):
+    se o envio foi conferido de novo depois de enviado, as CIs perderam o resultado e a contagem vem dele."""
     r = [c.get("resultado") for c in envio["cis"]]
-    return {"gravadas": r.count("gravada"), "testadas": r.count("testada"), "erros": r.count("erro"),
-            "puladas": r.count("pulada") + r.count("duplicada"), "cis": len(r),
-            "tarefas": sum(len(c["tarefas"]) for c in envio["cis"])}
+    resumo = {"gravadas": r.count("gravada"), "testadas": r.count("testada"), "erros": r.count("erro"),
+              "puladas": r.count("pulada") + r.count("duplicada"), "cis": len(r),
+              "tarefas": sum(len(c["tarefas"]) for c in envio["cis"])}
+    if fim and envio.get("estado") == "conferir" and not any(r):
+        k = fim.get("contagens") or {}
+        resumo.update(gravadas=k.get("gravadas", 0), testadas=k.get("testadas", 0), erros=k.get("erros", 0),
+                      puladas=k.get("ja_tinha", 0) + k.get("duplicatas", 0))
+    return resumo
 
 
 def _situacao_tarefas(c):
@@ -194,7 +204,9 @@ def _processos_capturados(pasta_saida):
 
 def _duplicadas(pasta_saida):
     """{ci: CI original}: cópias marcadas na captura ou na análise do bot e as que o detector
-    acha nas capturas salvas (1ª conferência, na subida do .txt)."""
+    acha nas capturas salvas (1ª conferência, na subida do .txt). Detector desligado: nenhuma."""
+    if not duplicidade.ligado():
+        return {}
     dup = {}
     for arquivo in Path(pasta_saida).glob("analise_*.json"):
         for r in json.loads(arquivo.read_text(encoding="utf-8")):
@@ -209,7 +221,9 @@ def _duplicadas(pasta_saida):
 def conferir_duplicatas_no_vios(driver, aptas, capturas, lancadas, timeout):
     """2ª conferência, na hora do envio: lê no VIOS o teor de cada CI do arquivo e compara
     com as outras do arquivo e com as capturas. Marca resultado/mensagens nas cópias e
-    devolve as CIs que podem ser lançadas."""
+    devolve as CIs que podem ser lançadas. Detector desligado: todas seguem, sem ler o VIOS."""
+    if not duplicidade.ligado():
+        return list(aptas)
     lidas = {}
     for c in aptas:
         c["resultado"] = "conferindo"
@@ -244,6 +258,80 @@ def conferir_duplicatas_no_vios(driver, aptas, capturas, lancadas, timeout):
                               "conferir qual das duas lançar."]
         log.info("CI %s: %s", c["ci"], c["mensagens"][0])
     return seguir
+
+
+# tela "Envio automático": o que aconteceu com cada CI (rótulo e classe do selo)
+RESULTADO_ROTULO = {
+    "gravada": ("s-ok", "Lançada no VIOS"), "bloqueada": ("s-erro", "Não lançada — falta informação"),
+    "erro": ("s-erro", "Não lançada — erro"), "duplicada": ("s-ja", "Duplicada (não lançada)"),
+    "ja_no_vios": ("s-ja", "Já tinha tarefa no VIOS"), "conferencia": ("s-erro", "Não lançada — conferência humana"),
+    "retirada": ("s-erro", "Não lançada — tirada da lista"), "aguardando": ("s-andamento", "Ainda não enviada"),
+}
+
+
+def _registros_automatico(pasta_saida):
+    """(lancamentos.json, automatico_resultados.json)."""
+    pasta = Path(pasta_saida)
+    ler = lambda a: json.loads(a.read_text(encoding="utf-8")) if a.exists() else {}
+    return ler(pasta / REGISTRO), ler(pasta / RESULTADOS)
+
+
+def montar_automatico(pasta_saida, dias_analise):
+    """Relatório de conferência das análises pedidas (bot/conferencia.py): uma linha por intimação,
+    da captura à tarefa gravada no VIOS, com os prazos conferidos. Não lançadas primeiro, depois as
+    lançadas, cada grupo pela data mais próxima."""
+    pasta = Path(pasta_saida)
+    capturas = _capturas(pasta)
+    registro, anotados = _registros_automatico(pasta)
+    linhas = []
+    for dia in dias_analise:
+        for a in json.loads((pasta / f"analise_{dia}.json").read_text(encoding="utf-8")):
+            ci = a.get("ci", "")
+            item = capturas.get(ci, {})
+            link = a.get("link_lancar") or item.get("link_lancar", "")
+            if ci in registro:
+                estado, mensagem, quando = "gravada", "", registro[ci].get("quando", "")
+            elif ci in anotados:
+                estado, mensagem, quando = anotados[ci]["estado"], anotados[ci].get("mensagem", ""), anotados[ci].get("quando", "")
+            elif a.get("duplicada_de") and duplicidade.ligado():
+                estado, mensagem, quando = "duplicada", f"Cópia da CI {a['duplicada_de']}: vale a tarefa da original.", ""
+            elif a.get("bloqueios"):
+                estado, mensagem, quando = "bloqueada", "; ".join(a["bloqueios"]), ""
+            else:
+                estado, mensagem, quando = "aguardando", "", ""
+            classe, rotulo = RESULTADO_ROTULO.get(estado, ("s-ja", estado))
+            lancada = estado == "gravada"
+            gravadas = registro.get(ci, {}).get("tarefas", []) if lancada else []
+            pares, notas, atencao_datas = conferencia.comparar_tarefas(a, gravadas, quando)
+            ia = a.get("ia") or {}
+            contas = conferencia.conferir_contas(a)
+            datas = [d for d in (conferencia.data(a.get("prazo_d2")), conferencia.data(a.get("embargos")),
+                                 *(conferencia.data(v["data"] if v else t.get("data_tarefa")) for t, v in pares)) if d]
+            linhas.append({
+                "ci": ci, "processo": a.get("processo", ""), "cliente": a.get("cliente") or item.get("cliente", ""),
+                "posicao": a.get("posicao_cliente", ""), "auxiliar": a.get("auxiliar", ""),
+                "disponibilizacao": a.get("disponibilizacao", ""), "publicacao": a.get("publicacao", ""),
+                "teor": item.get("texto", ""), "ato": a.get("ato", ""), "area": a.get("area", ""),
+                "do_que_se_trata": a.get("do_que_se_trata", ""), "pendencias": a.get("pendencias", []),
+                "alertas": a.get("alertas", []), "bloqueios": a.get("bloqueios", []), "modelo": a.get("modelo", ""),
+                "custo": a.get("custo_us") or 0, "estado": estado, "lancada": lancada,
+                "classe": classe, "rotulo": rotulo, "mensagem": mensagem, "quando": quando,
+                "pares": pares, "gravadas": gravadas,
+                "prazo_fatal": a.get("prazo_fatal", ""), "prazo_d2": a.get("prazo_d2", ""),
+                "prazo_trecho": a.get("prazo_trecho", ""), "prazo": ia.get("prazo") or {},
+                "embargos": a.get("embargos", ""), "embargos_dias": (ia.get("embargos") or {}).get("dias"),
+                "recurso": a.get("recurso", ""), "recurso_nome": a.get("recurso_nome", ""),
+                "recurso_dias": (ia.get("recurso") or {}).get("dias"),
+                "cabe_recurso": a.get("cabe_recurso", ""), "calendario": a.get("calendario", ""),
+                "contas": [(True, n) for n in notas] + contas,  # notas do corte das 12h + conta refeita
+                "contas_ok": [ok for ok, _ in contas],
+                "atencao": atencao_datas + conferencia.pontos_de_atencao(a, pares, lancada),
+                "proxima": min(datas) if datas else date.max,
+                "link_lancar": link,
+                "link_conferencia": link.replace("int-lanca.php", "confere-intimacao-lancada.php") if link else "",
+            })
+    linhas.sort(key=lambda l: (l["lancada"], l["proxima"], l["ci"]))
+    return linhas
 
 
 def _cis_do_form(form):
@@ -310,6 +398,8 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     pasta_jarvis = jarvis.pasta()
     # Orelha (relatório do dia): ORELHA_PASTA ou a pasta orelha/ deste repositório; o Sam só lê o horário e os relatórios
     pasta_orelha = orelha.pasta()
+    # Vila 06 (bot do Previdenciário): endereço e token do bot, pasta dos vídeos (bot/vila06.py)
+    conf_vila06 = vila06.configuracao(cfg.pasta_saida)
     arquivo_pessoas = pasta_saida / "responsaveis.json"
     envios = carregar_envios(pasta_saida)  # id -> {arquivo, cis, estado, confirmar, ...}
     trava = threading.Lock()  # um envio por vez (um navegador só)
@@ -337,8 +427,24 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     def inicio():
         """Página do Sam (envio de tarefas ao VIOS)."""
         recentes = sorted(envios.items(), key=lambda e: e[1]["criado"], reverse=True)[:8]
+        # cartão "Envio automático": os últimos dias de envio, o mais novo com os números
+        automaticos = []
+        for n, (dia, envio) in enumerate(list(_dias_envio().items())[:6]):
+            item = {"dia": dia, "enviado": envio["enviado"]}
+            if n == 0:
+                try:
+                    linhas = montar_automatico(pasta_saida, envio["analises"])
+                except (OSError, ValueError, KeyError):
+                    log.exception("Envio automático de %s: não deu para montar o resumo", dia)
+                    linhas = []
+                item.update(total=len(linhas), lancadas=sum(l["lancada"] for l in linhas),
+                            atencao=sum(1 for l in linhas if l["atencao"]))
+            automaticos.append(item)
         return render_template("envio.html", tela="inicio", recentes=recentes, resumo=resumo_envio,
-                               total_envios=len(envios), total_lancadas=len(lancadas()), ocupado=trava.locked())
+                               fins=eventos.fins_por_envio(pasta_saida),
+                               total_envios=len(envios), total_lancadas=len(lancadas()), ocupado=trava.locked(),
+                               automaticos=automaticos, auto=envio_auto.andamento(pasta_saida),
+                               auto_fases=envio_auto.FASES)
 
     @app.route("/historico")
     def historico():
@@ -352,8 +458,37 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
                 return datetime.min
         gravadas = sorted(registro.items(), key=quando, reverse=True)
         return render_template("envio.html", tela="historico", envios_todos=todos, resumo=resumo_envio,
+                               fins=eventos.fins_por_envio(pasta_saida),
                                gravadas=gravadas, total_tarefas=sum(len(r.get("tarefas", [])) for r in registro.values()),
                                ocupado=trava.locked())
+
+    def _dias_envio():
+        return conferencia.dias_de_envio(pasta_saida, *_registros_automatico(pasta_saida))
+
+    @app.route("/automatico")
+    @app.route("/automatico/<dia>")
+    def automatico(dia=None):
+        """Envio automático: relatório de conferência de um dia de envio (o dia em que as tarefas foram
+        gravadas no VIOS): cada intimação -> análise da IA -> prazos conferidos -> o que foi lançado."""
+        dias = _dias_envio()
+        if not dias:
+            return render_template("automatico.html", dias={}, dia="", linhas=[], ocupado=trava.locked())
+        if dia not in dias:
+            if dia:
+                abort(404)
+            dia = next(iter(dias))
+        linhas = montar_automatico(pasta_saida, dias[dia]["analises"])
+        contas = [ok for l in linhas for ok in l["contas_ok"]]
+        return render_template("automatico.html", dias=dias, dia=dia, linhas=linhas, ocupado=trava.locked(),
+                               lancadas=sum(l["lancada"] for l in linhas),
+                               tarefas=sum(len(l["gravadas"]) for l in linhas),
+                               custo=sum(l["custo"] for l in linhas),
+                               modelos=sorted({l["modelo"] for l in linhas if l["modelo"]}),
+                               contas=len(contas), contas_ok=sum(contas),
+                               com_atencao=sum(1 for l in linhas if l["atencao"]),
+                               feriados=conferencia.feriados_no_periodo(linhas),
+                               simplificadas=sum(conferencia.usa_simplificada(l) for l in linhas),
+                               gerado=datetime.now(), cf=conferencia)
 
     @app.route("/ler", methods=["POST"])
     def ler():
@@ -391,7 +526,9 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
                                nao_capturadas=nao_capturadas,
                                ocupado=trava.locked() and envio["estado"] != "enviando",
                                editavel=_editavel(envio), oficiais=oficiais, pessoas=pessoas(), agora=datetime.now(),
-                               texto=envio_txt.gerar(envio["cis"]))
+                               texto=envio_txt.gerar(envio["cis"]),
+                               fim_anterior=eventos.fins_por_envio(pasta_saida).get(envio_id)
+                               if envio["estado"] == "conferir" else None)
 
     @app.route("/envio/<envio_id>/salvar", methods=["POST"])
     def salvar(envio_id):
@@ -460,11 +597,42 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         return {"zangao_ligado": bool(pasta_zangao), "albi_ligado": albi.configurado(pasta_albi),
                 "jarvis_ligado": jarvis.configurado(pasta_jarvis)}
 
+    @app.route("/automatico/andamento")
+    def automatico_andamento():
+        """Andamento do envio automático (atual ou o último) para a página do Sam."""
+        return jsonify(dict(envio_auto.andamento(pasta_saida), ocupado=trava.locked()))
+
+    @app.route("/automatico/rodar", methods=["POST"])
+    def automatico_rodar():
+        """Envio automático com um clique: captura, analisa com a IA e lança no VIOS.
+        {"modo": "gravar", "confirmado": true} grava de verdade (a página só manda depois do "tem certeza?");
+        {"modo": "teste"} faz tudo, mas só até o quadro de tarefas do VIOS (não grava)."""
+        if not _mesma_origem():
+            return jsonify(erro="pedido recusado"), 403
+        corpo = request.get_json(silent=True) or {}
+        modo = corpo.get("modo")
+        if modo not in ("gravar", "teste"):
+            return jsonify(erro="modo inválido"), 400
+        if modo == "gravar" and corpo.get("confirmado") is not True:
+            return jsonify(erro="falta a confirmação"), 400
+        # Relê o .env a cada envio: a senha do VIOS trocada no .env vale sem reiniciar o servidor
+        try:
+            cfg_envio = config.carregar(caminho_env)
+        except config.ConfigErro as e:
+            log.error("Envio automático não iniciado: %s", e)
+            return jsonify(erro=str(e)), 500
+        if not trava.acquire(blocking=False):
+            return jsonify(erro="o Sam está ocupado com outro envio", ocupado=True), 409
+        log.info("Envio automático disparado pela página (%s) por %s", modo, request.remote_addr)
+        threading.Thread(target=envio_auto.rodar, daemon=True,
+                         args=(cfg_envio, caminho_env, pasta_saida, modo == "gravar", trava.release)).start()
+        return jsonify(ok=True, modo=modo)
+
     @app.route("/albi")
     def albi_pagina():
         """Página do Albi: solta o .txt (um CPF/CNPJ por linha) e ele preenche no Sonar, sem confirmar."""
         return render_template("albi.html", tela="inicio", textos=albi.TEXTOS, erro=request.args.get("erro"),
-                               max_linhas=albi.MAX_LINHAS)
+                               max_linhas=albi.MAX_LINHAS, clientes=albi.clientes(pasta_saida))
 
     @app.route("/albi/enviar", methods=["POST"])
     def albi_enviar():
@@ -478,6 +646,18 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
             texto = bruto.decode("cp1252")  # salvo pelo Bloco de Notas antigo
         try:
             envio_id = albi.receber(pasta_albi, pasta_saida, texto, Path(arquivo.filename).name)
+        except albi.AlbiErro as e:
+            return redirect(url_for("albi_pagina", erro=str(e)))
+        return redirect(url_for("albi_conferir", envio_id=envio_id))
+
+    @app.route("/albi/digitar", methods=["POST"])
+    def albi_digitar():
+        """Pesquisa digitada na página (uma pessoa ou poucas), sem precisar de um .txt: monta o mesmo texto do
+        arquivo e segue o mesmo caminho (conferência antes de comprar)."""
+        try:
+            texto = albi.texto_digitado(request.form.get("empresa", ""), request.form.getlist("cpf"),
+                                        request.form.getlist("nome"))
+            envio_id = albi.receber(pasta_albi, pasta_saida, texto, f"digitado-{datetime.now():%Y-%m-%d_%H%M}.txt")
         except albi.AlbiErro as e:
             return redirect(url_for("albi_pagina", erro=str(e)))
         return redirect(url_for("albi_conferir", envio_id=envio_id))
@@ -507,6 +687,15 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
             return redirect(url_for("albi_pagina", erro=str(e)))
         log.info("Albi disparado pela página (%s, modo %s) por %s", envio_id, modo, request.remote_addr)
         return redirect(url_for("albi_pagina"))
+
+    @app.route("/albi/de-novo/<envio_id>", methods=["POST"])
+    def albi_de_novo(envio_id):
+        """Arquivo já confirmado: nova conferência do mesmo .txt (a trava de 1 dia do Albi decide quem é comprado)."""
+        try:
+            novo_id = albi.conferir_de_novo(pasta_albi, pasta_saida, _id_albi(envio_id))
+        except albi.AlbiErro as e:
+            return redirect(url_for("albi_pagina", erro=str(e)))
+        return redirect(url_for("albi_conferir", envio_id=novo_id))
 
     @app.route("/albi/arquivo/<envio_id>/<path:nome>")
     def albi_arquivo(envio_id, nome):
@@ -576,6 +765,28 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     @app.route("/albi/andamento")
     def albi_andamento():
         return jsonify(albi.andamento(pasta_albi, pasta_saida))
+
+    @app.route("/albi/cliente")
+    def albi_cliente():
+        """Um cliente (empresa): cada pedido dele (uma execução), com a data, o resultado de cada pessoa
+        e as mensagens da CAC (?empresa=NOME)."""
+        nome = request.args.get("empresa", "")
+        c = next((c for c in albi.clientes(pasta_saida) if c["nome"] == nome), None) or abort(404)
+        return render_template("albi.html", tela="cliente", textos=albi.TEXTOS, c=c,
+                               atendentes=["Beatriz Vasconcelos", "Renara Kathleem"])
+
+    @app.route("/albi/mensagens")
+    def albi_mensagens():
+        """O produto final do Albi: as mensagens da CAC prontas para copiar, de um dia (?dia=AAAA-MM-DD;
+        sem ele, hoje, ou o dia mais recente que tem mensagens)."""
+        dias, atendentes = albi.mensagens_por_dia(pasta_saida)
+        dia = request.args.get("dia", "")
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", dia):
+            hoje = datetime.now().strftime("%Y-%m-%d")
+            dia = hoje if hoje in dias else (next(iter(dias), hoje))
+        resumo = [{"dia": d, "total": len(m), "com": sum(1 for x in m if x["processos"])} for d, m in dias.items()]
+        return render_template("albi.html", tela="mensagens", textos=albi.TEXTOS, dia=dia, msgs=dias.get(dia, []),
+                               dias=resumo[:45], atendentes=atendentes or ["Beatriz Vasconcelos", "Renara Kathleem"])
 
     @app.route("/albi/historico")
     def albi_historico():
@@ -675,8 +886,16 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         """Botão "Gerar painel semanal": abre o Orelha em segundo plano só com o painel (PDF no papel timbrado)."""
         if not _mesma_origem():
             return jsonify(erro="pedido recusado"), 403
+        # período escolhido na página (campos "De" e "Até", AAAA-MM-DD); vazio = o padrão do Orelha
+        dados = request.get_json(silent=True) or {}
         try:
-            info = orelha.rodar_painel(pasta_orelha)
+            de, ate = (date.fromisoformat(dados[k]) if dados.get(k) else None for k in ("de", "ate"))
+        except (TypeError, ValueError):
+            return jsonify(erro="data inválida", **orelha.painel_status(pasta_orelha)), 400
+        if de and ate and (ate - de).days > 120:
+            return jsonify(erro="escolha um período de até 120 dias", **orelha.painel_status(pasta_orelha)), 400
+        try:
+            info = orelha.rodar_painel(pasta_orelha, de, ate)
         except orelha.PainelErro as e:
             return jsonify(erro=str(e), **orelha.painel_status(pasta_orelha)), 409
         log.info("Painel semanal do Orelha disparado por %s", request.remote_addr)
@@ -705,6 +924,54 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         return Response(ARQUIVO_VILA.read_bytes(), 200, {"Content-Type": "text/html; charset=utf-8",
                                                          "Cache-Control": "no-cache"})
 
+    @app.route("/vila/sam")
+    def vila_sam():
+        """A vila do Sam: a Fortaleza do Dragão (HTML único, só assiste aos eventos do Sam em /eventos)."""
+        return Response(ARQUIVO_FORTALEZA.read_bytes(), 200, {"Content-Type": "text/html; charset=utf-8",
+                                                              "Cache-Control": "no-cache"})
+
+    @app.route("/vila/previdenciario")
+    def vila_previdenciario():
+        """Vila 06: a muralha do bot do Previdenciário (HTML único; só assiste ao estado do bot)."""
+        return Response(ARQUIVO_MURALHA.read_bytes(), 200, {"Content-Type": "text/html; charset=utf-8",
+                                                            "Cache-Control": "no-cache"})
+
+    @app.route("/vila/previdenciario/estado")
+    def vila_previdenciario_estado():
+        """Estado do bot do Previdenciário para a cena (só contagens; o token fica neste servidor)."""
+        desde = request.args.get("desde", "")
+        dados = vila06.estado(conf_vila06, int(desde) if desde.isdigit() else None)
+        dados["clipes"] = vila06.clipes_instalados(conf_vila06["clipes"])
+        dados["retratos"] = vila06.retratos_instalados(conf_vila06["clipes"])
+        dados["sons"] = vila06.sons_instalados(conf_vila06["clipes"])
+        resposta = jsonify(dados)
+        resposta.headers["Cache-Control"] = "no-store"
+        return resposta
+
+    @app.route("/vila/previdenciario/clipes/<nome>.mp4")
+    def vila_previdenciario_clipe(nome):
+        """Vídeos da cena, só os da lista (bot/vila06.CLIPES), da pasta VILA06_CLIPES."""
+        arquivo = vila06.caminho_clipe(conf_vila06["clipes"], nome)
+        if not arquivo:
+            abort(404)
+        return send_file(arquivo, mimetype="video/mp4", conditional=True, max_age=3600)
+
+    @app.route("/vila/previdenciario/retratos/<nome>.png")
+    def vila_previdenciario_retrato(nome):
+        """Retratos da caixa de diálogo (bot/vila06.RETRATOS), da mesma pasta dos vídeos."""
+        arquivo = vila06.caminho_retrato(conf_vila06["clipes"], nome)
+        if not arquivo:
+            abort(404)
+        return send_file(arquivo, mimetype="image/png", conditional=True, max_age=3600)
+
+    @app.route("/vila/previdenciario/sons/<nome>.mp3")
+    def vila_previdenciario_som(nome):
+        """Sons da cena (bot/vila06.SONS e falas fala-<hash>), da pasta sons/ dentro da pasta dos vídeos."""
+        arquivo = vila06.caminho_som(conf_vila06["clipes"], nome)
+        if not arquivo:
+            abort(404)
+        return send_file(arquivo, mimetype="audio/mpeg", conditional=True, max_age=3600)
+
     def _rodar(envio_id, envio):
         """Entra no VIOS uma vez e lança CI por CI (as que não têm problema)."""
         driver = None
@@ -714,11 +981,14 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
                      "GRAVANDO no VIOS" if envio["confirmar"] else "MODO TESTE (não grava)")
             emitir = lambda tipo, **d: eventos.emitir(pasta_saida, envio_id, tipo, **d)
             emitir("fase", fase="entrando_vios")
-            driver = criar_driver(cfg.headless, False, cfg.navegador_rapido)
-            fazer_login(driver, cfg)
+            # Relê o .env a cada envio: a senha do VIOS trocada no .env vale sem reiniciar o servidor
+            cfg_envio = config.carregar(caminho_env)
+            driver = criar_driver(cfg_envio.headless, False, cfg_envio.navegador_rapido)
+            fazer_login(driver, cfg_envio)
             envio["fase"] = "duplicatas"
             emitir("fase", fase="conferindo_duplicatas")
-            seguir = conferir_duplicatas_no_vios(driver, aptas, _capturas(pasta_saida), lancadas(), cfg.timeout)
+            seguir = conferir_duplicatas_no_vios(driver, aptas, _capturas(pasta_saida), lancadas(),
+                                                 cfg_envio.timeout)
             for c in aptas:
                 if c not in seguir:  # cópia (não lançada) ou erro ao conferir
                     for t in c["tarefas"]:
@@ -740,7 +1010,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
                 c["mensagens"] = coletor.linhas  # a página acompanha as linhas enquanto lança
                 logging.getLogger("bot.lancamento").addHandler(coletor)
                 try:
-                    feitas, erros = lancar(driver, [c], [c["ci"]], pasta_saida, Path("logs"), cfg.timeout,
+                    feitas, erros = lancar(driver, [c], [c["ci"]], pasta_saida, Path("logs"), cfg_envio.timeout,
                                            confirmar=envio["confirmar"])
                 except Exception as e:
                     feitas, erros = 0, 1

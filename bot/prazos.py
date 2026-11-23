@@ -6,10 +6,15 @@ Fontes de feriados:
 - estaduais e municipais (capitais): tabela doc/feriados-brasil-*.md;
 - manuais: doc/feriados.txt ("DD/MM/AAAA ; ESCOPO ; descrição [; AVISO]").
 
-Regra conservadora: só estende prazo o feriado que certamente vale para o processo.
-O resto (pontos facultativos, feriado local em processo federal, cidade sem
+Contagem simplificada (padrão desde a skill de 30/10/2026, PRAZO_CONTAGEM=simplificada):
+só sábado e domingo ficam de fora; feriados, pontos facultativos, recesso e suspensões contam
+como dia útil. As tabelas de feriados abaixo só valem com PRAZO_CONTAGEM=feriados.
+
+Regra conservadora (PRAZO_CONTAGEM=feriados): só estende prazo o feriado que certamente vale
+para o processo. O resto (pontos facultativos, feriado local em processo federal, cidade sem
 cadastro) vira aviso para conferir — nunca empurra a data para depois.
 """
+import os
 import re
 import unicodedata
 from datetime import date, datetime, timedelta
@@ -123,10 +128,22 @@ class Tabela:
         return set(self.municipais)
 
 
-class Calendario:
-    """Calendário de um processo: ramo da Justiça (federal, trabalho ou estadual), UF e cidade."""
+AVISO_SIMPLIFICADA = ("Contagem solicitada: segunda a sexta, incluindo feriados; "
+                      "vencimentos sem validação do calendário judicial oficial.")
 
-    def __init__(self, tabela=None, uf="", cidade="", federal=False, trabalho=False):
+
+def contagem_simplificada():
+    """PRAZO_CONTAGEM no .env: "simplificada" (padrão: só fim de semana fica de fora) ou
+    "feriados" (calendário antigo, com feriados e recesso por tribunal)."""
+    return os.getenv("PRAZO_CONTAGEM", "simplificada").strip().lower() != "feriados"
+
+
+class Calendario:
+    """Calendário de um processo: ramo da Justiça (federal, trabalho ou estadual), UF e cidade.
+    Com a contagem simplificada, feriado e recesso não contam: só sábado e domingo ficam de fora."""
+
+    def __init__(self, tabela=None, uf="", cidade="", federal=False, trabalho=False, simplificada=None):
+        self.simplificada = contagem_simplificada() if simplificada is None else simplificada
         self.tabela = tabela or Tabela()
         self.uf, self.cidade, self.federal = uf.upper(), normalizar(cidade), federal
         self.trabalho = trabalho and not federal
@@ -139,6 +156,8 @@ class Calendario:
         return "JUSTIÇA FEDERAL" if self.federal else "JUSTIÇA DO TRABALHO" if self.trabalho else "JUSTIÇA ESTADUAL"
 
     def descricao(self):
+        if self.simplificada:
+            return AVISO_SIMPLIFICADA
         local = f"{self.cidade}/{self.uf}" if self.cidade else (self.uf or "local não informado")
         ramo = "Justiça Federal" if self.federal else "Justiça do Trabalho" if self.trabalho else "Justiça Estadual"
         return f"{ramo} — {local}"
@@ -183,6 +202,8 @@ class Calendario:
         self.avisos.update(aviso)
 
     def feriado(self, dia):
+        if self.simplificada:
+            return None
         self._carregar(dia.year)
         return self.feriados.get(dia)
 
@@ -190,6 +211,8 @@ class Calendario:
         return dia.weekday() < 5 and not self.feriado(dia)
 
     def suspenso(self, dia):
+        if self.simplificada:
+            return False  # recesso conta como dia útil na contagem simplificada
         # recesso forense (CPC art. 220): prazos não correm de 20/12 a 20/01
         return (dia.month == 12 and dia.day >= 20) or (dia.month == 1 and dia.day <= 20)
 
@@ -226,6 +249,8 @@ class Calendario:
 
     def no_periodo(self, inicio, fim):
         """(feriados considerados, avisos) em dias de semana entre inicio e fim."""
+        if self.simplificada:
+            return [], []
         considerados, avisos = [], []
         dia = inicio
         while dia <= fim:
@@ -237,6 +262,12 @@ class Calendario:
                     avisos.append((dia, self.avisos[dia]))
             dia += timedelta(days=1)
         return considerados, avisos
+
+
+def tabela_do_env():
+    """Tabela de feriados dos arquivos do .env (FERIADOS_TABELA e FERIADOS_ARQUIVO)."""
+    return Tabela(os.getenv("FERIADOS_TABELA", "doc/feriados-brasil-2026-2027.md").strip(),
+                  os.getenv("FERIADOS_ARQUIVO", "doc/feriados.txt").strip())
 
 
 def contexto(item):

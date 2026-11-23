@@ -448,7 +448,7 @@ def logado(w, t):
     """URL da aba se ela já saiu das telas de login (login.seam / sso / auth); senão ""."""
     import chrome_mac as CM
     u = CM.url(w, t)
-    return u if u.startswith("http") and not re.search(r"login\.seam|/auth/|sso\.|/login", u) else ""
+    return u if u.startswith("http") and not re.search(r"login\.seam|/auth/|sso\.|/login|authenticate", u, re.I) else ""
 
 
 def _pede_pin(quadro):
@@ -461,6 +461,9 @@ def _pede_pin(quadro):
 
 def _clique_real(CM, w, t, qual, termo=""):
     """Clique do mouse de verdade no link da credencial ou no campo do PIN do quadro. True se clicou."""
+    if CM.acessibilidade_ok() is False:
+        print("  " + CM.SEM_ACESSIBILIDADE)
+        return False
     CM.para_frente(w, t)
     onde = CM.presto_onde(w, t, qual, termo)
     if not onde.get("ok"):
@@ -480,18 +483,33 @@ def login(w, t, cfg, destino, prefixo=""):
     if ja:
         print("Já estava logado:", ja)
         return ja
-    quadro = _esperar(lambda: CM.presto(w, t).get("ok") and CM.presto(w, t), 30)
+    # TRT7 (PJe-JT): o login.seam mostra o botão "Login via Presto" (onLoginSSO); ele leva ao SSO, onde vem o quadro
+    if not CM.presto(w, t).get("ok") and CM.botao_login_presto(w, t).get("ok"):
+        r = CM.botao_login_presto(w, t, clicar=True)
+        print(f"Cliquei em \"{r.get('texto') or 'Login via Presto'}\" na página do tribunal; indo para o SSO...")
+        antes = CM.url(w, t)
+        _esperar(lambda: CM.url(w, t) != antes, 20)
+        CM.esperar(w, t)
+    print("Esperando o quadro do Presto com as credenciais (até 45 s)...")
+    # o quadro aparece primeiro vazio e as credenciais chegam depois: espera até elas aparecerem
+    quadro = _esperar(lambda: (lambda q: q.get("ok") and q.get("creds") and q)(CM.presto(w, t)), 45, passo=1.5)
+    if not quadro:
+        q = CM.presto(w, t)
+        quadro = q if q.get("ok") else None
     _salvar_captura(destino, f"{prefixo}1_login", CM.capturar(w, t))
     if not quadro:
         ja = logado(w, t)  # o tribunal pode ter levado direto para o painel
         if ja:
             print("Já estava logado:", ja)
             return ja
-        print("O quadro do Presto não apareceu na página em 30 s. Confira se o Presto está ativo nessa "
+        print("O quadro do Presto não apareceu na página em 45 s. Confira se o Presto está ativo nessa "
               "janela e se a página é a de login do tribunal.")
         return ""
     (destino / f"{prefixo}1_quadro.json").write_text(json.dumps(quadro, ensure_ascii=False, indent=1), encoding="utf-8")
     print("Quadro do Presto:", ", ".join(quadro["creds"]) or "(sem credenciais)")
+    if not quadro["creds"]:
+        print("  o quadro apareceu, mas sem nenhuma credencial em 45 s. Ele mostra:",
+              " ".join((quadro.get("texto") or "").split())[:200])
     termo = cfg.get("PRESTO_CREDENCIAL", "")
     r = CM.presto_credencial(w, t, termo)
     if not r.get("ok"):
@@ -521,13 +539,73 @@ def login(w, t, cfg, destino, prefixo=""):
                 CM.digitar_tela(pin)
     elif quadro2.get("ok"):
         print("Depois da credencial o quadro continua sem campo de PIN:", quadro2.get("texto", "")[:200])
-        print("Se o Terminal não está em Ajustes do Sistema > Privacidade e Segurança > Acessibilidade, "
+        print("Se o app onde o bot roda (Terminal ou Visual Studio Code) não está em Ajustes do Sistema > Privacidade e Segurança > Acessibilidade, "
               "ligue-o (o clique de verdade precisa disso) e rode de novo.")
     final = _esperar(lambda: logado(w, t), 60, passo=2)
     CM.esperar(w, t, maximo=20, folga=2)
     _salvar_captura(destino, f"{prefixo}3_final", CM.capturar(w, t))
     print(("Entrou: " + final) if final else "Continua na tela de login depois de 60 s (veja as capturas).")
     return final or ""
+
+
+def _estado_console(CM, w, t, maximo):
+    """Espera o console do Presto mostrar o login ou a lista de sites (o site carrega aos poucos)."""
+    ultimo = {}
+
+    def pronto():
+        ultimo.update(CM.console_estado(w, t))
+        return ultimo.get("estado") in ("login", "sites")
+    _esperar(pronto, maximo)
+    return ultimo
+
+
+def _entrar_console(CM, w, t, cfg, destino):
+    """Login do console do Presto com PRESTO_EMAIL/PRESTO_SENHA do albi/.env. Aceita login em 1 tela
+    (e-mail + senha) ou em 2 (e-mail, Continuar, senha). Se o preenchimento por JavaScript não pegar,
+    clica nos campos e digita com o teclado de verdade. A senha nunca é impressa nem salva."""
+    email, senha = cfg.get("PRESTO_EMAIL", ""), cfg.get("PRESTO_SENHA", "")
+    if not (email and senha):
+        raise CM.ChromeMacErro("o console do Presto pediu login, mas PRESTO_EMAIL/PRESTO_SENHA não estão no albi/.env")
+    _salvar_captura(destino, "0_console_login", CM.capturar(w, t))
+    print("Console do Presto pediu login; entrando com o e-mail do albi/.env...")
+    for _ in range(3):  # no máximo: e-mail, senha e mais uma tentativa
+        antes = CM.console_estado(w, t)
+        r = CM.console_login(w, t, email, senha)
+        if not r.get("ok"):
+            raise CM.ChromeMacErro("login do console: " + r.get("erro", "?"))
+        print(f"  preenchi {r['etapa'].replace('+', ' e ')}; confirmei em {r.get('botao')}")
+        # espera sair do login ou mudar de etapa (apareceu o campo de senha)
+        _esperar(lambda: (lambda e: e.get("estado") == "sites" or e.get("estado") != "login"
+                          or (e.get("senha") and not antes.get("senha")))(CM.console_estado(w, t)), 15, passo=1.5)
+        agora = CM.console_estado(w, t)
+        if agora.get("estado") != "login":
+            return
+        if agora.get("senha") and not antes.get("senha"):
+            continue  # passou do e-mail para a senha: preenche de novo
+        break  # mesma tela: o JavaScript não pegou
+    print("  o preenchimento por JavaScript não entrou; digitando com o teclado de verdade...")
+    CM.para_frente(w, t)
+    agora = CM.console_estado(w, t)
+    for qual, texto in (("email", email), ("senha", senha)):
+        if (qual == "email" and not agora.get("email")) or (qual == "senha" and not agora.get("senha")):
+            continue
+        onde = CM.console_onde(w, t, qual)
+        if onde.get("ok"):
+            CM.clicar_tela(onde["x"], onde["y"])
+            time.sleep(0.4)
+            CM.digitar_tela(texto, enter=(qual == "senha" or not agora.get("senha")))
+            time.sleep(1)
+    if not agora.get("senha"):  # login em 2 etapas: depois do e-mail vem a senha
+        if _esperar(lambda: CM.console_estado(w, t).get("senha"), 15):
+            onde = CM.console_onde(w, t, "senha")
+            if onde.get("ok"):
+                CM.clicar_tela(onde["x"], onde["y"])
+                time.sleep(0.4)
+                CM.digitar_tela(senha)
+    if not _esperar(lambda: CM.console_estado(w, t).get("estado") != "login", 30, passo=2):
+        _salvar_captura(destino, "0_console_login_depois", CM.capturar(w, t))
+        raise CM.ChromeMacErro("o console do Presto continua na tela de login (senha errada, código de 2 fatores "
+                               "ou captcha?). Veja o print 0_console_login_depois nas capturas")
 
 
 def abrir_tribunal(cfg, chave, destino, direto=False):
@@ -542,38 +620,44 @@ def abrir_tribunal(cfg, chave, destino, direto=False):
     print(f"Abrindo o console do Presto (Sites) para entrar em {SITES[chave]}...")
     w, t = CM.abrir_aba(sites)
     CM.esperar(w, t, folga=3)
-    if _esperar(lambda: CM.console_pede_login(w, t), 6):
-        email, senha = cfg.get("PRESTO_EMAIL", ""), cfg.get("PRESTO_SENHA", "")
-        if not (email and senha):
-            raise CM.ChromeMacErro("o console do Presto pediu login, mas PRESTO_EMAIL/PRESTO_SENHA não estão no albi/.env")
-        _salvar_captura(destino, "0_console_login", CM.capturar(w, t))
-        r = CM.console_login(w, t, email, senha)
-        if not r.get("ok"):
-            raise CM.ChromeMacErro("login do console: " + r.get("erro", "?"))
-        print("Console do Presto: e-mail e senha preenchidos; confirmei em", r.get("botao"))
-        saiu = _esperar(lambda: not CM.console_pede_login(w, t), 30, passo=2)
-        if not saiu:
-            _salvar_captura(destino, "0_console_login_depois", CM.capturar(w, t))
-            raise CM.ChromeMacErro("o console do Presto continua na tela de login (senha errada ou código de 2 fatores?)")
+    estado = _estado_console(CM, w, t, 25)
+    if estado.get("estado") == "carregando":
+        _salvar_captura(destino, "0_console", CM.capturar(w, t))
+        raise CM.ChromeMacErro(f"o console do Presto não mostrou nem o login nem a lista de sites em 25 s ({estado.get('url')})")
+    if estado["estado"] == "login":
+        _entrar_console(CM, w, t, cfg, destino)
         if "/sites" not in CM.url(w, t):
             CM.ir(w, t, sites)
             CM.esperar(w, t, folga=3)
+        estado = _estado_console(CM, w, t, 25)
+        if estado.get("estado") != "sites":
+            _salvar_captura(destino, "0_console_depois_login", CM.capturar(w, t))
+            raise CM.ChromeMacErro(f"entrei no console, mas a lista de sites não apareceu ({estado.get('url')})")
+    else:
+        print("Console do Presto: já estava logado.")
     CM.console_site(w, t, SITES[chave])  # digita no filtro
     achou = _esperar(lambda: CM.console_site(w, t, SITES[chave]).get("ok") and CM.console_site(w, t, SITES[chave]), 20)
     _salvar_captura(destino, "0_console_sites", CM.capturar(w, t))
     if not achou:
         r = CM.console_site(w, t, SITES[chave])
         raise CM.ChromeMacErro(f"{r.get('erro')}; parecidos: {', '.join(r.get('parecidos', [])) or 'nenhum'}")
-    antes = {a[0] for a in CM.abas(w)}
+    antes = {(a[0], a[1]) for a in CM.todas_abas()}
     r = CM.console_site(w, t, SITES[chave], clicar=True)
     print(f"Console: cliquei em {r['nome']} ({r.get('link') or r.get('dominio')})")
     time.sleep(5)
-    novas = [a for a in CM.abas(w) if a[0] not in antes]
-    if novas:  # o console abriu o tribunal numa aba nova
-        t = novas[-1][0]
-    elif "presto.oystr" in CM.url(w, t):  # o clique não saiu do console: abre o login nesta aba
-        print("O clique não abriu o tribunal; abrindo o login do tribunal nesta aba.")
-        CM.ir(w, t, r.get("link") if (r.get("link") or "").startswith("http") else TRIBUNAIS[chave])
+    if "presto.oystr" not in CM.url(w, t):
+        pass  # o clique levou esta mesma aba para o tribunal (o normal)
+    else:
+        # o console abriu o tribunal numa aba nova (nesta janela ou noutra). Só conta aba de site (http) fora do
+        # console: janelas internas do Chrome/extensão têm ids enormes que o AppleScript não consegue usar
+        novas = [a for a in CM.todas_abas() if (a[0], a[1]) not in antes and a[2].startswith("http")
+                 and "presto.oystr" not in a[2] and a[0] < 2 ** 29 and a[1] < 2 ** 29]
+        if novas:
+            w, t = novas[-1][0], novas[-1][1]
+            print("O tribunal abriu numa aba nova:", novas[-1][2][:90])
+        else:  # o clique não saiu do console: abre o login nesta aba
+            print("O clique não abriu o tribunal; abrindo o login do tribunal nesta aba.")
+            CM.ir(w, t, r.get("link") if (r.get("link") or "").startswith("http") else TRIBUNAIS[chave])
     CM.esperar(w, t)
     return w, t
 
@@ -590,6 +674,8 @@ def entrar(alvo="tjce1", direto=False):
         print(f"Tribunal desconhecido: {alvo}. Use {', '.join(TRIBUNAIS)} ou uma URL.")
         return 2
     destino = LOGS / datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    if CM.acessibilidade_ok() is False:
+        print("Atenção: " + CM.SEM_ACESSIBILIDADE + " Sem isso o bot não consegue clicar no número da credencial.")
     try:
         if alvo.lower() in TRIBUNAIS:
             w, t = abrir_tribunal(cfg, alvo.lower(), destino, direto)

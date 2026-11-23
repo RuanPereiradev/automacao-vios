@@ -75,6 +75,7 @@ def gerar_grupo(driver, cfg, grupo, valor, pasta, agente, gasto, modelo, limite,
     vila.emitir("grupo", grupo=ordem, grupos=grupos, processos=len(itens))
 
     linhas, brutos, erros_ia = [], [], 0
+    gasto_antes = gasto.total  # o gasto da execução é acumulado: o do grupo é a diferença
     for n, item in enumerate(itens, 1):
         try:
             proc = ler_processo(driver, item["ci"], cfg.timeout)
@@ -92,16 +93,21 @@ def gerar_grupo(driver, cfg, grupo, valor, pasta, agente, gasto, modelo, limite,
         vila.emitir("processo", grupo=ordem, grupos=grupos, feito=n, total=len(itens), gasto=round(gasto.total, 2))
 
     arquivo = pasta / nome_arquivo(grupo)
-    salvar_xlsx(arquivo, grupo, linhas, {
-        "gerado_em": datetime.now(), "modelo": modelo, "gasto": gasto.resumo(), "erros_ia": erros_ia})
-    arquivo.with_suffix(".json").write_text(json.dumps(brutos, ensure_ascii=False, indent=1), encoding="utf-8")
+    # "Resumo do mês" do PDF (uma chamada à IA) antes de fechar o gasto do grupo, para ele entrar na conta
     paragrafos = resumo_mes(agente, gasto, modelo, grupo, linhas, log) if linhas else []
+    do_grupo = gasto.total - gasto_antes
+    salvar_xlsx(arquivo, grupo, linhas, {
+        "gerado_em": datetime.now(), "modelo": modelo, "erros_ia": erros_ia,
+        "gasto": f"US$ {do_grupo:.2f} neste grupo ({len(linhas)} processos)"
+                 + (f"; US$ {gasto.total:.2f} na execução até aqui" if gasto_antes else "")})
+    arquivo.with_suffix(".json").write_text(json.dumps(brutos, ensure_ascii=False, indent=1), encoding="utf-8")
     try:
         salvar_pdf(arquivo.with_suffix(".pdf"), grupo, linhas, {"gerado_em": datetime.now()}, paragrafos)
         log.info("%s: PDF -> %s", grupo, arquivo.with_suffix(".pdf"))
     except Exception:
         log.exception("%s: não consegui gerar o PDF (a planilha foi salva)", grupo)
-    log.info("%s: %d processos, %d com erro na IA -> %s", grupo, len(linhas), erros_ia, arquivo)
+    log.info("%s: %d processos, %d com erro na IA, gasto do grupo US$ %.2f -> %s", grupo, len(linhas), erros_ia,
+             do_grupo, arquivo)
     vila.emitir("grupo_fim", grupo=ordem, grupos=grupos, processos=len(linhas), erros_ia=erros_ia)
     return erros_ia
 
@@ -116,17 +122,23 @@ def juntar_grupos(atuais, vios):
 
 
 def gravar_grupos(caminho_env, grupos):
-    """Troca a linha PROCESSOS_GRUPOS= do .env (ou acrescenta no fim); o resto do arquivo fica igual."""
+    """Troca a linha PROCESSOS_GRUPOS= do .env (ou acrescenta no fim); o resto do arquivo fica igual.
+    Se houver mais de uma linha PROCESSOS_GRUPOS=, fica só a primeira (com a lista nova): o .env vale a
+    ÚLTIMA, e uma linha velha repetida no fim escondia os grupos gravados."""
     arq = Path(caminho_env)
     linhas = arq.read_text(encoding="utf-8").splitlines() if arq.exists() else []
     nova = "PROCESSOS_GRUPOS=" + "|".join(grupos)
-    for i, linha in enumerate(linhas):
+    saida, gravou = [], False
+    for linha in linhas:
         if linha.strip().startswith("PROCESSOS_GRUPOS="):
-            linhas[i] = nova
-            break
-    else:
-        linhas.append(nova)
-    arq.write_text("\n".join(linhas) + "\n", encoding="utf-8")
+            if not gravou:
+                saida.append(nova)
+                gravou = True
+            continue
+        saida.append(linha)
+    if not gravou:
+        saida.append(nova)
+    arq.write_text("\n".join(saida) + "\n", encoding="utf-8")
 
 
 def listar_grupos(cfg, caminho_env, salvar, log):
@@ -149,7 +161,9 @@ def listar_grupos(cfg, caminho_env, salvar, log):
     if not salvar:
         print(f"{len(novos)} grupo(s) novo(s). Para pôr na página /jarvis: --grupos --salvar")
         return 0
-    if novos:
+    repetidas = sum(1 for l in Path(caminho_env).read_text(encoding="utf-8").splitlines()
+                    if l.strip().startswith("PROCESSOS_GRUPOS=")) if Path(caminho_env).exists() else 0
+    if novos or repetidas > 1:
         gravar_grupos(caminho_env, lista)
         log.info("PROCESSOS_GRUPOS de %s agora tem %d grupos (%d novos)", caminho_env, len(lista), len(novos))
     else:
@@ -187,6 +201,7 @@ def main(*args):
         log.error(e)
         return 1
     gasto = Gasto.do_env()
+    log.info("Execução iniciada: %d grupo(s), modelo %s", len(pedidos), modelo)  # o gastos.py separa as execuções por aqui
     pasta = Path(os.getenv("RELATORIO_PASTA", "").strip() or cfg.pasta_saida / "relatorios") / f"{datetime.now():%Y-%m}"
     if limite:
         pasta = pasta / "teste"  # teste com poucos processos não substitui a planilha do mês

@@ -1,11 +1,14 @@
 {% from "_ultron.html" import ultron, ultron_script, ultron_icone %}
-{% from "_vila.html" import vila_cartao %}
+{% from "_vila.html" import fortaleza_cartao %}
 {% set ESTADOS = {"conferir": ["s-ja", "Conferido, não enviado"], "enviando": ["s-andamento", "Enviando…"],
                   "testado": ["s-andamento", "Testado (não gravou)"], "concluido": ["s-ok", "Concluído"], "falhou": ["s-erro", "Parou"]} %}
+{# envio conferido de novo depois de enviado: a situação vem do último envio_fim (eventos) #}
+{% set FINS = {"concluido": ["s-ok", "Concluído"], "testado": ["s-andamento", "Testado (não gravou)"], "parou": ["s-erro", "Parou"]} %}
 {% macro tabela_envios(lista) %}
 <div class="rolar"><table class="hist">
   <tr><th>Quando</th><th>Arquivo</th><th>CIs / tarefas</th><th>Resultado</th><th>Situação</th></tr>
-  {% for id, e in lista %}{% set r = resumo(e) %}{% set s = ESTADOS.get(e.estado, ["s-ja", e.estado]) %}
+  {% for id, e in lista %}{% set fim = (fins or {}).get(id) if e.estado == "conferir" else none %}{% set r = resumo(e, fim) %}
+  {%- if fim %}{% set s = FINS.get(fim.resultado, ["s-ja", fim.resultado]) %}{% else %}{% set s = ESTADOS.get(e.estado, ["s-ja", e.estado]) %}{% endif %}
   <tr>
     <td class="nowrap">{{ e.criado.strftime('%d/%m/%Y %H:%M') }}</td>
     <td><a href="{{ url_for('ver', envio_id=id) }}">{{ e.arquivo }}</a></td>
@@ -15,7 +18,7 @@
       {% if r.erros %}<span class="erro">{{ r.erros }} erro(s)</span>{% endif %}
       {% if r.puladas %}<span class="suave">{{ r.puladas }} já no VIOS/duplicada(s)</span>{% endif %}
       {% if not (r.gravadas or r.testadas or r.erros or r.puladas) %}<span class="suave">—</span>{% endif %}</td>
-    <td><span class="selo {{ s[0] }}">{{ s[1] }}</span></td>
+    <td><span class="selo {{ s[0] }}">{{ s[1] }}</span>{% if fim %}<div class="suave" style="font-size: 12px">conferido de novo depois</div>{% endif %}</td>
   </tr>
   {% endfor %}
 </table></div>
@@ -28,10 +31,10 @@
 <title>Sam — envio ao VIOS</title>
 {{ ultron_icone() }}
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Cormorant+Garamond:wght@700&family=Lora:wght@400;500;600&family=Silkscreen&display=swap" rel="stylesheet">
 {% include "_estilo.html" %}
 </head>
-<body>
+<body class="tema-vila">
 <header>
   <a href="{{ url_for('inicio') }}">{{ ultron("parado", 48, "ultron-topo") }}
     <span><span class="marca marca-sam"><b>S</b>AM</span><br><span class="sub">envio de tarefas ao VIOS</span></span></a>
@@ -40,12 +43,143 @@
     {% if zangao_ligado %}<a class="botao secundario" href="{{ url_for('zangao_pagina') }}">Bumblebee</a>{% endif %}
     {% if albi_ligado %}<a class="botao secundario" href="{{ url_for('albi_pagina') }}">Albi</a>{% endif %}
     {% if jarvis_ligado %}<a class="botao secundario" href="{{ url_for('jarvis_pagina') }}">Jarvis</a>{% endif %}
+    <a class="botao secundario" href="{{ url_for('automatico') }}">Envio automático</a>
     <a class="botao secundario" href="{{ url_for('historico') }}">Histórico</a>
   </span>
 </header>
 <main>
 {% if tela == "inicio" %}
-  {{ vila_cartao(1) }}
+  {{ fortaleza_cartao() }}
+  <div class="cartao auto-um-clique" id="auto">
+    <style>
+      .auto-um-clique .topo { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+      .auto-um-clique .passos { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 6px; padding: 0; list-style: none; }
+      .auto-um-clique .passos li { flex: 1 1 150px; border: 1px solid var(--borda); background: var(--cartao2); border-radius: 10px;
+                                   padding: 8px 12px; color: var(--suave); position: relative; transition: .3s; }
+      .auto-um-clique .passos li b { display: block; font-size: 13px; }
+      .auto-um-clique .passos li.agora { color: var(--texto); border-color: var(--ambar); box-shadow: 0 0 14px rgba(227, 167, 47, .35);
+                                         animation: auto-pulsa 1.4s ease-in-out infinite; }
+      .auto-um-clique .passos li.feito { color: var(--verde); border-color: rgba(63, 185, 80, .5); }
+      .auto-um-clique .passos li.feito::after { content: "✓"; position: absolute; right: 10px; top: 6px; font-weight: 700; }
+      .auto-um-clique .passos li.falhou { color: #ff7b72; border-color: rgba(255, 123, 114, .5); }
+      @keyframes auto-pulsa { 50% { box-shadow: 0 0 22px rgba(227, 167, 47, .6); } }
+      .auto-um-clique .barra { height: 10px; border-radius: 6px; background: var(--cartao2); border: 1px solid var(--borda); overflow: hidden; margin: 10px 0 4px; }
+      .auto-um-clique .barra i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--ambar), var(--verde)); transition: width .6s; }
+      .auto-um-clique .barra.indef i { width: 35%; animation: auto-corre 1.3s linear infinite; }
+      @keyframes auto-corre { from { margin-left: -35%; } to { margin-left: 100%; } }
+      .auto-um-clique .quando { font-size: 13px; }
+      dialog#auto-dialogo { background: var(--cartao); color: var(--texto); border: 1px solid var(--ambar); border-radius: 12px; padding: 24px;
+                            max-width: 460px; box-shadow: 0 0 60px rgba(0, 0, 0, .7); }
+      dialog#auto-dialogo::backdrop { background: rgba(0, 0, 0, .65); }
+      dialog#auto-dialogo h2 { margin-top: 0; }
+      dialog#auto-dialogo ul { padding-left: 20px; margin: 8px 0 16px; }
+      @media (prefers-reduced-motion: reduce) { .auto-um-clique .passos li.agora, .auto-um-clique .barra.indef i { animation: none; } }
+    </style>
+    <div class="topo">
+      <div><h2 style="margin:0">Envio automático em um clique</h2>
+        <span class="suave">O Sam captura as intimações, a IA analisa e as tarefas são criadas no VIOS, sem subir arquivo.</span></div>
+      <div class="acoes">
+        <button class="secundario" id="auto-ensaio" type="button" {% if ocupado %}disabled{% endif %}>Ensaio (não grava)</button>
+        <button class="primario" id="auto-iniciar" type="button" {% if ocupado %}disabled{% endif %}>▶ Enviar automaticamente</button>
+      </div>
+    </div>
+    <ol class="passos" id="auto-passos" hidden>
+      <li data-p="capturando"><b>1 · Capturar</b><span>intimações sem tarefa</span></li>
+      <li data-p="analisando"><b>2 · Analisar</b><span>IA + prazos</span></li>
+      <li data-p="lancando"><b>3 · Criar tarefas</b><span>no VIOS, com as travas</span></li>
+      <li data-p="fim"><b>4 · Conferir</b><span>cada tarefa no VIOS</span></li>
+    </ol>
+    <div class="barra indef" id="auto-barra" hidden><i></i></div>
+    <p id="auto-texto" class="suave" aria-live="polite" style="margin:6px 0 0"></p>
+    <dialog id="auto-dialogo">
+      <h2 id="auto-dialogo-titulo">Você tem certeza?</h2>
+      <p id="auto-dialogo-texto"></p>
+      <ul class="suave" id="auto-dialogo-lista"></ul>
+      <div class="acoes" style="justify-content: flex-end">
+        <button class="secundario" id="auto-nao" type="button">Cancelar</button>
+        <button class="primario" id="auto-sim" type="button">Sim, ativar o Sam</button>
+      </div>
+    </dialog>
+    <script>
+      (() => {
+        const $ = id => document.getElementById(id), FASES = ["capturando", "analisando", "lancando"];
+        const btn = $("auto-iniciar"), ens = $("auto-ensaio"), dlg = $("auto-dialogo");
+        let modo = "gravar", ativo = false, tempo = null;
+        function abrir(m) {
+          modo = m;
+          $("auto-dialogo-titulo").textContent = m === "gravar" ? "Você tem certeza?" : "Rodar o ensaio?";
+          $("auto-dialogo-texto").textContent = m === "gravar"
+            ? "O Sam vai fazer o fluxo inteiro agora e GRAVAR as tarefas no VIOS, de verdade."
+            : "O Sam faz o fluxo inteiro, mas para no quadro de tarefas do VIOS: nada é gravado.";
+          $("auto-dialogo-lista").innerHTML = (m === "gravar"
+            ? ["Captura as intimações de ontem que ainda não têm tarefa (na segunda, sexta a domingo).",
+               "A IA analisa cada uma (gasta créditos da API).",
+               "Cria as tarefas no VIOS. Quem tiver informação faltando ou já tiver tarefa fica de fora.",
+               "Depois de gravadas, desfazer só no VIOS, à mão."]
+            : ["Captura e analisa de verdade (a IA gasta créditos).", "Preenche o formulário do VIOS e não grava."])
+            .map(t => "<li>" + t + "</li>").join("");
+          $("auto-sim").textContent = m === "gravar" ? "Sim, ativar o Sam" : "Sim, rodar o ensaio";
+          dlg.showModal();
+        }
+        btn.onclick = () => abrir("gravar"); ens.onclick = () => abrir("teste");
+        $("auto-nao").onclick = () => dlg.close();
+        $("auto-sim").onclick = async () => {
+          dlg.close(); btn.disabled = ens.disabled = true;
+          try {
+            const r = await fetch("{{ url_for('automatico_rodar') }}", { method: "POST", credentials: "same-origin",
+              headers: { "Content-Type": "application/json" }, body: JSON.stringify({ modo, confirmado: true }) });
+            const j = await r.json();
+            if (!r.ok) throw new Error(j.erro || "não deu para iniciar");
+            ativo = true; puxar();
+          } catch (e) { $("auto-texto").textContent = "Não iniciou: " + e.message; $("auto-texto").className = "erro"; btn.disabled = ens.disabled = false; }
+        };
+        function mostrar(a) {
+          const rodando = a.estado === "rodando", tem = a.id && (rodando || ativo);
+          $("auto-passos").hidden = !tem; $("auto-barra").hidden = !rodando;
+          btn.disabled = ens.disabled = rodando || a.ocupado;
+          if (!tem) { resumoAnterior(a); return; }
+          const i = FASES.indexOf(a.fase);
+          $("auto-passos").querySelectorAll("li").forEach(li => {
+            const p = li.dataset.p, k = FASES.indexOf(p);
+            li.className = rodando ? (p === a.fase ? "agora" : (k >= 0 && k < i ? "feito" : ""))
+                                   : (a.estado === "parou" ? (k >= 0 && k <= FASES.indexOf(a.ultima || "lancando") ? "falhou" : "")
+                                                           : "feito");
+          });
+          const b = $("auto-barra"), pct = a.total_cis ? Math.round(100 * (a.feitas_cis || 0) / a.total_cis) : 0;
+          b.classList.toggle("indef", a.fase !== "lancando" || !a.total_cis);
+          b.firstElementChild.style.width = a.fase === "lancando" && a.total_cis ? pct + "%" : "";
+          const t = $("auto-texto"); t.className = "suave";
+          if (rodando) {
+            const fases = { capturando: "Capturando as intimações no VIOS…", analisando: "A IA está analisando " + (a.intimacoes || "") + " intimação(ões)…",
+              lancando: "Criando as tarefas: CI " + (a.feitas_cis || 0) + " de " + (a.total_cis || "?") + " · " + (a.gravadas || 0) + " tarefa(s) " + (a.modo === "teste" ? "no quadro" : "gravada(s)") + (a.erros ? " · " + a.erros + " barrada(s)" : "") };
+            t.textContent = (fases[a.fase] || "Trabalhando…") + (a.fase === "analisando" && a.detalhe ? " · " + a.detalhe : "");
+          } else resumoAnterior(a);
+        }
+        function resumoAnterior(a) {
+          const t = $("auto-texto");
+          if (!a.id || a.estado === "rodando") { t.textContent = a.ocupado ? "O Sam está ocupado com outro envio." : ""; return; }
+          const quando = (a.fim || "").replace("T", " ").slice(8, 10) + "/" + (a.fim || "").slice(5, 7) + " " + (a.fim || "").slice(11, 16);
+          if (a.estado === "parou") { t.className = "erro"; t.textContent = "O último envio automático parou (" + quando + "): " + (a.motivo || "veja o log") ; return; }
+          if (a.motivo && !a.analisadas) { t.className = "suave"; t.textContent = "Último envio automático (" + quando + "): " + a.motivo; return; }
+          t.className = a.erros ? "aviso" : "ok";
+          t.textContent = "Último envio automático (" + quando + ", " + (a.modo === "teste" ? "ensaio" : "gravando") + "): "
+            + (a.gravadas || a.testadas || 0) + (a.modo === "teste" ? " no quadro" : " tarefa(s) gravada(s)") + ", " + (a.erros || 0) + " barrada(s), "
+            + (a.ja_tinha || 0) + " já no VIOS.";
+        }
+        async function puxar() {
+          try {
+            const r = await fetch("{{ url_for('automatico_andamento') }}", { cache: "no-store", credentials: "same-origin" });
+            const a = await r.json();
+            if (a.fase && FASES.includes(a.fase)) a.ultima = a.fase;
+            mostrar(a);
+            if (a.estado === "rodando") { ativo = true; tempo = setTimeout(puxar, 2000); return; }
+            if (ativo) { ativo = false; setTimeout(() => location.reload(), 2500); }  // atualiza os cartões com o resultado
+          } catch (_) { tempo = setTimeout(puxar, 4000); }
+        }
+        puxar();
+      })();
+    </script>
+  </div>
   <div class="cartao">
     <form action="{{ url_for('ler') }}" method="post" enctype="multipart/form-data" id="form-arquivo">
       <label class="soltar" id="soltar">
@@ -56,6 +190,22 @@
       </label>
     </form>
     {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+  </div>
+  <div class="cartao automatico">
+    <div class="topo-hist"><h2>Envio automático</h2>
+      {% if automaticos %}<a class="botao primario" href="{{ url_for('automatico') }}">Abrir o relatório</a>{% endif %}</div>
+    {% if automaticos %}{% set u = automaticos[0] %}
+      <p class="suave">O que o Sam capturou, o que a IA analisou e o que foi lançado no VIOS, com os prazos conferidos.</p>
+      <div class="numeros">
+        <div class="numero"><b>{{ u.dia[8:10] }}/{{ u.dia[5:7] }}</b><span class="suave">{{ "último envio" if u.enviado else "análise não enviada" }}</span></div>
+        <div class="numero"><b>{{ u.total }}</b><span class="suave">intimações</span></div>
+        <div class="numero"><b class="ok">{{ u.lancadas }}</b><span class="suave">lançadas</span></div>
+        <div class="numero"><b class="erro">{{ u.total - u.lancadas }}</b><span class="suave">não lançadas</span></div>
+        <div class="numero"><b class="aviso">{{ u.atencao }}</b><span class="suave">com atenção</span></div>
+      </div>
+      {% if automaticos | length > 1 %}<p class="dias-auto"><span class="suave">Outros dias:</span>
+        {% for a in automaticos[1:] %}<a href="{{ url_for('automatico', dia=a.dia) }}">{{ a.dia[8:10] }}/{{ a.dia[5:7] }}/{{ a.dia[0:4] }}</a>{% if not a.enviado %} <span class="suave">(não enviada)</span>{% endif %}{{ " · " if not loop.last }}{% endfor %}</p>{% endif %}
+    {% else %}<p class="suave">Nenhum envio automático ainda.</p>{% endif %}
   </div>
   <div class="cartao">
     <details>
@@ -76,7 +226,7 @@ CI: 42491
 TAREFA: ANALISAR SENTENÇA/ACÓRDÃO/DECISÃO (CÍVEL) 2026
 DATA: 29/10/2026
 HORA:
-RESPONSÁVEIS: automático
+RESPONSÁVEIS: NOME COMPLETO DO ADVOGADO AUXILIAR
 DESCRIÇÃO:
 PRAZO DE EMBARGOS: 02/11/2026
 PRAZO DE RECURSO: 16/11/2026
@@ -86,7 +236,7 @@ SENTENÇA
         <li><b>TAREFA</b>: nome exato da lista oficial do VIOS.</li>
         <li><b>DATA</b>: DD/MM/AAAA. Só a CIÊNCIA pode ficar sem data (vai para o dia do envio).</li>
         <li><b>HORA</b>: HH:MM. Obrigatória em audiência, perícia e sustentação oral; vazia nas demais.</li>
-        <li><b>RESPONSÁVEIS</b>: <code>automático</code> (o VIOS marca o auxiliar) ou os nomes, separados por vírgula.</li>
+        <li><b>RESPONSÁVEIS</b>: o nome completo do advogado auxiliar (sem auxiliar, o advogado responsável), separados por vírgula. <b>Nunca <code>automático</code></b>: o VIOS manda a tarefa para a Amanda, que só lança.</li>
       </ul>
     </details>
   </div>
@@ -143,7 +293,7 @@ SENTENÇA
       {% for ci, r in gravadas %}{% for t in r.tarefas or [{}] %}
       <tr>
         <td class="nowrap">{{ r.quando }}</td><td><b>{{ ci }}</b></td><td>{{ t.tarefa }}</td>
-        <td class="nowrap">{{ t.data }}</td><td>{{ (t.responsaveis or []) | join(", ") or "automático" }}</td>
+        <td class="nowrap">{{ t.data }}</td><td>{{ (t.responsaveis or []) | join(", ") or "— sem responsável" }}</td>
       </tr>
       {% endfor %}{% endfor %}
     </table></div>
@@ -160,7 +310,16 @@ SENTENÇA
   {% set com_problema = envio.cis | selectattr("problemas") | list %}
   {% set ja = envio.cis | selectattr("ja_lancada") | list %}
 
-  {{ vila_cartao(1) }}
+  {{ fortaleza_cartao() }}
+
+  {% if fim_anterior %}{% set k = fim_anterior.contagens or {} %}
+  <div class="cartao">
+    <h2>Este arquivo já foi {{ "enviado" if fim_anterior.resultado == "concluido" else ("testado" if fim_anterior.resultado == "testado" else "enviado, mas parou") }} em {{ fim_anterior.ts[8:10] }}/{{ fim_anterior.ts[5:7] }}/{{ fim_anterior.ts[0:4] }} às {{ fim_anterior.ts[11:16] }}</h2>
+    <p>Resultado: <b class="ok">{{ k.gravadas or 0 }} gravada(s)</b>{% if k.testadas %} · {{ k.testadas }} testada(s){% endif %}{% if k.erros %} · <span class="erro">{{ k.erros }} com erro</span>{% endif %}{% if k.ja_tinha %} · {{ k.ja_tinha }} já tinha(m) tarefa{% endif %}{% if k.duplicatas %} · {{ k.duplicatas }} duplicata(s){% endif %}.</p>
+    <p class="suave">Depois disso ele foi conferido de novo, por isso aparece como conferido: as CIs que já foram gravadas
+      aparecem como "já lançada". Enviar de novo só lança o que ainda não está no VIOS.</p>
+  </div>
+  {% endif %}
 
   {% if envio.estado == "enviando" %}
   <div class="cartao">
@@ -273,7 +432,7 @@ SENTENÇA
         <td><b>{{ c.ci }}</b></td>
         <td class="nowrap processo">{{ c.processo or "—" }}</td>
         <td>{% for t in c.tarefas %}<div>{{ t.nome }} <span class="suave">· {{ t.data_tarefa or "dia do envio" }}{% if t.hora %} às {{ t.hora }}{% endif %}
-          · {{ t.responsaveis | join(", ") if t.responsaveis else "automático" }}</span></div>{% endfor %}</td>
+          · {{ t.responsaveis | join(", ") if t.responsaveis else "— sem responsável" }}</span></div>{% endfor %}</td>
         <td>{% if c.resultado == "gravada" %}<span class="selo s-ok">Gravada no VIOS</span>
           {% elif c.resultado == "testada" %}<span class="selo s-ok">Teste ok</span>
           {% elif c.resultado == "pulada" %}<span class="selo s-ja">Já tinha tarefa no VIOS</span>
@@ -292,7 +451,7 @@ SENTENÇA
   {% if editavel %}
   <form method="post" action="{{ url_for('salvar', envio_id=envio_id) }}" id="form-editar">
     <datalist id="lista-tarefas">{% for n in oficiais %}<option value="{{ n }}">{% endfor %}</datalist>
-    <datalist id="lista-pessoas"><option value="automático">{% for p in pessoas %}<option value="{{ p }}">{% endfor %}</datalist>
+    <datalist id="lista-pessoas">{% for p in pessoas %}<option value="{{ p }}">{% endfor %}</datalist>
     {% for c in envio.cis %}{% set g = loop.index0 %}
     <div class="cartao ci {% if c.problemas %}com-problema{% endif %}">
       <div class="ci-topo">
@@ -319,7 +478,7 @@ SENTENÇA
             title="{{ 'CIÊNCIA não tem prazo: vazio, vai para o dia em que for enviada ao VIOS' if t.nome.startswith('CIÊNCIA') else 'Data da tarefa no VIOS' }}"></label>
           <label>Hora <input name="{{ p }}hora" value="{{ t.hora }}" placeholder="HH:MM" maxlength="5"></label>
           <label class="largo">Responsáveis <input name="{{ p }}responsaveis" list="lista-pessoas"
-            value="{{ t.responsaveis | join(', ') if t.responsaveis else 'automático' }}"></label>
+            value="{{ t.responsaveis | join(', ') if t.responsaveis else '' }}" placeholder="obrigatório: advogado auxiliar"></label>
           <label class="remover"><input type="checkbox" name="{{ p }}remover" value="1"> Remover tarefa</label>
         </div>
         <label>Descrição (vai para a Observação no VIOS)

@@ -4,10 +4,13 @@ Roda à parte do relatório do dia (`--funcoes painel`, uma vez por semana) e ge
 saida/<AAAA-MM-DD>/, o painel-semanal.html e o painel-semanal.pdf (modelo: "2026_PAINEL_SEMANAL";
 moldura: papel timbrado, nucleo/timbrado.py). Não entra no relatório do dia (RELATORIO_DIARIO = False).
 
-Fila = tarefas NÃO concluídas da equipe toda, de peças (tipo começa com ORELHA_PAINEL_TERMOS_PECA,
-padrão "MINUTAR") e audiências (começa com ORELHA_PAINEL_TERMOS_AUDIENCIA, padrão "AUDIÊNCIA"), com data
-para conclusão (ou, sem ela, a limite) até hoje + ORELHA_PAINEL_DIAS_FILA dias (padrão 14), lidas da
-lista de tarefas do VIOS (a mesma leitura dos prazos, só por GET). Tarefas canceladas ficam de fora.
+Fila = tarefas NÃO concluídas da equipe toda, de todos os tipos (desde 23/11/2026; antes só peças e
+audiências), com data para conclusão (ou, sem ela, a limite) até hoje + ORELHA_PAINEL_DIAS_FILA dias
+(padrão 7), lidas da lista de tarefas do VIOS (a mesma leitura dos prazos, só por GET). Categorias: peça
+(tipo começa com ORELHA_PAINEL_TERMOS_PECA, padrão "MINUTAR"), audiência (começa com
+ORELHA_PAINEL_TERMOS_AUDIENCIA, padrão "AUDIÊNCIA") e "outra" (o resto). ORELHA_PAINEL_OUTRAS=nao volta
+a deixar só peças e audiências. Tarefas canceladas ficam de fora. Tarefa com mais de um responsável
+conta na carga de cada um.
 
 Situação (dias até o prazo; negativo = vencida): VENCIDA (já passou), URGENTE (hoje a 2 dias),
 ATENÇÃO (3 a 7), PRÓXIMA (8 a 14), NO PRAZO (15 ou mais).
@@ -33,14 +36,14 @@ from nucleo import painel as desenho
 from nucleo import simulado, vios
 from nucleo.modelos import Secao
 
-TITULO = "Painel semanal (peças e audiências)"
+TITULO = "Painel semanal (tarefas da equipe)"
 PRECISA_VIOS = True
 RELATORIO_DIARIO = False  # tem o próprio PDF; não entra no relatorio.html do dia
 
 log = logging.getLogger("orelha")
 
 SEM_RESPONSAVEL = "Sem responsável"
-DIAS_FILA = 14
+DIAS_FILA = 7  # a semana do painel: do dia do pedido até 7 dias depois (até 09/11/2026 eram 14)
 DIAS_AGENDA = 7
 URGENTE_ALTO = 15
 TAXA_BOA = 70
@@ -50,6 +53,8 @@ DIAS_MIN_BASE = 5    # registro mais novo que isso não serve de base (ex.: uma 
 DIAS_MAX_BASE = 35   # mais velho que isso a comparação deixa de ser "da semana anterior"
 MINUSCULAS = {"de", "da", "do", "das", "dos", "e"}
 _RE_PXE = re.compile(r"pxe_id=(\d+)")
+TIPOS_TODAS = "todas"              # fila com todos os tipos de tarefa (desde 23/11/2026)
+TIPOS_PECAS = "pecas_audiencias"   # só peças e audiências; registros sem o campo "tipos" são deste
 
 
 @dataclass
@@ -57,13 +62,14 @@ class Entrada:
     """Uma tarefa da fila do painel."""
     chave: str
     categoria: str       # "peca" | "audiencia"
-    responsavel: str
+    responsavel: str     # nomes para mostrar ("Ana Fictícia, Bruno Fictício")
     processo: str
     tarefa: str
     prazo: date
     dias: int            # até o prazo; negativo = vencida
     hora: str = ""
     link: str = ""
+    responsaveis: tuple = ()  # cada nome conta na carga (vazio = sem responsável)
 
 
 # ---------------------------------------------------------------- regras (puras)
@@ -86,14 +92,15 @@ def faixa(dias):
     return "no_prazo", f"NO PRAZO {dias}d"
 
 
-def categoria(tarefa, termos_peca, termos_audiencia):
-    """"audiencia", "peca" ou "" (outros tipos de tarefa não entram no painel). Conta só se o TIPO
-    COMEÇA com o termo ("INFORMAR AUDIÊNCIA" é tarefa sobre a audiência, não a audiência)."""
+def categoria(tarefa, termos_peca, termos_audiencia, outras=True):
+    """"audiencia", "peca", "outra" (os outros tipos) ou "" (com outras=False, os outros tipos não entram).
+    Conta como peça/audiência só se o TIPO COMEÇA com o termo ("INFORMAR AUDIÊNCIA" é tarefa sobre a
+    audiência, não a audiência: vira "outra")."""
     texto = re.sub(r"^C:\s*", "", agenda.dobrar(tarefa.tipo or tarefa.titulo).strip())
     for nome, termos in (("audiencia", termos_audiencia), ("peca", termos_peca)):
         if any(t and texto.startswith(agenda.dobrar(t)) for t in termos):
             return nome
-    return ""
+    return "outra" if outras else ""
 
 
 def _chave(t):
@@ -101,12 +108,24 @@ def _chave(t):
     return m.group(1) if m else (t.link or f"{t.processo}|{t.tipo}|{t.responsavel}|{t.conclusao}")
 
 
-def montar_fila(tarefas, hoje, termos_peca, termos_audiencia, dias_fila=DIAS_FILA):
+def periodo(ctx, dias_fila=DIAS_FILA):
+    """(de, ate) do painel: o escolhido na página /orelha (--painel-de/--painel-ate) ou, sem escolha, de hoje
+    até hoje + dias_fila. Só o fim escolhido: começa hoje. Só o início: vai até início + dias_fila."""
+    de = getattr(ctx, "painel_de", None) or ctx.hoje
+    ate = getattr(ctx, "painel_ate", None) or de + timedelta(days=dias_fila)
+    return de, max(ate, de)
+
+
+def montar_fila(tarefas, hoje, termos_peca, termos_audiencia, dias_fila=DIAS_FILA, de=None, ate=None, outras=True):
     """[TarefaLista] -> ([Entrada], ignoradas). Sem repetir a mesma tarefa; fora as concluídas, as
-    canceladas, as sem data, as de outros tipos e as com prazo além do horizonte."""
+    canceladas, as sem data, as de outros tipos e as com prazo fora do período. Período = de `de` (padrão
+    hoje) até `ate` (padrão hoje + dias_fila); as vencidas que continuam abertas (prazo antes de hoje)
+    entram sempre: são as "não feitas" da comparação."""
+    de = de or hoje
+    ate = ate or hoje + timedelta(days=dias_fila)
     vistas, fila, ignoradas = set(), [], {"sem_data": 0}
     for t in tarefas:
-        cat = categoria(t, termos_peca, termos_audiencia)
+        cat = categoria(t, termos_peca, termos_audiencia, outras)
         if not cat or t.concluida or "CANCELAD" in agenda.dobrar(f"{t.etiqueta} {t.tipo}"):
             continue
         prazo = t.conclusao or t.limite
@@ -115,27 +134,31 @@ def montar_fila(tarefas, hoje, termos_peca, termos_audiencia, dias_fila=DIAS_FIL
             continue
         dias = (prazo - hoje).days
         chave = _chave(t)
-        if dias > dias_fila or chave in vistas:
+        if prazo > ate or (hoje <= prazo < de) or chave in vistas:
             continue
         vistas.add(chave)
-        dono = nome_proprio(prazos.responsavel_principal(t.responsavel)) or SEM_RESPONSAVEL
-        fila.append(Entrada(chave=chave, categoria=cat, responsavel=dono, processo=t.processo, tarefa=t.tipo or t.titulo,
-                            prazo=prazo, dias=dias, hora=t.hora, link=t.link))
+        nomes = tuple(nome_proprio(n) for n in prazos.responsaveis(t.responsavel))
+        fila.append(Entrada(chave=chave, categoria=cat, responsavel=", ".join(nomes) or SEM_RESPONSAVEL,
+                            processo=t.processo, tarefa=t.tipo or t.titulo, prazo=prazo, dias=dias, hora=t.hora,
+                            link=t.link, responsaveis=nomes))
     fila.sort(key=lambda e: (e.dias, agenda.dobrar(e.responsavel), agenda.dobrar(e.tarefa)))
     return fila, ignoradas
 
 
 def carga(fila, urgente_alto=URGENTE_ALTO):
-    """Peças, audiências, total, vencidas e urgentes (prazo em até 7 dias, vencidas incluídas) por advogado.
-    Mais carregado primeiro; "sem responsável" por último. `destaque` = urgentes >= urgente_alto."""
+    """Peças, audiências, outras, total, vencidas e urgentes (prazo em até 7 dias, vencidas incluídas) por
+    responsável. Tarefa com mais de um responsável conta para cada um. Mais carregado primeiro; "sem
+    responsável" por último. `destaque` = urgentes >= urgente_alto."""
     por = {}
+    coluna = {"peca": "pecas", "audiencia": "audiencias"}
     for e in fila:
-        c = por.setdefault(e.responsavel, {"nome": e.responsavel, "pecas": 0, "audiencias": 0, "total": 0,
-                                           "vencidas": 0, "urgente": 0})
-        c["pecas" if e.categoria == "peca" else "audiencias"] += 1
-        c["total"] += 1
-        c["vencidas"] += int(e.dias < 0)
-        c["urgente"] += int(e.dias <= 7)
+        for nome in (e.responsaveis or (e.responsavel,)):
+            c = por.setdefault(nome, {"nome": nome, "pecas": 0, "audiencias": 0, "outras": 0, "total": 0,
+                                      "vencidas": 0, "urgente": 0})
+            c[coluna.get(e.categoria, "outras")] += 1
+            c["total"] += 1
+            c["vencidas"] += int(e.dias < 0)
+            c["urgente"] += int(e.dias <= 7)
     linhas = sorted(por.values(), key=lambda c: (c["nome"] == SEM_RESPONSAVEL, -c["total"], agenda.dobrar(c["nome"])))
     for c in linhas:
         c["destaque"] = c["urgente"] >= urgente_alto
@@ -150,10 +173,11 @@ def tipo_audiencia(tarefa):
     return t or (tarefa or "")
 
 
-def agenda_audiencias(fila, hoje, dias=DIAS_AGENDA):
-    """Audiências com data de hoje até hoje + dias, em ordem de data e hora."""
-    fim = hoje + timedelta(days=dias)
-    escolhidas = sorted((e for e in fila if e.categoria == "audiencia" and hoje <= e.prazo <= fim),
+def agenda_audiencias(fila, hoje, dias=DIAS_AGENDA, de=None, ate=None):
+    """Audiências com data de hoje até hoje + dias (ou de `de` até `ate`, o período escolhido), em ordem de
+    data e hora."""
+    inicio, fim = (de or hoje), (ate or hoje + timedelta(days=dias))
+    escolhidas = sorted((e for e in fila if e.categoria == "audiencia" and inicio <= e.prazo <= fim),
                         key=lambda e: (e.prazo, e.hora or "99:99", agenda.dobrar(e.responsavel)))
     return [{"data": f"{e.prazo:%d/%m}", "hora": e.hora or "--:--", "advogado": e.responsavel,
              "tipo": tipo_audiencia(e.tarefa), "processo": e.processo or "—"} for e in escolhidas]
@@ -189,10 +213,10 @@ def nome_registro(dia, simulado_=False):
     return f"painel-{'simulado-' if simulado_ else ''}{dia.isoformat()}.json"
 
 
-def ler_base(ctx):
-    """Registro mais recente com DIAS_MIN_BASE a DIAS_MAX_BASE dias de idade (None se não há). No
-    simulado, sem registro usa a fixture historico-anterior.json (como os prazos)."""
-    base = _base_do_historico(ctx)
+def ler_base(ctx, tipos=TIPOS_TODAS):
+    """Registro mais recente com DIAS_MIN_BASE a DIAS_MAX_BASE dias de idade e com o mesmo conjunto de
+    tipos (None se não há). No simulado, sem registro usa a fixture historico-anterior.json (como os prazos)."""
+    base = _base_do_historico(ctx, tipos)
     if base is None and ctx.simulado:
         try:
             base = json.loads(simulado.ler(ctx, "historico-anterior.json"))
@@ -201,7 +225,7 @@ def ler_base(ctx):
     return base
 
 
-def _base_do_historico(ctx):
+def _base_do_historico(ctx, tipos=TIPOS_TODAS):
     if ctx.historico is None:
         return None
     padrao = re.compile(r"^painel-" + ("simulado-" if ctx.simulado else "") + r"(\d{4}-\d{2}-\d{2})\.json$")
@@ -218,27 +242,29 @@ def _base_do_historico(ctx):
                 candidatos.append((dia, a.name))
     for _, nome in sorted(candidatos, reverse=True):
         registro = ctx.ler_historico(nome)
-        if isinstance(registro, dict) and registro.get("data") and isinstance(registro.get("fila"), list):
+        if (isinstance(registro, dict) and registro.get("data") and isinstance(registro.get("fila"), list)
+                and registro.get("tipos", TIPOS_PECAS) == tipos):
             return registro
     return None
 
 
-def registro(fila, hoje, semanas):
-    """O que vai para historico/painel-<data>.json (fica só na máquina: orelha/saida/ é ignorada pelo git)."""
+def registro(fila, hoje, semanas, tipos=TIPOS_TODAS):
+    """O que vai para historico/painel-<data>.json (fica só na máquina: orelha/saida/ é ignorada pelo git).
+    `tipos` diz que tarefas entraram na fila: só se compara com registro do mesmo conjunto."""
     return {"data": hoje.isoformat(), "total": len(fila), "fila": [e.chave for e in fila],
-            "semanas": semanas[-12:]}
+            "semanas": semanas[-12:], "tipos": tipos}
 
 
 # ---------------------------------------------------------------- leitura
-def _ler(ctx, dias_fila, avisos):
-    """TarefaLista das tarefas abertas com data para conclusão até hoje + dias_fila."""
+def _ler(ctx, dias_fila, avisos, ate=None):
+    """TarefaLista das tarefas abertas com data para conclusão até `ate` (padrão hoje + dias_fila)."""
     cfg = ctx.cfg
     ctx.emitir("fase", fase="lendo_calendario")
     if ctx.simulado:
         return prazos.tarefas_da_lista(simulado.ler(ctx, "lista.html"), cfg.vios_base)
     desde = vios.data_br(cfg.valor("ORELHA_PRAZOS_DESDE", "01/01/2000")) or date(2000, 1, 1)
     maximo = cfg.valor("ORELHA_PRAZOS_MAX_PAGINAS", 60, int)
-    fim = ctx.hoje + timedelta(days=dias_fila)
+    fim = ate or ctx.hoje + timedelta(days=dias_fila)
     contador, listas = [0], []
     for a, b in prazos.janelas(desde, fim, ctx.hoje):
         parte = prazos.ler_periodo(ctx, "data_prevista", a, b, contador, maximo, avisos)
@@ -257,9 +283,13 @@ def _plural(n, um, varios):
 
 
 def montar_dados(ctx, fila, ignoradas, leitura_avisos, cfg_painel):
+    tipos = TIPOS_TODAS if cfg_painel.get("outras", True) else TIPOS_PECAS
     """Tudo o que o desenho precisa + o resumo. Devolve (dados, comparacao, semanas)."""
     hoje = ctx.hoje
-    base = ler_base(ctx)
+    de, ate = periodo(ctx, cfg_painel.get("dias_fila", DIAS_FILA))
+    escolhido = bool(getattr(ctx, "painel_de", None) or getattr(ctx, "painel_ate", None))
+    agenda_periodo = (de, ate) if escolhido else ()
+    base = ler_base(ctx, tipos)
     comp = comparar(fila, base, hoje, cfg_painel["boa"], cfg_painel["atencao"]) if base else None
     semanas = []
     if comp:
@@ -280,7 +310,8 @@ def montar_dados(ctx, fila, ignoradas, leitura_avisos, cfg_painel):
                   if n else "NÃO FEITAS — nenhuma tarefa permaneceu da semana anterior")
     else:
         itens = fila
-        titulo = f"FILA ABERTA — {_plural(len(fila), 'tarefa', 'tarefas')} de peças e audiências (sem semana anterior para comparar)"
+        conjunto = "da equipe" if tipos == TIPOS_TODAS else "de peças e audiências"
+        titulo = f"FILA ABERTA — {_plural(len(fila), 'tarefa', 'tarefas')} {conjunto} (sem semana anterior para comparar)"
     avisos = list(leitura_avisos)
     if ignoradas.get("sem_data"):
         avisos.append(f"{_plural(ignoradas['sem_data'], 'tarefa', 'tarefas')} sem data para conclusão nem limite ficaram de fora")
@@ -288,13 +319,16 @@ def montar_dados(ctx, fila, ignoradas, leitura_avisos, cfg_painel):
     if sem_dono:
         avisos.append(f"{_plural(sem_dono, 'tarefa', 'tarefas')} sem responsável na leitura")
     dados = {
-        "inicio": hoje - timedelta(days=7), "fim": hoje, "gerado_em": datetime.now(), "cartoes": cartoes,
+        # período do painel = o escolhido na página ou, sem escolha, do dia do pedido até dias_fila dias depois
+        "inicio": de, "fim": ate, "gerado_em": datetime.now(), "cartoes": cartoes,
         "semanas": semanas,
         "nota_semanas": ("Resolvidas = tarefas que estavam na fila da leitura anterior e não aparecem mais abertas no VIOS "
                          "(concluídas ou canceladas: o Orelha só enxerga as abertas)." if semanas else ""),
         "tendencia": " → ".join(_pct(s["taxa"]) for s in semanas if s.get("taxa") is not None) if len(semanas) > 1 else "",
-        "carga": cargas, "agenda": agenda_audiencias(fila, hoje, cfg_painel["dias_agenda"]),
+        "carga": cargas, "outras": tipos == TIPOS_TODAS, "agenda": agenda_audiencias(fila, hoje, cfg_painel["dias_agenda"], *agenda_periodo),
         "dias_agenda": cfg_painel["dias_agenda"], "lista_titulo": titulo,
+        "agenda_titulo": (f"Agenda de audiências — {de:%d/%m} a {ate:%d/%m} (comparecimento obrigatório)"
+                          if escolhido else ""),
         "lista": [{"processo": e.processo, "faixa": faixa(e.dias)[0], "situacao": faixa(e.dias)[1],
                    "responsavel": e.responsavel, "tarefa": e.tarefa} for e in itens],
         "avisos": avisos}
@@ -307,19 +341,29 @@ def executar(ctx):
                   "dias_agenda": cfg.valor("ORELHA_PAINEL_DIAS_AGENDA", DIAS_AGENDA, int),
                   "urgente_alto": cfg.valor("ORELHA_PAINEL_URGENTE_ALTO", URGENTE_ALTO, int),
                   "boa": cfg.valor("ORELHA_PAINEL_TAXA_BOA", TAXA_BOA, float),
-                  "atencao": cfg.valor("ORELHA_PAINEL_TAXA_ATENCAO", TAXA_ATENCAO, float)}
+                  "atencao": cfg.valor("ORELHA_PAINEL_TAXA_ATENCAO", TAXA_ATENCAO, float),
+                  "outras": cfg.valor("ORELHA_PAINEL_OUTRAS", True, bool)}
     termos_peca = cfg.valor("ORELHA_PAINEL_TERMOS_PECA", "MINUTAR", "lista")
     termos_audiencia = cfg.valor("ORELHA_PAINEL_TERMOS_AUDIENCIA", "AUDIÊNCIA", "lista")
 
     leitura_avisos = []
-    tarefas = _ler(ctx, cfg_painel["dias_fila"], leitura_avisos)
-    fila, ignoradas = montar_fila(tarefas, ctx.hoje, termos_peca, termos_audiencia, cfg_painel["dias_fila"])
+    de, ate = periodo(ctx, cfg_painel["dias_fila"])
+    log.info("Painel: período de %s a %s", f"{de:%d/%m/%Y}", f"{ate:%d/%m/%Y}")
+    tarefas = _ler(ctx, cfg_painel["dias_fila"], leitura_avisos, ate)
+    fila, ignoradas = montar_fila(tarefas, ctx.hoje, termos_peca, termos_audiencia, cfg_painel["dias_fila"], de, ate,
+                                  cfg_painel["outras"])
     dados, comp, semanas = montar_dados(ctx, fila, ignoradas, leitura_avisos, cfg_painel)
 
     completa = not leitura_avisos and bool(fila)
-    if completa:
+    if completa and de != ctx.hoje:
+        # a comparação semana a semana parte de hoje: um período que começa em outro dia não vira base
+        completa = False
+        dados["avisos"].append(f"período escolhido começa em {de:%d/%m}, não hoje: este painel não entra na "
+                               "comparação com a semana seguinte")
+    elif completa:
         try:
-            ctx.gravar_historico(nome_registro(ctx.hoje, ctx.simulado), registro(fila, ctx.hoje, semanas))
+            ctx.gravar_historico(nome_registro(ctx.hoje, ctx.simulado),
+                                 registro(fila, ctx.hoje, semanas, TIPOS_TODAS if cfg_painel["outras"] else TIPOS_PECAS))
         except OSError as e:
             dados["avisos"].append(f"não consegui gravar o registro da semana ({e.__class__.__name__}): "
                                    "a próxima edição não terá com o que comparar")

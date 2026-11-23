@@ -164,7 +164,9 @@ separa:
   é um grupo ("Quinta-feira, 05/11 · ontem"); de 8 a 35 dias atrás, faixas de 7 dias ("De 23/10 a
   29/10 · há 8 a 14 dias"); depois um grupo por mês e, com 12 meses ou mais, por ano. Por idade do
   atraso: até `ORELHA_PRAZOS_DIAS_GRAVE` dias (padrão 7) é "atenção"; mais que isso é "urgente". O
-  responsável aparece em cada tarefa, e o quadro **Atrasadas por responsável** fecha a seção.
+  responsável aparece em cada tarefa, e o quadro **Atrasadas por responsável** fecha a seção. Tarefa com
+  mais de um responsável conta para cada um deles (desde 23/11/2026; antes só para o primeiro nome), então a
+  soma do quadro pode passar do total de atrasadas.
 
 No relatório, cada grupo vem **fechado**, com o total, os selos por nível e uma barra do tamanho do
 grupo: clica no grupo e abrem as tarefas (é `<details>` do HTML, sem JavaScript). O PDF sai com os
@@ -174,7 +176,7 @@ grupos fechados, como resumo de uma página; as tarefas ficam no HTML.
 até hoje, cada dia mostra as tarefas que venciam nele e continuam abertas (clica no dia e abre), e
 hoje mostra as que vencem hoje. Na segunda-feira, mostra a semana passada inteira. Sábado e domingo
 só aparecem se tiverem tarefa. Embaixo, "Antes desta semana" (nos mesmos grupos do relatório) e o
-quadro por responsável (desta semana e de antes).
+quadro por responsável (desta semana e de antes), com a mesma regra: cada responsável da tarefa conta.
 
 Na 1ª rodada real (04/11/2026), a regra antiga ("limite vencido ou hoje" = urgente) deixava quase
 tudo urgente, porque o limite costuma ser 1 dia depois da conclusão, e contava como atrasadas as que
@@ -249,20 +251,30 @@ rodapé, A4 e as margens do modelo, em todas as páginas). As três imagens do t
 `assets/timbrado/` (`nucleo/timbrado.py` as embute no HTML). Se o escritório trocar o timbrado, troque
 essas imagens.
 
+**Período**: na página `/orelha` do Sam, os campos **De** e **Até** (já vêm de hoje a 7 dias depois)
+escolhem o período do painel; pela linha de comando, `--painel-de AAAA-MM-DD --painel-ate AAAA-MM-DD`. Sem
+escolha, vai do dia do pedido até `ORELHA_PAINEL_DIAS_FILA` dias depois (padrão 7). A fila pega as tarefas com
+prazo dentro do período e também as vencidas que continuam abertas; a agenda de audiências mostra as do
+período escolhido. Só o painel que começa no dia do pedido vira base da comparação da semana seguinte.
+
 Partes do painel (`funcoes/painel.py`, desenho em `nucleo/painel.py`):
 - **Resumo executivo**: fila total, não feitas, novas, carga do advogado mais carregado e vencidas.
 - **Taxa de resolução semanal**: fila inicial, resolvidas, taxa e leitura (Boa/Atenção/Baixa), com a
   tendência das últimas 3 semanas.
-- **Carga por advogado**: peças, audiências, total, vencidas e "urgente ≤7d" (prazo em até 7 dias, vencidas
-  incluídas). Em vermelho quem passa de `ORELHA_PAINEL_URGENTE_ALTO`.
+- **Carga por responsável**: peças, audiências, outras, total, vencidas e "urgente ≤7d" (prazo em até 7 dias,
+  vencidas incluídas). Tarefa com mais de um responsável conta para cada um. Em vermelho quem passa de
+  `ORELHA_PAINEL_URGENTE_ALTO`.
 - **Agenda de audiências** dos próximos 7 dias (data, hora, advogado, tipo, processo).
 - **Não feitas**: as tarefas que continuam abertas desde a semana anterior, com a situação em cores:
   VENCIDA/URGENTE (até 2 dias) vermelho, ATENÇÃO 3 a 7 dias amarelo, PRÓXIMA 8 a 14 laranja, NO PRAZO
   15 ou mais verde.
 
-**Fila**: tarefas não concluídas da equipe toda cujo tipo **começa** com `MINUTAR` (peças) ou
-`AUDIÊNCIA`, com data para conclusão até hoje + 14 dias (`ORELHA_PAINEL_*` no `.env.example`). Outros
-tipos de tarefa, canceladas e "INFORMAR AUDIÊNCIA" ficam de fora. Lê a mesma lista de tarefas dos
+**Fila** (desde 23/11/2026): tarefas não concluídas da equipe toda, de **todos os tipos**, com prazo dentro
+do período (`ORELHA_PAINEL_*` no `.env.example`). Categorias: **peça** (tipo começa com `MINUTAR`),
+**audiência** (começa com `AUDIÊNCIA`) e **outra** (o resto, inclusive "INFORMAR AUDIÊNCIA"). Canceladas ficam
+de fora. `ORELHA_PAINEL_OUTRAS=nao` volta a deixar só peças e audiências. A fila com todos os tipos é grande
+(1.207 tarefas na leitura de 23/11/2026). O registro da semana guarda quais tipos entraram (`"tipos"`): só se
+compara com registro do mesmo conjunto, então a 1ª edição com todos os tipos sai sem comparação. Lê a mesma lista de tarefas dos
 prazos (só GET, com o bloqueio de envios).
 
 **Comparação entre semanas**: a cada execução completa o painel grava `historico/painel-<data>.json` com a

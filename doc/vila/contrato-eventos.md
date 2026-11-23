@@ -55,6 +55,12 @@ A vila **só assiste**. Ela não grava nada nem aprova nada. A conferência, o e
 ```
 `fase`: `entrando_vios` → `conferindo_duplicatas` → `criando_tarefas`
 
+**Envio automático (botão da página do Sam, `bot/envio_auto.py`)** usa os mesmos tipos, com um campo a mais e duas fases novas:
+`envio_iniciado` e `arquivo_subido` trazem `"automatico": true` (o `arquivo_subido` também `intimacoes`: quantas foram capturadas);
+`fase` ganha `capturando` (antes do `arquivo_subido`) e `analisando` (antes do `conferido`). Ordem: `envio_iniciado` →
+`fase capturando` → `arquivo_subido` → `fase analisando` → `conferido` → `fase entrando_vios` → `fase criando_tarefas` → `ci`… → `envio_fim`.
+O `envio` tem o formato `auto_AAAA-MM-DD_HH-MM-SS`.
+
 **5. `ci`** (um evento por mudança de cada CI)
 ```json
 { "tipo": "ci", "ci": "4821", "tarefa": "Contestação", "etapa": "no_quadro" }

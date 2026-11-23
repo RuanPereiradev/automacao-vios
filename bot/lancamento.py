@@ -18,7 +18,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from bot.navegador import POLL
 
-from bot import skill
+from bot import duplicidade, prazos, responsaveis, skill
 
 log = logging.getLogger(__name__)
 
@@ -29,11 +29,24 @@ REGISTRO = "lancamentos.json"  # CIs já lançadas (evita lançar duas vezes)
 APELIDOS = {
     "MINUTAR PETIÇÃO EXECUÇÃO (EXECUÇÃO) 2026)": "MINUTAR PETIÇÃO (EXECUÇÃO) 2026",
     "SUSTENTAÇÃO ORAL PPREVIDENCIÁRIO) 2026": "SUSTENTAÇÃO ORAL (PREVIDENCIÁRIO) 2026",
+    # o VIOS dividiu esta em 10/11/2026; no .txt do chat (skill antiga) vale a de laudo
+    "MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026": "MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026",
 }
 
 
 class LancamentoErro(Exception):
     pass
+
+
+AMANDA = "AMANDA LEITE MENDES"  # só realiza o lançamento: não acompanha nem executa as tarefas (skill de 13/11/2026)
+MOTIVO_RESPONSAVEL = ("RESPONSÁVEIS em branco ou 'automático' (o VIOS manda para a Amanda): informe o advogado auxiliar "
+                      "ou, sem auxiliar, o advogado responsável.")
+
+
+def responsavel_proibido(responsaveis):
+    """True se a tarefa ficaria com a Amanda: sem responsável (o VIOS marcaria sozinho, 'automático') ou com o nome dela."""
+    nomes = [n for n in (responsaveis or []) if str(n).strip()]
+    return not nomes or any(_normalizar(n) == _normalizar(AMANDA) for n in nomes)
 
 
 def _normalizar(texto):
@@ -255,6 +268,56 @@ def ler_intimacao(driver, link_lancar, timeout):
     )
 
 
+def ler_escritorio(driver, link_lancar, timeout):
+    """"Escritório atual" do processo da intimação (ex.: "Roneely Feitosa - Sobral"). Só lê: abre a tela
+    Lançar Intimação, segue o link do martelo ("Visualizar processo") e lê o campo na ficha do processo."""
+    _abrir(driver, link_lancar, timeout)
+    ficha = driver.execute_script(
+        "const i = document.querySelector(\"a[href*='processos-vis.php'] i.vj-icon-gavel\");"
+        "return i ? i.closest('a').href : '';"
+    )
+    if not ficha:
+        raise LancamentoErro("link do processo (martelo) não encontrado na tela Lançar Intimação")
+    driver.get(ficha)
+    # a ficha é montada depois do carregamento (Vue): espera o campo aparecer com valor
+    ler = """
+        const p = [...document.querySelectorAll('p')].find(p =>
+            /^Escrit[oó]rio atual/i.test(((p.querySelector('strong') || {}).innerText || '').trim()));
+        if (!p) return '';
+        const valor = [...p.children].find(e => e.tagName === 'SPAN' && !e.classList.contains('vj-acoes-dados'));
+        return valor ? valor.innerText.trim() : '';
+    """
+    try:
+        return WebDriverWait(driver, timeout, poll_frequency=POLL).until(lambda d: d.execute_script(ler))
+    except Exception:
+        raise LancamentoErro(f"campo 'Escritório atual' não encontrado na ficha do processo ({ficha})") from None
+
+
+def conferir_pericia(driver, r, pasta_saida, timeout):
+    """Segunda checagem da PERÍCIA MÉDICA JUDICIAL: o responsável é o da filial do "Escritório atual" do processo
+    no VIOS, não o da cidade que aparece no teor. Troca os responsáveis da tarefa e refaz o bloqueio de filial."""
+    pericias = [t for t in r.get("tarefas") or [] if t["nome"].startswith(responsaveis.PERICIA_MEDICA)]
+    if not pericias:
+        return
+    escritorio = ler_escritorio(driver, r["link_lancar"], timeout)
+    pessoas = responsaveis.carregar(pasta_saida)
+    # o bloqueio de filial da análise (palpite pelo teor) deixa de valer: quem decide é o escritório do processo
+    r["bloqueios"] = [b for b in r.get("bloqueios") or [] if responsaveis.MSG_FILIAL not in b]
+    for t in pericias:
+        nomes, bloqueio, alertas = responsaveis.da_pericia_pelo_escritorio(escritorio, pessoas)
+        if bloqueio:
+            r["bloqueios"].append(f"{t['nome']}: {bloqueio}")
+            continue
+        if [_normalizar(n) for n in t.get("responsaveis") or []] != [_normalizar(n) for n in nomes]:
+            log.info("CI %s (%s): responsável trocado de %s para %s pelo Escritório atual '%s'", r.get("ci"), t["nome"],
+                     ", ".join(t.get("responsaveis") or []) or "(nenhum)", ", ".join(nomes), escritorio)
+        else:
+            log.info("CI %s (%s): Escritório atual '%s' confirma o responsável %s", r.get("ci"), t["nome"], escritorio,
+                     ", ".join(nomes))
+        t["responsaveis"] = nomes
+        r.setdefault("alertas", []).extend(alertas)
+
+
 def tarefas_lancadas(driver, link_lancar, timeout):
     """Tarefas já lançadas para a intimação, lidas da tela de Conferência
     (confere-intimacao-lancada.php). Cada uma: {tarefa, data, responsaveis, apagada}."""
@@ -309,10 +372,27 @@ def _registro(pasta):
     return arquivo, dados
 
 
+RESULTADOS = "automatico_resultados.json"  # resultado de cada CI no lançamento (tela /automatico)
+
+
+def anotar_resultado(pasta_saida, ci, estado, mensagem=""):
+    """Guarda o que aconteceu com a CI no lançamento: gravada, bloqueada, duplicada, ja_no_vios,
+    conferencia (pede humano), erro ou retirada (tirada da lista antes de lançar)."""
+    arquivo = Path(pasta_saida) / RESULTADOS
+    dados = json.loads(arquivo.read_text(encoding="utf-8")) if arquivo.exists() else {}
+    dados[ci] = {"estado": estado, "mensagem": mensagem, "quando": f"{datetime.now():%d/%m/%Y %H:%M}"}
+    arquivo.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=False, hoje=None):
-    """Lança as tarefas das CIs pedidas. Devolve (lancadas, erros)."""
+    """Lança as tarefas das CIs pedidas. Devolve (lancadas, erros).
+    Gravando (confirmar=True), anota o resultado de cada CI em saida/automatico_resultados.json."""
     hoje = hoje or date.today()
     arquivo_reg, registro = _registro(pasta_saida)
+
+    def anotar(ci, estado, mensagem=""):
+        if confirmar:
+            anotar_resultado(pasta_saida, ci, estado, mensagem)
     if cis == ["todas"]:
         cis = [r["ci"] for r in resultados if r.get("ci")]
     escolhidos = [r for r in resultados if r.get("ci") in cis]
@@ -325,32 +405,61 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
         ci = r["ci"]
         if r.get("erro"):
             log.error("CI %s: análise com erro, nada lançado", ci)
+            anotar(ci, "erro", "A análise da IA deu erro: nada lançado.")
             erros += 1
             continue
-        if r.get("duplicada_de"):
+        if r.get("duplicada_de") and duplicidade.ligado():
             log.info("CI %s: duplicada da CI %s, ignorada (vale a tarefa da original)", ci, r["duplicada_de"])
+            anotar(ci, "duplicada", f"Cópia da CI {r['duplicada_de']}: vale a tarefa da original.")
             continue
         if confirmar and ci in registro:
             log.warning("CI %s já foi lançada em %s: pulando", ci, registro[ci]["quando"])
             continue
         if not r.get("link_lancar"):
             log.error("CI %s: sem link 'Lançar Intimação'", ci)
+            anotar(ci, "erro", "Sem o link 'Lançar Intimação' do VIOS.")
+            erros += 1
+            continue
+        try:
+            conferir_pericia(driver, r, pasta_saida, timeout)
+        except Exception as e:
+            log.exception("CI %s: falha ao conferir o Escritório atual da perícia, nada lançado", ci)
+            anotar(ci, "erro", f"Perícia médica: não deu para ler o Escritório atual do processo ({e}).")
             erros += 1
             continue
         if r.get("bloqueios"):
             log.warning("CI %s: falta informação, nada lançado (conferir no PJe e lançar manualmente): %s",
                         ci, "; ".join(r["bloqueios"]))
+            anotar(ci, "bloqueada", "; ".join(r["bloqueios"]))
+            erros += 1
+            continue
+        sem_resp = [t["nome"] for t in r["tarefas"] if responsavel_proibido(t.get("responsaveis"))]
+        if sem_resp:
+            log.warning("CI %s: responsável em branco/automático/Amanda em %s: nada lançado (o VIOS mandaria para a Amanda)",
+                        ci, "; ".join(sem_resp))
+            anotar(ci, "bloqueada", MOTIVO_RESPONSAVEL + " Tarefa(s): " + "; ".join(sem_resp))
             erros += 1
             continue
         especiais = [t["nome"] for t in r["tarefas"] if t["nome"] in skill.ESPECIAIS]
         if especiais or not r["tarefas"]:
             log.warning("CI %s: análise pede conferência humana (%s): nada lançado", ci, "; ".join(especiais) or "sem tarefa")
+            anotar(ci, "conferencia", "A análise pede conferência humana: " + ("; ".join(especiais) or "sem tarefa"))
             erros += 1
             continue
         # só tarefa sem prazo (ciência) pode ficar sem data; prazo "PENDENTE" não vira a data de hoje
         sem_data = [t["nome"] for t in r["tarefas"] if not _data_valida(t["data_tarefa"]) and t["tipo_data"] != "SEM_DATA"]
         if sem_data:
             log.warning("CI %s: data não calculada para %s: nada lançado (conferir manualmente)", ci, "; ".join(sem_data))
+            anotar(ci, "bloqueada", "Data não calculada para " + "; ".join(sem_data))
+            erros += 1
+            continue
+        # a data vem pronta da análise (D-2, dia seguinte...): análise de outro dia pode trazer data que já passou
+        passadas = [f"{t['nome']} ({d:%d/%m/%Y})" for t in r["tarefas"] if (d := _data_conclusao(t, hoje)) < hoje]
+        if passadas:
+            log.warning("CI %s: data que já passou (análise de outro dia), nada lançado — refazer a análise: %s",
+                        ci, "; ".join(passadas))
+            anotar(ci, "bloqueada", "Data já passou (análise de outro dia): " + "; ".join(passadas)
+                   + ". Refazer a análise.")
             erros += 1
             continue
 
@@ -358,6 +467,7 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
         if ja:
             log.warning("CI %s já tem tarefa no VIOS (%s): nada lançado",
                         ci, "; ".join(f"{t['tarefa']} {t['data']}" for t in ja))
+            anotar(ci, "ja_no_vios", "Já tinha tarefa no VIOS: " + "; ".join(f"{t['tarefa']} {t['data']}" for t in ja))
             continue
 
         # 1) Adicionar cada tarefa: vai para o quadro "Tarefas" (provisório, só nesta sessão)
@@ -406,8 +516,10 @@ def lancar(driver, resultados, cis, pasta_saida, pasta_logs, timeout, confirmar=
                             for t in adicionadas],
             }
             arquivo_reg.write_text(json.dumps(registro, ensure_ascii=False, indent=2), encoding="utf-8")
-        except Exception:
+            anotar(ci, "gravada")
+        except Exception as e:
             erros += 1
             log.exception("CI %s: falha ao lançar", ci)
+            anotar(ci, "erro", str(e))
             driver.save_screenshot(str(Path(pasta_logs) / f"erro_lancamento_ci{ci}_{datetime.now():%H%M%S}.png"))
     return lancadas, erros

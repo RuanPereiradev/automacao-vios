@@ -16,6 +16,10 @@ a planilha) e escreve o `resultado.txt`.
 3. Para cada pessoa válida do `.txt`: vai direto para `/modulos/pesquisa-processos/novo-pedido`
    (a tela do botão **Iniciar Pesquisa**), preenche o Identificador Projeto (**nome da empresa**),
    escolhe o tipo **CPF/CNPJ**, digita o documento e clica em **Continuar**.
+   Se o documento já foi pesquisado no Sonar (por qualquer usuário), aparece o aviso **Pesquisa
+   Duplicada** ("já foram pesquisados no pedido N em DD/MM/AAAA ... Deseja realizar a pesquisa novamente?"):
+   o Albi clica em **Confirmar** no aviso (não compra nada), anota no log o pedido anterior e a data e segue
+   para o passo 2. A compra continua sendo só o **Confirmar Pedido**, e só com `--confirmar`.
 4. No passo 2 ("Pedido") confere o documento mostrado, escolhe o **Sacado** (`SONAR_SACADO`; vazio =
    o escritório) e, só com `--confirmar`, clica em **Confirmar Pedido** e guarda o número.
 5. Com todos confirmados, abre a página de cada pedido até o Sonar terminar (até `SONAR_ESPERA_MIN`
@@ -29,17 +33,19 @@ a planilha) e escreve o `resultado.txt`.
    do que já foi baixado (sem Sonar): `.venv/bin/python relatorio.py <pasta do resultado>`.
    Escreve também o `mensagem.txt`, com o resumo pronto para mandar a cada empresa (CPF mascarado). Na
    página, é o botão "Capturar resumo".
-   E `mensagens_cac.txt`/`.json` (`mensagem_cac.py`): uma mensagem por pessoa com processos, no padrão da CAC
-   ("*Beatriz Vasconcelos:* Informamos que…", "*1️⃣ Autor x Réu*", "Trata-se de…", situação e ressalva), sem IA.
-   Para contar o que aconteceu em cada processo (contestação, audiências, sentença, recurso, trânsito em
-   julgado, cumprimento, arquivamento), `datajud.py` consulta o número do processo na API pública do CNJ
-   (DataJud) e guarda a resposta em `datajud/` na pasta do resultado. Os fatos narrados nas petições e os
-   fundamentos das decisões não estão em nenhuma das fontes, e a mensagem diz isso. Sem resposta da API, o
-   processo sai só com o cadastro do Sonar. Ver um processo: `.venv/bin/python datajud.py <número>`;
-   desligar: `DATAJUD=false` no `.env` ou `relatorio.py <pasta> --sem-datajud`.
+   E `mensagens_cac.txt`/`.json` (`mensagem_cac.py`): uma mensagem por pessoa, no padrão da CAC, sem IA e
+   **sem consultar tribunal nem DataJud** (só a planilha do Sonar). Com processos: "*Beatriz Vasconcelos:*
+   Informamos que, após consulta aos registros processuais disponibilizados, foram localizados *N
+   processos judiciais*…", período, quantos arquivados/em tramitação, um bloco por processo
+   ("*1️⃣ Autor x Réu*", "*Processo nº … — TJ…*", posição da pessoa, andamento, "*Conclusão:*") e a
+   conclusão (formato fixo, só mudam os campos). Tipos de ação fora do dicionário: `explicacao_ia.py` pede uma
+   frase ao Gemini (`GEMINI_API_KEY` no `.env`; só o nome da classe vai; cache em `explicacoes_classe.json`).
+   Sem processos ("não consta"): "…não localizamos *nenhum processo* em nome de *NOME*".
 7. Não compra duas vezes: o registro `saida/pedidos_confirmados.json` é anotado antes de cada
-   clique em Confirmar; CPF já pesquisado para a mesma empresa nos últimos 30 dias usa o pedido
+   clique em Confirmar; CPF já pesquisado para a mesma empresa no último dia (24 h) usa o pedido
    anterior. Erro depois do clique vira "Conferir no Sonar" (nunca clica de novo); 3 seguidos param.
+   Na página, arquivo já confirmado não mostra o botão de compra: o botão **Conferir de novo** faz uma
+   conferência nova do mesmo .txt (quem passou de 1 dia volta a "Vai pesquisar").
 
 ## O arquivo .txt (modelo: `modelo_pedidos.txt`)
 
@@ -141,7 +147,10 @@ tem a API de robôs da Oystr. Primeiro passo, no computador onde o bot vai rodar
 
 O `entrar` e o `processos` abrem cada tribunal pelo console do Presto: página **Sites**, procura o
 tribunal na lista e clica (é assim que a extensão faz o login). Se o console pedir login, usam
-`PRESTO_EMAIL` e `PRESTO_SENHA` do `albi/.env`. `--direto` pula o console.
+`PRESTO_EMAIL` e `PRESTO_SENHA` do `albi/.env`: esperam o console mostrar o login ou a lista de
+sites (até 25 s), aceitam login em uma tela ou em duas (e-mail, depois senha) e, se o preenchimento
+não pegar, digitam com o teclado de verdade. No TRT7, clicam no botão "Login via Presto" da tela de
+login do tribunal (o quadro do Presto aparece no SSO). `--direto` pula o console.
 
 O `processos` lê o `processos.csv` do último relatório (ou `presto.py processos <pasta>`), descobre o
 tribunal pelo número CNJ (TJCE, TRT7, JFCE e TRF5; os outros ficam como "fora"), entra em cada um pelo

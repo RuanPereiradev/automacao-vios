@@ -47,13 +47,13 @@ class AnthropicIA:
     def responder(self, sistema, usuario, schema, pesquisar=False):
         """pesquisar=True libera a pesquisa na web (ferramenta web_search do servidor)."""
         corpo = self._corpo(sistema, usuario, schema, pesquisar)
-        extra = {"output_config": corpo.pop("output_config"), "fallbacks": "default"}
-        r = self.client.messages.create(
-            **corpo,
-            # se o modelo recusar, a própria API tenta outro modelo
-            extra_headers={"anthropic-beta": "server-side-fallback-2026-07-01"},
-            extra_body=extra,
-        )
+        extra = {"output_config": corpo.pop("output_config")}
+        cabecalhos = {}
+        if "haiku" not in self.modelo:
+            # se o modelo recusar, a própria API tenta outro modelo (o Haiku não tem esse recurso)
+            extra["fallbacks"] = "default"
+            cabecalhos["anthropic-beta"] = "server-side-fallback-2026-07-01"
+        r = self.client.messages.create(**corpo, extra_headers=cabecalhos, extra_body=extra)
         return _ler_mensagem(r)
 
     # ---- lote (Message Batches API) ----

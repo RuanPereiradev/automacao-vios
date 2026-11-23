@@ -11,6 +11,7 @@ no estilo do relatório do dia (nucleo/relatorio.py):
 """
 import html as html_mod
 import os
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -30,14 +31,22 @@ def inicio_da_semana(hoje):
     return ontem - timedelta(days=ontem.weekday())
 
 
-def responsavel(item):
-    """Primeiro responsável, do detalhe do item ("responsável: Ana, Bruno · para conclusão ...")."""
+def responsaveis(item):
+    """Todos os responsáveis, do detalhe do item ("responsável: Ana, Bruno · para conclusão ..." -> [Ana, Bruno])."""
     primeiro = (item.detalhe or "").split(" · ")[0]
     if not primeiro.startswith("responsável: "):
-        return SEM_RESPONSAVEL
-    nomes = primeiro[len("responsável: "):].replace(";", ",").replace("/", ",").split(",")
-    nome = nomes[0].split(" e ")[0].strip()
-    return nome or SEM_RESPONSAVEL
+        return [SEM_RESPONSAVEL]
+    saida = []
+    for nome in re.split(r"[,;/]| e ", primeiro[len("responsável: "):]):
+        nome = nome.strip()
+        if nome and nome not in saida:
+            saida.append(nome)
+    return saida or [SEM_RESPONSAVEL]
+
+
+def responsavel(item):
+    """Primeiro responsável, do detalhe do item ("responsável: Ana, Bruno · para conclusão ...")."""
+    return responsaveis(item)[0]
 
 
 def separar(itens, hoje):
@@ -103,16 +112,19 @@ def montar_html(itens, numeros, hoje, simulado=False, gerado_em=None):
         h.append('<p class="vazio">Nenhuma tarefa atrasada de antes da semana.</p>')
     h.append("</section>")
 
+    # tarefa com vários responsáveis conta para cada um deles
     por = {}
     for i in da_semana:
-        por.setdefault(responsavel(i), [0, 0])[0] += 1
+        for nome in responsaveis(i):
+            por.setdefault(nome, [0, 0])[0] += 1
     for i in antes:
-        por.setdefault(responsavel(i), [0, 0])[1] += 1
+        for nome in responsaveis(i):
+            por.setdefault(nome, [0, 0])[1] += 1
     linhas = sorted(([n, a, b, a + b] for n, (a, b) in por.items()),
                     key=lambda l: (l[0] == SEM_RESPONSAVEL, -l[1], -l[3], l[0]))
     h.append('<section class="secao"><h2>Por responsável</h2>')
     if linhas:
-        h.append(relatorio.quadro_html({"titulo": "Atrasadas por responsável",
+        h.append(relatorio.quadro_html({"titulo": "Atrasadas por responsável (tarefa com mais de um responsável conta para cada um)",
                                          "colunas": ["Responsável", "Desta semana", "De antes", "Total"],
                                          "linhas": linhas}))
     else:

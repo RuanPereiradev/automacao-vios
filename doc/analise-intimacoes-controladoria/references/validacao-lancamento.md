@@ -10,10 +10,10 @@ Corrigir inconsistência interna detectável. Se a solução exigir documento/da
 
 ## Não lançar a CI/tarefa afetada
 
-- Teor ausente, comunicação que só aponta evento (“Evento 23 — PETIÇÃO”), ou impossibilidade de escolher tarefa sem abrir o evento. Não usar ciência como substituto.
+- Teor ausente, comunicação que só aponta evento (“Evento 23 — PETIÇÃO”), ou impossibilidade de escolher tarefa sem abrir o evento. Não usar ciência como substituto. Ressalvar a inclusão expressamente solicitada de análise de sentença quando o evento informa inequivocamente o resultado, conforme o SKILL.md: não inventar dispositivo nem valores.
 - Cliente/vínculo/posição processual ainda não identificados com segurança.
-- Departamento/responsável incerto ou divergência não resolvida. Aplicar antes as correções autorizadas: Carlos trabalhista → Johnys; Tamira previdenciário → Suhiane; responsável Tamira em Execução → tarefa de Execução. Nunca atribuir a Sarah/Controladoria.
-- Audiência sem tipo/data/hora/formato/local ou dados de acesso exigidos (link, ID, senha); perícia com comparecimento sem data/hora/local; sustentação sem dados indispensáveis. Listar precisamente o que falta para conferência no PJe. Não presumir que ausência de senha significa acesso livre.
+- Departamento/responsável incerto ou divergência não resolvida. Aplicar as correções específicas autorizadas e a tabela de nomes de `saida-txt-bot.md`: tarefas com auxiliar CARL são atribuídas a JOHN, exceto se o cliente for CALTECH, quando são atribuídas a Carlos. Na tarefa de comparecimento à perícia médica, a ausência de filial não bloqueia o TXT: usar o texto específico autorizado em `saida-txt-bot.md`. Nunca atribuir a Amanda Leite Mendes/Controladoria. O TXT não pode conter `automático` nem abreviação no campo de responsável.
+- Audiência sem tipo/modelo, data, hora, formato ou link/local; perícia com comparecimento sem data/hora/local; sustentação sem data/horário ou outros dados indispensáveis ao cadastro. Em sustentação e viabilidade, link/local são opcionais e sua ausência não bloqueia o TXT. ID e senha são opcionais: sua ausência, por si só, não bloqueia audiência. Omitir campos ausentes sem afirmar acesso livre. Listar precisamente os dados essenciais faltantes.
 - Tarefa com horário sem horário confirmado. Exceção: aviso/instrução social possuem data operacional própria e podem existir sem data/hora da visita.
 - Prazo necessário ao lançamento sem termo inicial ou duração identificados; a falta de calendário oficial não bloqueia a contagem simplificada. Preservar controle preventivo identificado, sem chamá-lo de vencimento validado.
 - Tarefa não definida, nome não confirmado na lista oficial ou recurso/agravo de recorrente desconhecido. Isso é bloqueio, não simples alerta com lançamento.
@@ -31,6 +31,8 @@ Esses bloqueios restringem o lançamento da tarefa afetada, não impedem entrega
 
 ## Checagem das datas
 
+- Antes de calcular recursos, conferir se o ato é somente ciência pelo filtro de providência concreta. Suspensão de obrigação com consulta/diligência a cargo do juízo, sem providência atual do cliente nem questão jurídica concreta, não gera análise ou prazos recursais por cautela abstrata. Preservar hipóteses específicas de análise obrigatória.
+
 - Análise e ciência: mesmo dia de expediente do escritório até 12h; após 12h ou fora de expediente, próximo dia de expediente do escritório, ressalvadas prioridades e urgência concreta. Feriados não são excluídos do agendamento nem da contagem simplificada.
 - RPV e prioridades SUH: primeiro dia de expediente do escritório seguinte. Cabeçalho da descrição controla D-2; não é a data de lançamento prioritário.
 - Regra geral: D-2 retrocedendo dois dias de segunda a sexta, inclusive feriados; excluir apenas sábados e domingos.
@@ -46,3 +48,7 @@ Informar por CI se está pronta, duplicada ou pendente, sem misturar conclusões
 Excluir do arquivo importável todas as tarefas bloqueadas. Entregar no chat uma lista separada por CI/processo com o dado faltante e a consulta necessária. Conferir descrições curtas, responsáveis fora do resumo e cabeçalhos exclusivos: duas datas recursais OU prazo fatal. Não omitir CIs da conferência interna.
 
 No pagamento cível, conferir somente análise e minuta. Excluir tarefa separada de contato com o cliente, pois esse contato já é gerado automaticamente pelo fluxo da análise.
+
+## Exportação TXT para o bot
+
+Aplicar `saida-txt-bot.md` em toda análise de CSV/Excel do VIOS: um único TXT UTF-8 no modelo institucional, somente com tarefas prontas. Pendências de leitura no sistema e duplicadas ficam fora do TXT, identificadas no chat por CI/processo. Verificar que nenhuma tarefa bloqueada foi exportada e explicar cada exclusão. A usuária realiza a consulta e o cadastro manuais das pendências.

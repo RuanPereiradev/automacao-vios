@@ -132,6 +132,27 @@ def _ambiente():
     return ambiente
 
 
+def texto_digitado(empresa, cpfs, nomes):
+    """Monta o texto de um pedido digitado na página (mesmo formato do .txt): "EMPRESA: X" e uma linha
+    "CPF ; nome" por pessoa. Levanta AlbiErro se faltar empresa, CPF/CNPJ ou nome. Tira quebras de linha e
+    ";" do que foi digitado, para um campo não virar outra linha do arquivo."""
+    limpo = lambda v: re.sub(r"\s+", " ", (v or "").replace(";", " ")).strip()
+    empresa = limpo(empresa)
+    if not empresa:
+        raise AlbiErro("digite o nome da empresa (cliente) que pediu a pesquisa")
+    pessoas = [(limpo(c), limpo(n)) for c, n in zip(cpfs, nomes) if limpo(c) or limpo(n)]
+    if not pessoas:
+        raise AlbiErro("digite o CPF/CNPJ e o nome de pelo menos uma pessoa")
+    if len(pessoas) > MAX_LINHAS:
+        raise AlbiErro(f"são {len(pessoas)} pessoas; o máximo por vez é {MAX_LINHAS}")
+    for i, (c, n) in enumerate(pessoas, 1):
+        if not c:
+            raise AlbiErro(f"pessoa {i}: falta o CPF/CNPJ")
+        if not n:
+            raise AlbiErro(f"pessoa {i}: falta o nome")
+    return f"EMPRESA: {empresa}\n" + "\n".join(f"{c} ; {n}" for c, n in pessoas) + "\n"
+
+
 def receber(p, pasta_saida, texto, nome_arquivo):
     """1.º passo (soltou o .txt): guarda o arquivo e pede ao Albi a conferência (sem navegador):
     quem é válido, quem já foi pesquisado e quantos vão ser comprados. Devolve o id."""
@@ -162,6 +183,17 @@ def receber(p, pasta_saida, texto, nome_arquivo):
             "conferencia": conferencia, "iniciado": None}
     (pasta / f"{envio_id}.json").write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
     return envio_id
+
+
+def conferir_de_novo(p, pasta_saida, envio_id):
+    """Arquivo já confirmado: confere o mesmo .txt de novo, como se fosse solto outra vez (novo id). Quem foi
+    pesquisado há menos de 1 dia (DIAS_REPETIDO do Albi) continua "já pesquisado"; os outros voltam a
+    "vai pesquisar". Nada é comprado aqui: a compra continua pedindo os dois cliques. Devolve o novo id."""
+    meta = _meta(pasta_saida, envio_id)
+    txt = _pasta_envio(pasta_saida) / f"{envio_id}.txt"
+    if not meta or not txt.exists():
+        raise AlbiErro("arquivo não encontrado: solte o .txt de novo")
+    return receber(p, pasta_saida, txt.read_text(encoding="utf-8"), meta.get("arquivo") or txt.name)
 
 
 def conferencia(pasta_saida, envio_id):
@@ -302,6 +334,30 @@ def mensagens_cac(pasta_saida, envio_id):
         return None
 
 
+def mensagens_por_dia(pasta_saida):
+    """As mensagens da CAC de todas as execuções, por dia da execução: {"AAAA-MM-DD": [mensagem, ...]}.
+    Cada mensagem: id (da execução), hora, arquivo, empresa, nome, pedido, processos, texto. Quem foi
+    pesquisado de novo no mesmo dia fica só com a mensagem da execução mais recente. Dias do mais novo
+    para o mais antigo; dentro do dia, por empresa e nome. Também devolve os nomes das atendentes."""
+    dias, atendentes = {}, []
+    for e in execucoes(pasta_saida):  # da mais nova para a mais antiga
+        cac = mensagens_cac(pasta_saida, e["id"])
+        if not cac or not e.get("inicio"):
+            continue
+        atendentes = atendentes or list(cac.get("atendentes") or [])
+        dia = e["inicio"][:10]
+        vistos = {(m["empresa"], m["nome"], m["pedido"]) for m in dias.get(dia, [])}
+        for m in cac.get("mensagens", []):
+            if (m["empresa"], m["nome"], m["pedido"]) in vistos:
+                continue
+            dias.setdefault(dia, []).append({"id": e["id"], "hora": e["inicio"][11:16], "arquivo": e.get("arquivo"),
+                                             "empresa": m["empresa"], "nome": m["nome"], "pedido": m["pedido"],
+                                             "processos": m["processos"], "texto": m["texto"]})
+    for lista in dias.values():
+        lista.sort(key=lambda m: (m["empresa"].lower(), m["nome"].lower()))
+    return dict(sorted(dias.items(), reverse=True)), atendentes
+
+
 def arquivos(pasta_saida, envio_id):
     """resultado.txt e planilhas desta execução (caminhos relativos à pasta do resultado)."""
     base = pasta_resultado(pasta_saida, envio_id)
@@ -384,6 +440,42 @@ def execucoes(pasta_saida):
         e["arquivos"] = arquivos(pasta_saida, envio_id)
         lista.append(e)
     return sorted(lista, key=lambda e: e["inicio"] or "", reverse=True)
+
+
+SEM_EMPRESA = "Sem empresa"
+
+
+def _chave_empresa(nome):
+    return re.sub(r"\s+", " ", (nome or SEM_EMPRESA).strip()).lower()
+
+
+def clientes(pasta_saida):
+    """Os clientes (empresas) que pediram pesquisas, do mais recente para o mais antigo. De cada um:
+    nome, pedidos (cada execução com pessoas dele, do mais novo para o mais antigo) e totais.
+    Pedido: id, inicio, arquivo, modo, fim, relatorio (tem o relatório?), pessoas (as linhas dele na
+    execução) e mensagens (as mensagens da CAC dele nessa execução, com o parágrafo do Gemini)."""
+    por_empresa = {}
+    for e in execucoes(pasta_saida):  # da mais nova para a mais antiga
+        cac = mensagens_cac(pasta_saida, e["id"]) or {}
+        msgs = {}
+        for m in cac.get("mensagens", []):
+            msgs.setdefault(_chave_empresa(m.get("empresa")), []).append(m)
+        pessoas = {}
+        for p in e["pedidos"]:
+            pessoas.setdefault(p["empresa"] or SEM_EMPRESA, []).append(p)
+        for nome, ps in pessoas.items():
+            c = por_empresa.setdefault(_chave_empresa(nome), {"nome": nome, "pedidos": []})
+            c["pedidos"].append({"id": e["id"], "inicio": e["inicio"], "arquivo": e["arquivo"], "modo": e["modo"],
+                                 "fim": e["fim"], "relatorio": "relatorio.html" in e["arquivos"],
+                                 "resultado_txt": "resultado.txt" in e["arquivos"], "pessoas": ps,
+                                 "mensagens": sorted(msgs.get(_chave_empresa(nome), []), key=lambda m: m["nome"].lower())})
+    lista = []
+    for c in por_empresa.values():
+        ms = [m for pd in c["pedidos"] for m in pd["mensagens"]]
+        c.update(total_pessoas=sum(len(pd["pessoas"]) for pd in c["pedidos"]), mensagens=len(ms),
+                 com_processos=sum(1 for m in ms if m["processos"]), ultimo=c["pedidos"][0]["inicio"] or "")
+        lista.append(c)
+    return sorted(lista, key=lambda c: c["ultimo"], reverse=True)
 
 
 def andamento(p, pasta_saida):

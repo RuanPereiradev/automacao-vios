@@ -9,7 +9,7 @@ seguidas viram uma CI com várias tarefas):
     TAREFA: MINUTAR PETIÇÃO (EXECUÇÃO) 2026
     DATA: 29/10/2026
     HORA:
-    RESPONSÁVEIS: automático
+    RESPONSÁVEIS: NOME COMPLETO DO ADVOGADO AUXILIAR
     DESCRIÇÃO:
     PRAZO FATAL: 29/10/2026
     MINUTAR PETIÇÃO ...
@@ -19,14 +19,15 @@ import re
 from datetime import date, datetime
 
 from bot.analise import COM_HORARIO, FORA_DA_DESCRICAO, numero_processo
-from bot.lancamento import APELIDOS, _normalizar
+from bot.lancamento import AMANDA, APELIDOS, _normalizar
+from bot.responsaveis import CIDADE_IDENTIFICADA, FILIAIS, MSG_RONIELLE, PERICIA_MEDICA, eh_ronielle
 
 SEPARADOR = re.compile(r"^\s*-{3,}\s*$")
 CAMPO = re.compile(r"^\s*([A-Za-zÀ-ú ]+?)\s*:\s?(.*)$")
 CAMPOS = {"CI": "ci", "PROCESSO": "processo", "NUMERO DO PROCESSO": "processo", "N DO PROCESSO": "processo",
           "TAREFA": "nome", "DATA": "data", "HORA": "hora", "HORARIO": "hora",
           "RESPONSAVEIS": "responsaveis", "DESCRICAO": "descricao"}
-AUTOMATICO = {"", "AUTOMATICO", "AUTOMATICO PELO VIOS"}
+AUTOMATICO = {"", "AUTOMATICO", "AUTOMATICO PELO VIOS"}  # proibido desde a skill de 13/11/2026 (vai para a Amanda)
 LINK_LANCAR = "index.php?pag=sys/publicacoes/int-lanca.php&imp_pub_id={ci}"
 
 
@@ -117,14 +118,33 @@ def ler(texto, oficiais, pessoas=(), lancadas=(), links=None, base_url="", hoje=
             problemas.append(f"{nome}: falta o horário (vai no campo Horário do VIOS).")
 
         responsaveis = []
-        if _normalizar(campos.get("responsaveis", "")) not in AUTOMATICO:
+        if _normalizar(campos.get("responsaveis", "")) in AUTOMATICO:
+            # skill de 13/11/2026: o VIOS manda "automático" para a Amanda, que só lança e não executa a tarefa
+            problemas.append(f"{nome}: RESPONSÁVEIS em branco ou 'automático' (o VIOS manda para a Amanda). "
+                             "Informe o advogado auxiliar ou, sem auxiliar, o advogado responsável.")
+        else:
+            pericia = nome.startswith(PERICIA_MEDICA)
             for p in re.split(r"[,;]", campos["responsaveis"]):
                 if not p.strip():
+                    continue
+                if pericia and _normalizar(p) == _normalizar(CIDADE_IDENTIFICADA):
+                    # skill de 18/11/2026: sem filial mapeada, o texto exato vai no TXT e não bloqueia
+                    responsaveis.append(CIDADE_IDENTIFICADA)
                     continue
                 achado = por_pessoa.get(_normalizar(p))
                 if pessoas and not achado:
                     problemas.append(f"{nome}: responsável fora da lista do VIOS: '{p.strip()}'.")
                 responsaveis.append(achado or p.strip())
+            if len(responsaveis) == 1 and eh_ronielle(responsaveis[0]):
+                problemas.append(f"{nome}: {MSG_RONIELLE}")
+            if pericia and not (
+                    len(responsaveis) == 1 and _normalizar(responsaveis[0]) in
+                    {_normalizar(f[1]) for f in FILIAIS.values()} | {_normalizar(CIDADE_IDENTIFICADA)}):
+                problemas.append(f"{nome}: o responsável é o da filial (Camocim: FRANCISCO VICTOR HORA DO NASCIMENTO; "
+                                 "Tianguá: JOÃO JÂNIO; Jijoca: GUIVIA VASCONCELOS; Sobral: ANA LETÍCIA DA SILVA LEITAO) "
+                                 "ou o texto 'incluir responsável pela cidade identificada'.")
+            if any(_normalizar(r) == _normalizar(AMANDA) for r in responsaveis):
+                problemas.append(f"{nome}: a tarefa não pode ficar com a {AMANDA} (ela só lança, não executa).")
 
         descricao = campos.get("descricao", "")
         if not descricao:
@@ -182,7 +202,7 @@ def gerar(cis):
         for t in c["tarefas"]:
             linhas = [f"CI: {c['ci']}"] + ([f"PROCESSO: {c['processo']}"] if c.get("processo") else []) + [
                       f"TAREFA: {t['nome']}", f"DATA: {t['data_tarefa']}", f"HORA: {t['hora']}",
-                      f"RESPONSÁVEIS: {', '.join(t['responsaveis']) or 'automático'}"]
+                      f"RESPONSÁVEIS: {', '.join(t['responsaveis'])}"]
             linhas += t.get("soltas") or []
             linhas += ["DESCRIÇÃO:", t["descricao"]]
             blocos.append("\n".join(linhas))

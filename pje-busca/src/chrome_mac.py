@@ -1,0 +1,622 @@
+"""Albi — controla o Google Chrome que JÁ ESTÁ ABERTO no Mac, pelo AppleScript (só macOS).
+
+Por que não Selenium: o Chrome não deixa automação no perfil principal, e um perfil novo/copiado
+pede para confirmar a identidade da conta Google. O Chrome do Mac aceita comandos AppleScript:
+abrir aba, saber se terminou de carregar, rodar JavaScript na página (ler, clicar) e listar abas.
+Tudo acontece no Chrome aberto, com o perfil e a extensão do Presto que já estão lá.
+
+Precisa, uma vez:
+  1. no Chrome: menu Visualizar > Desenvolvedor > "Permitir JavaScript de Apple Events";
+  2. no macOS: quando aparecer "Terminal quer controlar Google Chrome", clicar em Permitir
+     (ou Ajustes do Sistema > Privacidade e Segurança > Automação > Terminal > Google Chrome).
+"""
+import json
+import os
+import platform
+import shutil
+import subprocess
+import time
+from pathlib import Path
+
+JS_DESLIGADO = ("O Chrome está com o JavaScript por AppleScript desligado. Rode uma vez "
+                "\".venv/bin/python presto.py liberar-chrome\" (fecha o Chrome, liga a opção e abre de novo) "
+                "ou, no Chrome: menu Visualizar > Desenvolvedor > \"Permitir JavaScript de Apple Events\".")
+SEM_PERMISSAO = ("O macOS não deixou o Terminal controlar o Chrome. Ajustes do Sistema > Privacidade e "
+                 "Segurança > Automação > Terminal: ligue \"Google Chrome\" e rode de novo.")
+
+
+class ChromeMacErro(Exception):
+    pass
+
+
+PASTA_CHROME = Path.home() / "Library" / "Application Support" / "Google" / "Chrome"
+OPCAO_JS = "allow_javascript_apple_events"  # chave "browser.allow_javascript_apple_events" do Preferences
+
+
+def perfis(pasta=PASTA_CHROME):
+    """Arquivos Preferences de cada perfil do Chrome (Default, Profile 1, ...)."""
+    return sorted(p for p in Path(pasta).glob("*/Preferences")
+                  if p.parent.name == "Default" or p.parent.name.startswith("Profile "))
+
+
+def chrome_rodando():
+    return subprocess.run(["pgrep", "-x", "Google Chrome"], capture_output=True).returncode == 0
+
+
+def ligar_opcao_js(pasta=PASTA_CHROME):
+    """Marca "Permitir JavaScript de Apple Events" direto no Preferences de cada perfil (Chrome FECHADO:
+    o Chrome regrava esse arquivo ao sair). Guarda uma cópia Preferences.albi-bak antes.
+    Devolve [(perfil, "ligado" | "já estava" | "erro: ...")]."""
+    feitos = []
+    for pref in perfis(pasta):
+        try:
+            dados = json.loads(pref.read_text(encoding="utf-8"))
+            browser = dados.setdefault("browser", {})
+            if browser.get(OPCAO_JS) is True:
+                feitos.append((pref.parent.name, "já estava"))
+                continue
+            browser[OPCAO_JS] = True
+            shutil.copy2(pref, pref.with_name("Preferences.albi-bak"))
+            tmp = pref.with_name("Preferences.albi-tmp")
+            tmp.write_text(json.dumps(dados, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            os.replace(tmp, pref)
+            feitos.append((pref.parent.name, "ligado"))
+        except Exception as e:  # noqa: BLE001 — um perfil com problema não impede os outros
+            feitos.append((pref.parent.name, f"erro: {e}"))
+    return feitos
+
+
+def liberar(perguntar=True):
+    """Fecha o Chrome, liga a opção do JavaScript por Apple Events em todos os perfis e abre de novo."""
+    if not disponivel():
+        print("Só funciona no Mac.")
+        return 2
+    if not perfis():
+        print(f"Não achei os perfis do Chrome em {PASTA_CHROME}.")
+        return 2
+    if chrome_rodando():
+        print("O Chrome vai fechar e abrir de novo para ligar a opção (ele só lê isso ao abrir).")
+        print("Se ele não estiver configurado para \"Continuar de onde parou\", as abas abertas não voltam.")
+        if perguntar and input("Pode fechar o Chrome agora? [s/N] ").strip().lower() not in ("s", "sim"):
+            print("Nada feito.")
+            return 1
+        subprocess.run(["osascript", "-e", 'tell application "Google Chrome" to quit'], capture_output=True)
+        for _ in range(60):
+            if not chrome_rodando():
+                break
+            time.sleep(0.5)
+        else:
+            print("O Chrome não fechou (alguma janela perguntando algo?). Feche com Cmd+Q e rode de novo.")
+            return 1
+        time.sleep(1)
+    erros = 0
+    for perfil, como in ligar_opcao_js():
+        print(f"  {perfil}: {como}")
+        erros += como.startswith("erro")
+    subprocess.run(["open", "-a", "Google Chrome"])
+    print("Chrome aberto de novo." + (" Algum perfil deu erro (veja acima)." if erros else
+          " Agora rode: .venv/bin/python presto.py entrar tjce1"))
+    return 1 if erros else 0
+
+
+def disponivel():
+    return platform.system() == "Darwin"
+
+
+def _osa(linhas, *args, timeout=90):
+    """Roda AppleScript (linhas) com argumentos (item N of argv) e devolve o texto do resultado."""
+    cmd = ["osascript"]
+    for l in linhas:
+        cmd += ["-e", l]
+    cmd += [str(a) for a in args]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise ChromeMacErro("o Chrome não respondeu a tempo (pode haver uma janela de permissão aberta)")
+    if r.returncode != 0:
+        err = r.stderr.strip()
+        if "JavaScript" in err and ("AppleScript" in err or "Apple Events" in err or "Apple" in err):
+            raise ChromeMacErro(JS_DESLIGADO)
+        if "-1743" in err or "Not authorized" in err or "autoriza" in err:
+            raise ChromeMacErro(SEM_PERMISSAO)
+        if "-600" in err or "-609" in err:
+            raise ChromeMacErro("o Google Chrome não está aberto")
+        raise ChromeMacErro(err or f"osascript saiu com código {r.returncode}")
+    return r.stdout.rstrip("\n")
+
+
+def abrir_aba(url):
+    """Abre uma aba nova na janela da frente do Chrome. Devolve (id da janela, id da aba)."""
+    s = _osa(['on run argv',
+              'tell application "Google Chrome"',
+              'if (count of windows) = 0 then error "o Chrome está aberto, mas sem nenhuma janela"',
+              'set w to front window',
+              'set t to make new tab at end of tabs of w with properties {URL:(item 1 of argv)}',
+              'return ((id of w) as text) & "," & ((id of t) as text)',
+              'end tell', 'end run'], url)
+    w, t = s.split(",")
+    return int(w), int(t)
+
+
+_ABA = 'tab id ((item 2 of argv) as integer) of window id ((item 1 of argv) as integer)'
+
+
+def carregando(w, t):
+    return _osa(['on run argv', 'tell application "Google Chrome"', f'return loading of {_ABA}', 'end tell',
+                 'end run'], w, t) == "true"
+
+
+def esperar(w, t, maximo=45, folga=3):
+    """Espera a aba terminar de carregar (e mais `folga` segundos para os scripts da página)."""
+    fim = time.monotonic() + maximo
+    while time.monotonic() < fim:
+        try:
+            if not carregando(w, t):
+                break
+        except ChromeMacErro:
+            pass
+        time.sleep(1)
+    time.sleep(folga)
+
+
+def js(w, t, codigo):
+    """Roda JavaScript na aba e devolve o resultado como texto (use JSON.stringify para objetos)."""
+    return _osa(['on run argv', 'tell application "Google Chrome"',
+                 f'return execute {_ABA} javascript (item 3 of argv)', 'end tell', 'end run'], w, t, codigo)
+
+
+def abas(w):
+    """[(id, url, título)] das abas da janela."""
+    # separadores criados fora do "tell": lá dentro, "tab" é a aba do Chrome, não a tabulação
+    s = _osa(['on run argv', 'set sep to character id 9', 'set fim to character id 10', 'set saida to ""',
+              'tell application "Google Chrome"',
+              'repeat with t in tabs of window id ((item 1 of argv) as integer)',
+              'set saida to saida & ((id of t) as text) & sep & (URL of t) & sep & (title of t) & fim',
+              'end repeat', 'end tell', 'return saida', 'end run'], w)
+    out = []
+    for linha in s.splitlines():
+        p = linha.split("\t")
+        if len(p) >= 3 and p[0].isdigit():
+            out.append((int(p[0]), p[1], p[2]))
+    return out
+
+
+def todas_abas():
+    """[(janela, aba, url)] de todas as janelas do Chrome (o tribunal pode abrir numa janela nova)."""
+    s = _osa(['on run argv', 'set sep to character id 9', 'set fim to character id 10', 'set saida to ""',
+              'tell application "Google Chrome"', 'repeat with w in windows', 'repeat with t in tabs of w',
+              'set saida to saida & ((id of w) as text) & sep & ((id of t) as text) & sep & (URL of t) & fim',
+              'end repeat', 'end repeat', 'end tell', 'return saida', 'end run'], "x")
+    out = []
+    for linha in s.splitlines():
+        p = linha.split("\t")
+        if len(p) >= 3 and p[0].isdigit() and p[1].isdigit():
+            out.append((int(p[0]), int(p[1]), p[2]))
+    return out
+
+
+def ir(w, t, endereco):
+    """Leva a aba para outro endereço (como digitar na barra)."""
+    _osa(['on run argv', 'tell application "Google Chrome"', f'set URL of {_ABA} to (item 3 of argv)', 'end tell',
+          'end run'], w, t, endereco)
+
+
+def fechar_aba(w, t):
+    """Fecha a aba."""
+    _osa(['on run argv', 'tell application "Google Chrome"', f'close {_ABA}', 'end tell', 'end run'], w, t)
+
+
+def url(w, t):
+    return _osa(['on run argv', 'tell application "Google Chrome"', f'return URL of {_ABA}', 'end tell', 'end run'],
+                w, t)
+
+
+# ---------------- JavaScript usado nas páginas ----------------
+# percorre a página, os frames do mesmo site e os "shadow roots" abertos (onde extensões costumam pôr botões)
+_PERCORRER = r"""
+function _albiTodos(raiz, onde, out) {
+  var els = raiz.querySelectorAll('*');
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    out.push([el, onde]);
+    if (el.shadowRoot) _albiTodos(el.shadowRoot, onde + '>shadow', out);
+    if ((el.tagName === 'IFRAME' || el.tagName === 'FRAME')) {
+      try { if (el.contentDocument) _albiTodos(el.contentDocument, onde + '>frame' + i, out); } catch (e) {}
+    }
+  }
+  return out;
+}
+function _albiDescr(el, onde) {
+  var r = el.getBoundingClientRect ? el.getBoundingClientRect() : {width: 0, height: 0};
+  var cls = (typeof el.className === 'string') ? el.className : '';
+  // nunca guarda o que foi digitado (senha/PIN): de <input> só o rótulo de botões
+  var valor = (el.tagName === 'INPUT' && !/^(button|submit|reset)$/i.test(el.type || '')) ? '' : (el.value || '');
+  if (el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') valor = '';
+  var d = {onde: onde, tag: el.tagName.toLowerCase(), texto: ((el.innerText || valor || '') + '').trim().slice(0, 80),
+           id: el.id || '', name: el.getAttribute('name') || '', type: el.getAttribute('type') || '', classe: cls.slice(0, 80),
+           href: el.getAttribute('href') || '', title: el.getAttribute('title') || '', alt: el.getAttribute('alt') || '',
+           src: (el.getAttribute('src') || '').slice(0, 150), visivel: r.width > 0 && r.height > 0};
+  for (var k in d) if (d[k] === '' ) delete d[k];
+  return d;
+}
+var _ALBI_INTERESSA = 'a,button,input,select,textarea,[role=button],[onclick],img,iframe,frame';
+"""
+
+JS_CAPTURAR = "(function(){" + _PERCORRER + r"""
+  var todos = _albiTodos(document, 'topo', []), elementos = [];
+  for (var i = 0; i < todos.length; i++) {
+    var el = todos[i][0];
+    try { if (el.matches(_ALBI_INTERESSA)) elementos.push(_albiDescr(el, todos[i][1])); } catch (e) {}
+  }
+  return JSON.stringify({url: location.href, titulo: document.title, elementos: elementos,
+                         texto: document.body ? document.body.innerText.slice(0, 30000) : '',
+                         html: document.documentElement.outerHTML});
+})()"""
+
+# procura (e, com clicar=true, clica) o primeiro elemento visível que mencione o termo
+JS_ACHAR = "(function(termo, clicar){" + _PERCORRER + r"""
+  var re = new RegExp(termo, 'i'), todos = _albiTodos(document, 'topo', []), achados = [];
+  for (var i = 0; i < todos.length; i++) {
+    var el = todos[i][0], d;
+    try { if (!el.matches(_ALBI_INTERESSA + ',div,span,label')) continue; } catch (e) { continue; }
+    d = _albiDescr(el, todos[i][1]);
+    var alvo = [d.texto, d.title, d.alt, d.id, d.classe, d.src, d.href, el.getAttribute('aria-label') || ''].join(' ');
+    if (re.test(alvo) && d.visivel && (d.texto || '').length < 60) achados.push([el, d]);
+  }
+  // prefere botão/link a div/span
+  achados.sort(function(a, b) { return (/^(button|a|input)$/.test(b[1].tag) ? 1 : 0) - (/^(button|a|input)$/.test(a[1].tag) ? 1 : 0); });
+  if (achados.length && clicar) { achados[0][0].click(); }
+  return JSON.stringify({achados: achados.slice(0, 10).map(function(x) { return x[1]; }), clicou: !!(achados.length && clicar)});
+})"""
+
+
+def capturar(w, t):
+    """{url, titulo, elementos, texto, html} da aba."""
+    return json.loads(js(w, t, JS_CAPTURAR))
+
+
+def achar(w, t, termo, clicar=False):
+    """{"achados": [...], "clicou": bool}: elementos visíveis que mencionam o termo (regex, sem caixa)."""
+    return json.loads(js(w, t, f"{JS_ACHAR}({json.dumps(termo)}, {'true' if clicar else 'false'})"))
+
+
+def print_tela(caminho):
+    """Print da tela inteira (o macOS pede a permissão "Gravação de Tela" para o Terminal na primeira vez)."""
+    try:
+        r = subprocess.run(["screencapture", "-x", str(caminho)], capture_output=True, timeout=20)
+        return r.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+# ---------------- quadro do Presto dentro da página do tribunal ----------------
+# o Presto põe na página um quadro "Credenciais Disponíveis" (div.presto-dialog-root, data-presto-el)
+# procura na página, nos "shadow roots" abertos e nos frames do mesmo site
+_DIALOGO = r"""(function() {
+  function busca(raiz) {
+    var d = raiz.querySelector('.presto-dialog-root') || raiz.querySelector('[data-presto-el]');
+    if (d) return d;
+    var els = raiz.querySelectorAll('*');
+    for (var i = 0; i < els.length; i++) if (els[i].shadowRoot) { d = busca(els[i].shadowRoot); if (d) return d; }
+    return null;
+  }
+  var d = busca(document);
+  if (d) return d;
+  var fr = document.querySelectorAll('iframe, frame');
+  for (var j = 0; j < fr.length; j++) { try { d = busca(fr[j].contentDocument); if (d) return d; } catch (e) {} }
+  return null;
+})()"""
+
+# clique "completo" (ponteiro + mouse + click), como o Vue/a extensão podem esperar
+_CLIQUE = r"""
+function _albiClique(el) {
+  var r = el.getBoundingClientRect(), o = {bubbles: true, cancelable: true, view: window, button: 0,
+    clientX: r.left + r.width / 2, clientY: r.top + r.height / 2};
+  try { el.scrollIntoView({block: 'center'}); } catch (e) {}
+  ['pointerdown', 'mousedown', 'pointerup', 'mouseup'].forEach(function(n) {
+    try { el.dispatchEvent(n.indexOf('pointer') === 0 ? new PointerEvent(n, o) : new MouseEvent(n, o)); } catch (e) {}
+  });
+  el.click();
+}
+"""
+
+JS_PRESTO = "(function(){var d=" + _DIALOGO + r""";
+  if (!d) return JSON.stringify({ok: false});
+  var creds = [].map.call(d.querySelectorAll('a.prs-text-presto-blue'), function(a) {
+    var box = a.parentElement && a.parentElement.parentElement;
+    return ((box ? box.innerText : a.innerText) || '').split('\n')[0].trim();
+  });
+  var inputs = [].map.call(d.querySelectorAll('input'), function(i) {
+    var r = i.getBoundingClientRect();
+    return {type: i.type, name: i.name || '', placeholder: i.placeholder || '', visivel: r.width > 0 && r.height > 0};
+  });
+  var botoes = [].map.call(d.querySelectorAll('button'), function(b) { return (b.innerText || '').trim(); });
+  return JSON.stringify({ok: true, texto: (d.innerText || '').slice(0, 3000), creds: creds, inputs: inputs, botoes: botoes});
+})()"""
+
+# clica na credencial cujo nome contém o termo (ou na primeira)
+JS_PRESTO_CREDENCIAL = "(function(termo){" + _CLIQUE + "var d=" + _DIALOGO + r""";
+  if (!d) return JSON.stringify({ok: false, erro: 'quadro do Presto não está na página'});
+  var links = [].slice.call(d.querySelectorAll('a.prs-text-presto-blue'));
+  var alvo = links.filter(function(a) {
+    var box = a.parentElement && a.parentElement.parentElement;
+    return !termo || ((box ? box.innerText : '') || '').toLowerCase().indexOf(termo.toLowerCase()) >= 0;
+  })[0] || links[0];
+  if (!alvo) return JSON.stringify({ok: false, erro: 'nenhuma credencial no quadro do Presto'});
+  var box = alvo.parentElement && alvo.parentElement.parentElement;
+  var nome = ((box ? box.innerText : '') || '').split('\n')[0].trim();  // antes do clique: o quadro muda
+  _albiClique(alvo);
+  return JSON.stringify({ok: true, nome: nome});
+})"""
+
+# preenche o PIN/senha no quadro (do jeito que o Vue do Presto percebe) e confirma
+JS_PRESTO_PIN = "(function(pin){var d=" + _DIALOGO + r""";
+  if (!d) return JSON.stringify({ok: false, erro: 'quadro do Presto não está na página'});
+  var campos = [].slice.call(d.querySelectorAll('input')).filter(function(i) {
+    var r = i.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && i.type !== 'hidden' && i.type !== 'checkbox';
+  });
+  var campo = campos.filter(function(i) { return i.type === 'password'; })[0] || campos[0];
+  if (!campo) return JSON.stringify({ok: false, erro: 'o quadro não tem campo de senha/PIN'});
+  campo.focus();
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(campo, pin);
+  campo.dispatchEvent(new Event('input', {bubbles: true}));
+  campo.dispatchEvent(new Event('change', {bubbles: true}));
+  var botoes = [].slice.call(d.querySelectorAll('button')).filter(function(b) {
+    return !/fechar|cancelar|voltar/i.test(b.innerText || '') && !b.disabled;
+  });
+  var botao = botoes.filter(function(b) { return /entrar|confirmar|ok|acessar|login|continuar|assinar|enviar/i.test(b.innerText || ''); })[0] || botoes[0];
+  if (botao) { botao.click(); return JSON.stringify({ok: true, botao: (botao.innerText || '').trim()}); }
+  // sem botão de confirmar (o quadro só tem "fechar"): Enter completo no campo do PIN
+  ['keydown', 'keypress', 'keyup'].forEach(function(n) {
+    campo.dispatchEvent(new KeyboardEvent(n, {key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true}));
+  });
+  if (campo.form) campo.form.requestSubmit ? campo.form.requestSubmit() : campo.form.submit();
+  return JSON.stringify({ok: true, botao: '(Enter)'});
+})"""
+
+
+# onde está, na TELA, o link da credencial ("credencial") ou o campo do PIN ("pin"): para o clique de verdade
+JS_PRESTO_ONDE = "(function(qual, termo){var d=" + _DIALOGO + r""";
+  if (!d) return JSON.stringify({ok: false, erro: 'quadro do Presto não está na página'});
+  var el = null;
+  if (qual === 'pin') {
+    el = [].filter.call(d.querySelectorAll('input'), function(i) {
+      var r = i.getBoundingClientRect(); return r.width > 0 && r.height > 0 && i.type === 'password';
+    })[0];
+  } else {
+    var links = [].slice.call(d.querySelectorAll('a.prs-text-presto-blue'));
+    el = links.filter(function(a) {
+      var box = a.parentElement && a.parentElement.parentElement;
+      return !termo || ((box ? box.innerText : '') || '').toLowerCase().indexOf(termo.toLowerCase()) >= 0;
+    })[0] || links[0];
+  }
+  if (!el) return JSON.stringify({ok: false, erro: 'não achei ' + qual + ' no quadro'});
+  el.scrollIntoView({block: 'center'});
+  var r = el.getBoundingClientRect();
+  // a área da página começa abaixo da barra do Chrome: (outer - inner) é a altura dessa barra. Na horizontal não
+  // soma nada (no Mac a janela não tem borda; outerWidth - innerWidth é o DevTools aberto ao lado)
+  return JSON.stringify({ok: true, x: Math.round(window.screenX + r.left + r.width / 2),
+                         y: Math.round(window.screenY + (window.outerHeight - window.innerHeight) + r.top + r.height / 2)});
+})"""
+
+_APP = {"Apple_Terminal": "Terminal", "vscode": "Visual Studio Code", "iTerm.app": "iTerm"}.get(
+    os.environ.get("TERM_PROGRAM", ""), "Terminal (ou o Visual Studio Code, se o bot roda nele)")
+SEM_ACESSIBILIDADE = (f"O macOS não deixou o {_APP} mexer no mouse/teclado. Ajustes do Sistema > Privacidade e "
+                      f"Segurança > Acessibilidade: ligue o {_APP} (se não estiver na lista, adicione pelo +), "
+                      f"feche o {_APP} com Cmd+Q, abra de novo e rode de novo.")
+
+
+def presto_onde(w, t, qual, termo=""):
+    return json.loads(js(w, t, f"{JS_PRESTO_ONDE}({json.dumps(qual)}, {json.dumps(termo)})"))
+
+
+def para_frente(w, t):
+    """Põe a aba na frente (aba ativa, janela da frente, Chrome em primeiro plano) antes do clique de verdade."""
+    _osa(['on run argv', 'tell application "Google Chrome"',
+          'set w to window id ((item 1 of argv) as integer)',
+          'repeat with k from 1 to (count of tabs of w)',
+          'if (id of tab k of w) = ((item 2 of argv) as integer) then set active tab index of w to k',
+          'end repeat', 'set index of w to 1', 'activate', 'end tell', 'end run'], w, t)
+    time.sleep(0.8)
+
+
+def acessibilidade_ok():
+    """O macOS deixa este app (Terminal/VS Code) mexer no mouse e no teclado? True/False (None = não deu para saber).
+    Sem isso o clique de verdade é descartado em silêncio, sem erro nenhum."""
+    try:
+        r = subprocess.run(["osascript", "-l", "JavaScript", "-e",
+                            'ObjC.import("ApplicationServices"); $.AXIsProcessTrusted()'],
+                           capture_output=True, text=True, timeout=20)
+    except Exception:
+        return None
+    if r.returncode != 0:
+        return None
+    return r.stdout.strip() == "true"
+
+
+def clicar_tela(x, y):
+    """Clique de verdade do mouse no ponto (x, y) da tela (precisa da permissão Acessibilidade para o Terminal)."""
+    script = ('ObjC.import("Cocoa");'
+              'function run(argv) { var p = {x: Number(argv[0]), y: Number(argv[1])};'
+              ' [5, 1, 2].forEach(function(tipo) {'  # mover, apertar, soltar (botão esquerdo = 0; HID = 0)
+              '  $.CGEventPost(0, $.CGEventCreateMouseEvent($(), tipo, p, 0));'
+              '  delay(0.08); }); return "ok"; }')
+    r = subprocess.run(["osascript", "-l", "JavaScript", "-e", script, str(x), str(y)],
+                       capture_output=True, text=True, timeout=20)
+    if r.returncode != 0:
+        raise ChromeMacErro(SEM_ACESSIBILIDADE if "1002" in r.stderr or "-25211" in r.stderr
+                            else (r.stderr.strip() or "o clique do mouse falhou"))
+
+
+def digitar_tela(texto, enter=True):
+    """Digita de verdade (teclado) no campo que está com o foco; Enter no fim. O texto não aparece em lugar nenhum."""
+    linhas = ['on run argv', 'tell application "System Events"',
+              'keystroke "a" using command down', 'delay 0.1', 'keystroke (item 1 of argv)']
+    if enter:
+        linhas += ['delay 0.2', 'key code 36']
+    try:
+        _osa(linhas + ['end tell', 'end run'], texto, timeout=20)
+    except ChromeMacErro as e:
+        if "1002" in str(e) or "-25211" in str(e) or "não tem permissão" in str(e) or "not allowed" in str(e):
+            raise ChromeMacErro(SEM_ACESSIBILIDADE)
+        raise
+
+
+# botão do próprio tribunal que leva ao login do Presto/SSO. No TRT7 (PJe-JT), primeirograu/login.seam
+# tem <button onclick="onLoginSSO();return false;">Login via Presto</button>; no TJCE o login já é o SSO.
+JS_BOTAO_LOGIN_PRESTO = r"""(function(clicar){
+  var cands = [].filter.call(document.querySelectorAll('button, a, input[type=button], input[type=submit]'), function(b) {
+    var r = b.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && !b.closest('[data-presto-el], .presto-dialog-root');
+  });
+  function txt(b) { return ((b.innerText || b.value || '') + '').replace(/\s+/g, ' ').trim(); }
+  var alvo = cands.filter(function(b) { return /login via presto/i.test(txt(b)); })[0]
+          || cands.filter(function(b) { return /onLoginSSO/.test(b.getAttribute('onclick') || ''); })[0];
+  if (!alvo) return JSON.stringify({ok: false});
+  var info = {ok: true, texto: txt(alvo)};
+  if (clicar) alvo.click();
+  return JSON.stringify(info);
+})"""
+
+
+def botao_login_presto(w, t, clicar=False):
+    """{"ok", "texto"}: a página do tribunal tem o botão "Login via Presto" (TRT7)? clicar=True clica nele."""
+    return json.loads(js(w, t, f"{JS_BOTAO_LOGIN_PRESTO}({'true' if clicar else 'false'})"))
+
+
+def presto(w, t):
+    """{"ok", "texto", "creds", "inputs", "botoes"} do quadro do Presto na aba (ok=False se não há quadro)."""
+    return json.loads(js(w, t, JS_PRESTO))
+
+
+def presto_credencial(w, t, termo=""):
+    return json.loads(js(w, t, f"{JS_PRESTO_CREDENCIAL}({json.dumps(termo)})"))
+
+
+def presto_pin(w, t, pin):
+    return json.loads(js(w, t, f"{JS_PRESTO_PIN}({json.dumps(pin)})"))
+
+
+# ---------------- console do Presto (console.presto.oystr.com.br) ----------------
+_VUE_POR = r"""
+function _albiPor(el, v) {
+  var setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  el.focus(); setter.call(el, v);
+  ['input', 'keyup', 'change'].forEach(function(n) { el.dispatchEvent(new Event(n, {bubbles: true})); });
+}
+function _albiVis(el) { var r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
+"""
+
+# campos do login do console. O console do Presto (Vue) tem o login em 2 etapas, na própria URL /sites:
+# <div id="login-page"> com <input type="text"> + <label>Email</label> ao lado e o botão "Acessar"
+# (desabilitado até o e-mail ser preenchido); depois vem a senha. O nome do campo está só no <label>.
+_CAMPOS_LOGIN = _VUE_POR + r"""
+function _albiRotulo(i) {
+  var l = i.id && document.querySelector('label[for="' + i.id + '"]');
+  var viz = i.parentElement && i.parentElement.querySelector('label');
+  return [i.name, i.id, i.placeholder, i.getAttribute('autocomplete'), i.getAttribute('aria-label'),
+          l && l.innerText, viz && viz.innerText, i.closest('label') && i.closest('label').innerText].join(' ');
+}
+function _albiCampos() {
+  var pag = document.getElementById('login-page');
+  var ins = [].filter.call(document.querySelectorAll('input'), function(i) { return _albiVis(i) && !/hidden|checkbox|radio|submit|button/i.test(i.type); });
+  var s = ins.filter(function(i) { return i.type === 'password' || /senha|password/i.test(_albiRotulo(i)); })[0];
+  var e = ins.filter(function(i) { return i !== s && (i.type === 'email' || /e-?mail|usu[aá]rio|username|login/i.test(_albiRotulo(i))); })[0];
+  if (!e && pag) e = ins.filter(function(i) { return i !== s && pag.contains(i); })[0];
+  var tela = !!pag || /esqueci (minha )?senha|forgot/i.test((document.body && document.body.innerText) || '');
+  return {senha: s, email: e, tela: tela};
+}
+"""
+
+# {"estado": "sites" | "login" | "carregando", "url", "email", "senha"}: o que o console está mostrando.
+JS_CONSOLE_ESTADO = "(function(){" + _CAMPOS_LOGIN + r"""
+  var c = _albiCampos();
+  var sites = [].some.call(document.querySelectorAll('tr'), function(tr) {
+    var td = tr.querySelector('td[data-column="Site"]') || tr.querySelector('td');
+    return td && td.querySelector('.font-bold');
+  });
+  var urlLogin = /\/(login|signin|sign-in|entrar|auth)\b|\/realms\//i.test(location.pathname + location.hash);
+  var login = !!(c.tela || c.senha || c.email || urlLogin);
+  if (!login && !sites && /\/sites/.test(location.pathname))  // Sites aberto, lista ainda vazia: só o filtro
+    sites = [].filter.call(document.querySelectorAll('input.x-input, input[type=text], input[type=search]'), _albiVis).length > 0;
+  var estado = login ? 'login' : (sites ? 'sites' : 'carregando');
+  return JSON.stringify({estado: estado, url: location.href, email: !!c.email, senha: !!c.senha});
+})()"""
+
+# preenche o que o login do console mostrar (e-mail e/ou senha) e clica em Acessar/Entrar/Continuar.
+# Devolve {"ok", "etapa": "email" | "senha" | "email+senha", "botao"}; nunca devolve o que foi digitado.
+# O botão fica desabilitado até o Vue ver o campo preenchido: o clique vai 0,8 s depois.
+JS_CONSOLE_LOGIN = "(function(email, senha){" + _CAMPOS_LOGIN + r"""
+  var c = _albiCampos(), s = c.senha, e = c.email;
+  if (!s && !e) return JSON.stringify({ok: false, erro: 'não achei os campos de e-mail e senha do console'});
+  if (e && !e.disabled && !e.readOnly) _albiPor(e, email);
+  if (s) _albiPor(s, senha);
+  var etapa = e && s ? 'email+senha' : (s ? 'senha' : 'email');
+  var campo = s || e;
+  var b = [].filter.call(document.querySelectorAll('button, input[type=submit]'), function(x) {
+    return _albiVis(x) && /acessar|entrar|login|continuar|pr[oó]xim|avan[cç]ar|sign in|next|continue/i.test(x.innerText || x.value || '');
+  })[0] || (campo.form && campo.form.querySelector('button[type=submit], input[type=submit]'));
+  if (b) {
+    setTimeout(function() { if (b.disabled) campo.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true})); else b.click(); }, 800);
+    return JSON.stringify({ok: true, etapa: etapa, botao: (b.innerText || b.value || '').trim()});
+  }
+  if (campo.form) { campo.form.requestSubmit ? campo.form.requestSubmit() : campo.form.submit(); return JSON.stringify({ok: true, etapa: etapa, botao: '(enviar)'}); }
+  return JSON.stringify({ok: false, erro: 'não achei o botão Acessar do console'});
+})"""
+
+# posição na tela do campo de e-mail ou de senha do login do console (para clicar e digitar de verdade)
+JS_CONSOLE_ONDE = "(function(qual){" + _CAMPOS_LOGIN + r"""
+  var c = _albiCampos(), el = qual === 'senha' ? c.senha : c.email;
+  if (!el) return JSON.stringify({ok: false, erro: 'não achei o campo de ' + qual + ' do console'});
+  el.scrollIntoView({block: 'center'});
+  var r = el.getBoundingClientRect();
+  return JSON.stringify({ok: true, x: Math.round(window.screenX + r.left + r.width / 2),
+                         y: Math.round(window.screenY + (window.outerHeight - window.innerHeight) + r.top + r.height / 2)});
+})"""
+
+# na página Sites: digita o nome no filtro, acha a linha do site (nome exato, sem acento/caixa) e clica no link
+JS_CONSOLE_SITE = "(function(nome, clicar){" + _VUE_POR + r"""
+  function n(t) { return (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/º|°/g, 'o')
+                    .replace(/\s+/g, ' ').trim().toLowerCase(); }
+  if (document.getElementById('login-page'))
+    return JSON.stringify({ok: false, erro: 'o console do Presto está na tela de login (não digito o tribunal no campo de e-mail)', parecidos: []});
+  var filtro = [].filter.call(document.querySelectorAll('input.x-input, input[type=text]'), _albiVis)[0];
+  if (filtro && !clicar) _albiPor(filtro, nome);
+  var linhas = [].slice.call(document.querySelectorAll('tr')), alvo = null, nomes = [];
+  linhas.forEach(function(tr) {
+    var c = tr.querySelector('td[data-column="Site"]') || tr.querySelector('td');
+    var b = c && c.querySelector('.font-bold');
+    if (!b) return;
+    nomes.push(b.innerText.trim());
+    if (!alvo && n(b.innerText) === n(nome)) alvo = [tr, c, b];
+  });
+  if (!alvo) return JSON.stringify({ok: false, erro: 'o site "' + nome + '" não está na lista do console', filtro: !!filtro,
+                                    parecidos: nomes.filter(function(x) { return n(x).indexOf(n(nome).split(' ')[0]) >= 0; }).slice(0, 10)});
+  var a = alvo[1].querySelector('a');
+  var info = {ok: true, nome: alvo[2].innerText.trim(), link: a ? a.getAttribute('href') : '',
+              dominio: a ? a.innerText.trim() : ((alvo[1].innerText || '').split('\n').pop() || '').trim()};
+  if (clicar) { (a || alvo[2]).click(); info.clicou = a ? 'link' : 'nome'; }
+  return JSON.stringify(info);
+})"""
+
+
+def console_estado(w, t):
+    """{"estado": "sites" | "login" | "carregando", "url", "email", "senha"} do console do Presto na aba."""
+    return json.loads(js(w, t, JS_CONSOLE_ESTADO))
+
+
+def console_pede_login(w, t):
+    return console_estado(w, t).get("estado") == "login"
+
+
+def console_onde(w, t, qual):
+    return json.loads(js(w, t, f"{JS_CONSOLE_ONDE}({json.dumps(qual)})"))
+
+
+def console_login(w, t, email, senha):
+    return json.loads(js(w, t, f"{JS_CONSOLE_LOGIN}({json.dumps(email)}, {json.dumps(senha)})"))
+
+
+def console_site(w, t, nome, clicar=False):
+    return json.loads(js(w, t, f"{JS_CONSOLE_SITE}({json.dumps(nome)}, {'true' if clicar else 'false'})"))

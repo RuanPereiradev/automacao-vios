@@ -23,3 +23,9 @@ orelha/.env
 orelha/saida/
 orelha/logs/
 orelha/.venv/
+# Bot do WhatsApp (joaotabosa3599/bot-previdenciario), repositório PRIVADO, versionado à parte.
+# Tem a mídia da Mikasa (Vila 06), o .env e o certificado: nada disso pode entrar neste repositório público.
+bot-previdenciario/
+# Resultados de teste do Albi e do Jarvis: têm CPF, nome de cliente e relatório de cliente
+albi/resultado/
+jarvis/resultado/

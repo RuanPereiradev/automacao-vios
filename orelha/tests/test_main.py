@@ -259,3 +259,15 @@ class TestMainComVios(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPeriodoDoPainel(unittest.TestCase):
+    def test_periodo_do_painel_na_linha_de_comando(self):
+        from datetime import date
+        a = main.argumentos(["--funcoes", "painel", "--painel-de", "2026-11-09", "--painel-ate", "2026-11-23"])
+        self.assertEqual((a.painel_de, a.painel_ate), (date(2026, 11, 9), date(2026, 11, 23)))
+        self.assertIsNone(main.argumentos([]).painel_de)
+
+    def test_fim_antes_do_inicio_e_recusado(self):
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            main.argumentos(["--painel-de", "2026-11-23", "--painel-ate", "2026-11-09"])

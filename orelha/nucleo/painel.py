@@ -6,15 +6,17 @@ de audiências e a lista de tarefas com a situação em cores), e a moldura é o
 (nucleo/timbrado.py). O HTML sai autocontido; o PDF é o mesmo HTML impresso pelo Chrome.
 
 `dados` (dict montado por funcoes/painel.py):
-  inicio, fim      date    período da semana (fim = dia da leitura)
+  inicio, fim      date    período da semana (inicio = dia da leitura; fim = inicio + ORELHA_PAINEL_DIAS_FILA)
   gerado_em        datetime
   cartoes          [(número ou "—", rótulo, classe)]    resumo executivo
   semanas          [{"semana", "fila_inicial", "resolvidas", "taxa" (float ou None), "leitura", "aproximada"}]
   nota_semanas     str     nota abaixo da tabela de taxas ("" = sem nota)
   tendencia        str     "61,3% → 71,1%" ("" = sem)
-  carga            [{"nome", "pecas", "audiencias", "total", "vencidas", "urgente", "destaque"}]
+  carga            [{"nome", "pecas", "audiencias", "outras", "total", "vencidas", "urgente", "destaque"}]
+  outras           True quando a fila tem todos os tipos (coluna "Outras" na carga)
   agenda           [{"data", "hora", "advogado", "tipo", "processo"}]
   dias_agenda      int
+  agenda_titulo    str     título da agenda quando o período foi escolhido na página ("" = próximos N dias)
   lista_titulo     str     título da lista de tarefas
   lista            [{"processo", "faixa", "situacao", "responsavel", "tarefa"}]
   avisos           [str]
@@ -110,20 +112,31 @@ def _semanas(dados):
 
 def _carga(dados):
     if not dados.get("carga"):
-        return '<p class="nota">Nenhuma tarefa de peça ou audiência na fila.</p>'
+        return '<p class="nota">Nenhuma tarefa na fila.</p>'
+    outras = dados.get("outras")
     linhas = []
     for c in dados["carga"]:
         def n(v, classe=""):
             return (f'<td class="{classe}">{_e(v)}</td>' if v else '<td class="zero">—</td>')
         nome = f'<span class="alto">{_e(c["nome"])}</span>' if c.get("destaque") else _e(c["nome"])
-        linhas.append(f'<tr><td>{nome}</td>{n(c["pecas"])}{n(c["audiencias"])}<td class="c">{_e(c["total"])}</td>'
+        linhas.append(f'<tr><td>{nome}</td>{n(c["pecas"])}{n(c["audiencias"])}'
+                      + (n(c.get("outras", 0)) if outras else "") + f'<td class="c">{_e(c["total"])}</td>'
                       f'{n(c["vencidas"], "carga-vencida")}{n(c["urgente"], "carga-urgente" if c.get("destaque") else "c")}</tr>')
-    return ('<table class="t"><thead><tr><th>Advogado</th><th>Peças</th><th>Audiências</th><th>Total</th>'
+    return ('<table class="t"><thead><tr><th>Responsável</th><th>Peças</th><th>Audiências</th>'
+            + ("<th>Outras</th>" if outras else "") + "<th>Total</th>"
             f'<th>Vencidas</th><th>Urgente ≤7d</th></tr></thead><tbody>{"".join(linhas)}</tbody></table>')
+
+
+def _titulo_agenda(dados):
+    """Período escolhido na página: "Agenda de audiências — 09/11 a 23/11 (...)"; sem escolha: próximos N dias."""
+    return dados.get("agenda_titulo") or (f'Agenda de audiências — próximos {dados["dias_agenda"]} dias '
+                                          "(comparecimento obrigatório)")
 
 
 def _agenda(dados):
     if not dados.get("agenda"):
+        if dados.get("agenda_titulo"):
+            return f'<p class="nota">Nenhuma audiência de {dados["inicio"]:%d/%m} a {dados["fim"]:%d/%m}.</p>'
         return f'<p class="nota">Nenhuma audiência nos próximos {_e(dados["dias_agenda"])} dias.</p>'
     linhas = "".join(
         f'<tr><td class="c">{_e(a["data"])}</td><td class="c">{_e(a["hora"])}</td><td>{_e(a["advogado"])}</td>'
@@ -151,14 +164,16 @@ def montar_html(dados):
     inicio, fim = dados["inicio"], dados["fim"]
     periodo = f"{inicio:%d/%m} a {fim:%d/%m/%Y}"
     corpo = [f"<h1>Painel Semanal — Semana de {periodo}</h1>",
-             f'<p class="sub">Peças + Audiências · feito pelo Orelha em {dados["gerado_em"]:%d/%m/%Y às %H:%M} · '
+             f'<p class="sub">{"Peças, audiências e outras tarefas" if dados.get("outras") else "Peças + Audiências"} · feito pelo Orelha em {dados["gerado_em"]:%d/%m/%Y às %H:%M} · '
              "leitura do VIOS: nada foi alterado lá. Documento interno.</p>"]
     for aviso in dados.get("avisos") or []:
         corpo.append(f'<p class="aviso">⚠ {_e(aviso)}</p>')
     corpo += ["<h2>Resumo executivo — fila combinada</h2>", _cartoes(dados),
               "<h2>Diagnóstico comparativo — taxa de resolução semanal</h2>", _semanas(dados),
-              "<h2>Carga combinada por advogado — peças + audiências</h2>", _carga(dados),
-              f'<h2>Agenda de audiências — próximos {_e(dados["dias_agenda"])} dias (comparecimento obrigatório)</h2>',
+              ("<h2>Carga por responsável — peças, audiências e outras tarefas</h2>" if dados.get("outras")
+               else "<h2>Carga combinada por advogado — peças + audiências</h2>"), _carga(dados),
+              '<p class="nota">Tarefa com mais de um responsável conta na carga de cada um.</p>',
+              f'<h2>{_e(_titulo_agenda(dados))}</h2>',
               _agenda(dados),
               f'<h2 class="vermelho">{_e(dados["lista_titulo"])}</h2>', _lista(dados)]
     return timbrado.pagina(f"Painel semanal {periodo}", "\n".join(corpo), CSS)

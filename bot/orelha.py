@@ -381,8 +381,11 @@ def painel_status(pasta):
     return info
 
 
-def rodar_painel(pasta):
-    """Abre o Orelha em segundo plano só com o painel semanal. Devolve o status; levanta PainelErro."""
+def rodar_painel(pasta, de=None, ate=None):
+    """Abre o Orelha em segundo plano só com o painel semanal. de/ate (date) = período escolhido na página
+    (None = o padrão do Orelha: de hoje até hoje + ORELHA_PAINEL_DIAS_FILA). Devolve o status; levanta PainelErro."""
+    if de and ate and ate < de:
+        raise PainelErro("a data final não pode ser antes da inicial")
     if not configurado(pasta):
         raise PainelErro("o Orelha não está neste servidor (ORELHA_PASTA)")
     if not _painel_pronto(pasta):
@@ -399,10 +402,17 @@ def rodar_painel(pasta):
         ambiente["PYTHONUTF8"] = "1"
         inicio = datetime.now().isoformat(timespec="seconds")
         arq_log = open(pasta / "logs" / PAINEL_LOG, "a", encoding="utf-8")
-        arq_log.write(f"\n===== {inicio} · painel semanal (pelo botão) =====\n")
+        periodo = f" · de {de:%d/%m/%Y}" if de else ""
+        periodo += f" até {ate:%d/%m/%Y}" if ate else ""
+        arq_log.write(f"\n===== {inicio} · painel semanal (pelo botão){periodo} =====\n")
         arq_log.flush()
         try:
-            proc = subprocess.Popen([str(_python(pasta)), "main.py", "--funcoes", "painel"], cwd=pasta, env=ambiente,
+            comando = [str(_python(pasta)), "main.py", "--funcoes", "painel"]
+            if de:
+                comando += ["--painel-de", de.isoformat()]
+            if ate:
+                comando += ["--painel-ate", ate.isoformat()]
+            proc = subprocess.Popen(comando, cwd=pasta, env=ambiente,
                                     stdin=subprocess.DEVNULL, stdout=arq_log, stderr=subprocess.STDOUT,
                                     start_new_session=True)
         except OSError as e:
