@@ -3,7 +3,8 @@ saida/ próprios dentro de albi/ e não importa nada do bot/.
 
 Entra no Sonar (encerrando a outra sessão se cair em /login-conflito) e, para cada pessoa do .txt,
 faz uma Pesquisa de Processos, uma por vez:
-  1. Nova Pesquisa: Identificador Projeto = nome da EMPRESA, tipo CPF/CNPJ, documento, Continuar;
+  1. Nova Pesquisa: Identificador Projeto = nome da EMPRESA, tipo CPF/CNPJ, documento, Continuar
+     (se o Sonar avisar "Pesquisa Duplicada", clica em "Confirmar" no aviso: isso não compra);
   2. passo 2 ("Pedido"): confere o documento, escolhe o Sacado (SONAR_SACADO, padrão o escritório)
      e, só com --confirmar, clica em "Confirmar Pedido" (R$ 15,70 cada) e guarda o número do pedido;
   3. espera o Sonar terminar cada pedido e baixa o resultado de cada um: o PDF da página do pedido
@@ -528,6 +529,48 @@ def escrever_resultado(saida, pedidos, nome_txt):
     (Path(saida) / "resultado.txt").write_text("\n".join(linhas) + "\n", encoding="utf-8")
 
 
+# ---------------- aviso "Pesquisa Duplicada" (CPF/CNPJ já pesquisado no Sonar) ----------------
+# Depois do Continuar, se o documento já foi pesquisado (por qualquer usuário), o Sonar abre um aviso:
+# "Pesquisa Duplicada · Os dados de busca inseridos já foram pesquisados no pedido 1512114 em 17/11/2026 do
+# usuário solicitante ... Deseja realizar a pesquisa novamente?" com o botão "Confirmar"
+# (<span class="p-button-label p-c" data-pc-section="label">Confirmar</span>). Confirmar aqui NÃO compra:
+# só leva ao passo 2, onde o "Confirmar Pedido" continua valendo só com --confirmar.
+DUPLICADA = ("PESQUISA DUPLICADA", "JA FORAM PESQUISADOS")
+
+
+def aviso_duplicada(driver):
+    """O aviso "Pesquisa Duplicada" visível na tela (ou None)."""
+    for dlg in driver.find_elements(By.CSS_SELECTOR, ".p-dialog, .p-confirm-dialog, [role=dialog], [role=alertdialog]"):
+        try:
+            if dlg.is_displayed() and any(t in normalizar(dlg.text) for t in DUPLICADA):
+                return dlg
+        except Exception:  # o aviso pode sumir no meio da leitura
+            continue
+    return None
+
+
+def confirmar_duplicada(driver, cfg, dlg):
+    """Clica em "Confirmar" no aviso de pesquisa duplicada e devolve {"pedido", "data"} do pedido anterior.
+    Só o botão cujo texto é exatamente "Confirmar" (nunca "Confirmar Pedido", que compra)."""
+    texto = dlg.text
+    anterior = re.search(r"pedido\s+S?(\d{6,})", texto, re.I)
+    data = re.search(r"\bem\s+(\d{2}/\d{2}/\d{4})", texto)
+    info = {"pedido": anterior.group(1) if anterior else None, "data": data.group(1) if data else None}
+    botoes = [b for b in dlg.find_elements(By.TAG_NAME, "button")
+              if b.is_displayed() and normalizar(b.text) == "CONFIRMAR"]
+    if not botoes:  # o rótulo fica num <span data-pc-section="label"> dentro do botão
+        botoes = [s.find_element(By.XPATH, "./ancestor::button[1]")
+                  for s in dlg.find_elements(By.CSS_SELECTOR, "span[data-pc-section=label], span.p-button-label")
+                  if s.is_displayed() and normalizar(s.text) == "CONFIRMAR"]
+    if not botoes:
+        raise AlbiErro("apareceu o aviso de Pesquisa Duplicada, mas não achei o botão Confirmar")
+    log.info("Pesquisa duplicada no Sonar (pedido anterior %s em %s): confirmando para pesquisar de novo",
+             info["pedido"] or "?", info["data"] or "?")
+    botoes[0].click()
+    WebDriverWait(driver, cfg["timeout"]).until(lambda d: aviso_duplicada(d) is None)
+    return info
+
+
 # ---------------- Nova Pesquisa ----------------
 def preencher_pedido(driver, cfg, doc, identificador=""):
     """Preenche o passo 1 (Identificador, Tipo CPF/CNPJ e o documento), clica em Continuar e
@@ -551,8 +594,13 @@ def preencher_pedido(driver, cfg, doc, identificador=""):
     if re.sub(r"\D", "", campo.get_attribute("value") or "") != doc:
         raise AlbiErro("o campo CPF/CNPJ não ficou com o documento digitado")
     driver.find_element(By.CSS_SELECTOR, "button[aria-label=Continuar]").click()
+    duplicada = None
     try:
-        espera.until(lambda d: "step=carrinho" in d.current_url)
+        espera.until(lambda d: "step=carrinho" in d.current_url or aviso_duplicada(d) is not None)
+        dlg = None if "step=carrinho" in driver.current_url else aviso_duplicada(driver)
+        if dlg is not None:  # documento já pesquisado: confirma a nova pesquisa e segue para o passo 2
+            duplicada = confirmar_duplicada(driver, cfg, dlg)
+            espera.until(lambda d: "step=carrinho" in d.current_url)
     except TimeoutException:
         avisos = [e.text.strip() for e in driver.find_elements(By.CSS_SELECTOR, ".p-error, small, [class*=error]")
                   if e.is_displayed() and e.text.strip()]
@@ -573,7 +621,8 @@ def preencher_pedido(driver, cfg, doc, identificador=""):
     total = re.search(r"TOTAL\s*\n?\s*(R\$\s*[\d.,]+)", resumo)
     itens = re.findall(r"^(.+?)\s*\n?\s*(R\$\s*[\d.,]+)\s*$", resumo.split("TOTAL")[0], re.M)
     return {"valor": total.group(1).replace("\xa0", " ") if total else None,
-            "itens": [f"{a.strip()} {b}" for a, b in itens if a.strip() and "RESUMO" not in a.upper()]}
+            "itens": [f"{a.strip()} {b}" for a, b in itens if a.strip() and "RESUMO" not in a.upper()],
+            "duplicada": duplicada}
 
 
 def preencher_com_retentativa(driver, cfg, p):

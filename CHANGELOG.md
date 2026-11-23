@@ -12,6 +12,26 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — pje-busca: plano do vigia diário VIOS → PJe (19 e 23/11/2026)
+- `pje-busca/PROJETO (1).md`, seção 4.2 (só planejamento, sem código): 1x por dia o robô lê no VIOS a lista de
+  processos trabalhistas em que o cliente é a parte passiva (só leitura), compara com a foto anterior, detecta
+  empresas e processos novos e põe os números do TRT7 numa fila de verificação periódica no PJe, com leitura
+  incremental da linha do tempo. Fluxo, configuração prevista, comandos, indicadores (janela de exposição: 112 dias
+  no caso real), riscos e pendências.
+- 23/11/2026, filtros e volume conferidos no VIOS (só contagens): Área 3 = Trabalhista + `pesq[tipos_partes_id]=P`
+  + ativos = 363 processos, 161 clientes, 239 no TRT7; sem filtro de advogado (dois advogados principais); a lista
+  do VIOS para em 500 linhas (dividir a pesquisa se chegar a 500).
+
+### Corrigido — Albi: aviso "Pesquisa Duplicada" do Sonar (23/11/2026)
+- Quando o CPF/CNPJ já tinha sido pesquisado no Sonar (por qualquer usuário), o Sonar abre, depois do **Continuar**,
+  o aviso "Pesquisa Duplicada · ... já foram pesquisados no pedido N em DD/MM/AAAA ... Deseja realizar a pesquisa
+  novamente?" (`.p-confirm-dialog`, botões Cancelar/Confirmar). O Albi esperava ir direto ao passo 2 e dava erro.
+- `albi/main.py`: `aviso_duplicada()` e `confirmar_duplicada()`; `preencher_pedido()` espera o passo 2 **ou** o aviso,
+  clica só no botão de texto exato "Confirmar" (nunca "Confirmar Pedido") e segue. Anota no log o pedido anterior e a
+  data; `preencher_pedido()` devolve também `duplicada` ({pedido, data} ou None). A compra continua só com `--confirmar`.
+- Teste real (CPF 753.340.971-04, aviso do pedido 1512114 de 17/11/2026): aviso confirmado, passo 2 com o documento
+  certo, Sacado do escritório e "Confirmar Pedido" ligado (R$ 15,70), sem comprar. `albi/README.md` atualizado.
+
 ### Corrigido — Orelha: contagem por responsável e painel semanal com todas as tarefas (23/11/2026)
 - **Contagem por pessoa**: tarefa com mais de um responsável contava só para o primeiro nome
   (`responsavel_principal`). Agora conta para cada um (`prazos.responsaveis`) no quadro "Atrasadas por

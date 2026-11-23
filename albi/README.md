@@ -16,6 +16,10 @@ a planilha) e escreve o `resultado.txt`.
 3. Para cada pessoa válida do `.txt`: vai direto para `/modulos/pesquisa-processos/novo-pedido`
    (a tela do botão **Iniciar Pesquisa**), preenche o Identificador Projeto (**nome da empresa**),
    escolhe o tipo **CPF/CNPJ**, digita o documento e clica em **Continuar**.
+   Se o documento já foi pesquisado no Sonar (por qualquer usuário), aparece o aviso **Pesquisa
+   Duplicada** ("já foram pesquisados no pedido N em DD/MM/AAAA ... Deseja realizar a pesquisa novamente?"):
+   o Albi clica em **Confirmar** no aviso (não compra nada), anota no log o pedido anterior e a data e segue
+   para o passo 2. A compra continua sendo só o **Confirmar Pedido**, e só com `--confirmar`.
 4. No passo 2 ("Pedido") confere o documento mostrado, escolhe o **Sacado** (`SONAR_SACADO`; vazio =
    o escritório) e, só com `--confirmar`, clica em **Confirmar Pedido** e guarda o número.
 5. Com todos confirmados, abre a página de cada pedido até o Sonar terminar (até `SONAR_ESPERA_MIN`
