@@ -12,6 +12,24 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Orelha: função `comentarios`, comentários dos últimos 90 dias de uma lista de processos (23/11/2026)
+- `./rodar.sh --funcoes comentarios` lê os números de `orelha/entrada/comentarios.txt` (fora do git), acha o CI
+  de cada um pela busca "Nro do Processo" (só GET; o número pode estar no CNJ ou em "Outros"), abre a ficha e lê
+  o quadro "Comentários". Grava `saida/<data>/comentarios-90dias.csv` (Excel) e `.json`, com permissão 600.
+- Configuração: `ORELHA_COMENTARIOS_LISTA`, `ORELHA_COMENTARIOS_DIAS` (padrão 90), `ORELHA_COMENTARIOS_TIMEOUT`.
+  Fora do padrão e do relatório do dia.
+- Testes em `orelha/tests/test_comentarios.py`, com fixtures fictícias em `orelha/fixtures/comentarios/`.
+
+### Adicionado — Orelha: função `processos`, planilha com todos os processos da área (17/11/2026)
+- `./rodar.sh --funcoes processos` lê na lista de processos do VIOS (só GET) todos os processos da área
+  Previdenciária, ativos e encerrados, e grava `saida/<data>/processos-previdenciaria.csv` (Excel) e `.json`.
+- A lista devolve no máximo 500 por pesquisa: acima disso lê por ano de cadastro, dividindo o período cheio.
+- Configuração: `ORELHA_PROCESSOS_AREAS` (padrão 4), `ORELHA_PROCESSOS_SITUACOES`, `ORELHA_PROCESSOS_DESDE`,
+  `ORELHA_PROCESSOS_MAX_PAGINAS`, `ORELHA_PROCESSOS_TIMEOUT`. Fora do padrão e do relatório do dia.
+- Testes em `orelha/tests/test_processos.py`, com fixtures fictícias em `orelha/fixtures/processos/`.
+- A planilha sai em blocos (ATIVOS, ENCERRADOS e ATIVOS SEM TAREFA ABERTA) e ganhou a coluna Tarefas, lida pelo
+  filtro nativo "Com ou sem tipo de tarefa? = Sem" (Abertas / Todas). `ORELHA_PROCESSOS_TAREFAS=false` desliga.
+
 ### Adicionado — pje-busca: plano do vigia diário VIOS → PJe (19 e 23/11/2026)
 - `pje-busca/PROJETO (1).md`, seção 4.2 (só planejamento, sem código): 1x por dia o robô lê no VIOS a lista de
   processos trabalhistas em que o cliente é a parte passiva (só leitura), compara com a foto anterior, detecta
