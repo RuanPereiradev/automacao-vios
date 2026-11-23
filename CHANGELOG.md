@@ -12,6 +12,20 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Orelha: contagem por responsável e painel semanal com todas as tarefas (23/11/2026)
+- **Contagem por pessoa**: tarefa com mais de um responsável contava só para o primeiro nome
+  (`responsavel_principal`). Agora conta para cada um (`prazos.responsaveis`) no quadro "Atrasadas por
+  responsável" (`funcoes/prazos.py`), na página da semana (`nucleo/semana.py`) e na carga do painel. O total
+  de atrasadas continua contando cada tarefa uma vez. Na leitura de 23/11/2026, 26 de 250 atrasadas dos
+  últimos 30 dias tinham 2 ou mais responsáveis.
+- **Painel semanal**: a fila só pegava tarefas que começam com "MINUTAR" ou "AUDIÊNCIA". Agora entram todos
+  os tipos; os outros viram a categoria "Outras" (coluna nova na carga, "Carga por responsável").
+  `ORELHA_PAINEL_OUTRAS=nao` volta ao comportamento antigo. O registro da semana guarda `"tipos"` e só compara
+  com registro do mesmo conjunto: a 1ª edição com todos os tipos sai sem comparação.
+- Conferido no VIOS (só leitura): a lista de tarefas que o Orelha lê não filtra responsável nem tipo
+  (o filtro de responsáveis vem vazio = todos). O responsável desmarcado visto na tela era do navegador de
+  quem conferiu, não do bot.
+
 ### Corrigido — Albi: arquivo já confirmado pode ser pesquisado de novo pela página (23/11/2026)
 - Depois que a trava de pedido repetido passou de 30 dias para 1, a tela de um arquivo já confirmado
   continuava sem botão de pesquisa/confirmar ("Este arquivo já foi confirmado"): essa é uma trava do

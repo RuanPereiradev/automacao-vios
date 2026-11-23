@@ -72,17 +72,20 @@ class TestFila(unittest.TestCase):
             tarefa("MINUTAR CONTESTAÇÃO (TRABALHISTA) 2026", -2, n=1),
             tarefa("AUDIÊNCIA UNA/INSTRUÇÃO (CÍVEL) 2026", 3, n=2, hora="09:50"),
             tarefa("C: MINUTAR PARECER 2026", 1, n=3),                       # consultoria: entra como peça
-            tarefa("INFORMAR AUDIÊNCIA (CÍVEL) 2026", 1, n=4),               # sobre a audiência: fora
-            tarefa("ANALISAR PROCESSO (CÍVEL) 2026", 1, n=5),                # outro tipo: fora
+            tarefa("INFORMAR AUDIÊNCIA (CÍVEL) 2026", 1, n=4),               # sobre a audiência: "outra"
+            tarefa("ANALISAR PROCESSO (CÍVEL) 2026", 1, n=5),                # outro tipo: "outra"
             tarefa("MINUTAR RECURSO 2026", 30, n=6),                         # além de 14 dias: fora
             tarefa("MINUTAR EMBARGOS 2026", 2, n=7, etiqueta="CANCELADA"),   # cancelada: fora
             tarefa("MINUTAR INICIAL 2026", 2, n=8, concluida=True),          # concluída: fora
             tarefa("MINUTAR CONTESTAÇÃO (TRABALHISTA) 2026", -2, n=1),       # repetida: uma só
         ]
         fila, ignoradas = fila_de(tarefas)
-        self.assertEqual([e.chave for e in fila], ["910001", "910003", "910002"])
-        self.assertEqual([e.categoria for e in fila], ["peca", "peca", "audiencia"])
+        self.assertEqual([e.chave for e in fila], ["910001", "910005", "910003", "910004", "910002"])
+        self.assertEqual([e.categoria for e in fila], ["peca", "outra", "peca", "outra", "audiencia"])
         self.assertEqual(ignoradas, {"sem_data": 0})
+        # ORELHA_PAINEL_OUTRAS=nao: só peças e audiências, como antes de 23/11/2026
+        fila, _ = fila_de(tarefas, outras=False)
+        self.assertEqual([e.chave for e in fila], ["910001", "910003", "910002"])
 
     def test_sem_data_e_so_limite(self):
         sem = tarefa("MINUTAR A", 0, n=1)
@@ -97,17 +100,20 @@ class TestFila(unittest.TestCase):
         fila, _ = fila_de([tarefa("MINUTAR A", 5, "BRUNO FICTÍCIO", 1), tarefa("MINUTAR B", -1, "", 2),
                            tarefa("MINUTAR C", 5, "ANA FICTÍCIA, BRUNO FICTÍCIO", 3)])
         self.assertEqual([(e.dias, e.responsavel) for e in fila],
-                         [(-1, "Sem responsável"), (5, "Ana Fictícia"), (5, "Bruno Fictício")])
+                         [(-1, "Sem responsável"), (5, "Ana Fictícia, Bruno Fictício"), (5, "Bruno Fictício")])
+        self.assertEqual(fila[1].responsaveis, ("Ana Fictícia", "Bruno Fictício"))
 
     def test_carga(self):
         tarefas = ([tarefa("MINUTAR X", dias, "ANA FICTÍCIA", i) for i, dias in enumerate((-1, 2, 9), 1)]
                    + [tarefa("AUDIÊNCIA A 2026", 4, "ANA FICTÍCIA", 10), tarefa("MINUTAR Y", 1, "BRUNO FICTÍCIO", 11),
-                      tarefa("MINUTAR Z", 3, "", 12)])
+                      tarefa("MINUTAR Z", 3, "", 12), tarefa("ANALISAR PROCESSO 2026", 2, "ANA FICTÍCIA, BRUNO FICTÍCIO", 13)])
         fila, _ = fila_de(tarefas)
         c = {x["nome"]: x for x in painel.carga(fila, urgente_alto=3)}
         # a MINUTAR de daqui a 9 dias fica fora da semana do painel (até 7 dias depois do pedido)
-        self.assertEqual(c["Ana Fictícia"], {"nome": "Ana Fictícia", "pecas": 2, "audiencias": 1, "total": 3,
-                                             "vencidas": 1, "urgente": 3, "destaque": True})
+        # a tarefa com dois responsáveis conta para os dois
+        self.assertEqual(c["Ana Fictícia"], {"nome": "Ana Fictícia", "pecas": 2, "audiencias": 1, "outras": 1,
+                                             "total": 4, "vencidas": 1, "urgente": 4, "destaque": True})
+        self.assertEqual((c["Bruno Fictício"]["pecas"], c["Bruno Fictício"]["outras"], c["Bruno Fictício"]["total"]), (1, 1, 2))
         self.assertFalse(c["Bruno Fictício"]["destaque"])
         self.assertEqual([x["nome"] for x in painel.carga(fila)], ["Ana Fictícia", "Bruno Fictício", "Sem responsável"])
 
@@ -168,18 +174,25 @@ class TestComparacao(unittest.TestCase):
         ctx.simulado = False
 
         def grava(dia, **extra):
-            ctx.gravar_historico(painel.nome_registro(dia), {"data": dia.isoformat(), "fila": ["1"], **extra})
+            ctx.gravar_historico(painel.nome_registro(dia), {"data": dia.isoformat(), "fila": ["1"], "tipos": "todas",
+                                                             **extra})
         grava(d(-2))    # novo demais (execução de teste no meio da semana)
+        grava(d(-6), tipos=painel.TIPOS_PECAS)  # só peças e audiências: não compara com a fila de todos os tipos
         grava(d(-7), total=7)
         grava(d(-9))
         grava(d(-60))   # velho demais
         ctx.gravar_historico("painel-simulado-" + d(-6).isoformat() + ".json", {"data": d(-6).isoformat(), "fila": ["x"]})
         self.assertEqual(painel.ler_base(ctx)["data"], d(-7).isoformat())
+        self.assertEqual(painel.ler_base(ctx, painel.TIPOS_PECAS)["data"], d(-6).isoformat())
+        # registro de antes do campo "tipos" é de peças e audiências
+        ctx.gravar_historico(painel.nome_registro(d(-5)), {"data": d(-5).isoformat(), "fila": ["1"]})
+        self.assertEqual(painel.ler_base(ctx, painel.TIPOS_PECAS)["data"], d(-5).isoformat())
+        self.assertEqual(painel.ler_base(ctx)["data"], d(-7).isoformat())
 
     def test_registro_corrompido_cai_para_o_anterior(self):
         ctx, _ = contexto()
         ctx.simulado = False
-        ctx.gravar_historico(painel.nome_registro(d(-9)), {"data": d(-9).isoformat(), "fila": ["1"]})
+        ctx.gravar_historico(painel.nome_registro(d(-9)), {"data": d(-9).isoformat(), "fila": ["1"], "tipos": "todas"})
         (ctx.historico / painel.nome_registro(d(-7))).write_text("{quebrado", encoding="utf-8")
         self.assertEqual(painel.ler_base(ctx)["data"], d(-9).isoformat())
 
@@ -196,7 +209,7 @@ class TestExecutar(unittest.TestCase):
         self.assertEqual(secao.chave, "painel")
         self.assertEqual(secao.erro, "")
         n = secao.numeros
-        self.assertEqual(n["fila"], 34)  # o que a fixture tem de peça e audiência, até 7 dias depois, sem cancelada
+        self.assertEqual(n["fila"], 36)  # o que a fixture tem (todos os tipos), até 7 dias depois, sem cancelada
         self.assertEqual(n["nao_feitas"] + n["novas"], n["fila"])
         self.assertEqual(n["destaque"], n["fila"])
         html = (ctx.saida / "painel-semanal.html").read_text(encoding="utf-8")
@@ -205,6 +218,8 @@ class TestExecutar(unittest.TestCase):
         self.assertFalse((ctx.saida / "painel-semanal.pdf").exists())  # pdf=False
         registro = json.loads((ctx.historico / painel.nome_registro(HOJE, True)).read_text(encoding="utf-8"))
         self.assertEqual(registro["total"], n["fila"])
+        self.assertEqual(registro["tipos"], "todas")
+        self.assertIn("<th>Outras</th>", html)
         self.assertEqual(len(registro["semanas"]), 3)
 
     def test_nao_expoe_nomes_nos_numeros_da_vila(self):

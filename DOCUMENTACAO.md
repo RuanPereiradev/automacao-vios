@@ -852,7 +852,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 ### Painel semanal do Orelha (PDF no papel timbrado)
 - Botão **Gerar painel semanal** na página `/orelha` do Sam (ou `./rodar.sh --funcoes painel` dentro de
   `orelha/`), sem agendamento, gera `saida/<data>/painel-semanal.pdf`:
-  resumo executivo, taxa de resolução, carga por advogado, agenda de audiências e tarefas não feitas,
+  resumo executivo, taxa de resolução, carga por responsável (peças, audiências e outras tarefas; desde
+  23/11/2026 a fila tem todos os tipos de tarefa e a tarefa com mais de um responsável conta para cada um),
+  agenda de audiências e tarefas não feitas,
   no papel timbrado do escritório. O período é escolhido nos campos **De** e **Até** da página (vêm de
   hoje a 7 dias depois; até 120 dias); pela linha de comando, `--painel-de`/`--painel-ate`. Sem escolha,
   vai do dia do pedido até `ORELHA_PAINEL_DIAS_FILA` dias depois (padrão 7). Não entra no relatório do dia. A 1ª edição não tem semana anterior; a
@@ -1133,7 +1135,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   **Planilhas (.csv)**. Os simulados ficam à parte. Os arquivos continuam em `orelha/saida/<data>/`.
 - **Relatório mais compacto e a semana** (06/11/2026): as atrasadas vêm agrupadas por **dia do
   vencimento** (ontem, anteontem… depois por faixa de 7 dias, por mês e por ano), cada grupo fechado
-  com o total; clica no grupo e abrem as tarefas. O quadro "Atrasadas por responsável" fecha a seção.
+  com o total; clica no grupo e abrem as tarefas. O quadro "Atrasadas por responsável" fecha a seção
+  (desde 23/11/2026, tarefa com mais de um responsável conta para cada um).
   Junto sai `semana.html`, **Atrasadas da semana**: de segunda até hoje, um grupo por dia com as
   tarefas que venciam nele e continuam abertas (na segunda-feira, a semana passada). Na página
   `/orelha`, o último relatório aparece **dentro da página**, com as abas "Relatório do dia" e
