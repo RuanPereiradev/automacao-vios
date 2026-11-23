@@ -12,6 +12,14 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — Albi: arquivo já confirmado pode ser pesquisado de novo pela página (23/11/2026)
+- Depois que a trava de pedido repetido passou de 30 dias para 1, a tela de um arquivo já confirmado
+  continuava sem botão de pesquisa/confirmar ("Este arquivo já foi confirmado"): essa é uma trava do
+  arquivo, separada da trava de 1 dia, e só saía soltando o .txt outra vez.
+- Novo botão **Conferir de novo** nessa tela (`POST /albi/de-novo/<id>`, `albi.conferir_de_novo` em
+  `bot/albi.py`): confere o mesmo .txt de novo (novo id). Quem foi pesquisado há menos de 1 dia continua
+  "já pesquisado"; os outros voltam a "Vai pesquisar". A compra continua pedindo os dois cliques.
+
 ### Corrigido — pje-busca: leitura das movimentações na página de detalhes do TRT7 (19/11/2026)
 - Aba de detalhes ignorada: o filtro de id de aba (2**29) descartava a aba do PJe (ids do Chrome passam de 1 bilhão). Agora `_aba_detalhes()` acha a aba do número e fecha a aba ao terminar (`src/chrome_mac.py`: `fechar_aba`); limite corrigido também em `src/acesso_pje.py`.
 - Texto do PDF: o visualizador do PJe não expõe `PDFViewerApplication`; o bot lê a camada de texto (`.textLayer`), rola página a página e ordena os trechos pela posição na folha. Traz a aba para frente (aba oculta não desenha o PDF).

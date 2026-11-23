@@ -40,6 +40,8 @@ a planilha) e escreve o `resultado.txt`.
 7. Não compra duas vezes: o registro `saida/pedidos_confirmados.json` é anotado antes de cada
    clique em Confirmar; CPF já pesquisado para a mesma empresa no último dia (24 h) usa o pedido
    anterior. Erro depois do clique vira "Conferir no Sonar" (nunca clica de novo); 3 seguidos param.
+   Na página, arquivo já confirmado não mostra o botão de compra: o botão **Conferir de novo** faz uma
+   conferência nova do mesmo .txt (quem passou de 1 dia volta a "Vai pesquisar").
 
 ## O arquivo .txt (modelo: `modelo_pedidos.txt`)
 

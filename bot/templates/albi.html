@@ -217,7 +217,11 @@ EMPRESA: Empresa B
       <div class="numero"><b>R$ {{ total | replace(".", ",") }}</b>total</div>
     </div>
     {% if meta.iniciado == "confirmar" %}
-      <p class="aviso">Este arquivo já foi confirmado. Para pesquisar de novo, solte o .txt outra vez.</p>
+      <p class="aviso">Este arquivo já foi confirmado. Para pesquisar de novo, confira de novo: quem foi pesquisado
+        há mais de 1 dia volta a "Vai pesquisar" (nada é comprado sem os dois cliques).</p>
+      <form method="post" action="{{ url_for('albi_de_novo', envio_id=envio_id) }}" class="acoes">
+        <button class="primario">Conferir de novo</button>
+      </form>
     {% elif ocupado %}
       <p class="aviso">O Albi está trabalhando em outro arquivo: espere terminar.</p>
     {% else %}
