@@ -98,10 +98,21 @@ def _dias(n):
     return "1 dia" if n == 1 else f"{n} dias"
 
 
+def responsaveis(texto):
+    """Todos os nomes da lista de responsáveis ("Ana Fictícia, Bruno Fictício" -> ["Ana Fictícia", "Bruno Fictício"]),
+    sem repetir."""
+    saida = []
+    for p in re.split(r"[,;/]| e ", texto or ""):
+        p = p.strip()
+        if p and p not in saida:
+            saida.append(p)
+    return saida
+
+
 def responsavel_principal(texto):
     """Primeiro nome da lista de responsáveis ("Ana Fictícia, Bruno Fictício" -> "Ana Fictícia")."""
-    partes = [p.strip() for p in re.split(r"[,;/]| e ", texto or "") if p.strip()]
-    return partes[0] if partes else ""
+    nomes = responsaveis(texto)
+    return nomes[0] if nomes else ""
 
 
 VENCE_HOJE = "Vencem hoje"
@@ -181,13 +192,16 @@ def placar(tarefas, hoje, dias_grave=DIAS_GRAVE):
         ordem, rotulo = grupo_do_dia(referencia(ev), hoje)
         item = Item(titulo=ev.titulo, detalhe=" · ".join(partes), nivel="grave" if grave else "atencao",
                     link=link, grupo=rotulo, dia=referencia(ev))
-        linhas.append((dono, grave, -atraso, agenda.dobrar(ev.titulo), item, ordem, referencia(ev)))
+        linhas.append((dono, grave, -atraso, agenda.dobrar(ev.titulo), item, ordem, referencia(ev),
+                       responsaveis(ev.responsavel) or [SEM_RESPONSAVEL]))
 
+    # tarefa com vários responsáveis conta para cada um deles (a soma por pessoa pode passar do total)
     por = {}
-    for dono, grave, *_ in linhas:
-        c = por.setdefault(dono, {"atrasadas": 0, "graves": 0})
-        c["atrasadas"] += 1
-        c["graves"] += int(grave)
+    for _, grave, *_resto, nomes in linhas:
+        for nome in nomes:
+            c = por.setdefault(nome, {"atrasadas": 0, "graves": 0})
+            c["atrasadas"] += 1
+            c["graves"] += int(grave)
     ordem = sorted(por, key=lambda d: (d == SEM_RESPONSAVEL, -por[d]["graves"], -por[d]["atrasadas"], agenda.dobrar(d)))
     # grupos do dia mais recente para o mais antigo; dentro, mais atrasada primeiro, depois responsável e título
     linhas.sort(key=lambda x: (x[5], x[2], x[0] == SEM_RESPONSAVEL, agenda.dobrar(x[0]), x[3]))
@@ -206,7 +220,7 @@ def placar(tarefas, hoje, dias_grave=DIAS_GRAVE):
 def quadro_responsaveis(numeros, dias_grave=DIAS_GRAVE):
     """Tabela do fim da seção: atrasadas por responsável (quem tem mais graves primeiro)."""
     por = numeros.get("por_responsavel") or {}
-    return {"titulo": "Atrasadas por responsável",
+    return {"titulo": "Atrasadas por responsável (tarefa com mais de um responsável conta para cada um)",
             "colunas": ["Responsável", "Atrasadas", f"Há mais de {dias_grave} dias"],
             "linhas": [[d, c["atrasadas"], c["graves"]] for d, c in por.items()]}
 
