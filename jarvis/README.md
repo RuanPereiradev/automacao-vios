@@ -136,6 +136,46 @@ Campo vazio no VIOS fica vazio na planilha. Erro na IA aparece como
 crédito na conta da IA, chave inválida, modelo inexistente, limite por minuto, IA demorou etc. O erro
 completo fica no `jarvis/logs/bot.log` (procure "erro na IA").
 
+### Relatório resumido (grupos fora de `RELATORIO_COMPLETO`, desde 23/11/2026)
+
+A pedido da controladoria, só as duas Casas do Celular (`RELATORIO_COMPLETO`) mantêm o formato acima. Os
+outros grupos saem com a aba Processos reduzida a: **Número do processo, Parte ativa, Parte passiva, Resumo do
+processo (IA), Cidade/UF e Tribunal / Órgão**. O PDF traz a capa (com o percentual ganho) e uma ficha curta por
+processo, sem a página "Resumo do mês".
+
+### Percentual ganho (todos os relatórios, desde 23/11/2026)
+
+Regras da controladoria:
+
+| Item | Regra |
+| --- | --- |
+| Poderia perder | valor que o **autor pediu** ("Valor da ação" do cadastro; vazio → o valor que a IA acha nos comentários) |
+| Pagou | **só condenação e acordo** (custas e honorários não entram); acordo em parcelas = total do acordo |
+| Economia / % | pedido − pago; economia ÷ pedido |
+| Quem entra | só processos em que o cliente é **réu** e o valor já está definido: encerrado/pago, decisão com valor (mesmo em recurso: vale a mais recente) ou acordo |
+| Fora do índice | sem decisão (mostrado à parte: "em discussão"), cliente autor, atendimentos (consultas sem processo) |
+| Período | todos os processos do grupo, ativos e encerrados, desde o início |
+
+Como o robô faz:
+
+1. Depois da lista de ativos, abre o relatório **Processos - Comentários**
+   (`?pag=sys/relatorios/relatorio-de-comentarios-em-processos.php`), escolhe o Grupo Cliente, **Todos** (ativos e
+   encerrados) e Mostrar tudo, e pesquisa (`nucleo/comentarios.py`). Cada comentário traz o CI do processo no link.
+   O nome de quem comentou não é guardado.
+2. Os processos que não estão na lista de ativos (encerrados) têm o cadastro lido pela lupa; se o CI for um
+   **Atendimento** ("Dados do Atendimento"), fica fora.
+3. Para cada processo com o cliente réu, a IA lê o cadastro e os comentários (limpos como na seção 4) e devolve a
+   situação, o valor pedido, o valor pago e o **trecho de onde tirou cada valor** (`nucleo/percentual.py`).
+4. Processo encerrado fica guardado em `<RELATORIO_PASTA>/cache_percentual/<GRUPO>.json` e não é lido de novo nos
+   meses seguintes (erro na IA não é guardado: refaz no mês seguinte). Com `--limite` (teste), o cache é lido mas
+   não é gravado.
+
+Saída: abas **Percentual ganho** (o quadro) e **Percentual — conferência** (processo a processo, com os trechos
+dos comentários: **uso interno**, como o "Cadastro incompleto") na planilha; o quadro na capa do PDF (sem os
+trechos); e `<GRUPO> - percentual.json` ao lado da planilha. O histórico depende do que a equipe registrou: a Casa do
+Celular tem comentários desde maio/2026; a Plasfran Itapipoca desde 2017 (pouco registro até 2023). Processo sem
+valor registrado aparece como "Sem valor registrado no VIOS" na conferência.
+
 ---
 
 ### PDF no timbrado (sai junto com a planilha)
@@ -295,6 +335,8 @@ e a chave da IA e **não vai para o GitHub**.
 | `NAVEGACAO_URL_FINAL` | Tela aberta depois do login | `.../?pag=sys/relatorios/relatorios.php` |
 | `PROCESSOS_GRUPOS` | Grupos que podem ser escolhidos na página `/jarvis`, separados por `\|` (no terminal, sem `--grupo`, roda todos eles) | os 6: Plasfran Itapipoca, Camocim e Maranhão, LD Urbanismo, Casa do Celular e Casa do Celular MG/SP |
 | `RELATORIO_PASTA` | Pasta das planilhas (vazio = `<SAIDA_PASTA>/relatorios`) | vazio |
+| `RELATORIO_COMPLETO` | Grupos com o relatório completo, separados por `\|`; os outros saem resumidos (vazio = as duas Casas do Celular) | `CASA DO CELULAR\|CASA DO CELULAR MG/SP` |
+| `PERCENTUAL_GANHO` | Quadro "Percentual ganho" em todos os relatórios | `true` |
 | `LLM_PROVEDOR` | `anthropic` ou `openai` | `anthropic` |
 | `ANTHROPIC_API_KEY` | Chave da IA | (no `.env`) |
 | `LLM_MODELO` | Modelo (vazio = `claude-sonnet-5-5`) | vazio |
@@ -322,6 +364,8 @@ automacao-vios/
 │   ├── nucleo/processos_detalhe.py  # lupa: Dados do Processo + tarefas
 │   ├── nucleo/relatorio_planilha.py # regras fixas, instruções da IA e gravação da .xlsx
 │   ├── nucleo/relatorio_pdf.py      # PDF no timbrado + "Resumo do mês" pela IA
+│   ├── nucleo/comentarios.py        # relatório Processos - Comentários (ativos e encerrados, CI de cada comentário)
+│   ├── nucleo/percentual.py         # percentual ganho: regras, instruções da IA, conferência e cache dos encerrados
 │   ├── nucleo/timbrado/             # cabeçalho, rodapé e marca d'água do timbrado (do .docx)
 │   ├── nucleo/vila_aviso.py         # andamento para a vila (POST /eventos, bot "jarvis")
 │   ├── nucleo/config.py, login.py, navegador.py, navegacao.py, extracao.py, custo.py, ia/,
@@ -379,6 +423,8 @@ chega sozinha ao Jarvis. Se o VIOS mudar a tela de login, corrigir nos dois.
 | 28/10/2026 | 3A FRIOS | Versão .txt (descartada): 17 processos, 0 erros |
 | 03/11/2026 | CASA DO CELULAR (3 processos) | 3 linhas, 0 erros na IA, US$ 0,04 |
 | 03/11/2026 | CASA DO CELULAR + CASA DO CELULAR MG/SP | 101 + 26 processos, 0 erros, 16 min, US$ 2,13. 61 dos 70 processos da planilha antiga presentes (os 9 restantes não estão mais ativos) e 37 novos. Aprovado na primeira conferência do usuário. |
+| 23/11/2026 | Relatório de comentários (só leitura) | CASA DO CELULAR: 2.809 comentários (mai–nov/2026); MG/SP: 473 comentários de 48 CIs (25 dos 26 ativos + 23 fora da lista de ativos); PLASFRAN ITAPIPOCA: 894 comentários de 126 CIs, desde 2017. Todos com o CI. |
+| 23/11/2026 | PLASFRAN ITAPIPOCA, `--limite 4` (resumido + percentual) | Fluxo completo OK: planilha resumida, abas do percentual, PDF, 3 de 4 CIs fora da lista eram atendimentos (ficaram fora). IA **não testada**: a conta da Anthropic atingiu o limite de gasto (volta em 01/12/2026). |
 
 ---
 

@@ -58,6 +58,23 @@ COLUNAS = [
 ]
 NOMES = [nome for nome, _ in COLUNAS]
 
+# relatório resumido (grupos fora de RELATORIO_COMPLETO, pedido da controladoria de 23/11/2026):
+# (campo da linha, título da coluna, largura)
+RESUMIDO = [
+    ("Número do processo", "Número do processo", 27),
+    ("Parte ativa", "Parte ativa", 32),
+    ("Parte passiva", "Parte passiva", 32),
+    ("Resumo do caso", "Resumo do processo", 75),
+    ("Cidade/UF", "Cidade/UF", 20),
+    ("Órgão", "Tribunal / Órgão", 34),
+]
+COMPLETO = [(nome, nome, largura) for nome, largura in COLUNAS]
+
+# aba de conferência do percentual ganho (uso interno: tem trechos dos comentários da equipe)
+COLUNAS_INDICE = [("CI", 9), ("Número do processo", 27), ("Andamento", 11), ("Polo do cliente", 14),
+                  ("Situação", 30), ("Valor pedido", 15), ("Origem do pedido", 45), ("Valor pago", 15),
+                  ("Origem do pago", 45), ("Economia", 15), ("Status no índice", 28)]
+
 # "Processo" vazio no VIOS: o tipo sai da "Área", como a equipe cadastra os demais processos
 # (Cível Consumidor e Administrativo -> CÍVEL etc.); o processo continua em "Cadastro incompleto"
 AREA_TIPO = {"CÍVEL CONSUMIDOR": "CÍVEL", "ADMINISTRATIVO": "CÍVEL", "CONTRATOS": "CÍVEL",
@@ -206,6 +223,7 @@ def motivo_erro(erro):
     baixo = t.lower()
     for trecho, motivo in (("teto de gasto", "teto de gasto da execução atingido (LLM_LIMITE_US)"),
                            ("credit balance", "sem crédito na conta da Anthropic"),
+                           ("usage limits", "limite de gasto da conta da Anthropic atingido"),
                            ("insufficient_quota", "sem crédito na conta da OpenAI"),
                            ("api_key", "chave da IA ausente ou inválida"), ("authentication", "chave da IA inválida"),
                            ("error code: 401", "chave da IA inválida"), ("not_found", "modelo da IA não existe (LLM_MODELO)"),
@@ -259,30 +277,42 @@ def cadastro_incompleto(linha):
     return faltam
 
 
-def salvar_xlsx(arquivo, grupo, linhas, info):
-    """info: {gerado_em, modelo, gasto, erros_ia}."""
+DINHEIRO = '"R$" #,##0.00'
+
+
+def _cabecalho(ws, titulos_larguras, fonte, fundo, quebra):
+    ws.append([t for t, _ in titulos_larguras])
+    for i, (_, largura) in enumerate(titulos_larguras, 1):
+        cel = ws.cell(row=1, column=i)
+        cel.font, cel.fill, cel.alignment = fonte, fundo, quebra
+        ws.column_dimensions[get_column_letter(i)].width = largura
+
+
+def salvar_xlsx(arquivo, grupo, linhas, info, completo=True, indice=None):
+    """info: {gerado_em, modelo, gasto, erros_ia}. completo=False: relatório resumido (RESUMIDO).
+    indice: {"resumo": percentual.resumo(...), "linhas": [...]} ou None (sem as abas do percentual ganho)."""
     wb = Workbook()
     titulo = Font(bold=True, size=14)
     negrito = Font(bold=True, color="FFFFFF")
     fundo = PatternFill("solid", fgColor="1F4E78")
     quebra = Alignment(wrap_text=True, vertical="top")
+    colunas = COMPLETO if completo else RESUMIDO
+    campos = [c for c, _, _ in colunas]
 
     ws = wb.active
     ws.title = "Processos"
-    ws.append(NOMES)
-    for i, (_, largura) in enumerate(COLUNAS, 1):
-        cel = ws.cell(row=1, column=i)
-        cel.font, cel.fill, cel.alignment = negrito, fundo, quebra
-        ws.column_dimensions[get_column_letter(i)].width = largura
+    _cabecalho(ws, [(t, w) for _, t, w in colunas], negrito, fundo, quebra)
     for linha in linhas:
-        ws.append([linha[nome] for nome in NOMES])
+        ws.append([linha[c] for c in campos])
     for row in ws.iter_rows(min_row=2):
         for cel in row:
             cel.alignment = quebra
-        # minúsculo: "DD/MM/YYYY" o Excel entende, mas o Numbers (Mac) e o Google Planilhas mostram "DD/01/YYYY"
-        row[NOMES.index("Data da distribuição")].number_format = "dd/mm/yyyy"
-        row[NOMES.index("Valor da ação")].number_format = '"R$" #,##0.00'
-    ws.freeze_panes = "C2"
+        if "Data da distribuição" in campos:
+            # minúsculo: "DD/MM/YYYY" o Excel entende, mas o Numbers (Mac) e o Google Planilhas mostram "DD/01/YYYY"
+            row[campos.index("Data da distribuição")].number_format = "dd/mm/yyyy"
+        if "Valor da ação" in campos:
+            row[campos.index("Valor da ação")].number_format = DINHEIRO
+    ws.freeze_panes = "C2" if completo else "B2"
     ws.auto_filter.ref = ws.dimensions
 
     # Resumo
@@ -290,23 +320,26 @@ def salvar_xlsx(arquivo, grupo, linhas, info):
     rs["A1"] = f"RELATÓRIO DE PROCESSOS — {grupo}"
     rs["A1"].font = titulo
     ultima = max(len(linhas) + 1, 2)
-    col_valor = get_column_letter(NOMES.index("Valor da ação") + 1)
     blocos = [
         ("Atualização do relatório", info["gerado_em"].strftime("%d/%m/%Y")),
         ("Processos no relatório", f"=COUNTA(Processos!A2:A{ultima})"),
-        ("Soma dos valores das ações", f"=SUM(Processos!{col_valor}2:{col_valor}{ultima})"),
     ]
+    if completo:
+        col_valor = get_column_letter(campos.index("Valor da ação") + 1)
+        blocos.append(("Soma dos valores das ações", f"=SUM(Processos!{col_valor}2:{col_valor}{ultima})"))
     r = 3
     for rotulo, valor in blocos:
         rs.cell(row=r, column=1, value=rotulo)
         rs.cell(row=r, column=2, value=valor)
         r += 1
-    rs.cell(row=5, column=2).number_format = '"R$" #,##0.00'
-    for titulo_bloco, coluna in (("Por tipo de processo", "Tipo de processo"),
-                                 ("Por motivação", "Motivação do processo"),
-                                 ("Por resultado da decisão", "_condenacao"),
-                                 ("Por cliente", "Cliente"),
-                                 ("Por polo do cliente", "Polo do cliente")):
+    if completo:
+        rs.cell(row=5, column=2).number_format = DINHEIRO
+        contagens = (("Por tipo de processo", "Tipo de processo"), ("Por motivação", "Motivação do processo"),
+                     ("Por resultado da decisão", "_condenacao"), ("Por cliente", "Cliente"),
+                     ("Por polo do cliente", "Polo do cliente"))
+    else:
+        contagens = (("Por cidade/UF", "Cidade/UF"), ("Por polo do cliente", "Polo do cliente"))
+    for titulo_bloco, coluna in contagens:
         r += 1
         rs.cell(row=r, column=1, value=titulo_bloco).font = Font(bold=True)
         r += 1
@@ -317,6 +350,9 @@ def salvar_xlsx(arquivo, grupo, linhas, info):
             r += 1
     rs.column_dimensions["A"].width = 45
     rs.column_dimensions["B"].width = 18
+
+    if indice:
+        _abas_indice(wb, grupo, indice, titulo, negrito, fundo, quebra)
 
     # Cadastro incompleto: o que a equipe precisa completar no VIOS
     ci = wb.create_sheet("Cadastro incompleto")
@@ -333,15 +369,22 @@ def salvar_xlsx(arquivo, grupo, linhas, info):
     # Metadados
     md = wb.create_sheet("Metadados")
     md.append(["Item", "Informação"])
-    for item in (
+    pela_ia = ("Resumo do caso, Motivação, Financeira, Justificativa da condenação, Pendência — documentos faltando"
+               if completo else "Resumo do processo")
+    itens = [
         ("Grupo Cliente (VIOS)", grupo),
+        ("Formato", "completo" if completo else "resumido"),
         ("Gerado em", info["gerado_em"].strftime("%d/%m/%Y %H:%M")),
         ("Origem", "VIOS: lista de processos (Ativos, Não migrados) + tela de cada processo (Dados do Processo e tarefas)"),
-        ("Colunas pela IA", "Resumo do caso, Motivação, Financeira, Justificativa da condenação, "
-                            f"Pendência — documentos faltando (modelo {info['modelo']})"),
+        ("Colunas pela IA", f"{pela_ia} (modelo {info['modelo']})"),
         ("Processos com erro na IA", info["erros_ia"]),
         ("Gasto estimado com IA", info["gasto"]),  # deste grupo (a execução pode ter vários)
-    ):
+    ]
+    if indice:
+        itens.insert(4, ("Origem do percentual ganho",
+                         "VIOS: relatório Processos - Comentários (ativos e encerrados) + cadastro de cada processo; "
+                         "valores lidos pela IA nos comentários (conferir na aba Percentual — conferência)"))
+    for item in itens:
         md.append(list(item))
     md.column_dimensions["A"].width = 30
     md.column_dimensions["B"].width = 100
@@ -350,3 +393,54 @@ def salvar_xlsx(arquivo, grupo, linhas, info):
 
     arquivo.parent.mkdir(parents=True, exist_ok=True)
     wb.save(arquivo)
+
+
+def _abas_indice(wb, grupo, indice, titulo, negrito, fundo, quebra):
+    """Aba "Percentual ganho" (o quadro) e "Percentual — conferência" (processo a processo, uso interno)."""
+    n = indice["resumo"]
+    pg = wb.create_sheet("Percentual ganho")
+    pg["A1"] = f"PERCENTUAL GANHO — {grupo}"
+    pg["A1"].font = titulo
+    quadro = [
+        ("Poderia perder (soma do que os autores pediram)", n["poderia_perder"], DINHEIRO),
+        ("Pagou (condenações e acordos)", n["pagou"], DINHEIRO),
+        ("Economia", n["economia"], DINHEIRO),
+        ("Percentual ganho", n["percentual"], "0.0%"),
+        ("", None, None),
+        ("Processos no índice (cliente réu, valor definido)", n["no_indice"], None),
+        ("Em discussão (sem decisão)", n["em_discussao"], None),
+        ("Pedidos em discussão", n["em_discussao_pedido"], DINHEIRO),
+        ("Sem valor registrado no VIOS (ver conferência)", n["sem_valor"], None),
+        ("Cliente é autor (fora do índice)", n["cliente_autor"], None),
+        ("Polo do cliente não informado", n["sem_polo"], None),
+        ("Processos do grupo (ativos e encerrados)", n["processos"], None),
+    ]
+    for r, (rotulo, valor, formato) in enumerate(quadro, 3):
+        pg.cell(row=r, column=1, value=rotulo)
+        cel = pg.cell(row=r, column=2, value=valor)
+        if formato:
+            cel.number_format = formato
+    for r in (3, 4, 5, 6):
+        pg.cell(row=r, column=1).font = Font(bold=True)
+    pg.cell(row=16, column=1, value="Regras: poderia perder = valor pedido pelo autor; pagou = só condenação e acordo "
+                                    "(sem custas e honorários); entram só os processos em que o cliente é réu e o "
+                                    "valor já está definido (encerrado/pago, decisão com valor ou acordo).")
+    pg.cell(row=16, column=1).alignment = quebra
+    pg.merge_cells("A16:B16")
+    pg.row_dimensions[16].height = 45
+    pg.column_dimensions["A"].width = 52
+    pg.column_dimensions["B"].width = 20
+
+    # uso interno: tem trechos dos comentários da equipe
+    cf = wb.create_sheet("Percentual — conferência")
+    _cabecalho(cf, COLUNAS_INDICE, negrito, fundo, quebra)
+    nomes = [c for c, _ in COLUNAS_INDICE]
+    for l in indice["linhas"]:
+        cf.append([l[c] for c in nomes])
+    for row in cf.iter_rows(min_row=2):
+        for cel in row:
+            cel.alignment = quebra
+        for c in ("Valor pedido", "Valor pago", "Economia"):
+            row[nomes.index(c)].number_format = DINHEIRO
+    cf.freeze_panes = "C2"
+    cf.auto_filter.ref = cf.dimensions

@@ -108,12 +108,17 @@ def _arrumar_tarefa(t):
 
 
 def ler_processo(driver, ci, timeout):
-    """Abre a lupa do processo e devolve {"dados": {rótulo: valor}, "tarefas": [...]}."""
+    """Abre a lupa do processo e devolve {"dados": {rótulo: valor}, "tarefas": [...]}.
+    Se o CI for de um Atendimento (consulta, sem processo: o VIOS mostra "Dados do Atendimento"), devolve
+    {"dados": {}, "tarefas": [], "atendimento": True} — o relatório de comentários traz os dois."""
     driver.get(URL_LUPA.format(ci=ci))
-    WebDriverWait(driver, timeout).until(
+    tela = WebDriverWait(driver, timeout).until(
         lambda d: d.execute_script(
-            "return document.body.innerText.replace(/\\s+/g, ' ').includes(arguments[0])",
-            f"Dados do Processo - CI {ci}"))
+            "const t = document.body.innerText.replace(/\\s+/g, ' ');"
+            "return t.includes(arguments[0]) ? 'processo' : t.includes(arguments[1]) ? 'atendimento' : false",
+            f"Dados do Processo - CI {ci}", f"Dados do Atendimento - CI {ci}"))
+    if tela == "atendimento":
+        return {"dados": {}, "tarefas": [], "atendimento": True}
     # as tarefas são desenhadas depois (Vue); processo sem tarefa não tem o link
     try:
         WebDriverWait(driver, min(timeout, 10)).until(EC.presence_of_element_located(LINK_TAREFA))

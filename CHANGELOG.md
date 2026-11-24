@@ -12,6 +12,21 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Jarvis: "Percentual ganho" e relatório resumido (23/11/2026)
+- Pedido da controladoria. **Relatório resumido** para os grupos fora de `RELATORIO_COMPLETO` (padrão: as duas
+  Casas do Celular, que continuam no formato completo): só número do processo, partes, resumo do processo e
+  cidade/tribunal, na planilha e no PDF (sem a página "Resumo do mês").
+- **Percentual ganho** em todos os relatórios (`PERCENTUAL_GANHO=true`): poderia perder (valor que o autor pediu)
+  × pagou (só condenação e acordo, sem custas e honorários) = economia e %. Entram só os processos em que o cliente
+  é réu e o valor já está definido (encerrado/pago, decisão com valor ou acordo); sem decisão fica à parte.
+- Fonte: relatório **Processos - Comentários** do VIOS (`jarvis/nucleo/comentarios.py`), com filtro Todos (ativos
+  **e encerrados**) e o CI de cada comentário; a IA lê os valores nos comentários (`jarvis/nucleo/percentual.py`)
+  com o trecho de origem. Processo encerrado fica guardado em `relatorios/cache_percentual/` e não é lido de novo.
+  Atendimentos (consultas sem processo, que também aparecem no relatório) ficam fora.
+- Planilha: abas "Percentual ganho" (quadro) e "Percentual — conferência" (processo a processo, uso interno);
+  PDF: quadro na capa. `<GRUPO> - percentual.json` ao lado da planilha.
+- Motivo curto do erro da IA quando a conta atinge o limite de gasto ("limite de gasto da conta da Anthropic").
+
 ### Alterado — Branch relatorio-processos atualizada com a main (23/11/2026)
 - Merge da `origin/main` (Albi, Orelha, Sam, Consulta, pje-busca) para começar as próximas mudanças do Jarvis
   em cima do código mais novo. Só o CHANGELOG teve conflito (entradas dos dois lados mantidas).
