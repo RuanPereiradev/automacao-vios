@@ -185,8 +185,48 @@ def _ficha(l, e, largura):
     return [CondPageBreak(3.5 * cm), KeepTogether([cabeca, regua]), tab, *textos, Spacer(1, 10)]
 
 
-def salvar_pdf(arquivo, grupo, linhas, info, paragrafos_mes):
-    """info: {gerado_em, ...}; paragrafos_mes: lista de parágrafos da IA (vazia = sem a página da IA)."""
+def _ficha_resumida(l, e, largura):
+    """Relatório resumido: número, partes, cidade/tribunal e o resumo do processo."""
+    numero = l["Número do processo"] or "número não informado"
+    cabeca = _p(numero, e["ficha"])
+    cadastro = [(r, v) for r, v in (("Parte ativa", l["Parte ativa"]), ("Parte passiva", l["Parte passiva"]),
+                                    ("Cidade/UF", l["Cidade/UF"]), ("Tribunal / Órgão", l["Órgão"])) if _ok(v)]
+    linhas_tab = [[[_p(r, e["rotulo"]), _p(v, e["valor"])] for r, v in cadastro[i:i + 2]] for i in range(0, len(cadastro), 2)]
+    linhas_tab = [l2 + [""] * (2 - len(l2)) for l2 in linhas_tab] or [["", ""]]
+    tab = Table(linhas_tab, colWidths=[largura / 2] * 2, hAlign="LEFT", splitByRow=1)
+    tab.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                             ("TOPPADDING", (0, 0), (-1, -1), 2), ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]))
+    textos = [_p("Resumo do processo", e["rotulo"]), _p(l["Resumo do caso"], e["texto"])] if _ok(l["Resumo do caso"]) else []
+    regua = Table([[""]], colWidths=[largura], rowHeights=[2])
+    regua.setStyle(TableStyle([("LINEABOVE", (0, 0), (-1, 0), 1, DOURADO)]))
+    return [CondPageBreak(3 * cm), KeepTogether([cabeca, regua]), tab, *textos, Spacer(1, 8)]
+
+
+def _quadro_indice(n, e, largura):
+    """Percentual ganho: poderia perder / pagou / economia / % (regras em nucleo/percentual.py)."""
+    if not n["no_indice"]:
+        return [_p("Percentual ganho", e["h2"]),
+                _p("Ainda não há processo em que a empresa seja ré com valor já definido (encerrado, decisão com "
+                   "valor ou acordo) registrado no sistema.", e["nota"]), Spacer(1, 12)]
+    pct = f"{n['percentual'] * 100:.1f}%".replace(".", ",")
+    celulas = [("Poderia perder", _dinheiro(n["poderia_perder"])), ("Pagou", _dinheiro(n["pagou"])),
+               ("Economia", _dinheiro(n["economia"])), ("Percentual ganho", pct)]
+    grade = Table([[_p(r, e["rotulo"]) for r, _ in celulas],
+                   [_p(v, e["ficha"]) for _, v in celulas]], colWidths=[largura / 4] * 4, hAlign="LEFT")
+    grade.setStyle(TableStyle([("LINEABOVE", (0, 0), (-1, 0), 1.2, DOURADO), ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                               ("TOPPADDING", (0, 0), (-1, -1), 6), ("VALIGN", (0, 0), (-1, -1), "TOP")]))
+    nota = (f"Soma do que os autores pediram × o que a empresa pagou (só condenações e acordos; sem custas e "
+            f"honorários), em {n['no_indice']} processo(s) em que a empresa é ré e o valor já está definido "
+            f"(encerrados, com decisão ou acordo), desde o início dos processos.")
+    if n["em_discussao"]:
+        nota += f" Ainda em discussão, sem decisão: {n['em_discussao']} processo(s)"
+        nota += f" ({_dinheiro(n['em_discussao_pedido'])} pedidos)." if n["em_discussao_pedido"] else "."
+    return [_p("Percentual ganho", e["h2"]), grade, Spacer(1, 4), _p(nota, e["nota"]), Spacer(1, 14)]
+
+
+def salvar_pdf(arquivo, grupo, linhas, info, paragrafos_mes, completo=True, indice=None):
+    """info: {gerado_em, ...}; paragrafos_mes: lista de parágrafos da IA (vazia = sem a página da IA).
+    completo=False: relatório resumido; indice: {"resumo": ...} do percentual ganho (None = sem o quadro)."""
     f = _fontes()
     e = _estilos(f)
     gerado = info["gerado_em"]
@@ -202,7 +242,17 @@ def salvar_pdf(arquivo, grupo, linhas, info, paragrafos_mes):
                      colWidths=[largura], hAlign="LEFT")
     destaque.setStyle(TableStyle([("LINEABOVE", (0, 0), (-1, 0), 1.2, DOURADO), ("LEFTPADDING", (0, 0), (-1, -1), 0),
                                   ("TOPPADDING", (0, 0), (-1, -1), 6)]))
+    if indice:
+        corpo += _quadro_indice(indice["resumo"], e, largura)
     corpo += [_p("Números do mês", e["h2"]), destaque, Spacer(1, 10)]
+    if not completo:
+        corpo += [PageBreak(), _p("Processos", e["h2"])]
+        for l in linhas:
+            corpo += _ficha_resumida(l, e, largura)
+        pagina = lambda canvas, d: _desenhar_timbrado(canvas, d, f["normal"])
+        arquivo.parent.mkdir(parents=True, exist_ok=True)
+        doc.build(corpo, onFirstPage=pagina, onLaterPages=pagina)
+        return
     resultado = Counter(l.get("_condenacao") or "não informado" for l in linhas)
     ordem = [(c, resultado[c]) for c in CONDENACOES if resultado[c]] + \
             [(c, q) for c, q in resultado.items() if c not in CONDENACOES]

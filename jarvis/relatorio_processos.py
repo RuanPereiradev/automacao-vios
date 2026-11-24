@@ -13,7 +13,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from nucleo import config, ia
+from nucleo import comentarios, config, ia, percentual
 from nucleo.custo import Gasto, LimiteGasto
 from nucleo.login import fazer_login
 from nucleo.navegacao import ir_ate_tabela
@@ -26,6 +26,8 @@ from nucleo.relatorio_planilha import SEM_TAREFAS, SISTEMA, SCHEMA, montar_linha
 from nucleo.registro import PASTA_LOGS, configurar_log
 
 MODELO_PADRAO = "claude-sonnet-5-5"
+# grupos com o relatório completo (o formato que a Casa do Celular pediu); os outros saem resumidos
+COMPLETO_PADRAO = "CASA DO CELULAR|CASA DO CELULAR MG/SP"
 # modelo de cada provedor quando LLM_MODELO está vazio
 MODELOS_PADRAO = {"anthropic": MODELO_PADRAO, "openai": "gpt-5.6", "gemini": "gemini-3.6-flash"}
 
@@ -67,7 +69,90 @@ def resumo_mes(agente, gasto, modelo, grupo, linhas, log):
         return []
 
 
-def gerar_grupo(driver, cfg, grupo, valor, pasta, agente, gasto, modelo, limite, log, vila, ordem, grupos):
+def _perguntar(agente, gasto, modelo, sistema, schema, texto, rotulo, log):
+    """Uma chamada à IA com o teto de gasto; erro vira {"erro": ...} (o resto do relatório segue)."""
+    try:
+        gasto.conferir(gasto.estimar(modelo, sistema, texto), rotulo)
+        resposta = agente.responder(sistema, texto, schema)
+        gasto.registrar(modelo, resposta.pop("_uso", {}))
+        return resposta
+    except Exception as e:
+        log.error("%s: erro na IA: %s", rotulo, e)
+        return {"erro": str(e)}
+
+
+def _ler_lupa(driver, ci, timeout, log):
+    try:
+        return ler_processo(driver, ci, timeout)
+    except Exception as e:
+        screenshot = PASTA_LOGS / f"erro_{datetime.now():%Y-%m-%d_%H%M%S}.png"
+        driver.save_screenshot(str(screenshot))
+        log.error("CI %s: não consegui ler a tela do processo (%s; screenshot em %s)", ci, e, screenshot)
+        return {"dados": {}, "tarefas": [], "erro": str(e)}
+
+
+def calcular_percentual(driver, cfg, grupo, valor, ativos, agente, gasto, modelo, limite, log, arquivo_cache):
+    """Percentual ganho do grupo (nucleo/percentual.py): ativos (já lidos) + encerrados (relatório de
+    comentários; cadastro pela lupa, guardado em cache). Devolve {"resumo", "linhas"}."""
+    coment = comentarios.pesquisar(driver, valor, cfg.timeout)
+    cache = percentual.ler_cache(arquivo_cache)
+    encerrados = [ci for ci in coment if ci not in ativos]
+    if limite:
+        encerrados = encerrados[:limite]
+        log.info("%s: percentual com só %d encerrados (--limite)", grupo, len(encerrados))
+    linhas, do_cache, novos = [], 0, 0
+
+    def ia_de(ci, cadastro, c):
+        if not percentual.eh_reu(cadastro.get("Polo do cliente")):
+            return None  # cliente autor ou polo vazio: fora do índice, sem IA
+        if not c.get("comentarios") and not c.get("observacao"):
+            # nada registrado: sem decisão (ativo) ou sem como saber (encerrado)
+            return {"situacao": "Sem decisão" if ci in ativos else "Indefinido", "valor_pedido": "",
+                    "trecho_pedido": "", "valor_pago": "", "trecho_pago": ""}
+        texto = percentual.texto_para_ia(ci, cadastro, c)
+        return _perguntar(agente, gasto, modelo, percentual.SISTEMA, percentual.SCHEMA, texto,
+                          f"percentual do CI {ci}", log)
+
+    for n, (ci, proc) in enumerate(ativos.items(), 1):
+        c = coment.get(ci, {})
+        ia_resp = ia_de(ci, proc["dados"], c)
+        linhas.append(percentual.classificar(ci, proc["dados"], c, ia_resp, ativo=True))
+        if n % 20 == 0:
+            log.info("%s: percentual — %d/%d ativos — gasto %s", grupo, n, len(ativos), gasto.resumo())
+    atendimentos = 0
+    for n, ci in enumerate(encerrados, 1):
+        c = coment[ci]
+        if ci in cache:
+            do_cache += 1
+            if cache[ci].get("atendimento"):
+                atendimentos += 1
+                continue
+            cadastro, ia_resp = cache[ci]["cadastro"], cache[ci]["ia"]
+        else:
+            novos += 1
+            proc = _ler_lupa(driver, ci, cfg.timeout, log)
+            if proc.get("atendimento"):  # consulta sem processo: fora do índice
+                cache[ci] = {"atendimento": True, "lido_em": f"{datetime.now():%Y-%m-%d}"}
+                atendimentos += 1
+                continue
+            cadastro = proc["dados"]
+            ia_resp = ia_de(ci, cadastro, c)
+            percentual.guardar(cache, ci, cadastro, ia_resp)
+        linhas.append(percentual.classificar(ci, cadastro, c, ia_resp, ativo=False))
+        if n % 20 == 0:
+            log.info("%s: percentual — %d/%d encerrados — gasto %s", grupo, n, len(encerrados), gasto.resumo())
+    if not limite:  # teste não mexe no cache do mês
+        percentual.gravar_cache(arquivo_cache, cache)
+    resumo = percentual.resumo(linhas)
+    log.info("%s: percentual ganho — %d processos (%d ativos, %d fora da lista de ativos: %d do cache, %d lidos "
+             "agora, %d eram atendimentos); %d no índice, economia R$ %.2f de R$ %.2f", grupo, len(linhas),
+             len(ativos), len(encerrados), do_cache, novos, atendimentos, resumo["no_indice"], resumo["economia"],
+             resumo["poderia_perder"])
+    return {"resumo": resumo, "linhas": linhas}
+
+
+def gerar_grupo(driver, cfg, grupo, valor, pasta, agente, gasto, modelo, limite, log, vila, ordem, grupos,
+                completo=True, com_percentual=True):
     pesquisar_grupo(driver, valor, cfg.timeout)
     itens, erros = ler_processos(driver, cfg.timeout)
     log.info("%s: %d processos na lista (%d linhas com erro)", grupo, len(itens), erros)
@@ -76,16 +161,11 @@ def gerar_grupo(driver, cfg, grupo, valor, pasta, agente, gasto, modelo, limite,
         log.info("%s: só os %d primeiros (--limite)", grupo, len(itens))
     vila.emitir("grupo", grupo=ordem, grupos=grupos, processos=len(itens))
 
-    linhas, brutos, erros_ia = [], [], 0
+    linhas, brutos, erros_ia, ativos = [], [], 0, {}
     gasto_antes = gasto.total  # o gasto da execução é acumulado: o do grupo é a diferença
     for n, item in enumerate(itens, 1):
-        try:
-            proc = ler_processo(driver, item["ci"], cfg.timeout)
-        except Exception as e:
-            screenshot = PASTA_LOGS / f"erro_{datetime.now():%Y-%m-%d_%H%M%S}.png"
-            driver.save_screenshot(str(screenshot))
-            log.error("CI %s: não consegui ler a tela do processo (%s; screenshot em %s)", item["ci"], e, screenshot)
-            proc = {"dados": {}, "tarefas": [], "erro": str(e)}
+        proc = _ler_lupa(driver, item["ci"], cfg.timeout, log)
+        ativos[str(item["ci"])] = proc
         resposta = analisar(agente, gasto, modelo, item, proc, log) if proc["tarefas"] else dict(SEM_TAREFAS)
         erros_ia += "erro" in resposta
         linhas.append(montar_linha(item, proc, resposta))
@@ -95,16 +175,30 @@ def gerar_grupo(driver, cfg, grupo, valor, pasta, agente, gasto, modelo, limite,
         vila.emitir("processo", grupo=ordem, grupos=grupos, feito=n, total=len(itens), gasto=round(gasto.total, 2))
 
     arquivo = pasta / nome_arquivo(grupo)
-    # "Resumo do mês" do PDF (uma chamada à IA) antes de fechar o gasto do grupo, para ele entrar na conta
-    paragrafos = resumo_mes(agente, gasto, modelo, grupo, linhas, log) if linhas else []
+    indice = None
+    if com_percentual:
+        try:
+            # <RELATORIO_PASTA>/cache_percentual/<GRUPO>.json (fora das pastas do mês: vale para todos os meses)
+            raiz = pasta.parent.parent if limite else pasta.parent
+            cache = raiz / "cache_percentual" / nome_arquivo(grupo, ".json")
+            indice = calcular_percentual(driver, cfg, grupo, valor, ativos, agente, gasto, modelo, limite, log, cache)
+            pasta.mkdir(parents=True, exist_ok=True)
+            arquivo.with_name(nome_arquivo(grupo, " - percentual.json")).write_text(
+                json.dumps(indice, ensure_ascii=False, indent=1), encoding="utf-8")
+        except Exception:
+            log.exception("%s: não consegui calcular o percentual ganho (o relatório sai sem ele)", grupo)
+    # "Resumo do mês" do PDF (uma chamada à IA, só no completo) antes de fechar o gasto do grupo, para ele entrar na conta
+    paragrafos = resumo_mes(agente, gasto, modelo, grupo, linhas, log) if linhas and completo else []
     do_grupo = gasto.total - gasto_antes
     salvar_xlsx(arquivo, grupo, linhas, {
         "gerado_em": datetime.now(), "modelo": modelo, "erros_ia": erros_ia,
         "gasto": f"US$ {do_grupo:.2f} neste grupo ({len(linhas)} processos)"
-                 + (f"; US$ {gasto.total:.2f} na execução até aqui" if gasto_antes else "")})
+                 + (f"; US$ {gasto.total:.2f} na execução até aqui" if gasto_antes else "")},
+        completo=completo, indice=indice)
     arquivo.with_suffix(".json").write_text(json.dumps(brutos, ensure_ascii=False, indent=1), encoding="utf-8")
     try:
-        salvar_pdf(arquivo.with_suffix(".pdf"), grupo, linhas, {"gerado_em": datetime.now()}, paragrafos)
+        salvar_pdf(arquivo.with_suffix(".pdf"), grupo, linhas, {"gerado_em": datetime.now()}, paragrafos,
+                   completo=completo, indice=indice)
         log.info("%s: PDF -> %s", grupo, arquivo.with_suffix(".pdf"))
     except Exception:
         log.exception("%s: não consegui gerar o PDF (a planilha foi salva)", grupo)
@@ -227,6 +321,8 @@ def main(*args):
         if [_normal(p) for p in pedidos] == ["TODOS"]:
             pedidos = list(disponiveis)
 
+        completos = {_normal(g) for g in (os.getenv("RELATORIO_COMPLETO", "").strip() or COMPLETO_PADRAO).split("|") if g.strip()}
+        com_percentual = os.getenv("PERCENTUAL_GANHO", "true").strip().lower() not in ("false", "0", "nao", "não")
         feitos, falhas = 0, 0
         for ordem, pedido in enumerate(pedidos, 1):
             grupo = por_nome.get(_normal(pedido))
@@ -236,7 +332,8 @@ def main(*args):
                 continue
             try:
                 erros_ia = gerar_grupo(driver, cfg, grupo, disponiveis[grupo], pasta, agente, gasto, modelo, limite, log,
-                                       vila, ordem, len(pedidos))
+                                       vila, ordem, len(pedidos), completo=_normal(grupo) in completos,
+                                       com_percentual=com_percentual)
                 feitos += 1
                 falhas += bool(erros_ia)
             except Exception:

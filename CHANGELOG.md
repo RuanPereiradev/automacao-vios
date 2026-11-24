@@ -164,6 +164,42 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 - `pje-busca/.env.example`: `VIOS_USUARIO`, `VIOS_SENHA`, `VIGIA_VIOS_AREA_ID=3`, `VIGIA_VIOS_TIPO_PARTE=P`,
   `VIGIA_VIOS_ADVOGADO_ID`, `VIGIA_MAX_CNPJ=40`. `PROJETO (1).md` seção 4.2 com o status e os comandos.
 
+### Alterado — Branch relatorio-processos atualizada com a main de novo (24/11/2026)
+- Merge da `origin/main` (Jarvis pelo Gemini, aba Cumprimentos, pje-busca) antes do PR. Conflitos no CHANGELOG,
+  no `jarvis/README.md` e no `jarvis/relatorio_processos.py`: mantidos os dois lados (formato completo/resumido e
+  modelo padrão por provedor). O Percentual ganho usa o mesmo `responder()` e roda também pelo Gemini.
+
+### Adicionado — Jarvis: "Percentual ganho" e relatório resumido (23/11/2026)
+- Pedido da controladoria. **Relatório resumido** para os grupos fora de `RELATORIO_COMPLETO` (padrão: as duas
+  Casas do Celular, que continuam no formato completo): só número do processo, partes, resumo do processo e
+  cidade/tribunal, na planilha e no PDF (sem a página "Resumo do mês").
+- **Percentual ganho** em todos os relatórios (`PERCENTUAL_GANHO=true`): poderia perder (valor que o autor pediu)
+  × pagou (só condenação e acordo, sem custas e honorários) = economia e %. Entram só os processos em que o cliente
+  é réu e o valor já está definido (encerrado/pago, decisão com valor ou acordo); sem decisão fica à parte.
+- Fonte: relatório **Processos - Comentários** do VIOS (`jarvis/nucleo/comentarios.py`), com filtro Todos (ativos
+  **e encerrados**) e o CI de cada comentário; a IA lê os valores nos comentários (`jarvis/nucleo/percentual.py`)
+  com o trecho de origem. Processo encerrado fica guardado em `relatorios/cache_percentual/` e não é lido de novo.
+  Atendimentos (consultas sem processo, que também aparecem no relatório) ficam fora.
+- Planilha: abas "Percentual ganho" (quadro) e "Percentual — conferência" (processo a processo, uso interno);
+  PDF: quadro na capa. `<GRUPO> - percentual.json` ao lado da planilha.
+- Motivo curto do erro da IA quando a conta atinge o limite de gasto ("limite de gasto da conta da Anthropic").
+
+### Alterado — Branch relatorio-processos atualizada com a main (23/11/2026)
+- Merge da `origin/main` (Albi, Orelha, Sam, Consulta, pje-busca) para começar as próximas mudanças do Jarvis
+  em cima do código mais novo. Só o CHANGELOG teve conflito (entradas dos dois lados mantidas).
+
+### Adicionado — Subagentes do Claude Code em `.claude/agents/` (11/11/2026)
+- `backend-specialist`: Python, integrações (Selenium/VIOS, IA, Datajud, Presto), arquitetura e
+  dados. Pode editar.
+- `frontend-specialist`: HTML, CSS, JS, React e UX/UI, voltado aos templates Jinja do Ultron e da
+  revisão. Pode editar.
+- `security-auditor`: segurança, autenticação, certificados, segredos e LGPD. Somente leitura
+  (Read, Grep, Glob).
+- `code-reviewer`: bugs, arquitetura, qualidade e testes, com foco em prazos, duplicidade e
+  lançamento. Somente leitura (Read, Grep, Glob).
+- Todos seguem as regras do `CLAUDE.md` (CHANGELOG, documentação em português, nada de senha ou
+  `.env` em textos).
+
 ### Adicionado — pje-busca: plano do vigia diário VIOS → PJe (19 e 23/11/2026)
 - `pje-busca/PROJETO (1).md`, seção 4.2 (só planejamento, sem código): 1x por dia o robô lê no VIOS a lista de
   processos trabalhistas em que o cliente é a parte passiva (só leitura), compara com a foto anterior, detecta
