@@ -79,7 +79,47 @@ Distribuído em 16/11/2026, ainda não está no VIOS
   3. Se nenhuma busca por CNPJ funcionar: o DataJud (CNJ, gratuito, sem login) lista os processos novos do TRT7 de classe de execução provisória ou cumprimento de sentença, e o Selenium abre cada um e confere se o CNPJ de um cliente está no polo passivo.
 - **Cuidados:** consultar só os CNPJs e processos da lista, uma vez por dia, com alguns segundos entre as buscas. Alguns TRTs bloqueiam contas que fazem consultas excessivas a processos de terceiros.
 
-## 4.2 Vigia diário VIOS → PJe (planejado em 19/11/2026, ainda não implementado)
+## 4.3 Verificação pelo DJEN e níveis de alerta (decidido em 23/11/2026; `vigia.py djen` implementado)
+
+Testes de 23/11/2026 (registro em `logs/consulta_cnpj/2026-11-23_151241/RESUMO.md`):
+- "Consulta de terceiros" do PJe: só número, OAB e data; **não busca por CNPJ**.
+- Certidão trabalhista por raiz do CNPJ: **CAPTCHA a cada emissão** e **não lista cumprimento provisório**
+  (listou só o ATOrd 0002754; o CumPrSe 0001368 ficou de fora). Descartada como fonte principal.
+- **DJEN** (API pública do CNJ, sem login e sem CAPTCHA), por nome da parte + TRT7: achou o CumPrSe 0001368
+  como "Lista de distribuição" em **31/07/2026** (autuado em 29/07; o escritório soube em 18/11).
+- PJe, "Processos associados" do principal 0002754: mostra o CumPrSe 0001368 como associado.
+
+Níveis (ordem de prioridade definida pelo usuário):
+| Nível | Pergunta | Fonte | Alerta |
+|---|---|---|---|
+| 1 | Chegou cumprimento de sentença / execução contra o cliente? | DJEN por nome (`vigia.py djen`) | VERMELHO |
+| 2 | Chegou qualquer processo em que o escritório não está? | DJEN: número fora do VIOS | AMARELO |
+| 3 | O juiz associou um cumprimento ao processo principal? | PJe "Processos associados" (a fazer) | VERMELHO |
+
+`vigia.py djen`: para cada empresa da base do vigia, consulta o DJEN (nome sem "(MATRIZ)"/": PRESTADORA"),
+pega a 1ª publicação de cada processo do TRT7 e classifica o que não está no VIOS nem já foi avisado. A 1ª rodada
+vira base e lista UMA vez os processos do DJEN fora do VIOS (auditoria). Relatório: `saida/djen_AAAA-MM-DD.txt`.
+Riscos: busca por nome (variações/homônimos: o advogado confere; empresas sem publicação saem listadas para
+conferir o nome); processo ainda sem publicação no DJEN (coberto pelo nível 3).
+
+## 4.2 Vigia diário VIOS → PJe (planejado em 19/11/2026; parte 1 implementada em 23/11/2026)
+
+> **Status:** parte 1 (foto diária do VIOS + comparação + CNPJ) pronta em `vigia.py`, `src/vios_chrome.py`,
+> `src/vigia_estado.py` (testes em `tests/test_vigia.py`). Parte 2 (verificação no PJe da fila do TRT7) pendente.
+> Leitura validada no VIOS real em 23/11/2026: 363 linhas = rodapé 363, 361 com CNJ, 240 do TRT7; consulta de CNPJ
+> pelo cadastro de pessoas (1 cadastro, 14 dígitos, nome igual).
+>
+> ```
+> cd pje-busca
+> python3 vigia.py vios --simular   # 1º teste: lê e compara, não grava nada
+> python3 vigia.py vios             # 1ª rodada de verdade = BASE (nada aparece como novo); depois, 1x por dia
+> python3 vigia.py status           # resumo do estado
+> python3 vigia.py fila             # processos do TRT7 que a parte 2 vai verificar no PJe
+> python3 -m unittest discover -s tests
+> ```
+> Saídas (fora do git): `dados/vios/AAAA-MM-DD.json`, `dados/vigia.sqlite`, `saida/vigia_AAAA-MM-DD.txt`.
+> Regras: 1ª rodada vira base; lista incompleta (500 linhas ou rodapé diferente) não marca saídas; lista vazia ou
+> erro de leitura não grava nada; CPF de cliente pessoa física não é guardado (só a marca "pf").
 
 **Ideia:** no VIOS, as empresas do Judicial Trabalhista seguem um padrão: ficam na área trabalhista e quase sempre
 ligadas a **um advogado**. Uma vez por dia o robô lê essa lista no VIOS, guarda uma "foto", compara com a do dia
@@ -248,7 +288,7 @@ alerta-execucao-provisoria/
 1. **Fase 0: validação manual.** Pendências 1 a 4.
 2. **Fase 1: Robô A** com alerta por e-mail, testado com o caso real.
 3. **Fase 2: Robô B** (vigia do processo principal).
-3.1 **Fase 2.1: vigia diário VIOS → PJe (seção 4.2).** Foto do VIOS + comparação primeiro; depois a fila do PJe com
+3.1 **Fase 2.1: vigia diário VIOS → PJe (seção 4.2).** Parte 1 (VIOS) pronta em 23/11/2026. Foto do VIOS + comparação primeiro; depois a fila do PJe com
     leitura incremental; por último a classificação "em risco".
 4. **Fase 3: integração.** Alerta por WhatsApp, painel junto do monitoramento por OAB que já existe e, se fizer sentido, cadastro automático do processo novo no VIOS.
 5. **Agendamento:** rodar todo dia útil de manhã (e, se der, uma segunda vez à tarde).

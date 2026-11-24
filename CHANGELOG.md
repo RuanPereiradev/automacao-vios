@@ -29,6 +29,45 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 - Testes em `orelha/tests/test_processos.py`, com fixtures fictícias em `orelha/fixtures/processos/`.
 - A planilha sai em blocos (ATIVOS, ENCERRADOS e ATIVOS SEM TAREFA ABERTA) e ganhou a coluna Tarefas, lida pelo
   filtro nativo "Com ou sem tipo de tarefa? = Sem" (Abertas / Todas). `ORELHA_PROCESSOS_TAREFAS=false` desliga.
+### Adicionado — pje-busca: verificação pelo DJEN (níveis vermelho/amarelo) e correção dos acentos do VIOS (23/11/2026)
+- `pje-busca/src/vigia_djen.py` + `vigia.py djen [--simular] [--empresa TEXTO]`: para cada empresa da base do vigia
+  consulta a API pública do DJEN (`comunicaapi.pje.jus.br`, por nome da parte + TRT7, sem login e sem CAPTCHA) e
+  classifica cada processo do TRT7 que não está no VIOS nem já foi avisado: VERMELHO = cumprimento de sentença /
+  execução; AMARELO = qualquer outro processo em que o escritório não está. 1ª rodada = base (lista uma vez os
+  processos do DJEN fora do VIOS). Relatório `saida/djen_AAAA-MM-DD.txt`; tabelas `djen_processos` e `djen_rodadas` no
+  `dados/vigia.sqlite`. `pje-busca/tests/test_djen.py` (7 testes, inclusive o caso real MM COMERCIO).
+- Testes de 23/11: Consulta de terceiros sem CNPJ; certidão trabalhista com CAPTCHA por emissão e sem cumprimento
+  provisório; DJEN achou o CumPrSe 0001368 em 31/07/2026; "Processos associados" do principal mostra o CumPrSe
+  (nível 3, a implementar). `PROJETO (1).md` seção 4.3.
+- Corrigido: a leitura do VIOS trocava acentos por "�" (o VIOS manda Windows-1252); `src/vios_chrome.py` decodifica
+  a resposta (UTF-8, senão Windows-1252). Recriar a base do vigia (`dados/vigia.sqlite`) depois desta correção.
+- `pje-busca/.env.example`: `VIGIA_DJEN_TRIBUNAL=TRT7`, `VIGIA_DJEN_PAUSA_S=1.5`.
+- Ajustes depois da 1ª rodada real (162 empresas, 4.149 publicações, 0 erros): (1) "AÇÃO DE CUMPRIMENTO" (sindicato x
+  convenção) deixou de ser vermelho; (2) nome calibrado pelo tribunal: a cada 30 dias, lê no DJEN (`numeroProcesso`) os
+  destinatários do polo passivo de até 2 processos do TRT7 já conhecidos da empresa e passa a buscar também por esse
+  nome (ex.: VIOS "COPCEL - TRANSPORTE & COMERCIO DE GRAO LTDA" x tribunal "COPCEL - COMERCIO DE PO E CERA DE CARNAUBA
+  LTDA - EPP"); a 1ª busca com nome novo vira auditoria daquela empresa; (3) publicação em que o cliente só aparece no
+  polo ativo (autor: consignação, homologação de acordo) é ignorada; (4) `vigia.py djen --refazer-base` apaga só o
+  estado do DJEN. Testes: 21.
+
+### Adicionado — pje-busca: vigia VIOS → PJe, parte 1 (foto diária do VIOS e comparação) (23/11/2026)
+- `pje-busca/vigia.py` (`vios [--simular] [--foto arquivo.json]`, `status`, `fila`): 1x por dia lê no VIOS a lista
+  de processos ativos da Área 3 (Trabalhista) com o cliente na parte passiva, grava a foto do dia, compara com o
+  estado e escreve `saida/vigia_AAAA-MM-DD.txt` com empresas novas, processos novos (TRT7 marcado para a fila do
+  PJe), processos que voltaram e que saíram da lista. A 1ª rodada vira base (nada aparece como novo).
+- `pje-busca/src/vios_chrome.py`: leitura pelo Chrome do Mac (AppleScript), só GET, com fetch() dentro de uma aba do
+  VIOS (a tela não muda); se a sessão caiu, entra com `VIOS_USUARIO`/`VIOS_SENHA` numa aba nova e a fecha no fim.
+  CNPJ da empresa pelo cadastro de pessoas (até `VIGIA_MAX_CNPJ` por rodada, as novas primeiro); CPF não é guardado.
+- `pje-busca/src/vigia_estado.py`: estado em `dados/vigia.sqlite` (empresas, processos, rodadas); lista incompleta
+  (teto de 500 linhas ou rodapé diferente) não marca saídas; `fila_pje()` = processos do TRT7 vistos nos últimos
+  30 dias (para a parte 2). `pje-busca/tests/test_vigia.py`: 11 testes.
+- Validado no VIOS real (só contagens): 363 linhas = rodapé 363, 361 com CNJ, 240 do TRT7; CNPJ achado (14 dígitos).
+- Corrigido no 1º uso no Mac: (1) sessão do VIOS expirada não era reconhecida (o VIOS responde 200 com só
+  `<meta HTTP-EQUIV="Refresh" ... URL=./entrar.php>`, sem redirecionar) e a lista saía "vazia" sem tentar o login;
+  agora a lista e a consulta de CNPJ reconhecem esse caso e entram com `VIOS_USUARIO`/`VIOS_SENHA`; (2) `status` e
+  `fila` antes da 1ª rodada davam "unable to open database file": o `Estado` cria a pasta `dados/`.
+- `pje-busca/.env.example`: `VIOS_USUARIO`, `VIOS_SENHA`, `VIGIA_VIOS_AREA_ID=3`, `VIGIA_VIOS_TIPO_PARTE=P`,
+  `VIGIA_VIOS_ADVOGADO_ID`, `VIGIA_MAX_CNPJ=40`. `PROJETO (1).md` seção 4.2 com o status e os comandos.
 
 ### Adicionado — pje-busca: plano do vigia diário VIOS → PJe (19 e 23/11/2026)
 - `pje-busca/PROJETO (1).md`, seção 4.2 (só planejamento, sem código): 1x por dia o robô lê no VIOS a lista de
