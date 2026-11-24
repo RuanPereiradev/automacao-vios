@@ -6,10 +6,12 @@
                   função gera o próprio documento (é o caso do painel semanal)
     executar(ctx) -> nucleo.modelos.Secao
 """
-from funcoes import agenda, intimacoes, painel, parados, planilhas, prazos
+from funcoes import agenda, comentarios, intimacoes, painel, parados, planilhas, prazos, processos
 
 REGISTRO = {"agenda": agenda, "prazos": prazos, "intimacoes": intimacoes,
-            "parados": parados, "planilhas": planilhas, "painel": painel}
+            "parados": parados, "planilhas": planilhas, "painel": painel,
+            "processos": processos, "comentarios": comentarios}
 
-# parados é lenta e painel é semanal: só rodam com --funcoes parados / --funcoes painel (agendamento à parte)
+# parados é lenta, painel é semanal, processos e comentarios são exportações: só rodam quando pedidas
+# (--funcoes parados / painel / processos / comentarios)
 PADRAO = ["agenda", "prazos", "intimacoes", "planilhas"]

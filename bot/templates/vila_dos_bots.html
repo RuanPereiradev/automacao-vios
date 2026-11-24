@@ -71,6 +71,19 @@
       <p class="acoes">{% if orelha_info.configurado %}<a class="botao primario" href="{{ url_for('orelha_pagina') }}">Relatórios guardados{% if orelha_info.total %} ({{ orelha_info.total }}){% endif %}</a>{% endif %}
         <a class="botao secundario" href="{{ url_for('vila') }}?vila=5" target="_blank" rel="noopener">Ver na vila</a></p>
     </div>
+    <div class="cartao bot">
+      <div class="topo-bot"><h2>Cumprimentos</h2></div>
+      <p class="suave">Cumprimento de sentença e execução contra clientes que não estão no VIOS: o vigia consulta o DJEN todo dia
+        e a equipe registra a conferência.</p>
+      {% if cumprimentos_info.configurado %}
+        {% if cumprimentos_info.pendentes or cumprimentos_info.assoc_pendentes %}<p class="aviso">Atenção: {{ cumprimentos_info.pendentes + cumprimentos_info.assoc_pendentes }} pendente(s) de conferência.</p>
+        {% else %}<p>Nenhum pendente.</p>{% endif %}
+        {% if cumprimentos_info.sem_pub_pendentes %}<p class="suave">{{ cumprimentos_info.sem_pub_pendentes }} empresa(s) sem publicação para conferir o nome.</p>{% endif %}
+        {% if cumprimentos_info.ultima %}<p class="suave">Última verificação: {{ cumprimentos_info.ultima }}</p>{% endif %}
+      {% endif %}
+      <p class="acoes">{% if cumprimentos_info.configurado %}<a class="botao primario" href="{{ url_for('cumprimentos_pagina') }}">Abrir Cumprimentos</a>
+        {% else %}<span class="selo-off">Vigia não instalado (cd pje-busca &amp;&amp; python3 vigia.py vios)</span>{% endif %}</p>
+    </div>
   </div>
 </main>
 {{ ultron_script() }}

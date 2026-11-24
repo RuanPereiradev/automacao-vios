@@ -1,6 +1,6 @@
 """Orelha — assistente da equipe que SÓ LÊ o VIOS e entrega o relatório do dia.
 
-Funções (orelha/funcoes/): agenda, prazos, intimacoes, parados, planilhas, painel. Cada uma roda isolada:
+Funções (orelha/funcoes/): agenda, prazos, intimacoes, parados, planilhas, painel, processos, comentarios. Cada uma roda isolada:
 se falhar, vira uma seção com o erro e as outras continuam. Separado do Ultron, do Zangão e do
 Albi: tem .venv, .env, logs/ e saida/ próprios dentro de orelha/ e não importa nada de bot/ nem albi/.
 
@@ -9,10 +9,14 @@ de login é marcado pelo Orelha e passa; a primeira página depois do login já 
 se a página não abrir com o bloqueio ativo, para tudo (nenhuma função roda).
 ORELHA_BLOQUEIO_NO_LOGIN=false volta a ligar o bloqueio logo depois do login, como o Zangão.
 
-uso: python main.py [--funcoes agenda,prazos,intimacoes,parados,planilhas,painel] [--simulado]
+uso: python main.py [--funcoes agenda,prazos,intimacoes,parados,planilhas,painel,processos,comentarios] [--simulado]
                     [--painel-de AAAA-MM-DD] [--painel-ate AAAA-MM-DD]   (período do painel semanal)
                     [--data AAAA-MM-DD] [--sem-pdf] [--eventos] [--albi-saida PASTA] [--env ARQUIVO]
-  padrão: todas menos parados e painel (ORELHA_FUNCOES no .env)
+  padrão: todas menos parados, painel, processos e comentarios (ORELHA_FUNCOES no .env)
+  processos    todos os processos de uma área (padrão Previdenciária), ativos e encerrados, em
+               processos-<área>.csv/.json; não entra no relatório do dia
+  comentarios  comentários dos últimos 90 dias de uma lista de processos (entrada/comentarios.txt),
+               em comentarios-90dias.csv/.json; não entra no relatório do dia
   painel       painel semanal em PDF no papel timbrado (painel-semanal.pdf); não entra no relatório do dia
   --simulado   sem navegador nem senha: lê orelha/fixtures/ (dados fictícios)
   --data       dia do relatório (padrão: hoje)

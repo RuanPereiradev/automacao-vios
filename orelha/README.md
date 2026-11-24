@@ -85,6 +85,8 @@ Grupos do `.env.example`:
 ```bash
 ./rodar.sh                                   # relatório do dia (ORELHA_FUNCOES: agenda, prazos, intimacoes, planilhas)
 ./rodar.sh --funcoes parados                 # só os processos parados (lenta)
+./rodar.sh --funcoes processos               # planilha com todos os processos da área (padrão: Previdenciária)
+./rodar.sh --funcoes comentarios             # comentários dos últimos 90 dias de uma lista de processos
 ./rodar.sh --funcoes agenda,prazos           # só algumas funções
 ./rodar.sh --data 2026-11-03                 # relatório com outra data de "hoje"
 ./rodar.sh --sem-pdf                         # só o HTML e o resumo.json
@@ -239,6 +241,55 @@ endereço, com "Nro do Processo" (`campo_pesquisa_selecionado=nro_proc`) e "todo
 (ativos e encerrados). Achou com e sem a máscara do CNJ; número inexistente volta sem linhas. Se a
 resposta não for a tela de Processos (sessão caída), o número fica "não deu para conferir", nunca
 "novo".
+
+## Processos da área (planilha com todos os processos)
+
+Exportação à parte, fora do relatório do dia: `./rodar.sh --funcoes processos`. Lê na lista de processos
+(`processos-lista.php`, só GET) todos os processos da área escolhida, ativos e encerrados, e grava em
+`saida/<AAAA-MM-DD>/`:
+
+- `processos-<área>.csv`: separado por `;`, UTF-8 com BOM (abre direto no Excel com acento certo), em três
+  blocos com título e cabeçalho próprios: **ATIVOS**, **ENCERRADOS** e **ATIVOS SEM TAREFA ABERTA** (os sem
+  nenhuma tarefa primeiro);
+- `processos-<área>.json`: os mesmos dados, com `total`, `ativos` e `encerrados`, para outros bots.
+
+Os dois têm nomes de clientes: ficam com permissão 600 em `saida/`, que está fora do git.
+
+Tarefas: duas pesquisas a mais nos ativos, com o filtro nativo "Com ou sem tipo de tarefa? = Sem" (Abertas e
+Todas), preenchem a coluna Tarefas: "com tarefa aberta", "sem tarefa aberta" ou "nenhuma tarefa"
+(`ORELHA_PROCESSOS_TAREFAS=false` desliga). Rodada real de 17/11/2026: 289 ativos sem tarefa aberta, 20 deles sem
+nenhuma tarefa.
+
+Colunas: CI, número, ativo/encerrado, tarefas, situação do processo, área, processo, ação, cliente, partes ativa e
+passiva, terceiros, advogado e auxiliares, órgão, UF, vara, datas da ação e do encerramento, motivo do
+encerramento, valor da ação, última edição, pasta interna, objeto, observações e o link da ficha no VIOS.
+
+A área sai de `ORELHA_PROCESSOS_AREAS` (padrão `4` = Previdenciária; outros ids no filtro "Área" da lista:
+3 = Trabalhista, 8 = Cível Consumidor, 13 = Tributário...). A lista devolve no máximo 500 processos por
+pesquisa, mesmo pedindo `pesq[limit]=9999999` (visto em 17/11/2026). Acima disso a função lê por ano de
+cadastro e divide ao meio o período que vier cheio. Se um único dia tiver 500 ou mais, avisa no log.
+Rodada real de 17/11/2026, área Previdenciária: 8.931 processos (843 ativos e 8.088 encerrados), em 78
+pesquisas e cerca de 5 minutos.
+
+## Comentários dos processos (lista de números → comentários dos últimos 90 dias)
+
+Exportação à parte, fora do relatório do dia: `./rodar.sh --funcoes comentarios`. Para cada número do
+arquivo `entrada/comentarios.txt` (um por linha; linha vazia e com `#` são ignoradas; a pasta `entrada/`
+fica fora do git), a Orelha:
+
+1. busca o número na lista de processos (o mesmo GET da conferência das planilhas, "Nro do Processo" e
+   "todos"); o número pode estar no CNJ ou em "Outros" da coluna. Número que não é CNJ (ex.: `IPL nº
+   2021.0000001`) é buscado sem o texto antes do primeiro dígito. Vários cadastros = lê todos;
+2. abre a ficha (`processos-vis.php`) e lê o quadro **Comentários** (`#tabela_v5_processo_vis_tabela_coment`,
+   colunas "Data / Usuário" e "Comentário"), que o Vue desenha depois que a página abre; entram também as
+   observações de conclusão de tarefa que o VIOS copia para lá;
+3. guarda os comentários de hoje até 90 dias atrás (`ORELHA_COMENTARIOS_DIAS`).
+
+Saída em `saida/<data>/comentarios-90dias.csv` (`;`, UTF-8 com BOM, uma linha por comentário; processo sem
+comentário no período vira uma linha com a data do último comentário) e `.json`, com permissão 600.
+
+Rodada real de 23/11/2026: 65 números, 46 com comentário nos últimos 90 dias (191 comentários), 19 sem
+(4 deles sem nenhum comentário, conferidos), todos achados no VIOS, em cerca de 6 min.
 
 ## Painel semanal (PDF no papel timbrado)
 

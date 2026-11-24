@@ -1,4 +1,4 @@
-"""Escolhe o provedor de IA pelo .env (LLM_PROVEDOR=openai|anthropic).
+"""Escolhe o provedor de IA pelo .env (LLM_PROVEDOR=openai|anthropic|gemini).
 
 Cada provedor expõe responder(sistema, usuario, schema, pesquisar=False) -> dict, sempre com
 saída JSON validada pelo schema. Para trocar de provedor basta mudar o .env.
@@ -17,4 +17,7 @@ def criar(provedor, modelo, esforco=""):
     if provedor == "anthropic":
         from nucleo.ia.anthropic_ia import AnthropicIA
         return AnthropicIA(modelo, esforco)
-    raise IAErro(f"LLM_PROVEDOR inválido: '{provedor}' (use openai ou anthropic)")
+    if provedor == "gemini":
+        from nucleo.ia.gemini_ia import GeminiIA
+        return GeminiIA(modelo, esforco)
+    raise IAErro(f"LLM_PROVEDOR inválido: '{provedor}' (use openai, anthropic ou gemini)")

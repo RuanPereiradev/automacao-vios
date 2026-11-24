@@ -21,6 +21,9 @@ PRECOS = [
     ("luna", (1.0, 6.0)),
     ("terra", (2.5, 15.0)),
     ("gpt-5.6", (5.0, 30.0)),
+    # Gemini: preço padrão do plano pago (até 31/12/2026 há preço promocional menor: o teto fica com folga)
+    ("gemini-3.6-flash", (1.50, 7.50)),
+    ("gemini-3.5-flash", (1.50, 9.00)),
     ("claude-opus-5-5", (4.0, 20.0)),
     ("claude-sonnet-5-5", (2.0, 10.0)),
     ("claude-haiku-5-5", (0.10, 0.50)),

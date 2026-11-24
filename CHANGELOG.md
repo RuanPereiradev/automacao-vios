@@ -12,6 +12,163 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Aba Cumprimentos: "Análise principal" e as análises do PJe na página (24/11/2026)
+- Topo da página `/cumprimentos` com a análise principal (cada número leva à seção): cumprimentos fora do VIOS
+  pendentes, associados novos no PJe, associados já existentes de clientes do VIOS para conferir, processos do VIOS
+  sem o escritório nas publicações (habilitação), ativos no VIOS mas arquivados no PJe e empresas sem publicação.
+- Seções novas, com a mesma conferência da equipe: "Associados já existentes de clientes do VIOS" (base do PJe) e
+  "Processos do VIOS fora do PJe do escritório", agrupados em Habilitação a conferir · Sociedade fora do processo ·
+  Sem publicação no DJEN · 2º grau/TST.
+- pje-busca: `vigia.py fora` (e o fim do `vigia.py associados`) classifica pelo DJEN os processos do VIOS fora do
+  acervo e dos arquivados (órgão da última publicação e se há advogado do escritório: `VIGIA_ESCRITORIO_ADVOGADOS`,
+  padrão "FEITOSA"); tabela `assoc_fora`. Testes em `pje-busca/tests/test_associados.py` e `tests/test_cumprimentos.py`.
+
+### Adicionado — Jarvis: IA pelo Google Gemini (24/11/2026)
+- Os créditos da Anthropic acabaram. Novo provedor `LLM_PROVEDOR=gemini` (`jarvis/nucleo/ia/gemini_ia.py`): API
+  `generateContent` pela biblioteca padrão do Python (nada a instalar), saída JSON validada pelo schema
+  (`responseJsonSchema`), chave `GEMINI_API_KEY` no cabeçalho, novas tentativas com espera em 503/429/500.
+- Modelo padrão por provedor quando `LLM_MODELO` está vazio (gemini: `gemini-3.6-flash`). Preço do Gemini na tabela
+  de custos (US$ 1,50 / 7,50 por milhão) para o teto `LLM_LIMITE_US` continuar valendo. Motivos de erro
+  "sem crédito ou cota no Gemini" e "IA sobrecarregada".
+- Conferido com a chave do escritório: `gemini-3.6-flash` e `gemini-3.5-flash` responderam no formato do schema;
+  os modelos Pro deram cota esgotada (RESOURCE_EXHAUSTED) e alguns Flash, 503 por alta demanda.
+- Testes em `jarvis/tests/test_gemini.py` (API simulada). `jarvis/README.md` e `.env.example` atualizados.
+
+### Adicionado — pje-busca: aba "Arquivados" do PJe no nível 3 (24/11/2026)
+- A 1ª rodada completa (358 no acervo, 60 com associação, 0 erro) deu 97 processos do VIOS "fora do acervo". Conferido:
+  parte está ARQUIVADA no PJe e continua ativa no VIOS (ex.: 0000029-50.2026.5.07.0024, arquivamento definitivo em
+  09/11/2026 após acordo) e parte está no 2º grau/TST.
+- `vigia.py associados` agora também percorre a aba "Arquivados" (3.188 processos; 100 por página) e separa:
+  "ativos no VIOS, mas arquivados no PJe" (atualizar o VIOS) e "fora do acervo e dos arquivados". Listas grandes com
+  100 linhas por página. Linhas lidas pelo texto da linha (na aba Arquivados o botão de detalhes não tem aria-label).
+- Tabela `assoc_arquivados`; coluna `arquivados` em `assoc_rodadas` (acrescentada sem perder a base de 24/11).
+- Aba Cumprimentos: lista recolhida "Ativos no VIOS, mas arquivados no PJe" (CI, empresa, advogado) para a equipe
+  encerrar no VIOS. JavaScript conferido no PJe real (aba Arquivados, 100 por página).
+
+### Corrigido — pje-busca: nível 3 lê pelo filtro "Processos com Associação" (24/11/2026)
+- A 1ª rodada (busca pelo número no campo do Acervo Geral) dava "fora do acervo" para quase tudo: depois de algumas
+  buscas a lista do PJe deixa de atualizar (o campo mostra o número novo e a lista continua no anterior).
+- Agora `vigia.py associados` liga o filtro "Processos com Associação" (60 de 358 processos em 24/11/2026), percorre
+  as páginas ("Próximo"; volta ao "Primeiro"), abre a janela de cada linha, lê a tabela (5 por página) e fecha com Esc;
+  depois desliga o filtro e lê a lista do acervo inteiro só para saber o que do VIOS está fora dele (`assoc_acervo`).
+- Base: a 1ª rodada COMPLETA é base de tudo; depois, associado novo de processo que já estava no acervo = alerta
+  (o 1º associado de um principal também alerta). Processo que acabou de entrar no acervo vira base só dele.
+- Opções novas: `--paginas N` e `--sem-cobertura` (teste, não grava), `--simular`. Sai `--numero`/`--limite`.
+- Teste no PJe real (24/11/2026, 1ª página): 10 de 10 lidos, 16 associados, 0 erro. A maioria dos processos com
+  associação do acervo está fora da lista do VIOS (antigos/arquivados/outra área), então o nível do associado novo
+  passou a ser: VERMELHO só com o principal no VIOS; AMARELO com o principal fora do VIOS; INFO se já está no VIOS.
+  A base separa "principal no VIOS (conferir)" do resto. A aba Cumprimentos mostra o amarelo.
+  As tabelas do teste anterior são recriadas sozinhas. JavaScript conferido no PJe real (filtro, páginas, janela, Esc).
+
+### Adicionado — pje-busca: documento de contexto do vigia de cumprimentos (24/11/2026)
+- `pje-busca/doc/CONTEXTO_cumprimentos_2026-11-24.md`: problema, níveis do vigia, resultados, aba Cumprimentos,
+  comandos, arquivos, pendências e riscos (sem senhas).
+
+### Adicionado — Vila dos Bots: aba Cumprimentos de sentença (24/11/2026)
+- Cartão **Cumprimentos** na entrada e página `/cumprimentos` (`bot/cumprimentos.py`, `bot/templates/cumprimentos.html`):
+  cumprimentos de sentença e execuções contra clientes que não estão no VIOS, lidos do banco do vigia do pje-busca
+  (DJEN), com pendentes em cima e há quantos dias saiu a 1ª publicação.
+- Conferência da equipe em cada processo (situação, quem conferiu, observação, com histórico) em
+  `pje-busca/dados/cumprimentos_conferencia.json` (fora do git, permissão 600).
+- Botão "Verificar agora no DJEN" (`vigia.py djen` em segundo plano, ambiente limpo, uma execução por vez) e os
+  relatórios completos de cada dia. Ações de cumprimento de convenção (sindicato) ficam à parte, sem alerta.
+- Banco do vigia aberto só para leitura; nada do pje-busca é importado. Nova variável opcional `PJE_BUSCA_PASTA`.
+- Testes em `tests/test_cumprimentos.py` (dados fictícios).
+- Lista **Empresas sem nenhuma publicação no DJEN** na mesma página (CNPJ, processos do TRT7 no VIOS, nomes buscados)
+  com conferência do nome: "Nome corrigido" grava até 3 nomes do tribunal em `pje-busca/dados/nomes_conferidos.json`
+  (fora do git, permissão 600), rota `POST /cumprimentos/nome`.
+
+### Adicionado — pje-busca: nível 3, "Processos associados" no PJe (24/11/2026)
+- `python3 vigia.py associados` (`src/vigia_associados.py`): entra no PJe pelo Presto e, no Acervo Geral, lê os
+  "Processos associados" de TODOS os principais ativos do TRT7 da lista do VIOS (formato Balanceado). Só pesquisa,
+  abre a janela de associados (paginação, se houver) e fecha com Esc: não abre documento, não peticiona, não altera nada.
+- 1ª leitura de cada principal = base (sem alerta); associado novo fora do VIOS = VERMELHO; já no VIOS = informação.
+  Tabelas `assoc_principais`, `assoc_associados`, `assoc_rodadas`; relatório `saida/associados_AAAA-MM-DD.txt`;
+  capturas de erro em `logs/associados/`. Se a sessão cair, entra de novo uma vez; para com 5 erros seguidos.
+- Opções: `--numero <CNJ>` (teste com um principal), `--limite N`, `--simular`.
+- Aba Cumprimentos: seção "Associados novos no PJe (nível 3)" com a mesma conferência, números no topo, dados da
+  última leitura, botão "Verificar associados no PJe" e relatórios. Testes em `pje-busca/tests/test_associados.py`
+  (PJe falso) e `tests/test_cumprimentos.py`; o JavaScript foi conferido no HTML real do Acervo Geral (19/11/2026).
+
+### Adicionado — pje-busca e aba Cumprimentos: processo principal de cada cumprimento no VIOS (24/11/2026)
+- `vigia_djen.achar_principal`: lê as publicações do próprio cumprimento (até 100) e procura o principal na lista do
+  VIOS — 1º pelo número citado no texto da publicação; 2º pelo mesmo exequente (polo ativo = Autor no VIOS), de
+  preferência na mesma vara. Resultado em `djen_principais`, refeito a cada rodada enquanto não for achado.
+- Novo comando `python3 vigia.py principais` (só essa ligação, rápido). A rodada do `djen` também faz.
+- A aba Cumprimentos mostra em cada cumprimento "Cliente nosso: o processo principal X está no VIOS (CI, empresa,
+  advogado)" e como foi achado, ou "Principal não achado no VIOS".
+- Conferido com dados reais: 0001772-66.2024.5.07.0024 → 0000064-49.2022.5.07.0024 (citado e mesmo exequente);
+  0001226-95.2026.5.07.0038 → 0000743-70.2023.5.07.0038 (mesmo exequente e vara); 0001368-02.2026.5.07.0038 →
+  0002754-04.2025.5.07.0038. Testes em `pje-busca/tests/test_djen.py` e `tests/test_cumprimentos.py`.
+
+### Alterado — pje-busca: vigia do DJEN usa os nomes conferidos pela equipe (24/11/2026)
+- `vigia.py djen` lê `dados/nomes_conferidos.json` (gravado pela aba Cumprimentos) e busca também por esses nomes
+  (origem `manual` em `djen_nomes`; 1ª busca com nome novo vira auditoria). Seção "NOMES CONFERIDOS" no relatório.
+- Nova tabela `djen_consultas` (resultado de cada empresa na última rodada: publicações e nomes buscados).
+- Testes novos em `pje-busca/tests/test_djen.py`.
+
+### Adicionado — Orelha: função `comentarios`, comentários dos últimos 90 dias de uma lista de processos (23/11/2026)
+- `./rodar.sh --funcoes comentarios` lê os números de `orelha/entrada/comentarios.txt` (fora do git), acha o CI
+  de cada um pela busca "Nro do Processo" (só GET; o número pode estar no CNJ ou em "Outros"), abre a ficha e lê
+  o quadro "Comentários". Grava `saida/<data>/comentarios-90dias.csv` (Excel) e `.json`, com permissão 600.
+- Configuração: `ORELHA_COMENTARIOS_LISTA`, `ORELHA_COMENTARIOS_DIAS` (padrão 90), `ORELHA_COMENTARIOS_TIMEOUT`.
+  Fora do padrão e do relatório do dia.
+- Testes em `orelha/tests/test_comentarios.py`, com fixtures fictícias em `orelha/fixtures/comentarios/`.
+
+### Adicionado — Orelha: função `processos`, planilha com todos os processos da área (17/11/2026)
+- `./rodar.sh --funcoes processos` lê na lista de processos do VIOS (só GET) todos os processos da área
+  Previdenciária, ativos e encerrados, e grava `saida/<data>/processos-previdenciaria.csv` (Excel) e `.json`.
+- A lista devolve no máximo 500 por pesquisa: acima disso lê por ano de cadastro, dividindo o período cheio.
+- Configuração: `ORELHA_PROCESSOS_AREAS` (padrão 4), `ORELHA_PROCESSOS_SITUACOES`, `ORELHA_PROCESSOS_DESDE`,
+  `ORELHA_PROCESSOS_MAX_PAGINAS`, `ORELHA_PROCESSOS_TIMEOUT`. Fora do padrão e do relatório do dia.
+- Testes em `orelha/tests/test_processos.py`, com fixtures fictícias em `orelha/fixtures/processos/`.
+- A planilha sai em blocos (ATIVOS, ENCERRADOS e ATIVOS SEM TAREFA ABERTA) e ganhou a coluna Tarefas, lida pelo
+  filtro nativo "Com ou sem tipo de tarefa? = Sem" (Abertas / Todas). `ORELHA_PROCESSOS_TAREFAS=false` desliga.
+### Adicionado — pje-busca: verificação pelo DJEN (níveis vermelho/amarelo) e correção dos acentos do VIOS (23/11/2026)
+- `pje-busca/src/vigia_djen.py` + `vigia.py djen [--simular] [--empresa TEXTO]`: para cada empresa da base do vigia
+  consulta a API pública do DJEN (`comunicaapi.pje.jus.br`, por nome da parte + TRT7, sem login e sem CAPTCHA) e
+  classifica cada processo do TRT7 que não está no VIOS nem já foi avisado: VERMELHO = cumprimento de sentença /
+  execução; AMARELO = qualquer outro processo em que o escritório não está. 1ª rodada = base (lista uma vez os
+  processos do DJEN fora do VIOS). Relatório `saida/djen_AAAA-MM-DD.txt`; tabelas `djen_processos` e `djen_rodadas` no
+  `dados/vigia.sqlite`. `pje-busca/tests/test_djen.py` (7 testes, inclusive o caso real MM COMERCIO).
+- Testes de 23/11: Consulta de terceiros sem CNPJ; certidão trabalhista com CAPTCHA por emissão e sem cumprimento
+  provisório; DJEN achou o CumPrSe 0001368 em 31/07/2026; "Processos associados" do principal mostra o CumPrSe
+  (nível 3, a implementar). `PROJETO (1).md` seção 4.3.
+- Corrigido: a leitura do VIOS trocava acentos por "�" (o VIOS manda Windows-1252); `src/vios_chrome.py` decodifica
+  a resposta (UTF-8, senão Windows-1252). Recriar a base do vigia (`dados/vigia.sqlite`) depois desta correção.
+- `pje-busca/.env.example`: `VIGIA_DJEN_TRIBUNAL=TRT7`, `VIGIA_DJEN_PAUSA_S=1.5`.
+- Ajustes depois da 1ª rodada real (162 empresas, 4.149 publicações, 0 erros): (1) "AÇÃO DE CUMPRIMENTO" (sindicato x
+  convenção) deixou de ser vermelho; (2) nome calibrado pelo tribunal: a cada 30 dias, lê no DJEN (`numeroProcesso`) os
+  destinatários do polo passivo de até 2 processos do TRT7 já conhecidos da empresa e passa a buscar também por esse
+  nome (ex.: VIOS "COPCEL - TRANSPORTE & COMERCIO DE GRAO LTDA" x tribunal "COPCEL - COMERCIO DE PO E CERA DE CARNAUBA
+  LTDA - EPP"); a 1ª busca com nome novo vira auditoria daquela empresa; (3) publicação em que o cliente só aparece no
+  polo ativo (autor: consignação, homologação de acordo) é ignorada; (4) `vigia.py djen --refazer-base` apaga só o
+  estado do DJEN. Testes: 21.
+
+### Adicionado — pje-busca: vigia VIOS → PJe, parte 1 (foto diária do VIOS e comparação) (23/11/2026)
+- `pje-busca/vigia.py` (`vios [--simular] [--foto arquivo.json]`, `status`, `fila`): 1x por dia lê no VIOS a lista
+  de processos ativos da Área 3 (Trabalhista) com o cliente na parte passiva, grava a foto do dia, compara com o
+  estado e escreve `saida/vigia_AAAA-MM-DD.txt` com empresas novas, processos novos (TRT7 marcado para a fila do
+  PJe), processos que voltaram e que saíram da lista. A 1ª rodada vira base (nada aparece como novo).
+- `pje-busca/src/vios_chrome.py`: leitura pelo Chrome do Mac (AppleScript), só GET, com fetch() dentro de uma aba do
+  VIOS (a tela não muda); se a sessão caiu, entra com `VIOS_USUARIO`/`VIOS_SENHA` numa aba nova e a fecha no fim.
+  CNPJ da empresa pelo cadastro de pessoas (até `VIGIA_MAX_CNPJ` por rodada, as novas primeiro); CPF não é guardado.
+- `pje-busca/src/vigia_estado.py`: estado em `dados/vigia.sqlite` (empresas, processos, rodadas); lista incompleta
+  (teto de 500 linhas ou rodapé diferente) não marca saídas; `fila_pje()` = processos do TRT7 vistos nos últimos
+  30 dias (para a parte 2). `pje-busca/tests/test_vigia.py`: 11 testes.
+- Validado no VIOS real (só contagens): 363 linhas = rodapé 363, 361 com CNJ, 240 do TRT7; CNPJ achado (14 dígitos).
+- Corrigido no 1º uso no Mac: (1) sessão do VIOS expirada não era reconhecida (o VIOS responde 200 com só
+  `<meta HTTP-EQUIV="Refresh" ... URL=./entrar.php>`, sem redirecionar) e a lista saía "vazia" sem tentar o login;
+  agora a lista e a consulta de CNPJ reconhecem esse caso e entram com `VIOS_USUARIO`/`VIOS_SENHA`; (2) `status` e
+  `fila` antes da 1ª rodada davam "unable to open database file": o `Estado` cria a pasta `dados/`.
+- `pje-busca/.env.example`: `VIOS_USUARIO`, `VIOS_SENHA`, `VIGIA_VIOS_AREA_ID=3`, `VIGIA_VIOS_TIPO_PARTE=P`,
+  `VIGIA_VIOS_ADVOGADO_ID`, `VIGIA_MAX_CNPJ=40`. `PROJETO (1).md` seção 4.2 com o status e os comandos.
+
+### Alterado — Branch relatorio-processos atualizada com a main de novo (24/11/2026)
+- Merge da `origin/main` (Jarvis pelo Gemini, aba Cumprimentos, pje-busca) antes do PR. Conflitos no CHANGELOG,
+  no `jarvis/README.md` e no `jarvis/relatorio_processos.py`: mantidos os dois lados (formato completo/resumido e
+  modelo padrão por provedor). O Percentual ganho usa o mesmo `responder()` e roda também pelo Gemini.
+
 ### Adicionado — Jarvis: "Percentual ganho" e relatório resumido (23/11/2026)
 - Pedido da controladoria. **Relatório resumido** para os grupos fora de `RELATORIO_COMPLETO` (padrão: as duas
   Casas do Celular, que continuam no formato completo): só número do processo, partes, resumo do processo e

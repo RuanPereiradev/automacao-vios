@@ -21,6 +21,7 @@ resultado*.txt
 # Orelha: senha, relatórios (têm nomes da equipe e de clientes), log e ambiente próprios
 orelha/.env
 orelha/saida/
+orelha/entrada/
 orelha/logs/
 orelha/.venv/
 # Bot do WhatsApp (joaotabosa3599/bot-previdenciario), repositório PRIVADO, versionado à parte.
