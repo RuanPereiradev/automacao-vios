@@ -162,8 +162,14 @@ para `AAAA-MM/teste/` como a planilha. Falha no PDF não impede a planilha (fica
 
 ## 4. IA
 
-- Provedor e chave no `.env` (`LLM_PROVEDOR=anthropic`,
-  `ANTHROPIC_API_KEY`). Modelo padrão: `claude-sonnet-5-5` (`LLM_MODELO`).
+- Provedor e chave no `.env`: `LLM_PROVEDOR=anthropic` (`ANTHROPIC_API_KEY`, modelo padrão `claude-sonnet-5-5`),
+  `openai` (`OPENAI_API_KEY`, padrão `gpt-5.6`) ou `gemini` (`GEMINI_API_KEY`, padrão `gemini-3.6-flash`).
+  `LLM_MODELO` troca o modelo. Desde 24/11/2026 o escritório usa o **Gemini** (os créditos da Anthropic acabaram).
+- Gemini (`nucleo/ia/gemini_ia.py`): API `generateContent` pela biblioteca padrão (nada a instalar), saída JSON
+  pelo schema (`responseJsonSchema`), chave no cabeçalho, novas tentativas com espera quando o Google responde 503
+  (alta demanda) ou 429. Use um projeto com **faturamento ativo**: no plano gratuito o Google pode usar o conteúdo
+  enviado (dados de processos de clientes). Preço na tabela do `nucleo/custo.py`: US$ 1,50 / 7,50 por milhão
+  (entrada / saída, o "pensamento" conta como saída).
 - Uma chamada por processo, com resposta em JSON validado (schema em
   `nucleo/relatorio_planilha.py`). Processo sem tarefas não vai para a IA.
 - **O que é tirado antes de mandar**: tarefas canceladas, texto repetido
@@ -295,9 +301,9 @@ e a chave da IA e **não vai para o GitHub**.
 | `NAVEGACAO_URL_FINAL` | Tela aberta depois do login | `.../?pag=sys/relatorios/relatorios.php` |
 | `PROCESSOS_GRUPOS` | Grupos que podem ser escolhidos na página `/jarvis`, separados por `\|` (no terminal, sem `--grupo`, roda todos eles) | os 6: Plasfran Itapipoca, Camocim e Maranhão, LD Urbanismo, Casa do Celular e Casa do Celular MG/SP |
 | `RELATORIO_PASTA` | Pasta das planilhas (vazio = `<SAIDA_PASTA>/relatorios`) | vazio |
-| `LLM_PROVEDOR` | `anthropic` ou `openai` | `anthropic` |
-| `ANTHROPIC_API_KEY` | Chave da IA | (no `.env`) |
-| `LLM_MODELO` | Modelo (vazio = `claude-sonnet-5-5`) | vazio |
+| `LLM_PROVEDOR` | `anthropic`, `openai` ou `gemini` | `gemini` (desde 24/11/2026) |
+| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` | Chave do provedor escolhido | (no `.env`) |
+| `LLM_MODELO` | Modelo (vazio = padrão do provedor: `claude-sonnet-5-5`, `gpt-5.6`, `gemini-3.6-flash`) | `gemini-3.6-flash` |
 | `LLM_LIMITE_US` | Teto de gasto por execução (US$) | `5` |
 | `SAIDA_PASTA` | Pasta de saída deste usuário | `saida` |
 | `HEADLESS` | Chrome sem janela | `false` |

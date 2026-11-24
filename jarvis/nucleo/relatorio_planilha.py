@@ -207,6 +207,7 @@ def motivo_erro(erro):
     for trecho, motivo in (("teto de gasto", "teto de gasto da execução atingido (LLM_LIMITE_US)"),
                            ("credit balance", "sem crédito na conta da Anthropic"),
                            ("insufficient_quota", "sem crédito na conta da OpenAI"),
+                           ("resource_exhausted", "sem crédito ou cota no Gemini"), ("unavailable", "IA sobrecarregada (tente de novo)"),
                            ("api_key", "chave da IA ausente ou inválida"), ("authentication", "chave da IA inválida"),
                            ("error code: 401", "chave da IA inválida"), ("not_found", "modelo da IA não existe (LLM_MODELO)"),
                            ("rate_limit", "limite de uso da IA por minuto (tente de novo)"), ("overloaded", "IA sobrecarregada (tente de novo)"),

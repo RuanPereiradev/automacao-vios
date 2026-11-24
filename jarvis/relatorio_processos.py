@@ -26,6 +26,8 @@ from nucleo.relatorio_planilha import SEM_TAREFAS, SISTEMA, SCHEMA, montar_linha
 from nucleo.registro import PASTA_LOGS, configurar_log
 
 MODELO_PADRAO = "claude-sonnet-5-5"
+# modelo de cada provedor quando LLM_MODELO está vazio
+MODELOS_PADRAO = {"anthropic": MODELO_PADRAO, "openai": "gpt-5.6", "gemini": "gemini-3.6-flash"}
 
 
 def _opcao(args, nome):
@@ -194,9 +196,10 @@ def main(*args):
     if not pedidos:
         log.error("Informe os grupos: --grupo \"CASA DO CELULAR\" ou PROCESSOS_GRUPOS no %s", caminho_env)
         return 1
-    modelo = os.getenv("LLM_MODELO", "").strip() or MODELO_PADRAO
+    provedor = os.getenv("LLM_PROVEDOR", "anthropic").strip().lower() or "anthropic"
+    modelo = os.getenv("LLM_MODELO", "").strip() or MODELOS_PADRAO.get(provedor, MODELO_PADRAO)
     try:
-        agente = ia.criar(os.getenv("LLM_PROVEDOR", "anthropic"), modelo, os.getenv("LLM_ESFORCO", "").strip())
+        agente = ia.criar(provedor, modelo, os.getenv("LLM_ESFORCO", "").strip())
     except ia.IAErro as e:
         log.error(e)
         return 1
