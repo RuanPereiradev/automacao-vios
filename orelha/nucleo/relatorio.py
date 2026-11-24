@@ -261,8 +261,10 @@ def _gravar(caminho, texto):
     os.replace(tmp, caminho)
 
 
-def escrever_pdf(html_caminho, pdf_caminho, driver=None):
-    """Imprime o relatorio.html em PDF pelo Chrome (o do Orelha, se já estiver aberto)."""
+def escrever_pdf(html_caminho, pdf_caminho, driver=None, opcoes=None):
+    """Imprime o relatorio.html em PDF pelo Chrome (o do Orelha, se já estiver aberto). `opcoes` entram no
+    Page.printToPDF (ex.: o painel semanal passa headerTemplate/footerTemplate para repetir a faixa do
+    modelo e o número da página em todas as páginas)."""
     proprio = driver is None
     if proprio:
         from selenium import webdriver
@@ -271,7 +273,8 @@ def escrever_pdf(html_caminho, pdf_caminho, driver=None):
         driver = webdriver.Chrome(options=o)
     try:
         driver.get(Path(html_caminho).resolve().as_uri())
-        dados = driver.execute_cdp_cmd("Page.printToPDF", {"printBackground": True, "preferCSSPageSize": True})
+        dados = driver.execute_cdp_cmd("Page.printToPDF", {"printBackground": True, "preferCSSPageSize": True,
+                                                            **(opcoes or {})})
         Path(pdf_caminho).write_bytes(base64.b64decode(dados["data"]))
     finally:
         if proprio:

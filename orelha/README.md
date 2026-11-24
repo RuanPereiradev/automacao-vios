@@ -240,36 +240,55 @@ endereço, com "Nro do Processo" (`campo_pesquisa_selecionado=nro_proc`) e "todo
 resposta não for a tela de Processos (sessão caída), o número fica "não deu para conferir", nunca
 "novo".
 
-## Painel semanal (PDF no papel timbrado)
+## Painel semanal (PDF no visual do modelo)
 
 Documento à parte do relatório do dia, para a gestão: `./rodar.sh --funcoes painel` (uma vez por
 semana). Gera `saida/<AAAA-MM-DD>/painel-semanal.pdf` (e `.html`) e **não mexe** no `relatorio.html` do
-dia: a função `painel` fica fora do padrão e fora do relatório diário. O modelo do conteúdo é o
-`doc/2026_PAINEL_SEMANAL_19JUL_RF (1).pdf`; a moldura é o papel timbrado do escritório
-(`doc/Timbrado_RFeitosa_Advogados_COM_MARCADOR.docx`: marca d'água do RF, faixa vinho no alto, endereços no
-rodapé, A4 e as margens do modelo, em todas as páginas). As três imagens do timbrado estão em
-`assets/timbrado/` (`nucleo/timbrado.py` as embute no HTML). Se o escritório trocar o timbrado, troque
-essas imagens.
+dia: a função `painel` fica fora do padrão e fora do relatório diário. O modelo, de conteúdo e de visual, é o
+`doc/2026_PAINEL_SEMANAL_19JUL_RF (1).pdf` (desde 23/11/2026; antes a moldura era o papel timbrado): faixa
+azul-marinho com "R. FEITOSA GROUP · GESTÃO DE PRODUÇÃO JURÍDICA", o título da semana e "Pág. N" no alto de
+cada página, filete dourado, agenda de audiências em roxo e a legenda das cores no rodapé de cada página. No
+PDF a faixa e o rodapé são o cabeçalho/rodapé do Chrome (`headerTemplate`/`footerTemplate`), que se repetem e
+numeram as páginas; o HTML aberto na tela mostra a faixa uma vez. `nucleo/timbrado.py` e
+`assets/timbrado/` continuam no projeto, mas o painel não usa mais.
+
+**Quem entra**: só os advogados de `ORELHA_PAINEL_RESPONSAVEIS` (no `.env`, separados por vírgula, do jeito
+que aparecem no PDF, ex.: "Francisco Barbosa"). Cada nome casa com o nome completo do VIOS quando todas as
+palavras dele estão no nome completo ("Francisco Barbosa" = "Francisco Johnys Vasconcelos Barbosa"; sem
+acento e sem diferença de maiúsculas). Tarefa só de gente fora da lista, ou sem responsável, fica de fora;
+numa tarefa com vários responsáveis ficam só os da lista. Os nomes deixados de fora (com quantas tarefas)
+vão para o log, não para o PDF: olhe lá se entrar advogado novo. Vazio = todo mundo, com o nome completo.
+O registro da semana guarda a lista (`"pessoas"`) e só compara com registro da mesma lista: ao mudar a lista,
+a edição seguinte sai sem comparação.
+
+**Regra de atribuição** (do modelo, "por decisão do gestor"): audiência **cível** com dois ou mais nomes de
+`ORELHA_PAINEL_GRUPO_CIVEL` (o grupo do VIOS: Flávia, Joana, Joaquim, Lilian, Roneely) vai só para
+`ORELHA_PAINEL_GRUPO_CIVEL_PARA`. Com as duas variáveis preenchidas, o PDF mostra a caixa "Regra de
+atribuição" no alto.
 
 **Período**: na página `/orelha` do Sam, os campos **De** e **Até** (já vêm de hoje a 7 dias depois)
 escolhem o período do painel; pela linha de comando, `--painel-de AAAA-MM-DD --painel-ate AAAA-MM-DD`. Sem
-escolha, vai do dia do pedido até `ORELHA_PAINEL_DIAS_FILA` dias depois (padrão 7). A fila pega as tarefas com
-prazo dentro do período e também as vencidas que continuam abertas; a agenda de audiências mostra as do
-período escolhido. Só o painel que começa no dia do pedido vira base da comparação da semana seguinte.
+escolha, vai do dia do pedido até `ORELHA_PAINEL_DIAS_FILA` dias depois (padrão 7). A fila pega **só** as tarefas com
+prazo (data para conclusão; sem ela, a limite) de **De** até **Até**, com as duas pontas: é o mesmo filtro da
+lista de tarefas do VIOS com "Para conclusão" de De até Até. Para ver as vencidas, escolha um **De** no
+passado. (Até 23/11/2026 as vencidas abertas entravam sempre, e o painel mostrava tarefas de 260 dias atrás.)
+As abertas de fora do período só servem para a comparação: tarefa da semana anterior que venceu e continua
+aberta conta como "não feita". A agenda de audiências mostra as do período escolhido. Só o painel que começa no dia do pedido vira base da comparação da semana seguinte.
 
 Partes do painel (`funcoes/painel.py`, desenho em `nucleo/painel.py`):
 - **Resumo executivo**: fila total, não feitas, novas, carga do advogado mais carregado e vencidas.
 - **Taxa de resolução semanal**: fila inicial, resolvidas, taxa e leitura (Boa/Atenção/Baixa), com a
   tendência das últimas 3 semanas.
-- **Carga por responsável**: peças, audiências, outras, total, vencidas e "urgente ≤7d" (prazo em até 7 dias,
-  vencidas incluídas). Tarefa com mais de um responsável conta para cada um. Em vermelho quem passa de
+- **Carga por advogado**: peças, audiências, outras, total, vencidas e "urgente ≤7d" (prazo em até 7 dias,
+  vencidas incluídas). Tarefa com mais de um advogado da lista conta para cada um. Em vermelho quem passa de
   `ORELHA_PAINEL_URGENTE_ALTO`.
-- **Agenda de audiências** dos próximos 7 dias (data, hora, advogado, tipo, processo).
+- **Agenda de audiências** dos próximos 7 dias (data, hora, advogado, tipo, processo); o advogado em
+  vermelho na carga sai em negrito na agenda.
 - **Não feitas**: as tarefas que continuam abertas desde a semana anterior, com a situação em cores:
   VENCIDA/URGENTE (até 2 dias) vermelho, ATENÇÃO 3 a 7 dias amarelo, PRÓXIMA 8 a 14 laranja, NO PRAZO
   15 ou mais verde.
 
-**Fila** (desde 23/11/2026): tarefas não concluídas da equipe toda, de **todos os tipos**, com prazo dentro
+**Fila** (desde 23/11/2026): tarefas não concluídas dos advogados da lista, de **todos os tipos**, com prazo dentro
 do período (`ORELHA_PAINEL_*` no `.env.example`). Categorias: **peça** (tipo começa com `MINUTAR`),
 **audiência** (começa com `AUDIÊNCIA`) e **outra** (o resto, inclusive "INFORMAR AUDIÊNCIA"). Canceladas ficam
 de fora. `ORELHA_PAINEL_OUTRAS=nao` volta a deixar só peças e audiências. A fila com todos os tipos é grande

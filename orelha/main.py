@@ -13,7 +13,7 @@ uso: python main.py [--funcoes agenda,prazos,intimacoes,parados,planilhas,painel
                     [--painel-de AAAA-MM-DD] [--painel-ate AAAA-MM-DD]   (período do painel semanal)
                     [--data AAAA-MM-DD] [--sem-pdf] [--eventos] [--albi-saida PASTA] [--env ARQUIVO]
   padrão: todas menos parados e painel (ORELHA_FUNCOES no .env)
-  painel       painel semanal em PDF no papel timbrado (painel-semanal.pdf); não entra no relatório do dia
+  painel       painel semanal em PDF no visual do modelo (painel-semanal.pdf); não entra no relatório do dia
   --simulado   sem navegador nem senha: lê orelha/fixtures/ (dados fictícios)
   --data       dia do relatório (padrão: hoje)
   --sem-pdf    só relatorio.html e resumo.json

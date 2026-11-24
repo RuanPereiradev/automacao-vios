@@ -849,15 +849,20 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   (o parque, ver Passo 32), `ligar_orelha_agenda.py` (horário e Arquivo, ver Passo 35) e, depois de
   todos, `ligar_vila05_vida.py` e as camadas do parque vivo (ver Passo 36).
 
-### Painel semanal do Orelha (PDF no papel timbrado)
+### Painel semanal do Orelha (PDF no visual do modelo)
 - Botão **Gerar painel semanal** na página `/orelha` do Sam (ou `./rodar.sh --funcoes painel` dentro de
   `orelha/`), sem agendamento, gera `saida/<data>/painel-semanal.pdf`:
   resumo executivo, taxa de resolução, carga por responsável (peças, audiências e outras tarefas; desde
   23/11/2026 a fila tem todos os tipos de tarefa e a tarefa com mais de um responsável conta para cada um),
   agenda de audiências e tarefas não feitas,
-  no papel timbrado do escritório. O período é escolhido nos campos **De** e **Até** da página (vêm de
+  no visual do modelo `2026_PAINEL_SEMANAL_19JUL_RF` (faixa azul-marinho com "Pág. N" em cada página; até
+  23/11/2026 era o papel timbrado). Só entram os advogados de `ORELHA_PAINEL_RESPONSAVEIS` (vazio = todos), e
+  audiência cível do grupo de `ORELHA_PAINEL_GRUPO_CIVEL` vai para `ORELHA_PAINEL_GRUPO_CIVEL_PARA` (caixa
+  "Regra de atribuição" no PDF). O período é escolhido nos campos **De** e **Até** da página (vêm de
   hoje a 7 dias depois; até 120 dias); pela linha de comando, `--painel-de`/`--painel-ate`. Sem escolha,
-  vai do dia do pedido até `ORELHA_PAINEL_DIAS_FILA` dias depois (padrão 7). Não entra no relatório do dia. A 1ª edição não tem semana anterior; a
+  vai do dia do pedido até `ORELHA_PAINEL_DIAS_FILA` dias depois (padrão 7). A fila tem só as tarefas com
+  prazo de **De** até **Até** (o mesmo filtro da lista do VIOS); para ver vencidas, escolha um **De** no
+  passado. Não entra no relatório do dia. A 1ª edição não tem semana anterior; a
   comparação começa na 2ª. Detalhes e variáveis `ORELHA_PAINEL_*`: `orelha/README.md` e
   `orelha/.env.example`.
 

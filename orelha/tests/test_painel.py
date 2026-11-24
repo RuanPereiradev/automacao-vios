@@ -61,6 +61,17 @@ class TestRegras(unittest.TestCase):
         self.assertEqual(painel.tipo_audiencia("AUDIÊNCIA DE CONCILIAÇÃO (TRABALHISTA) 2026"), "DE CONCILIAÇÃO")
         self.assertEqual(painel.tipo_audiencia("AUDIÊNCIA PREVIDENCIÁRIA (PREVIDENCIÁRIO) 2026"), "PREVIDENCIÁRIA")
 
+    def test_numero_processo(self):
+        casos = {"CLIENTE FICTÍCIO - ASSESSORIA M ... ; 5026820-28.2026.8.08.0012": "5026820-28.2026.8.08.0012",
+                 "SEM LAÇADOR 0002577-33.2026.5.07.0029": "0002577-33.2026.5.07.0029",
+                 "ASSESSORIA MENSAL ; 2608069200100059301": "2608069200100059301",
+                 "FULANO FICTÍCIO/ ... ; NR 1722086917": "NR 1722086917",
+                 "FULANO FICTÍCIO FILHO NR 7108563547320": "NR 7108563547320",
+                 "ASSESSORIA MENSAL ;": "—", "HOLDING FICTÍCIA": "—", "CI 384252": "CI 384252", "": "—",
+                 "0000001-00.2026.8.06.0000": "0000001-00.2026.8.06.0000"}
+        for texto, esperado in casos.items():
+            self.assertEqual(painel.numero_processo(texto), esperado, texto)
+
     def test_leitura(self):
         self.assertEqual([painel.leitura(t) for t in (0.711, 0.70, 0.613, 0.60, 0.556, None)],
                          ["Boa", "Boa", "Atenção", "Atenção", "Baixa", "—"])
@@ -69,7 +80,7 @@ class TestRegras(unittest.TestCase):
 class TestFila(unittest.TestCase):
     def test_o_que_entra_e_o_que_fica_de_fora(self):
         tarefas = [
-            tarefa("MINUTAR CONTESTAÇÃO (TRABALHISTA) 2026", -2, n=1),
+            tarefa("MINUTAR CONTESTAÇÃO (TRABALHISTA) 2026", 0, n=1),
             tarefa("AUDIÊNCIA UNA/INSTRUÇÃO (CÍVEL) 2026", 3, n=2, hora="09:50"),
             tarefa("C: MINUTAR PARECER 2026", 1, n=3),                       # consultoria: entra como peça
             tarefa("INFORMAR AUDIÊNCIA (CÍVEL) 2026", 1, n=4),               # sobre a audiência: "outra"
@@ -77,12 +88,16 @@ class TestFila(unittest.TestCase):
             tarefa("MINUTAR RECURSO 2026", 30, n=6),                         # além de 14 dias: fora
             tarefa("MINUTAR EMBARGOS 2026", 2, n=7, etiqueta="CANCELADA"),   # cancelada: fora
             tarefa("MINUTAR INICIAL 2026", 2, n=8, concluida=True),          # concluída: fora
-            tarefa("MINUTAR CONTESTAÇÃO (TRABALHISTA) 2026", -2, n=1),       # repetida: uma só
+            tarefa("MINUTAR CONTESTAÇÃO (TRABALHISTA) 2026", 0, n=1),        # repetida: uma só
+            tarefa("MINUTAR VENCIDA 2026", -2, n=9),                         # venceu antes do período: fora
         ]
         fila, ignoradas = fila_de(tarefas)
         self.assertEqual([e.chave for e in fila], ["910001", "910005", "910003", "910004", "910002"])
         self.assertEqual([e.categoria for e in fila], ["peca", "outra", "peca", "outra", "audiencia"])
-        self.assertEqual(ignoradas, {"sem_data": 0})
+        # sem limite de datas (a lista "abertas" da comparação), a vencida entra
+        abertas, _ = fila_de(tarefas, de=date.min, ate=date.max)
+        self.assertIn("910009", [e.chave for e in abertas])
+        self.assertEqual(ignoradas, {"sem_data": 0, "fora_da_lista": 0, "nomes_fora": {}})
         # ORELHA_PAINEL_OUTRAS=nao: só peças e audiências, como antes de 23/11/2026
         fila, _ = fila_de(tarefas, outras=False)
         self.assertEqual([e.chave for e in fila], ["910001", "910003", "910002"])
@@ -97,14 +112,14 @@ class TestFila(unittest.TestCase):
         self.assertEqual([(e.chave, e.dias) for e in fila], [("910002", 1)])  # a limite faz as vezes da conclusão
 
     def test_ordem_e_responsavel(self):
-        fila, _ = fila_de([tarefa("MINUTAR A", 5, "BRUNO FICTÍCIO", 1), tarefa("MINUTAR B", -1, "", 2),
+        fila, _ = fila_de([tarefa("MINUTAR A", 5, "BRUNO FICTÍCIO", 1), tarefa("MINUTAR B", 0, "", 2),
                            tarefa("MINUTAR C", 5, "ANA FICTÍCIA, BRUNO FICTÍCIO", 3)])
         self.assertEqual([(e.dias, e.responsavel) for e in fila],
-                         [(-1, "Sem responsável"), (5, "Ana Fictícia, Bruno Fictício"), (5, "Bruno Fictício")])
+                         [(0, "Sem responsável"), (5, "Ana Fictícia, Bruno Fictício"), (5, "Bruno Fictício")])
         self.assertEqual(fila[1].responsaveis, ("Ana Fictícia", "Bruno Fictício"))
 
     def test_carga(self):
-        tarefas = ([tarefa("MINUTAR X", dias, "ANA FICTÍCIA", i) for i, dias in enumerate((-1, 2, 9), 1)]
+        tarefas = ([tarefa("MINUTAR X", dias, "ANA FICTÍCIA", i) for i, dias in enumerate((0, 2, 9), 1)]
                    + [tarefa("AUDIÊNCIA A 2026", 4, "ANA FICTÍCIA", 10), tarefa("MINUTAR Y", 1, "BRUNO FICTÍCIO", 11),
                       tarefa("MINUTAR Z", 3, "", 12), tarefa("ANALISAR PROCESSO 2026", 2, "ANA FICTÍCIA, BRUNO FICTÍCIO", 13)])
         fila, _ = fila_de(tarefas)
@@ -112,7 +127,7 @@ class TestFila(unittest.TestCase):
         # a MINUTAR de daqui a 9 dias fica fora da semana do painel (até 7 dias depois do pedido)
         # a tarefa com dois responsáveis conta para os dois
         self.assertEqual(c["Ana Fictícia"], {"nome": "Ana Fictícia", "pecas": 2, "audiencias": 1, "outras": 1,
-                                             "total": 4, "vencidas": 1, "urgente": 4, "destaque": True})
+                                             "total": 4, "vencidas": 0, "urgente": 4, "destaque": True})
         self.assertEqual((c["Bruno Fictício"]["pecas"], c["Bruno Fictício"]["outras"], c["Bruno Fictício"]["total"]), (1, 1, 2))
         self.assertFalse(c["Bruno Fictício"]["destaque"])
         self.assertEqual([x["nome"] for x in painel.carga(fila)], ["Ana Fictícia", "Bruno Fictício", "Sem responsável"])
@@ -120,12 +135,52 @@ class TestFila(unittest.TestCase):
     def test_periodo_escolhido(self):
         tarefas = [tarefa("MINUTAR VENCIDA", -2, n=1), tarefa("MINUTAR HOJE", 0, n=2), tarefa("MINUTAR D3", 3, n=3),
                    tarefa("MINUTAR D10", 10, n=4), tarefa("MINUTAR D20", 20, n=5)]
-        # de hoje até daqui a 14 dias: a vencida (aberta) entra; a de 20 dias não
+        # o período é o mesmo filtro da lista do VIOS (Para conclusão de "De" até "Até", com as duas pontas):
+        # de hoje até daqui a 14 dias, a vencida (antes de hoje) e a de 20 dias ficam fora
         fila, _ = fila_de(tarefas, de=HOJE, ate=d(14))
-        self.assertEqual([e.tarefa for e in fila], ["MINUTAR VENCIDA", "MINUTAR HOJE", "MINUTAR D3", "MINUTAR D10"])
-        # de daqui a 5 dias até daqui a 12: as de hoje e de 3 dias ficam fora; a vencida continua
+        self.assertEqual([e.tarefa for e in fila], ["MINUTAR HOJE", "MINUTAR D3", "MINUTAR D10"])
+        # de daqui a 5 dias até daqui a 12: só a de 10 dias
         fila, _ = fila_de(tarefas, de=d(5), ate=d(12))
-        self.assertEqual([e.tarefa for e in fila], ["MINUTAR VENCIDA", "MINUTAR D10"])
+        self.assertEqual([e.tarefa for e in fila], ["MINUTAR D10"])
+        # período que começa no passado: a vencida entra (está dentro dele)
+        fila, _ = fila_de(tarefas, de=d(-3), ate=d(3))
+        self.assertEqual([e.tarefa for e in fila], ["MINUTAR VENCIDA", "MINUTAR HOJE", "MINUTAR D3"])
+        fila, _ = fila_de(tarefas, de=d(3), ate=d(10))
+        self.assertEqual([e.tarefa for e in fila], ["MINUTAR D3", "MINUTAR D10"])  # as duas pontas entram
+
+    def test_so_os_advogados_da_lista(self):
+        tarefas = [tarefa("MINUTAR A", 1, "FRANCISCO JOHNYS VASCONCELOS BARBOSA", 1),
+                   tarefa("MINUTAR B", 1, "FRANCISCO HUGO FERREIRA ALBUQUERQUE", 2),           # fora da lista
+                   tarefa("MINUTAR C", 1, "BRENO FICTÍCIO MOTA, TÂMARA FICTÍCIA LOIOLA", 3),    # só a da lista fica
+                   tarefa("RPV/ACORDO 2026", 1, "TAYSE FICTÍCIA", 4),                           # fora da lista
+                   tarefa("MINUTAR D", 1, "", 5)]                                               # sem responsável: fora
+        fila, ign = fila_de(tarefas, permitidos=("Francisco Barbosa", "Tâmara Loiola"))
+        self.assertEqual([(e.chave, e.responsavel) for e in fila],
+                         [("910001", "Francisco Barbosa"), ("910003", "Tâmara Loiola")])
+        self.assertEqual(fila[1].responsaveis, ("Tâmara Loiola",))
+        self.assertEqual(ign["fora_da_lista"], 3)
+        self.assertEqual(ign["nomes_fora"], {"Francisco Hugo Ferreira Albuquerque": 1, "Tayse Fictícia": 1,
+                                             painel.SEM_RESPONSAVEL: 1})
+        # sem lista: todo mundo, com o nome completo
+        fila, ign = fila_de(tarefas)
+        self.assertEqual(len(fila), 5)
+        self.assertEqual(ign["fora_da_lista"], 0)
+
+    def test_casa_nome_curto_com_nome_completo(self):
+        self.assertTrue(painel.casa("SUHIANE DE MARIA GOMES SILVA", "Suhiane Silva"))
+        self.assertTrue(painel.casa("Raíssa Trevia Monte Fialho Campelo", "RAISSA CAMPELO"))
+        self.assertFalse(painel.casa("CARLOS EDUARDO RODRIGUES SILVA", "Carlos Brandão"))
+        self.assertFalse(painel.casa("LUIZ BERNARDO BARBOSA PIRES", "Francisco Barbosa"))
+        self.assertFalse(painel.casa("QUALQUER", ""))
+
+    def test_regra_audiencia_civel_do_grupo(self):
+        grupo, alvo = ("Ana", "Bruno", "Carla"), "Ana Fictícia"
+        tarefas = [tarefa("AUDIÊNCIA UNA/INSTRUÇÃO (CÍVEL) 2026", 1, "ANA FICTÍCIA, BRUNO FICTÍCIO, CARLA FICTÍCIA", 1),
+                   tarefa("AUDIÊNCIA UNA/INSTRUÇÃO (TRABALHISTA) 2026", 1, "ANA FICTÍCIA, BRUNO FICTÍCIO", 2),  # não é cível
+                   tarefa("AUDIÊNCIA UNA/INSTRUÇÃO (CÍVEL) 2026", 1, "BRUNO FICTÍCIO", 3)]  # um só do grupo
+        fila, _ = fila_de(tarefas, permitidos=("Ana Fictícia", "Bruno Fictício"), grupo=grupo, alvo=alvo)
+        self.assertEqual({e.chave: e.responsavel for e in fila},
+                         {"910001": "Ana Fictícia", "910002": "Ana Fictícia, Bruno Fictício", "910003": "Bruno Fictício"})
 
     def test_periodo_padrao_e_escolhido(self):
         ctx, _ = contexto()
@@ -188,6 +243,12 @@ class TestComparacao(unittest.TestCase):
         ctx.gravar_historico(painel.nome_registro(d(-5)), {"data": d(-5).isoformat(), "fila": ["1"]})
         self.assertEqual(painel.ler_base(ctx, painel.TIPOS_PECAS)["data"], d(-5).isoformat())
         self.assertEqual(painel.ler_base(ctx)["data"], d(-7).isoformat())
+        # com lista de advogados (ORELHA_PAINEL_RESPONSAVEIS), só serve registro da mesma lista
+        self.assertIsNone(painel.ler_base(ctx, painel.TIPOS_TODAS, ("Ana Fictícia",)))
+        grava(d(-8), pessoas=["Bruno Fictício", "Ana Fictícia"])
+        self.assertEqual(painel.ler_base(ctx, painel.TIPOS_TODAS, ("Ana Fictícia", "Bruno Fictício"))["data"],
+                         d(-8).isoformat())
+        self.assertEqual(painel.ler_base(ctx)["data"], d(-7).isoformat())
 
     def test_registro_corrompido_cai_para_o_anterior(self):
         ctx, _ = contexto()
@@ -209,8 +270,9 @@ class TestExecutar(unittest.TestCase):
         self.assertEqual(secao.chave, "painel")
         self.assertEqual(secao.erro, "")
         n = secao.numeros
-        self.assertEqual(n["fila"], 36)  # o que a fixture tem (todos os tipos), até 7 dias depois, sem cancelada
-        self.assertEqual(n["nao_feitas"] + n["novas"], n["fila"])
+        self.assertEqual(n["fila"], 29)  # o que a fixture tem (todos os tipos), de hoje a 7 dias depois, sem cancelada
+        # "não feitas" vêm de todas as abertas (as vencidas da semana anterior também); "novas", só do período
+        self.assertGreaterEqual(n["nao_feitas"] + n["novas"], n["fila"])
         self.assertEqual(n["destaque"], n["fila"])
         html = (ctx.saida / "painel-semanal.html").read_text(encoding="utf-8")
         self.assertIn("Painel Semanal — Semana de 06/11 a 13/11/2026", html)  # do dia do pedido até 7 dias depois
@@ -277,21 +339,33 @@ class TestExecutar(unittest.TestCase):
 class TestDesenho(unittest.TestCase):
     def dados(self, **extra):
         ctx, _ = contexto()
-        fila, ign = fila_de([tarefa("MINUTAR <b>X</b>", -1, "ANA <I>FICTÍCIA", 1, processo="CI 384252")])
+        fila, ign = fila_de([tarefa("MINUTAR <b>X</b>", 1, "ANA <I>FICTÍCIA", 1, processo="CI 384252")])
         dados, _, _ = painel.montar_dados(ctx, fila, ign, [], {"dias_agenda": 7, "urgente_alto": 15, "boa": 70, "atencao": 60})
         dados.update(extra)
         return dados
 
-    def test_html_no_papel_timbrado_e_escapado(self):
+    def test_html_no_visual_do_modelo_e_escapado(self):
         html = desenho.montar_html(self.dados())
-        self.assertIn("data:image/png;base64,", html)
-        self.assertEqual(html.count("data:image/png;base64,"), 3)  # marca d'água, cabeçalho, rodapé
+        self.assertIn("R. FEITOSA GROUP · GESTÃO DE PRODUÇÃO JURÍDICA", html)
+        self.assertIn("Painel Semanal — Semana de 06/11 a 13/11/2026", html)
+        self.assertNotIn("data:image/png;base64,", html)  # sem papel timbrado desde 23/11/2026
+        self.assertNotIn("REGRA DE ATRIBUIÇÃO", html)     # sem regra configurada, sem a caixa
         self.assertIn("&lt;b&gt;X&lt;/b&gt;", html)
         self.assertNotIn("<b>X</b>", html)
         self.assertIn('class="num ci"', html)  # CI em itálico
         self.assertNotIn("<script", html)
         self.assertNotIn("http://", html)
         self.assertNotIn("https://", html)
+
+    def test_regra_e_cabecalho_do_pdf(self):
+        html = desenho.montar_html(self.dados(regra={"grupo": ["Ana", "Bruno"], "alvo": "Ana <Fictícia>"}))
+        self.assertIn("REGRA DE ATRIBUIÇÃO:", html)
+        self.assertIn("(Ana · Bruno)", html)
+        self.assertIn("Ana &lt;Fictícia&gt;", html)
+        cab = desenho.cabecalho_pdf(self.dados())
+        self.assertIn('class="pageNumber"', cab)
+        self.assertIn("Semana de 06/11 a 13/11/2026", cab)
+        self.assertIn("VENCIDA/URGENTE = vermelho", desenho.rodape_pdf())
 
     def test_timbrado_tem_as_margens_do_modelo(self):
         html = timbrado.pagina("T", "<p>x</p>")

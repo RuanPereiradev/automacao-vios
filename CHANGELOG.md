@@ -12,6 +12,35 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Orelha: painel semanal no visual do modelo e só com os advogados do painel (23/11/2026)
+- **Visual**: o PDF segue o modelo `2026_PAINEL_SEMANAL_19JUL_RF` em vez do papel timbrado: faixa
+  azul-marinho com "R. FEITOSA GROUP · GESTÃO DE PRODUÇÃO JURÍDICA", título da semana e "Pág. N" em cada
+  página (cabeçalho do Chrome, `headerTemplate`), filete dourado, cartões coloridos, tabelas com cabeçalho
+  marinho, agenda de audiências em roxo e a legenda das cores no rodapé de cada página (`nucleo/painel.py`).
+  `relatorio.escrever_pdf` aceita `opcoes` extras do `Page.printToPDF`.
+- **Quem entra**: nova `ORELHA_PAINEL_RESPONSAVEIS` (lista de advogados, como aparecem no PDF; vazio = todos).
+  O nome curto casa com o nome completo do VIOS quando todas as palavras dele estão lá. Tarefa só de gente
+  fora da lista, ou sem responsável, fica de fora; os nomes deixados de fora vão para o log. Na leitura de
+  23/11/2026 eram 34 pessoas no painel; com a lista, ficam os 10 advogados do modelo.
+- **Regra de atribuição** (do modelo): audiência cível com 2 ou mais nomes de `ORELHA_PAINEL_GRUPO_CIVEL` vai só
+  para `ORELHA_PAINEL_GRUPO_CIVEL_PARA`; o PDF mostra a caixa "Regra de atribuição".
+- O registro da semana guarda a lista de advogados (`"pessoas"`) e só compara com registro da mesma lista.
+- As "outras" tarefas continuam no painel (só as dos advogados da lista).
+- **Coluna Processo**: a coluna do VIOS traz "CLIENTE ; número"; o painel mostrava os dois. Agora mostra só o
+  número, como no modelo (`numero_processo`): o CNJ; sem CNJ, o que vem depois do ";" ou o número do fim
+  ("NR ..."); sem número, "—". Visto no painel real de 23/11/2026 (135 de 486 linhas sem CNJ).
+
+### Corrigido — Orelha: painel semanal respeita o período De/Até escolhido (23/11/2026)
+- O painel punha na fila todas as tarefas vencidas que continuavam abertas, de qualquer data, além das do
+  período: com De/Até de uma semana, apareciam tarefas atrasadas de 260 dias. Agora a fila tem só as tarefas
+  com prazo de De até Até, com as duas pontas, como a lista do VIOS filtrada por "Para conclusão"
+  (`montar_fila` em `orelha/funcoes/painel.py`).
+- O formato da data não era o problema: a página manda AAAA-MM-DD (o campo só mostra mês/dia/ano no
+  navegador do Mac) e o VIOS recebe DD/MM/AAAA (`pesq[idata]`/`pesq[fdata]`).
+- A comparação com a semana anterior continua olhando todas as abertas: tarefa da semana anterior que
+  venceu e continua aberta é "não feita" (`comparar(..., abertas)`); "novas" são só as do período.
+- Conferido no VIOS (16/11 a 23/11/2026): 436 tarefas no período, a mais atrasada de 7 dias.
+
 ### Corrigido — Orelha: contagem por responsável e painel semanal com todas as tarefas (23/11/2026)
 - **Contagem por pessoa**: tarefa com mais de um responsável contava só para o primeiro nome
   (`responsavel_principal`). Agora conta para cada um (`prazos.responsaveis`) no quadro "Atrasadas por
