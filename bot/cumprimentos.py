@@ -10,6 +10,9 @@ processos do TRT7 contra o cliente que NÃO estão no VIOS. Esta aba:
   dados/cumprimentos_conferencia.json;
 - lista as empresas SEM nenhuma publicação no DJEN (o nome no tribunal pode ser outro): a equipe confere e, se for
   o caso, informa o nome certo em dados/nomes_conferidos.json, que o vigia passa a usar na busca seguinte;
+- nível 3: mostra os "Processos associados" NOVOS que o vigia leu no PJe (vigia.py associados) — associado que não
+  está no VIOS é alerta vermelho, com a mesma conferência da equipe; o botão "Verificar associados no PJe" abre
+  `vigia.py associados` (usa o Chrome do Mac e o login pelo Presto; leva uns 30 a 40 minutos);
 - o botão "Verificar agora" abre `vigia.py djen` em segundo plano (só a API pública do DJEN: sem login, sem
   CAPTCHA, sem senha), com ambiente limpo, uma execução por vez.
 """
@@ -34,6 +37,7 @@ CONFERENCIA = Path("dados") / "cumprimentos_conferencia.json"
 NOMES = Path("dados") / "nomes_conferidos.json"  # lido pelo vigia (vigia_djen.nomes_conferidos)
 EXECUCAO = Path("logs") / ".vila_djen.json"  # execução em andamento (pid, início)
 LOG = Path("logs") / "djen_vila.log"  # saída de cada verificação disparada pela vila
+COMANDOS = {"djen": "Verificação no DJEN", "associados": "Processos associados no PJe"}
 # ação de cumprimento (art. 872 da CLT: sindicato cobrando a convenção) não é cumprimento de sentença
 ACAO_CUMPRIMENTO = re.compile(r"^\s*A[ÇC][ÃA]O\s+DE\s+CUMPRIMENTO\b", re.I)
 SITUACOES = {
@@ -244,12 +248,47 @@ def _item(r, conf, hoje, principais=None):
             "principal_verificado": x is not None}
 
 
+def _associados(db, conf, hoje):
+    """Nível 3: associados novos (depois da base) e a última rodada no PJe."""
+    out = {"rodada": None, "alertas": [], "pendentes": 0, "principais": 0, "fora_acervo": 0}
+    if not _tabela(db, "assoc_associados"):
+        return out
+    r = db.execute("SELECT * FROM assoc_rodadas ORDER BY data DESC LIMIT 1").fetchone() \
+        if _tabela(db, "assoc_rodadas") else None
+    if r:
+        out["rodada"] = dict(r, data_br=data_br(r["data"]), dias=_dias(r["data"], hoje))
+    if _tabela(db, "assoc_principais"):
+        out["principais"] = db.execute("SELECT COUNT(*) FROM assoc_principais WHERE situacao = 'ok'").fetchone()[0]
+        out["fora_acervo"] = db.execute(
+            "SELECT COUNT(*) FROM assoc_principais WHERE situacao = 'fora_do_acervo'").fetchone()[0]
+    vios = {}
+    if _tabela(db, "processos"):
+        vios = {x["numero"]: x for x in db.execute("SELECT numero, ci, empresa, advogado FROM processos")}
+    djen = {x[0] for x in db.execute("SELECT numero FROM djen_processos")} if _tabela(db, "djen_processos") else set()
+    for a in db.execute("SELECT * FROM assoc_associados WHERE novo = 1 ORDER BY visto_em DESC, associado"):
+        c = conf.get(a["associado"]) or {}
+        situacao = c.get("situacao") or "pendente"
+        p = vios.get(a["principal"]) or {}
+        out["alertas"].append({
+            "numero": a["associado"], "orgao": a["orgao"] or "-", "principal": a["principal"],
+            "principal_ci": p["ci"] if p else "", "empresa": p["empresa"] if p else "",
+            "advogado": p["advogado"] if p else "", "visto_br": data_br(a["visto_em"]),
+            "dias": _dias(a["visto_em"], hoje), "vermelho": a["nivel"] == "VERMELHO",
+            "no_vios": a["associado"] in vios, "no_djen": a["associado"] in djen, "situacao": situacao,
+            "situacao_texto": SITUACOES.get(situacao, situacao), "quem": c.get("quem", ""), "obs": c.get("obs", ""),
+            "quando": c.get("quando", "")})
+    out["alertas"].sort(key=lambda i: (i["situacao"] != "pendente", not i["vermelho"], i["dias"] or 0))
+    out["pendentes"] = sum(1 for i in out["alertas"] if i["situacao"] == "pendente" and i["vermelho"])
+    return out
+
+
 def painel(pasta, hoje=None):
     """Tudo o que a página mostra. Só leitura do banco do vigia."""
     hoje = hoje or date.today()
     info = {"configurado": configurado(pasta), "rodada": None, "vermelhos": [], "acoes": [], "outros": 0,
             "empresas": 0, "processos_vios": 0, "pendentes": 0, "maior_espera": None, "relatorios": [],
-            "sem_publicacao": [], "sem_pub_pendentes": 0}
+            "sem_publicacao": [], "sem_pub_pendentes": 0,
+            "assoc": {"rodada": None, "alertas": [], "pendentes": 0, "principais": 0, "fora_acervo": 0}}
     if not info["configurado"]:
         return info
     conf = conferencias(pasta)
@@ -275,6 +314,7 @@ def painel(pasta, hoje=None):
                 else:
                     info["outros"] += 1
         info["sem_publicacao"] = sem_publicacao(db, pasta)
+        info["assoc"] = _associados(db, conf, hoje)
     finally:
         db.close()
     # pendentes primeiro; dentro de cada grupo, a publicação mais recente em cima
@@ -283,6 +323,7 @@ def painel(pasta, hoje=None):
     info["pendentes"] = len(pend)
     info["maior_espera"] = max((i["dias"] for i in pend if i["dias"] is not None), default=None)
     info["relatorios"] = relatorios(pasta)[:10]
+    info["relatorios_assoc"] = relatorios(pasta, "associados")[:10]
     info["sem_pub_pendentes"] = sum(1 for e in info["sem_publicacao"] if e["situacao"] == "pendente")
     return info
 
@@ -295,7 +336,9 @@ def resumo(pasta):
         log.exception("Não consegui ler o banco do vigia")
         return {"configurado": False}
     return {"configurado": p["configurado"], "pendentes": p["pendentes"], "total": len(p["vermelhos"]),
-            "ultima": p["rodada"]["data_br"] if p["rodada"] else None, "sem_pub_pendentes": p["sem_pub_pendentes"]}
+            "ultima": p["rodada"]["data_br"] if p["rodada"] else None, "sem_pub_pendentes": p["sem_pub_pendentes"],
+            "assoc_pendentes": p["assoc"]["pendentes"],
+            "assoc_ultima": p["assoc"]["rodada"]["data_br"] if p["assoc"]["rodada"] else None}
 
 
 def conferir(pasta, numero, situacao, quem="", obs="", agora=None):
@@ -312,8 +355,10 @@ def conferir(pasta, numero, situacao, quem="", obs="", agora=None):
         raise CumprimentosErro("informe quem conferiu")
     db = _conectar(pasta)
     try:
-        existe = _tabela(db, "djen_processos") and db.execute(
-            "SELECT 1 FROM djen_processos WHERE numero = ?", (numero,)).fetchone()
+        existe = (_tabela(db, "djen_processos") and db.execute(
+            "SELECT 1 FROM djen_processos WHERE numero = ?", (numero,)).fetchone()) or \
+            (_tabela(db, "assoc_associados") and db.execute(
+                "SELECT 1 FROM assoc_associados WHERE associado = ?", (numero,)).fetchone())
     finally:
         db.close()
     if not existe:
@@ -331,18 +376,21 @@ def conferir(pasta, numero, situacao, quem="", obs="", agora=None):
     return atual
 
 
-def relatorios(pasta):
-    """Relatórios do DJEN guardados pelo vigia (saida/djen_AAAA-MM-DD.txt), do mais novo ao mais antigo."""
-    saida = Path(pasta) / "saida"
-    datas = [x.stem[5:] for x in saida.glob("djen_*.txt") if DATA.match(x.stem[5:])]
-    return [{"data": d, "data_br": data_br(d)} for d in sorted(datas, reverse=True)]
+TIPOS_RELATORIO = ("djen", "associados")
 
 
-def relatorio(pasta, data):
+def relatorios(pasta, tipo="djen"):
+    """Relatórios guardados pelo vigia (saida/<tipo>_AAAA-MM-DD.txt), do mais novo ao mais antigo."""
+    saida, prefixo = Path(pasta) / "saida", f"{tipo}_"
+    datas = [x.stem[len(prefixo):] for x in saida.glob(f"{prefixo}*.txt") if DATA.match(x.stem[len(prefixo):])]
+    return [{"data": d, "data_br": data_br(d), "tipo": tipo} for d in sorted(datas, reverse=True)]
+
+
+def relatorio(pasta, data, tipo="djen"):
     """Caminho do relatório daquele dia (None se não existe; nada fora da pasta saida/)."""
-    if not DATA.match(data or ""):
+    if not DATA.match(data or "") or tipo not in TIPOS_RELATORIO:
         return None
-    arquivo = Path(pasta) / "saida" / f"djen_{data}.txt"
+    arquivo = Path(pasta) / "saida" / f"{tipo}_{data}.txt"
     return arquivo if arquivo.is_file() else None
 
 
@@ -362,19 +410,23 @@ def _vivo(pid):
 
 
 def status(pasta):
-    """{"configurado", "rodando", "inicio"}."""
-    info = {"configurado": configurado(pasta), "rodando": False, "inicio": None}
+    """{"configurado", "rodando", "inicio", "comando", "comando_texto"}."""
+    info = {"configurado": configurado(pasta), "rodando": False, "inicio": None, "comando": None, "comando_texto": ""}
     try:
         atual = json.loads((Path(pasta) / EXECUCAO).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         atual = None
     if atual and _vivo(int(atual.get("pid", 0))):
-        info.update(rodando=True, inicio=atual.get("inicio"))
+        comando = atual.get("comando") or "djen"
+        info.update(rodando=True, inicio=atual.get("inicio"), comando=comando, comando_texto=COMANDOS.get(comando, comando))
     return info
 
 
-def rodar(pasta, python=None):
-    """Abre `vigia.py djen` em segundo plano. Devolve o status; levanta CumprimentosErro se não pode rodar."""
+def rodar(pasta, python=None, comando="djen"):
+    """Abre `vigia.py djen` (ou `vigia.py associados`) em segundo plano, uma execução por vez. Devolve o status;
+    levanta CumprimentosErro se não pode rodar."""
+    if comando not in COMANDOS:
+        raise CumprimentosErro("verificação inválida")
     if not configurado(pasta):
         raise CumprimentosErro("o vigia do pje-busca não está instalado neste servidor (rode antes: "
                                "cd pje-busca && python3 vigia.py vios)")
@@ -387,20 +439,20 @@ def rodar(pasta, python=None):
         ambiente["PYTHONUTF8"] = "1"
         inicio = datetime.now().isoformat(timespec="seconds")
         saida = open(pasta / LOG, "a", encoding="utf-8")
-        saida.write(f"\n===== {inicio} · vigia djen (pela vila) =====\n")
+        saida.write(f"\n===== {inicio} · vigia {comando} (pela vila) =====\n")
         saida.flush()
         extra = {"start_new_session": True} if os.name != "nt" else {}
         # o vigia só usa a biblioteca padrão do Python: serve o mesmo Python do servidor
-        proc = subprocess.Popen([python or sys.executable, SCRIPT, "djen"], cwd=pasta, env=ambiente,
+        proc = subprocess.Popen([python or sys.executable, SCRIPT, comando], cwd=pasta, env=ambiente,
                                 stdin=subprocess.DEVNULL, stdout=saida, stderr=subprocess.STDOUT, **extra)
         saida.close()
         arquivo = pasta / EXECUCAO
-        arquivo.write_text(json.dumps({"pid": proc.pid, "inicio": inicio}), encoding="utf-8")
-        log.info("Vigia DJEN iniciado pela vila, pid %d", proc.pid)
+        arquivo.write_text(json.dumps({"pid": proc.pid, "inicio": inicio, "comando": comando}), encoding="utf-8")
+        log.info("Vigia %s iniciado pela vila, pid %d", comando, proc.pid)
 
         def esperar():
             codigo = proc.wait()
-            log.info("Vigia DJEN terminou (código %s)", codigo)
+            log.info("Vigia %s terminou (código %s)", comando, codigo)
             try:
                 if json.loads(arquivo.read_text(encoding="utf-8")).get("pid") == proc.pid:
                     arquivo.unlink()

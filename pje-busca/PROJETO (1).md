@@ -94,7 +94,7 @@ Níveis (ordem de prioridade definida pelo usuário):
 |---|---|---|---|
 | 1 | Chegou cumprimento de sentença / execução contra o cliente? | DJEN por nome (`vigia.py djen`) | VERMELHO |
 | 2 | Chegou qualquer processo em que o escritório não está? | DJEN: número fora do VIOS | AMARELO |
-| 3 | O juiz associou um cumprimento ao processo principal? | PJe "Processos associados" (a fazer) | VERMELHO |
+| 3 | O juiz associou um cumprimento ao processo principal? | PJe "Processos associados" (`vigia.py associados`, 24/11/2026) | VERMELHO |
 
 `vigia.py djen`: para cada empresa da base do vigia, consulta o DJEN (nome sem "(MATRIZ)"/": PRESTADORA"),
 pega a 1ª publicação de cada processo do TRT7 e classifica o que não está no VIOS nem já foi avisado. A 1ª rodada

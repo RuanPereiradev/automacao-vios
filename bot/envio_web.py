@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 from flask import (Flask, Response, abort, jsonify, redirect, render_template, request, send_file,
                    send_from_directory, url_for)
 
-from bot import albi, conferencia, config, duplicidade, envio_auto, envio_txt, eventos, jarvis, orelha, skill, vila06, zangao
+from bot import albi, conferencia, config, cumprimentos, duplicidade, envio_auto, envio_txt, eventos, jarvis, orelha, skill, vila06, zangao
 from bot.lancamento import REGISTRO, RESULTADOS, lancar, ler_intimacao
 from bot.login import fazer_login
 from bot.navegador import criar_driver
@@ -398,6 +398,8 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
     pasta_jarvis = jarvis.pasta()
     # Orelha (relatório do dia): ORELHA_PASTA ou a pasta orelha/ deste repositório; o Sam só lê o horário e os relatórios
     pasta_orelha = orelha.pasta()
+    # Cumprimentos de sentença: o vigia do pje-busca (PJE_BUSCA_PASTA ou a pasta pje-busca/ deste repositório)
+    pasta_vigia = cumprimentos.pasta()
     # Vila 06 (bot do Previdenciário): endereço e token do bot, pasta dos vídeos (bot/vila06.py)
     conf_vila06 = vila06.configuracao(cfg.pasta_saida)
     arquivo_pessoas = pasta_saida / "responsaveis.json"
@@ -421,7 +423,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         """Entrada do sistema: a Vila dos Bots (neutra, sem nenhum bot fixo) com um cartão para cada bot."""
         return render_template("vila_dos_bots.html", albi_pronto=albi.configurado(pasta_albi),
                                jarvis_pronto=jarvis.configurado(pasta_jarvis), zangao_pronto=bool(pasta_zangao),
-                               orelha_info=orelha.status(pasta_orelha))
+                               orelha_info=orelha.status(pasta_orelha), cumprimentos_info=cumprimentos.resumo(pasta_vigia))
 
     @app.route("/sam")
     def inicio():
@@ -911,6 +913,63 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         """Para a vila: horário, próximo relatório, se o de hoje atrasou e quantos estão guardados
         (só datas e contagens)."""
         return jsonify(orelha.status(pasta_orelha))
+
+    @app.route("/cumprimentos")
+    def cumprimentos_pagina():
+        """Cumprimentos de sentença e execuções contra clientes que não estão no VIOS (vigia do pje-busca, DJEN)."""
+        return render_template("cumprimentos.html", p=cumprimentos.painel(pasta_vigia),
+                               info=cumprimentos.status(pasta_vigia), situacoes=cumprimentos.SITUACOES,
+                               situacoes_nome=cumprimentos.SITUACOES_NOME)
+
+    @app.route("/cumprimentos/status")
+    def cumprimentos_status():
+        return jsonify(cumprimentos.status(pasta_vigia))
+
+    @app.route("/cumprimentos/rodar", methods=["POST"])
+    def cumprimentos_rodar():
+        """Botão "Verificar agora no DJEN": abre o vigia.py djen em segundo plano (só a API pública do DJEN)."""
+        if not _mesma_origem():
+            return jsonify(erro="pedido recusado"), 403
+        comando = (request.get_json(silent=True) or {}).get("comando") or "djen"
+        try:
+            info = cumprimentos.rodar(pasta_vigia, comando=comando)
+        except cumprimentos.CumprimentosErro as e:
+            return jsonify(erro=str(e), **cumprimentos.status(pasta_vigia)), 409
+        log.info("Vigia %s disparado pela vila por %s", comando, request.remote_addr)
+        return jsonify(info)
+
+    @app.route("/cumprimentos/conferir", methods=["POST"])
+    def cumprimentos_conferir():
+        """Conferência da equipe: {"numero", "situacao", "quem", "obs"} (guarda o histórico)."""
+        if not _mesma_origem():
+            return jsonify(erro="pedido recusado"), 403
+        d = request.get_json(silent=True) or {}
+        try:
+            registro = cumprimentos.conferir(pasta_vigia, d.get("numero"), d.get("situacao"), d.get("quem"),
+                                             d.get("obs"))
+        except cumprimentos.CumprimentosErro as e:
+            return jsonify(erro=str(e)), 400
+        return jsonify(registro)
+
+    @app.route("/cumprimentos/nome", methods=["POST"])
+    def cumprimentos_nome():
+        """Conferência do nome de uma empresa sem publicação no DJEN: {"empresa", "situacao", "nomes", "quem", "obs"}.
+        Com "nome_corrigido", o vigia passa a buscar também pelos nomes informados."""
+        if not _mesma_origem():
+            return jsonify(erro="pedido recusado"), 403
+        d = request.get_json(silent=True) or {}
+        try:
+            registro = cumprimentos.conferir_nome(pasta_vigia, d.get("empresa"), d.get("situacao"), d.get("quem"),
+                                                  d.get("obs"), d.get("nomes"))
+        except cumprimentos.CumprimentosErro as e:
+            return jsonify(erro=str(e)), 400
+        return jsonify(registro)
+
+    @app.route("/cumprimentos/relatorio/<data>")
+    def cumprimentos_relatorio(data):
+        """Relatório completo do DJEN daquele dia (texto gerado pelo vigia)."""
+        arquivo = cumprimentos.relatorio(pasta_vigia, data, request.args.get("tipo", "djen")) or abort(404)
+        return send_file(arquivo, mimetype="text/plain; charset=utf-8")
 
     @app.route("/vila")
     def vila():

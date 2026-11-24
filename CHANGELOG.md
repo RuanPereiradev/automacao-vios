@@ -26,6 +26,18 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   com conferência do nome: "Nome corrigido" grava até 3 nomes do tribunal em `pje-busca/dados/nomes_conferidos.json`
   (fora do git, permissão 600), rota `POST /cumprimentos/nome`.
 
+### Adicionado — pje-busca: nível 3, "Processos associados" no PJe (24/11/2026)
+- `python3 vigia.py associados` (`src/vigia_associados.py`): entra no PJe pelo Presto e, no Acervo Geral, lê os
+  "Processos associados" de TODOS os principais ativos do TRT7 da lista do VIOS (formato Balanceado). Só pesquisa,
+  abre a janela de associados (paginação, se houver) e fecha com Esc: não abre documento, não peticiona, não altera nada.
+- 1ª leitura de cada principal = base (sem alerta); associado novo fora do VIOS = VERMELHO; já no VIOS = informação.
+  Tabelas `assoc_principais`, `assoc_associados`, `assoc_rodadas`; relatório `saida/associados_AAAA-MM-DD.txt`;
+  capturas de erro em `logs/associados/`. Se a sessão cair, entra de novo uma vez; para com 5 erros seguidos.
+- Opções: `--numero <CNJ>` (teste com um principal), `--limite N`, `--simular`.
+- Aba Cumprimentos: seção "Associados novos no PJe (nível 3)" com a mesma conferência, números no topo, dados da
+  última leitura, botão "Verificar associados no PJe" e relatórios. Testes em `pje-busca/tests/test_associados.py`
+  (PJe falso) e `tests/test_cumprimentos.py`; o JavaScript foi conferido no HTML real do Acervo Geral (19/11/2026).
+
 ### Adicionado — pje-busca e aba Cumprimentos: processo principal de cada cumprimento no VIOS (24/11/2026)
 - `vigia_djen.achar_principal`: lê as publicações do próprio cumprimento (até 100) e procura o principal na lista do
   VIOS — 1º pelo número citado no texto da publicação; 2º pelo mesmo exequente (polo ativo = Autor no VIOS), de

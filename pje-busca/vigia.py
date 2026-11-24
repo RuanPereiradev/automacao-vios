@@ -10,6 +10,9 @@
   python3 vigia.py djen --empresa "MM COMERCIO"   # só as empresas cujo nome contém o texto (teste)
   python3 vigia.py djen --refazer-base            # apaga só o estado do DJEN e refaz a base (auditoria completa)
   python3 vigia.py principais                     # só acha o processo principal (no VIOS) de cada cumprimento
+  python3 vigia.py associados                     # nível 3: "Processos associados" de cada principal no PJe (Mac)
+  python3 vigia.py associados --numero 0002754-04.2025.5.07.0038   # teste com um principal
+  python3 vigia.py associados --limite 5 --simular                 # os 5 primeiros, sem gravar
 
 Lista lida (PROJETO (1).md, seção 4.2): Processos > Área VIGIA_VIOS_AREA_ID (3 = Trabalhista) + cliente na parte
 VIGIA_VIOS_TIPO_PARTE (P = passiva) + ativos [+ VIGIA_VIOS_ADVOGADO_ID, opcional]. Só leitura (GET), pela sessão do
@@ -194,8 +197,87 @@ def cmd_principais(_args):
     return 0
 
 
+def cmd_associados(args):
+    """Nível 3: entra no PJe pelo Presto e lê os "Processos associados" de cada principal do TRT7."""
+    import acesso_pje as A
+    import chrome_mac as CM
+    import vigia_associados as VA
+    simular = "--simular" in args
+    numeros = [args[i + 1] for i, a in enumerate(args) if a == "--numero" and i + 1 < len(args)]
+    limite = int(args[args.index("--limite") + 1]) if "--limite" in args else None
+    cfg = A.config_presto()
+    if not cfg.get("PRESTO_PIN"):
+        print("Falta PRESTO_PIN no pje-busca/.env")
+        return 2
+    pasta = AQUI / "logs" / "associados" / datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    sessao = {"tentativas": 0}  # tentativas de entrar de novo depois que a sessão caiu (no máximo 1)
+
+    def entrar():
+        w, t, _ = A.entrar_trt7(cfg, destino=pasta / "login")
+        CM.ir(w, t, VA.ACERVO)
+        CM.esperar(w, t, maximo=45, folga=3)
+        if not A._logado(w, t):
+            raise A.AcessoErro(f"o Acervo Geral mandou para o login ({CM.url(w, t)})")
+        CM.para_frente(w, t)  # a janela de associados só termina de abrir com a aba visível
+        sessao.update(w=w, t=t)
+
+    try:
+        entrar()
+    except (A.AcessoErro, CM.ChromeMacErro) as e:
+        print("NÃO ENTROU no PJe:", e)
+        return 1
+    print("Login ok; lendo os processos associados no Acervo Geral...", flush=True)
+    import testar_processos as TP
+
+    def ler(numero):
+        w, t = sessao["w"], sessao["t"]
+        if not A._logado(w, t) or "acervo-geral" not in CM.url(w, t):
+            if sessao["tentativas"] >= 1:
+                raise RuntimeError("a sessão do PJe caiu de novo")
+            sessao["tentativas"] += 1
+            print("  a sessão do PJe caiu; entrando de novo...", flush=True)
+            entrar()
+            w, t = sessao["w"], sessao["t"]
+        r = VA.ler_no_pje(w, t, TP.formatar(numero), lambda c: CM.js(w, t, c),
+                          lambda n: CM.js(w, t, TP.JS_PESQUISAR % json.dumps(n)))
+        if r["situacao"] == "erro":
+            try:
+                A._salvar(pasta / numero, "erro", CM.capturar(w, t))
+            except Exception:  # noqa: BLE001
+                pass
+        print(f"  {numero}: {r['situacao']}, {len(r['associados'])} associado(s)"
+              + (f" ({r['erro']})" if r.get("erro") else ""), flush=True)
+        return r
+
+    def parar():
+        try:
+            if sessao["tentativas"] >= 1 and not A._logado(sessao["w"], sessao["t"]):
+                return "a sessão do PJe caiu e não voltou (veja logs/associados)"
+        except CM.ChromeMacErro as e:
+            return f"o Chrome não responde: {e}"
+        return ""
+
+    est = VE.Estado(DADOS / "vigia.sqlite")
+    try:
+        if est.eh_base():
+            print("Rode primeiro: python3 vigia.py vios (a lista de principais vem do VIOS).")
+            return 1
+        res = VA.rodar(est, ler, numeros=numeros or None, limite=limite, simular=simular, parar=parar)
+    finally:
+        est.fechar()
+    texto = VA.relatorio(res)
+    if not simular and not numeros and not limite:
+        SAIDA.mkdir(parents=True, exist_ok=True)
+        arq = SAIDA / f"associados_{res['data']}.txt"
+        arq.write_text(texto, encoding="utf-8")
+        print("Relatório:", arq)
+    print(texto)
+    return 0 if res["completa"] else 1
+
+
 def main(args):
-    cmds = {"vios": cmd_vios, "status": cmd_status, "fila": cmd_fila, "djen": cmd_djen, "principais": cmd_principais}
+    cmds = {"vios": cmd_vios, "status": cmd_status, "fila": cmd_fila, "djen": cmd_djen, "principais": cmd_principais,
+            "associados": cmd_associados}
     if not args or args[0] not in cmds:
         print(__doc__)
         return 2

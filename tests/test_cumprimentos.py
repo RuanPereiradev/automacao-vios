@@ -82,7 +82,7 @@ class Painel(unittest.TestCase):
         self.assertEqual((a["primeira_br"], a["dias"], a["situacao"]), ("20/11/2026", 4, "pendente"))
         self.assertEqual((p["empresas"], p["processos_vios"]), (4, 2))
         self.assertEqual(p["rodada"]["data_br"], "24/11/2026")
-        self.assertEqual(p["relatorios"], [{"data": "2026-11-24", "data_br": "24/11/2026"}])
+        self.assertEqual(p["relatorios"], [{"data": "2026-11-24", "data_br": "24/11/2026", "tipo": "djen"}])
 
     def test_processo_principal(self):
         db = sqlite3.connect(self.pasta / "dados" / "vigia.sqlite")
@@ -97,6 +97,49 @@ class Painel(unittest.TestCase):
         v = {i["numero"]: i for i in C.painel(self.pasta)["vermelhos"]}
         self.assertEqual((v[A]["principal"], v[A]["principal_ci"]), ("0000009-99.2025.5.07.0038", "123"))
         self.assertEqual((v[B]["principal"], v[B]["principal_ci"], v[B]["principal_verificado"]), ("", "", True))
+
+    def _associados(self):
+        db = sqlite3.connect(self.pasta / "dados" / "vigia.sqlite")
+        db.executescript("""
+CREATE TABLE assoc_principais (numero TEXT PRIMARY KEY, situacao TEXT, qtd INTEGER, verificado_em TEXT,
+  base_feita INTEGER, erro TEXT);
+CREATE TABLE assoc_associados (principal TEXT, associado TEXT, orgao TEXT, visto_em TEXT, novo INTEGER, nivel TEXT,
+  PRIMARY KEY (principal, associado));
+CREATE TABLE assoc_rodadas (data TEXT PRIMARY KEY, verificados INTEGER, com_associados INTEGER, fora_acervo INTEGER,
+  erros INTEGER, novos INTEGER, vermelhos INTEGER, completa INTEGER);""")
+        db.execute("INSERT INTO assoc_principais VALUES ('n', 'ok', 2, '2026-11-25', 1, '')")
+        db.execute("INSERT INTO assoc_principais VALUES ('x', 'fora_do_acervo', 0, '2026-11-25', 0, '')")
+        db.executemany("INSERT INTO assoc_associados VALUES ('n', ?, '2ª Vara', ?, ?, ?)", [
+            ("0000010-10.2026.5.07.0038", "2026-11-25", 1, "VERMELHO"),   # novo, fora do VIOS
+            ("n2", "2026-11-25", 1, "INFO"),                                # novo, já no VIOS
+            ("0000011-11.2026.5.07.0038", "2026-11-24", 0, "BASE")])        # base: não aparece
+        db.execute("INSERT INTO assoc_rodadas VALUES ('2026-11-25', 1, 1, 1, 0, 2, 1, 1)")
+        db.commit()
+        db.close()
+        (self.pasta / "saida" / "associados_2026-11-25.txt").write_text("VIGIA · ASSOCIADOS\n", encoding="utf-8")
+
+    def test_nivel3_associados_novos(self):
+        self._associados()
+        a = C.painel(self.pasta, hoje=date(2026, 11, 26))["assoc"]
+        self.assertEqual([(i["numero"], i["vermelho"]) for i in a["alertas"]],
+                         [("0000010-10.2026.5.07.0038", True), ("n2", False)])
+        self.assertEqual((a["pendentes"], a["principais"], a["fora_acervo"]), (1, 1, 1))
+        self.assertEqual(a["alertas"][0]["principal_ci"], "1")          # o principal 'n' está no VIOS (CI 1)
+        self.assertEqual(a["rodada"]["data_br"], "25/11/2026")
+        self.assertEqual(C.resumo(self.pasta)["assoc_pendentes"], 1)
+        C.conferir(self.pasta, "0000010-10.2026.5.07.0038", "habilitado", "Dra. Fulana")   # conferência vale para o associado
+        self.assertEqual(C.painel(self.pasta)["assoc"]["pendentes"], 0)
+        self.assertTrue(C.relatorio(self.pasta, "2026-11-25", "associados"))
+        self.assertIsNone(C.relatorio(self.pasta, "2026-11-25", "../x"))
+
+    def test_rodar_associados(self):
+        with mock.patch.object(C.subprocess, "Popen") as popen, mock.patch.object(C.threading, "Thread"):
+            popen.return_value.pid = 4243
+            C.rodar(self.pasta, python="python3", comando="associados")
+        self.assertEqual(popen.call_args[0][0], ["python3", "vigia.py", "associados"])
+        self.assertEqual(json.loads((self.pasta / C.EXECUCAO).read_text())["comando"], "associados")
+        with self.assertRaisesRegex(C.CumprimentosErro, "inválida"):
+            C.rodar(self.pasta, comando="rm")
 
     def test_banco_so_leitura(self):
         db = C._conectar(self.pasta)

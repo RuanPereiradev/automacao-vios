@@ -100,6 +100,7 @@
       <div class="numero{{ ' alerta' if p.maior_espera and p.maior_espera > 15 }}"><b>{{ p.maior_espera if p.maior_espera is not none else "—" }}</b>dias: maior espera desde a 1ª publicação</div>
       <div class="numero"><b>{{ p.vermelhos | length }}</b>cumprimento(s)/execução(ões) fora do VIOS</div>
       <div class="numero"><b>{{ p.empresas }}</b>empresas vigiadas</div>
+      <div class="numero{{ ' alerta' if p.assoc.pendentes }}"><b>{{ p.assoc.pendentes }}</b>associado(s) novo(s) no PJe fora do VIOS</div>
       <div class="numero{{ ' alerta' if p.sem_pub_pendentes }}"><b>{{ p.sem_pub_pendentes }}</b>empresa(s) sem publicação para conferir o nome</div>
       <div class="numero"><b>{{ p.rodada.data_br if p.rodada else "—" }}</b>última verificação no DJEN
         {% if p.rodada and p.rodada.dias and p.rodada.dias > 1 %}<small class="aviso">há {{ p.rodada.dias }} dias</small>{% endif %}</div>
@@ -142,10 +143,38 @@
   </div>
 
   <div class="cartao">
+    <h1>Associados novos no PJe (nível 3)</h1>
+    <p class="suave">Processo que o juiz associou a um principal do VIOS depois da 1ª leitura (a 1ª leitura de cada principal vira
+      base, sem alerta). Em vermelho, os que não estão no VIOS.</p>
+    {% for i in p.assoc.alertas %}
+      <div class="caso{{ ' feito' if i.situacao != 'pendente' or not i.vermelho }}">
+        <div class="linha1">
+          <span class="cnj">{{ i.numero }}</span>
+          <button class="secundario copiar" type="button" data-copiar="{{ i.numero }}">Copiar nº</button>
+          {% if i.vermelho %}<span class="selo {{ 's-pend' if i.situacao == 'pendente' else 's-ok' }}">{{ i.situacao_texto }}</span>
+          {% else %}<span class="selo s-ja">já está no VIOS</span>{% endif %}
+          {% if i.no_djen %}<span class="selo s-ja">também avisado pelo DJEN</span>{% endif %}
+        </div>
+        <div class="dados">
+          <div><span>Vara:</span> {{ i.orgao }}</div>
+          <div><span>Associado ao principal:</span> {{ i.principal }}{% if i.principal_ci %} (CI {{ i.principal_ci }}){% endif %}</div>
+          <div><span>Empresa:</span> {{ i.empresa or "-" }}{% if i.advogado %} · adv. {{ i.advogado }}{% endif %}</div>
+          <div><span>Visto no PJe em:</span> {{ i.visto_br }}{% if i.dias == 0 %} · hoje{% elif i.dias and i.dias > 0 %} · há {{ i.dias }} dias{% endif %}</div>
+        </div>
+        {% if i.vermelho %}{{ conferencia(i) }}{% endif %}
+      </div>
+    {% else %}
+      <p class="suave">{% if p.assoc.rodada %}Nenhum associado novo desde a base.{% else %}A leitura dos associados no PJe ainda não rodou.{% endif %}</p>
+    {% endfor %}
+  </div>
+
+  <div class="cartao">
     <h1>Verificação</h1>
     {% if info.rodando %}
-      <p><span class="selo s-andamento">Verificando no DJEN</span> desde {{ info.inicio[11:16] }}. Leva uns 10 a 25 minutos
-        (cerca de 160 empresas, com pausa entre as consultas). Esta página se atualiza sozinha.</p>
+      <p><span class="selo s-andamento">{{ info.comando_texto }}: rodando</span> desde {{ info.inicio[11:16] }}.
+        {% if info.comando == "associados" %}Leva uns 30 a 40 minutos (cerca de 240 principais) e usa o Chrome do Mac: não mexa na
+        janela do PJe enquanto roda.{% else %}Leva uns 10 a 25 minutos (cerca de 160 empresas, com pausa entre as consultas).{% endif %}
+        Esta página se atualiza sozinha.</p>
       <script>setTimeout(() => location.reload(), 15000);</script>
     {% else %}
       {% if p.rodada %}
@@ -154,17 +183,28 @@
       {% else %}
         <p class="aviso">O DJEN ainda não foi consultado.</p>
       {% endif %}
-      <p class="acoes"><button class="primario" id="verificar">Verificar agora no DJEN</button>
-        <span id="aviso-verificar" class="suave">Só consulta a API pública do DJEN: sem login, sem CAPTCHA.</span></p>
+      {% if p.assoc.rodada %}
+        <p>Associados no PJe: <b>{{ p.assoc.rodada.data_br }}</b> · {{ p.assoc.rodada.verificados }} principais lidos ·
+          {{ p.assoc.rodada.com_associados }} com associados · {{ p.assoc.rodada.fora_acervo }} fora do acervo ·
+          {{ p.assoc.rodada.erros }} erro(s){% if not p.assoc.rodada.completa %} · <span class="aviso">incompleta</span>{% endif %}.</p>
+      {% endif %}
+      <p class="acoes"><button class="primario" data-comando="djen">Verificar agora no DJEN</button>
+        <button class="secundario" data-comando="associados">Verificar associados no PJe</button>
+        <span id="aviso-verificar" class="suave">DJEN: API pública, sem login. Associados: Chrome do Mac + login pelo Presto, 30 a 40 min.</span></p>
     {% endif %}
     <ul class="niveis suave">
       <li><b>Nível 1 · DJEN</b> (ativo): a publicação do cumprimento sai dias depois da distribuição (no caso que gerou o bloqueio, 2 dias).</li>
       <li><b>Nível 2 · processo novo</b> (ativo): ação nova contra o cliente fora do VIOS sai no relatório do dia ({{ p.outros }} na base).</li>
-      <li><b>Nível 3 · associação no PJe</b> (próxima etapa): aviso quando o juiz liga o cumprimento ao processo principal.</li>
+      <li><b>Nível 3 · associação no PJe</b> (ativo): "Processos associados" de cada principal do TRT7 no Acervo Geral; associado
+        novo fora do VIOS é alerta.{% if p.assoc.fora_acervo %} {{ p.assoc.fora_acervo }} principal(is) fora do acervo do login.{% endif %}</li>
     </ul>
     {% if p.relatorios %}
       <p class="acoes" style="margin-top: 10px"><span class="suave">Relatório completo do dia:</span>
         {% for r in p.relatorios %}<a class="botao secundario copiar" href="{{ url_for('cumprimentos_relatorio', data=r.data) }}" target="_blank" rel="noopener">{{ r.data_br }}</a>{% endfor %}</p>
+    {% endif %}
+    {% if p.relatorios_assoc %}
+      <p class="acoes"><span class="suave">Relatório dos associados:</span>
+        {% for r in p.relatorios_assoc %}<a class="botao secundario copiar" href="{{ url_for('cumprimentos_relatorio', data=r.data, tipo='associados') }}" target="_blank" rel="noopener">{{ r.data_br }}</a>{% endfor %}</p>
     {% endif %}
   </div>
 
@@ -251,18 +291,18 @@
     } catch (e) { msg.className = 'msg erro'; msg.textContent = 'Sem conexão com o servidor.'; }
     botao.disabled = false;
   }));
-  const verificar = document.getElementById('verificar');
-  if (verificar) verificar.addEventListener('click', async () => {
+  const botoes = [...document.querySelectorAll('button[data-comando]')];
+  botoes.forEach(b => b.addEventListener('click', async () => {
     const aviso = document.getElementById('aviso-verificar');
-    verificar.disabled = true; aviso.textContent = 'Enviando…';
+    botoes.forEach(x => { x.disabled = true; }); aviso.textContent = 'Enviando…';
     try {
-      const r = await post('{{ url_for("cumprimentos_rodar") }}');
+      const r = await post('{{ url_for("cumprimentos_rodar") }}', { comando: b.dataset.comando });
       const j = await r.json().catch(() => ({}));
       if (r.ok) { location.reload(); return; }
       aviso.textContent = 'Não deu para rodar: ' + (j.erro || 'HTTP ' + r.status) + '.';
     } catch (e) { aviso.textContent = 'Sem conexão com o servidor. Tente de novo.'; }
-    verificar.disabled = false;
-  });
+    botoes.forEach(x => { x.disabled = false; });
+  }));
 })();
 </script>
 </body>
