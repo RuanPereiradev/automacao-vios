@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vila 07 · Abismo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<!--
+  Vila 07 · Abismo: três heróis (Mago, Arqueiro, Bárbaro) contra o Troll Ancião, em pixel art.
+  Página única e estática (servida em /vila/abismo; aba "07 · Abismo" da vila). A cena só anima: não lê nenhum bot.
+  Cada classe roda um laço de 9 s e a cena passa para a próxima; ?classe=mago|arq|bar fixa uma só.
+  Desenho: canvas "Abismo — Kit de Animação Pixelada" (12 fps; herói 16×20 px, troll 28×33 px). Cada pixel é um <i>
+  numa grade CSS; os mapas de pixels ficam em MAPAS, no fim do arquivo.
+-->
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#07060b;height:100%;overflow:hidden}
+#cena{position:relative;width:100%;aspect-ratio:16/9;max-height:100vh;margin:0 auto;overflow:hidden;background:#0d0b14;
+  border:3px solid #c8963a;box-shadow:inset 0 0 0 2px #3a2c14}
+#palco{position:absolute;left:0;top:0;width:1280px;height:720px;transform-origin:0 0;overflow:hidden;background:#0d0b14;
+  font-family:Silkscreen,monospace;color:#e8e2c8}
+#palco p,#palco h2,#palco h3{margin:0}
+[data-m]{display:grid;line-height:0}
+[data-m] i{display:block}
+
+/* troca de classe: só o grupo da vez aparece (aparecer de novo reinicia as animações do laço) */
+.g{display:none}
+#palco[data-c="mago"] .g-mago,#palco[data-c="arq"] .g-arq,#palco[data-c="bar"] .g-bar{display:block}
+#palco[data-c="mago"] .cartoes.g-mago,#palco[data-c="arq"] .cartoes.g-arq,#palco[data-c="bar"] .cartoes.g-bar{display:grid}
+
+/* paleta (16 cores + tons do troll); cada classe tinge o manto (a/A) e os olhos (e/E) */
+.c-k{background:#0a0810}.c-s{background:#c9926b}.c-S{background:#8a5c3b}
+.c-b{background:#c9a24a}.c-B{background:#8a6a24}.c-m{background:#cfd6e2}.c-M{background:#6a7280}
+.c-w{background:#7a5330}.c-W{background:#4a3119}.c-l{background:#8a5a2a}.c-L{background:#55351a}.c-c{background:#d8d2bc}
+.c-h{background:#2f2418}.c-H{background:#d8b06a}.c-g{background:#6f8a4a}.c-G{background:#47602d}.c-n{background:#9bb06a}
+.c-t{background:#e8e2c8}.c-y{background:#e0483a}.c-z{background:#ffffff}
+.g-mago .c-a{background:#4b3f9e}.g-mago .c-A{background:#2b2460}.g-mago .c-e{background:#2f6ad9}.g-mago .c-E{background:#bfe9ff}
+.g-arq .c-a{background:#2f6b4a}.g-arq .c-A{background:#1b4030}.g-arq .c-e{background:#4e8f1e}.g-arq .c-E{background:#d4ff6b}
+.g-bar .c-a{background:#8a2f22}.g-bar .c-A{background:#4e170f}.g-bar .c-e{background:#e0483a}.g-bar .c-E{background:#ffd98a}
+/* elementos dos projéteis (depois das classes, para valer sobre elas) */
+.volt .c-e{background:#2f6ad9}.volt .c-E{background:#bfe9ff}
+.frost .c-e{background:#2e86b8}.frost .c-E{background:#d9f7ff}
+.pyro .c-e{background:#c23a10}.pyro .c-E{background:#ffb03a}
+.toxic .c-e{background:#4e8f1e}.toxic .c-E{background:#d4ff6b}
+.blast .c-e{background:#8f1f0d}.blast .c-E{background:#ffd98a}
+
+/* cabeçalho: placa da vila e as três classes */
+.tempo{font-size:15px;line-height:1.5;color:#9aa3b0;text-align:right}
+#placa{position:absolute;right:48px;top:22px;width:360px;text-align:right}
+#placa .t{font-family:'Press Start 2P',monospace;font-size:10px;letter-spacing:2px;color:#c9a24a}
+#classes{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+#classes span{font-family:'Press Start 2P',monospace;font-size:9px;padding:7px 8px;border:3px solid #241f31;color:#6a7280;background:#0f0d17}
+#palco[data-c="mago"] #c-mago{color:#bfe9ff;border-color:#2f6ad9}
+#palco[data-c="arq"] #c-arq{color:#d4ff6b;border-color:#4e8f1e}
+#palco[data-c="bar"] #c-bar{color:#ffd98a;border-color:#e0483a}
+
+/* cartões dos ataques: acende o da vez */
+.cartoes{position:absolute;left:48px;right:48px;top:612px;gap:16px}
+.cartao{background:#15121c;border-top:5px solid;padding:14px 18px;min-height:84px}
+.cartao h3{font-family:'Press Start 2P',monospace;font-size:11px;font-weight:400;margin-bottom:10px}
+.cartao p{font-size:14px;line-height:1.4;color:#b9b3c7}
+@keyframes k3-1{0%,32%{background:#231d31}33%,100%{background:#15121c}}
+@keyframes k3-2{0%,32%{background:#15121c}33%,65%{background:#231d31}66%,100%{background:#15121c}}
+@keyframes k3-3{0%,65%{background:#15121c}66%,100%{background:#231d31}}
+@keyframes k2-1{0%,49%{background:#231d31}50%,100%{background:#15121c}}
+@keyframes k2-2{0%,49%{background:#15121c}50%,100%{background:#231d31}}
+
+#scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(180deg,rgba(0,0,0,.26) 0 2px,transparent 2px 4px)}
+
+/* animações de cada classe (copiadas do design; prefixo m-, a-, b-) */
+/* mago */
+@keyframes m-breathe{0%,59%{transform:translateY(0)}60%,100%{transform:translateY(-9px)}}
+@keyframes m-cast{0%,5%{transform:translateX(0)}7%{transform:translateX(-7px)}10%{transform:translateX(9px)}14%,38%{transform:translateX(0)}40%{transform:translateX(-7px)}43%{transform:translateX(9px)}47%,71%{transform:translateX(0)}73%{transform:translateX(-7px)}77%{transform:translateX(9px)}81%,100%{transform:translateX(0)}}
+@keyframes m-charge1{0%{opacity:0;transform:scale(.3)}5%{opacity:1;transform:scale(.7)}9%{opacity:1;transform:scale(1.25)}10%,100%{opacity:0;transform:scale(.3)}}
+@keyframes m-charge2{0%,33%{opacity:0;transform:scale(.3)}38%{opacity:1;transform:scale(.7)}42%{opacity:1;transform:scale(1.25)}43%,100%{opacity:0;transform:scale(.3)}}
+@keyframes m-charge3{0%,66%{opacity:0;transform:scale(.3)}71%{opacity:1;transform:scale(.7)}76%{opacity:1;transform:scale(1.25)}77%,100%{opacity:0;transform:scale(.3)}}
+@keyframes m-orb1{0%,9%{transform:translate(0,0) scale(.5);opacity:0}10%{transform:translate(0,0) scale(1);opacity:1}21%{transform:translate(832px,-70px) scale(1.2);opacity:1}22%,100%{transform:translate(832px,-70px) scale(1.3);opacity:0}}
+@keyframes m-orb2{0%,42%{transform:translate(0,0) scale(.5);opacity:0}43%{transform:translate(0,0) scale(1);opacity:1}54%{transform:translate(832px,-70px) scale(1.2);opacity:1}55%,100%{transform:translate(832px,-70px) scale(1.3);opacity:0}}
+@keyframes m-orb3{0%,76%{transform:translate(0,0) scale(.5);opacity:0}77%{transform:translate(0,0) scale(1);opacity:1}88%{transform:translate(832px,-70px) scale(1.2);opacity:1}89%,100%{transform:translate(832px,-70px) scale(1.3);opacity:0}}
+@keyframes m-burst1{0%,20%{opacity:0;transform:scale(.4)}21%{opacity:1;transform:scale(.9)}25%{opacity:1;transform:scale(1.6)}26%,100%{opacity:0;transform:scale(1.9)}}
+@keyframes m-burst2{0%,53%{opacity:0;transform:scale(.4)}54%{opacity:1;transform:scale(.9)}58%{opacity:1;transform:scale(1.6)}59%,100%{opacity:0;transform:scale(1.9)}}
+@keyframes m-burst3{0%,87%{opacity:0;transform:scale(.4)}88%{opacity:1;transform:scale(.9)}92%{opacity:1;transform:scale(1.6)}93%,100%{opacity:0;transform:scale(2.2)}}
+@keyframes m-trollhit{0%,20%{transform:translateX(0)}22%{transform:translateX(10px)}24%{transform:translateX(-6px)}26%,53%{transform:translateX(0)}55%{transform:translateX(10px)}57%{transform:translateX(-6px)}59%,87%{transform:translateX(0)}89%{transform:translateX(13px)}91%{transform:translateX(-8px)}93%,100%{transform:translateX(0)}}
+@keyframes m-flash{0%,20%{opacity:0}21%,24%{opacity:.9}26%,53%{opacity:0}54%,57%{opacity:.9}59%,87%{opacity:0}88%,91%{opacity:.9}93%,100%{opacity:0}}
+@keyframes m-dmg1{0%,21%{opacity:0;transform:translateY(0)}22%{opacity:1;transform:translateY(-6px)}30%{opacity:1;transform:translateY(-40px)}32%,100%{opacity:0;transform:translateY(-52px)}}
+@keyframes m-dmg2{0%,54%{opacity:0;transform:translateY(0)}55%{opacity:1;transform:translateY(-6px)}63%{opacity:1;transform:translateY(-40px)}65%,100%{opacity:0;transform:translateY(-52px)}}
+@keyframes m-dmg3{0%,88%{opacity:0;transform:translateY(0)}89%{opacity:1;transform:translateY(-6px)}97%{opacity:1;transform:translateY(-40px)}99%,100%{opacity:0;transform:translateY(-52px)}}
+@keyframes m-drain{0%,21%{width:100%}22%,54%{width:77%}55%,88%{width:51%}89%,100%{width:25%}}
+@keyframes m-shard{0%,21%{opacity:0;transform:translateY(0)}23%{opacity:1;transform:translateY(-10px)}31%{opacity:1;transform:translateY(-56px)}33%,100%{opacity:0;transform:translateY(-70px)}}
+@keyframes m-ember{0%,88%{opacity:0;transform:translateY(0)}90%{opacity:1;transform:translateY(-12px)}98%{opacity:1;transform:translateY(-70px)}99%,100%{opacity:0;transform:translateY(-84px)}}
+@keyframes m-frostcoat{0%,54%{opacity:0}56%,68%{opacity:.55}72%,100%{opacity:0}}
+/* arq */
+@keyframes a-breathe{0%,59%{transform:translateY(0)}60%,100%{transform:translateY(-9px)}}
+@keyframes a-draw{0%,4%{transform:translateX(0)}6%{transform:translateX(-8px)}10%{transform:translateX(6px)}13%,37%{transform:translateX(0)}39%{transform:translateX(-8px)}43%{transform:translateX(6px)}46%,70%{transform:translateX(0)}72%{transform:translateX(-8px)}77%{transform:translateX(6px)}80%,100%{transform:translateX(0)}}
+@keyframes a-nock1{0%{opacity:0;transform:translateX(0)}4%{opacity:1;transform:translateX(0)}9%{opacity:1;transform:translateX(-14px)}10%,100%{opacity:0;transform:translateX(0)}}
+@keyframes a-nock2{0%,37%{opacity:0;transform:translateX(0)}38%{opacity:1;transform:translateX(0)}42%{opacity:1;transform:translateX(-14px)}43%,100%{opacity:0;transform:translateX(0)}}
+@keyframes a-nock3{0%,70%{opacity:0;transform:translateX(0)}71%{opacity:1;transform:translateX(0)}76%{opacity:1;transform:translateX(-14px)}77%,100%{opacity:0;transform:translateX(0)}}
+@keyframes a-fly1{0%,9%{transform:translate(0,0);opacity:0}10%{transform:translate(0,0);opacity:1}21%{transform:translate(760px,-40px);opacity:1}22%,100%{transform:translate(760px,-40px);opacity:0}}
+@keyframes a-fly2{0%,42%{transform:translate(0,0);opacity:0}43%{transform:translate(0,0);opacity:1}54%{transform:translate(760px,-40px);opacity:1}55%,100%{transform:translate(760px,-40px);opacity:0}}
+@keyframes a-fly3{0%,76%{transform:translate(0,0);opacity:0}77%{transform:translate(0,0);opacity:1}88%{transform:translate(760px,-40px);opacity:1}89%,100%{transform:translate(760px,-40px);opacity:0}}
+@keyframes a-burst1{0%,20%{opacity:0;transform:scale(.4)}21%{opacity:1;transform:scale(.8)}25%{opacity:1;transform:scale(1.3)}26%,100%{opacity:0;transform:scale(1.5)}}
+@keyframes a-burst2{0%,53%{opacity:0;transform:scale(.4)}54%{opacity:1;transform:scale(.9)}58%{opacity:1;transform:scale(1.5)}59%,100%{opacity:0;transform:scale(1.7)}}
+@keyframes a-burst3{0%,87%{opacity:0;transform:scale(.4)}88%{opacity:1;transform:scale(1.1)}92%{opacity:1;transform:scale(2.4)}94%,100%{opacity:0;transform:scale(2.9)}}
+@keyframes a-ring{0%,87%{opacity:0;transform:scale(.2)}88%{opacity:1;transform:scale(.6)}93%{opacity:.8;transform:scale(2.6)}95%,100%{opacity:0;transform:scale(3)}}
+@keyframes a-trollhit{0%,20%{transform:translateX(0)}22%{transform:translateX(7px)}24%{transform:translateX(-4px)}26%,53%{transform:translateX(0)}55%{transform:translateX(9px)}57%{transform:translateX(-5px)}59%,87%{transform:translateX(0)}89%{transform:translateX(18px)}91%{transform:translateX(-11px)}93%{transform:translateX(7px)}95%,100%{transform:translateX(0)}}
+@keyframes a-flash{0%,20%{opacity:0}21%,24%{opacity:.85}26%,53%{opacity:0}54%,57%{opacity:.85}59%,87%{opacity:0}88%,92%{opacity:1}94%,100%{opacity:0}}
+@keyframes a-poisoncoat{0%,21%{opacity:0}23%,32%{opacity:.5}36%,100%{opacity:0}}
+@keyframes a-burncoat{0%,54%{opacity:0}56%,64%{opacity:.45}68%,100%{opacity:0}}
+@keyframes a-cloudA{0%,21%{opacity:0;transform:translateY(0) scale(1)}24%{opacity:1;transform:translateY(-16px) scale(1.2)}33%{opacity:1;transform:translateY(-62px) scale(1.6)}35%,100%{opacity:0;transform:translateY(-78px) scale(1.8)}}
+@keyframes a-cloudB{0%,23%{opacity:0;transform:translateY(0) scale(1)}26%{opacity:1;transform:translateY(-14px) scale(1.1)}34%{opacity:1;transform:translateY(-70px) scale(1.5)}36%,100%{opacity:0;transform:translateY(-86px) scale(1.7)}}
+@keyframes a-flameA{0%,54%{opacity:0;transform:translateY(0)}57%{opacity:1;transform:translateY(-18px)}64%{opacity:1;transform:translateY(-64px)}66%,100%{opacity:0;transform:translateY(-82px)}}
+@keyframes a-flameB{0%,56%{opacity:0;transform:translateY(0)}59%{opacity:1;transform:translateY(-20px)}66%{opacity:1;transform:translateY(-74px)}68%,100%{opacity:0;transform:translateY(-92px)}}
+@keyframes a-debris{0%,88%{opacity:0;transform:translate(0,0)}90%{opacity:1;transform:translate(-40px,-48px)}95%{opacity:1;transform:translate(-96px,24px)}96%,100%{opacity:0;transform:translate(-110px,40px)}}
+@keyframes a-dmg1{0%,21%{opacity:0;transform:translateY(0)}22%{opacity:1;transform:translateY(-6px)}30%{opacity:1;transform:translateY(-40px)}32%,100%{opacity:0;transform:translateY(-52px)}}
+@keyframes a-tick1{0%,27%{opacity:0;transform:translateY(0)}28%{opacity:1;transform:translateY(-4px)}33%{opacity:1;transform:translateY(-30px)}34%,100%{opacity:0;transform:translateY(-40px)}}
+@keyframes a-dmg2{0%,54%{opacity:0;transform:translateY(0)}55%{opacity:1;transform:translateY(-6px)}63%{opacity:1;transform:translateY(-40px)}65%,100%{opacity:0;transform:translateY(-52px)}}
+@keyframes a-dmg3{0%,88%{opacity:0;transform:translateY(0)}89%{opacity:1;transform:translateY(-8px)}97%{opacity:1;transform:translateY(-48px)}99%,100%{opacity:0;transform:translateY(-60px)}}
+@keyframes a-drain{0%,21%{width:100%}22%,54%{width:82%}55%,88%{width:60%}89%,100%{width:22%}}
+/* bar */
+@keyframes b-breathe{0%,59%{transform:translateY(0)}60%,100%{transform:translateY(-9px)}}
+@keyframes b-fren{0%,48%{opacity:1}49%,100%{opacity:0}}
+@keyframes b-torn{0%,51%{opacity:0}52%,100%{opacity:1}}
+@keyframes b-frenMove{0%,9%{transform:translateX(0)}13%{transform:translateX(680px)}38%{transform:translateX(700px)}44%{transform:translateX(0)}100%{transform:translateX(0)}}
+@keyframes b-frenShake{0%{transform:translate(0,0)}2%{transform:translate(-5px,0)}4%{transform:translate(5px,0)}6%{transform:translate(-4px,2px)}8%{transform:translate(4px,0)}9%,100%{transform:translate(0,0)}}
+@keyframes b-charge{0%{opacity:0;transform:scale(2)}2%{opacity:1}8%{opacity:1;transform:scale(.6)}9%,100%{opacity:0;transform:scale(.4)}}
+@keyframes b-chargebar{0%{width:0}9%{width:100%}10%,100%{width:0}}
+@keyframes b-ghost1{0%,9%{opacity:0;transform:translateX(0)}14%{opacity:.5;transform:translateX(-46px)}36%{opacity:.5;transform:translateX(-46px)}38%,100%{opacity:0;transform:translateX(-60px)}}
+@keyframes b-ghost2{0%,9%{opacity:0;transform:translateX(0)}15%{opacity:.25;transform:translateX(-92px)}36%{opacity:.25;transform:translateX(-92px)}38%,100%{opacity:0;transform:translateX(-120px)}}
+@keyframes b-s1{0%,14%{opacity:0;transform:rotate(-55deg) scale(.7)}15%{opacity:1;transform:rotate(-10deg) scale(1)}17%{opacity:1;transform:rotate(25deg) scale(1.15)}18%,100%{opacity:0;transform:rotate(40deg) scale(1.2)}}
+@keyframes b-s2{0%,18%{opacity:0;transform:rotate(55deg) scale(.7)}19%{opacity:1;transform:rotate(10deg) scale(1)}21%{opacity:1;transform:rotate(-25deg) scale(1.15)}22%,100%{opacity:0;transform:rotate(-40deg) scale(1.2)}}
+@keyframes b-s3{0%,23%{opacity:0;transform:rotate(-55deg) scale(.7)}24%{opacity:1;transform:rotate(-10deg) scale(1)}26%{opacity:1;transform:rotate(25deg) scale(1.15)}27%,100%{opacity:0;transform:rotate(40deg) scale(1.2)}}
+@keyframes b-s4{0%,28%{opacity:0;transform:rotate(55deg) scale(.7)}29%{opacity:1;transform:rotate(10deg) scale(1)}31%{opacity:1;transform:rotate(-25deg) scale(1.15)}32%,100%{opacity:0;transform:rotate(-40deg) scale(1.2)}}
+@keyframes b-s5{0%,33%{opacity:0;transform:rotate(-70deg) scale(.8)}34%{opacity:1;transform:rotate(-10deg) scale(1.2)}36%{opacity:1;transform:rotate(30deg) scale(1.5)}38%,100%{opacity:0;transform:rotate(50deg) scale(1.7)}}
+@keyframes b-tornMove{0%,53%{transform:translateX(0)}64%{transform:translateX(620px)}86%{transform:translateX(660px)}94%{transform:translateX(0)}100%{transform:translateX(0)}}
+@keyframes b-spin{0%,55%{transform:rotate(0deg)}90%{transform:rotate(1800deg)}100%{transform:rotate(1800deg)}}
+@keyframes b-dust{0%,55%{opacity:0;transform:rotate(0) translateX(70px) scale(.6)}58%{opacity:1}88%{opacity:1;transform:rotate(1440deg) translateX(96px) scale(1.2)}92%,100%{opacity:0;transform:rotate(1440deg) translateX(110px) scale(1.4)}}
+@keyframes b-trollhit{0%,14%{transform:translateX(0)}16%{transform:translateX(8px)}18%{transform:translateX(-4px)}20%{transform:translateX(7px)}22%{transform:translateX(-4px)}25%{transform:translateX(8px)}27%{transform:translateX(-4px)}30%{transform:translateX(7px)}32%{transform:translateX(-5px)}35%{transform:translateX(12px)}37%{transform:translateX(-7px)}39%,65%{transform:translateX(0)}67%{transform:translateX(6px)}70%{transform:translateX(-6px)}73%{transform:translateX(6px)}76%{transform:translateX(-6px)}79%{transform:translateX(7px)}82%{transform:translateX(-7px)}85%{transform:translateX(6px)}88%,100%{transform:translateX(0)}}
+@keyframes b-flash{0%,14%{opacity:0}15%,16%{opacity:.8}17%,19%{opacity:0}20%,21%{opacity:.8}22%,24%{opacity:0}25%,26%{opacity:.8}27%,29%{opacity:0}30%,31%{opacity:.8}32%,34%{opacity:0}35%,37%{opacity:1}38%,66%{opacity:0}67%,68%{opacity:.6}70%,71%{opacity:.6}73%,74%{opacity:.6}76%,77%{opacity:.6}79%,80%{opacity:.6}82%,83%{opacity:.6}85%,86%{opacity:.6}88%,100%{opacity:0}}
+@keyframes b-dmgA{0%,15%{opacity:0;transform:translateY(0)}16%{opacity:1;transform:translateY(-6px)}24%{opacity:1;transform:translateY(-40px)}26%,100%{opacity:0;transform:translateY(-52px)}}
+@keyframes b-dmgB{0%,34%{opacity:0;transform:translateY(0)}35%{opacity:1;transform:translateY(-8px)}43%{opacity:1;transform:translateY(-50px)}45%,100%{opacity:0;transform:translateY(-62px)}}
+@keyframes b-dmgC{0%,67%{opacity:0;transform:translateY(0)}69%{opacity:1;transform:translateY(-10px)}84%{opacity:1;transform:translateY(-56px)}87%,100%{opacity:0;transform:translateY(-70px)}}
+@keyframes b-combo{0%,14%{opacity:0;transform:scale(.6)}16%{opacity:1;transform:scale(1.3)}20%{opacity:1;transform:scale(1)}37%{opacity:1;transform:scale(1)}40%,100%{opacity:0;transform:scale(.8)}}
+@keyframes b-drain{0%,15%{width:100%}17%,20%{width:92%}22%,25%{width:84%}27%,30%{width:76%}32%,35%{width:68%}37%,67%{width:54%}70%,76%{width:44%}79%,85%{width:32%}88%,100%{width:18%}}
+@keyframes b-label1{0%,8%{opacity:1}9%,100%{opacity:0}}
+@keyframes b-label2{0%,53%{opacity:0}55%,88%{opacity:1}90%,100%{opacity:0}}
+
+@media (prefers-reduced-motion: reduce){#palco *{animation-play-state:paused !important}}
+</style>
+</head>
+<body>
+<div id="cena">
+<div id="palco" data-c="mago">
+
+<div id="placa">
+  <p class="t">VILA 07 · ABISMO</p>
+  <div id="classes" aria-label="Classe em cena"><span id="c-mago">MAGO</span><span id="c-arq">ARQUEIRO</span><span id="c-bar">BÁRBARO</span></div>
+</div>
+
+<!-- mago -->
+<div class="g g-mago"><div style="position:absolute;left:48px;top:22px;right:430px;display:flex;justify-content:space-between;align-items:flex-end">
+    <div>
+      <p style="margin:0 0 12px;font-family:'Press Start 2P',monospace;font-size:10px;letter-spacing:2px;color:#6a7280">CLASSE 01 · CONJURADOR</p>
+      <h2 style="margin:0;font-family:'Press Start 2P',monospace;font-size:26px;color:#bfe9ff;text-shadow:3px 3px 0 #2b2460">MAGO · TRÊS ESFERAS</h2>
+    </div>
+    <p class="tempo">loop de 9 s · 3 ataques em sequência<br>12 fps · esfera 9×9 px</p>
+  </div></div>
+<div class="g g-mago" style="position:absolute;left:48px;top:92px;width:1184px;height:500px;background:#0f0d17;border:4px solid #241f31;box-sizing:border-box;overflow:hidden">
+    <div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:0;height:92px;background:#15121c"></div>
+    <div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:92px;height:5px;background:#2b2638"></div>
+    <div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:84px;height:4px;background:repeating-linear-gradient(90deg,#2b2638 0 8px,transparent 8px 20px)"></div>
+
+    <div style="position:absolute;right:28px;top:22px;width:290px">
+      <p style="margin:0 0 8px;font-family:'Press Start 2P',monospace;font-size:9px;color:#e0483a">TROLL ANCIÃO · NV. 42</p>
+      <div style="height:18px;border:3px solid #0a0810;background:#2b1a16">
+        <div style="height:100%;background:#a3271f;width:100%;animation:m-drain 9s steps(1) infinite"></div>
+      </div>
+    </div>
+
+    <div class="troll" role="img" aria-label="Troll gigante recebendo as três esferas" style="position:absolute;right:60px;bottom:92px;animation:m-trollhit 9s steps(1) infinite">
+      <div style="position:relative">
+        <div data-m="troll" style="display:grid;grid-template-columns:repeat(28,9px);grid-auto-rows:9px;width:252px;line-height:0;animation:m-breathe 2.4s steps(1) infinite"></div>
+        <div aria-hidden="true" style="position:absolute;inset:0;background:#ffffff;mix-blend-mode:screen;opacity:0;animation:m-flash 9s steps(1) infinite"></div>
+        <div aria-hidden="true" style="position:absolute;inset:0;background:#7fd6f0;mix-blend-mode:screen;opacity:0;animation:m-frostcoat 9s steps(1) infinite"></div>
+      </div>
+    </div>
+    <div aria-hidden="true" style="position:absolute;right:48px;bottom:84px;width:276px;height:12px;background:#0a0810"></div>
+
+    <div style="position:absolute;left:70px;bottom:92px;animation:m-cast 9s steps(1) infinite">
+      <div data-m="mago" role="img" aria-label="Mago conjurando" style="display:grid;grid-template-columns:repeat(16,7px);grid-auto-rows:7px;width:112px;line-height:0"></div>
+      <div data-m="cajado" aria-hidden="true" style="position:absolute;left:104px;bottom:14px;display:grid;grid-template-columns:repeat(5,7px);grid-auto-rows:7px;width:35px;line-height:0"></div>
+      <div data-m="orbe" class="volt" aria-hidden="true" style="position:absolute;left:92px;bottom:118px;display:grid;grid-template-columns:repeat(9,6px);grid-auto-rows:6px;width:54px;line-height:0;animation:m-charge1 9s steps(6) infinite"></div>
+      <div data-m="orbe" class="frost" aria-hidden="true" style="position:absolute;left:92px;bottom:118px;display:grid;grid-template-columns:repeat(9,6px);grid-auto-rows:6px;width:54px;line-height:0;animation:m-charge2 9s steps(6) infinite"></div>
+      <div data-m="orbe" class="pyro" aria-hidden="true" style="position:absolute;left:92px;bottom:118px;display:grid;grid-template-columns:repeat(9,6px);grid-auto-rows:6px;width:54px;line-height:0;animation:m-charge3 9s steps(6) infinite"></div>
+    </div>
+
+    <div class="volt" aria-hidden="true" style="position:absolute;left:178px;bottom:214px;animation:m-orb1 9s steps(16) infinite">
+      <div style="position:absolute;right:52px;top:22px;width:46px;height:8px;background:#2f6ad9"></div>
+      <div style="position:absolute;right:104px;top:26px;width:22px;height:6px;background:#1d4a9e"></div>
+      <div data-m="orbe" style="display:grid;grid-template-columns:repeat(9,6px);grid-auto-rows:6px;width:54px;line-height:0"></div>
+    </div>
+    <div class="frost" aria-hidden="true" style="position:absolute;left:178px;bottom:214px;animation:m-orb2 9s steps(16) infinite">
+      <div style="position:absolute;right:52px;top:22px;width:46px;height:8px;background:#2e86b8"></div>
+      <div style="position:absolute;right:100px;top:10px;width:10px;height:10px;background:#d9f7ff"></div>
+      <div data-m="orbe" style="display:grid;grid-template-columns:repeat(9,6px);grid-auto-rows:6px;width:54px;line-height:0"></div>
+    </div>
+    <div class="pyro" aria-hidden="true" style="position:absolute;left:178px;bottom:214px;animation:m-orb3 9s steps(16) infinite">
+      <div style="position:absolute;right:52px;top:22px;width:46px;height:8px;background:#c23a10"></div>
+      <div style="position:absolute;right:98px;top:30px;width:14px;height:8px;background:#ffb03a"></div>
+      <div data-m="orbe" style="display:grid;grid-template-columns:repeat(9,6px);grid-auto-rows:6px;width:54px;line-height:0"></div>
+    </div>
+
+    <div data-m="impacto" class="volt" aria-hidden="true" style="position:absolute;right:112px;bottom:238px;display:grid;grid-template-columns:repeat(11,10px);grid-auto-rows:10px;width:110px;line-height:0;animation:m-burst1 9s steps(5) infinite"></div>
+    <div data-m="impacto" class="frost" aria-hidden="true" style="position:absolute;right:112px;bottom:238px;display:grid;grid-template-columns:repeat(11,10px);grid-auto-rows:10px;width:110px;line-height:0;animation:m-burst2 9s steps(5) infinite"></div>
+    <div data-m="impacto" class="pyro" aria-hidden="true" style="position:absolute;right:112px;bottom:238px;display:grid;grid-template-columns:repeat(11,10px);grid-auto-rows:10px;width:110px;line-height:0;animation:m-burst3 9s steps(5) infinite"></div>
+
+    <div aria-hidden="true" style="position:absolute;right:188px;bottom:180px;width:12px;height:12px;background:#bfe9ff;animation:m-shard 9s steps(4) infinite"></div>
+    <div aria-hidden="true" style="position:absolute;right:146px;bottom:176px;width:10px;height:10px;background:#2f6ad9;animation:m-shard 9s steps(4) infinite"></div>
+    <div aria-hidden="true" style="position:absolute;right:228px;bottom:168px;width:10px;height:10px;background:#ffb03a;animation:m-ember 9s steps(4) infinite"></div>
+    <div aria-hidden="true" style="position:absolute;right:166px;bottom:164px;width:12px;height:12px;background:#e8521f;animation:m-ember 9s steps(4) infinite"></div>
+
+    <p aria-hidden="true" style="position:absolute;right:120px;bottom:400px;margin:0;font-family:'Press Start 2P',monospace;font-size:16px;color:#bfe9ff;animation:m-dmg1 9s steps(6) infinite">-1 240</p>
+    <p aria-hidden="true" style="position:absolute;right:120px;bottom:400px;margin:0;font-family:'Press Start 2P',monospace;font-size:16px;color:#d9f7ff;animation:m-dmg2 9s steps(6) infinite">-980</p>
+    <p aria-hidden="true" style="position:absolute;right:120px;bottom:400px;margin:0;font-family:'Press Start 2P',monospace;font-size:16px;color:#ffb03a;animation:m-dmg3 9s steps(6) infinite">-1 760</p>
+  </div>
+<div class="g g-mago cartoes" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="cartao" style="border-top-color:#2f6ad9;animation:k3-1 9s steps(1) infinite"><h3 style="color:#bfe9ff">ESFERA DE ELETRICIDADE</h3><p>carga no cajado, arco elétrico, atordoa 0,8 s</p></div><div class="cartao" style="border-top-color:#2e86b8;animation:k3-2 9s steps(1) infinite"><h3 style="color:#d9f7ff">ESFERA GÉLIDA</h3><p>estilhaços e gelo: lentidão de 40% por 1,2 s</p></div><div class="cartao" style="border-top-color:#e8521f;animation:k3-3 9s steps(1) infinite"><h3 style="color:#ffb03a">ESFERA DE FOGO</h3><p>explosão em área e queimadura por 3 s</p></div></div>
+<!-- arq -->
+<div class="g g-arq"><div style="position:absolute;left:48px;top:22px;right:430px;display:flex;justify-content:space-between;align-items:flex-end">
+    <div>
+      <p style="margin:0 0 12px;font-family:'Press Start 2P',monospace;font-size:10px;letter-spacing:2px;color:#6a7280">CLASSE 02 · DISTÂNCIA</p>
+      <h2 style="margin:0;font-family:'Press Start 2P',monospace;font-size:26px;color:#d4ff6b;text-shadow:3px 3px 0 #1b4030">ARQUEIRO · TRÊS FLECHAS</h2>
+    </div>
+    <p class="tempo">loop de 9 s · 3 disparos em sequência<br>12 fps · flecha 12×5 px</p>
+  </div></div>
+<div class="g g-arq" style="position:absolute;left:48px;top:92px;width:1184px;height:500px;background:#0f0d17;border:4px solid #241f31;box-sizing:border-box;overflow:hidden">
+    <div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:0;height:92px;background:#15121c"></div>
+    <div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:92px;height:5px;background:#2b2638"></div>
+    <div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:84px;height:4px;background:repeating-linear-gradient(90deg,#2b2638 0 8px,transparent 8px 20px)"></div>
+
+    <div style="position:absolute;right:28px;top:22px;width:290px">
+      <p style="margin:0 0 8px;font-family:'Press Start 2P',monospace;font-size:9px;color:#e0483a">TROLL ANCIÃO · NV. 42</p>
+      <div style="height:18px;border:3px solid #0a0810;background:#2b1a16">
+        <div style="height:100%;background:#a3271f;width:100%;animation:a-drain 9s steps(1) infinite"></div>
+      </div>
+    </div>
+
+    <div class="troll" role="img" aria-label="Troll gigante atingido pelas flechas" style="position:absolute;right:60px;bottom:92px;animation:a-trollhit 9s steps(1) infinite">
+      <div style="position:relative">
+        <div data-m="troll" style="display:grid;grid-template-columns:repeat(28,9px);grid-auto-rows:9px;width:252px;line-height:0;animation:a-breathe 2.4s steps(1) infinite"></div>
+        <div aria-hidden="true" style="position:absolute;inset:0;background:#ffffff;mix-blend-mode:screen;opacity:0;animation:a-flash 9s steps(1) infinite"></div>
+        <div aria-hidden="true" style="position:absolute;inset:0;background:#7ab52b;mix-blend-mode:screen;opacity:0;animation:a-poisoncoat 9s steps(1) infinite"></div>
+        <div aria-hidden="true" style="position:absolute;inset:0;background:#e8521f;mix-blend-mode:screen;opacity:0;animation:a-burncoat 9s steps(1) infinite"></div>
+      </div>
+    </div>
+    <div aria-hidden="true" style="position:absolute;right:48px;bottom:84px;width:276px;height:12px;background:#0a0810"></div>
+
+    <div class="arq" style="position:absolute;left:70px;bottom:92px;animation:a-draw 9s steps(1) infinite">
+      <div data-m="arqueiro" role="img" aria-label="Arqueiro disparando" style="display:grid;grid-template-columns:repeat(16,7px);grid-auto-rows:7px;width:112px;line-height:0"></div>
+      <div data-m="arco" aria-hidden="true" style="position:absolute;left:96px;bottom:46px;display:grid;grid-template-columns:repeat(7,7px);grid-auto-rows:7px;width:49px;line-height:0"></div>
+      <div data-m="flecha" class="toxic" aria-hidden="true" style="position:absolute;left:70px;bottom:98px;display:grid;grid-template-columns:repeat(12,6px);grid-auto-rows:6px;width:72px;line-height:0;animation:a-nock1 9s steps(4) infinite"></div>
+      <div data-m="flecha" class="pyro" aria-hidden="true" style="position:absolute;left:70px;bottom:98px;display:grid;grid-template-columns:repeat(12,6px);grid-auto-rows:6px;width:72px;line-height:0;animation:a-nock2 9s steps(4) infinite"></div>
+      <div data-m="flecha" class="blast" aria-hidden="true" style="position:absolute;left:70px;bottom:98px;display:grid;grid-template-columns:repeat(12,6px);grid-auto-rows:6px;width:72px;line-height:0;animation:a-nock3 9s steps(4) infinite"></div>
+    </div>
+
+    <div class="toxic" aria-hidden="true" style="position:absolute;left:186px;bottom:196px;animation:a-fly1 9s steps(14) infinite">
+      <div style="position:absolute;right:76px;top:18px;width:54px;height:6px;background:#4e8f1e"></div>
+      <div style="position:absolute;right:52px;top:34px;width:8px;height:8px;background:#d4ff6b"></div>
+      <div data-m="flecha" style="display:grid;grid-template-columns:repeat(12,7px);grid-auto-rows:7px;width:84px;line-height:0"></div>
+    </div>
+    <div class="pyro" aria-hidden="true" style="position:absolute;left:186px;bottom:196px;animation:a-fly2 9s steps(14) infinite">
+      <div style="position:absolute;right:72px;top:16px;width:60px;height:10px;background:#c23a10"></div>
+      <div style="position:absolute;right:104px;top:28px;width:16px;height:8px;background:#ffb03a"></div>
+      <div data-m="flecha" style="display:grid;grid-template-columns:repeat(12,7px);grid-auto-rows:7px;width:84px;line-height:0"></div>
+    </div>
+    <div class="blast" aria-hidden="true" style="position:absolute;left:186px;bottom:196px;animation:a-fly3 9s steps(14) infinite">
+      <div style="position:absolute;right:74px;top:18px;width:52px;height:8px;background:#8f1f0d"></div>
+      <div style="position:absolute;right:14px;top:4px;width:14px;height:14px;background:#ffd98a"></div>
+      <div data-m="flecha" style="display:grid;grid-template-columns:repeat(12,7px);grid-auto-rows:7px;width:84px;line-height:0"></div>
+    </div>
+
+    <div data-m="impacto" class="toxic" aria-hidden="true" style="position:absolute;right:120px;bottom:232px;display:grid;grid-template-columns:repeat(11,9px);grid-auto-rows:9px;width:99px;line-height:0;animation:a-burst1 9s steps(5) infinite"></div>
+    <div data-m="impacto" class="pyro" aria-hidden="true" style="position:absolute;right:120px;bottom:232px;display:grid;grid-template-columns:repeat(11,9px);grid-auto-rows:9px;width:99px;line-height:0;animation:a-burst2 9s steps(5) infinite"></div>
+    <div data-m="impacto" class="blast" aria-hidden="true" style="position:absolute;right:120px;bottom:232px;display:grid;grid-template-columns:repeat(11,9px);grid-auto-rows:9px;width:99px;line-height:0;animation:a-burst3 9s steps(6) infinite"></div>
+    <div aria-hidden="true" style="position:absolute;right:130px;bottom:244px;width:80px;height:80px;border:8px solid #ffd98a;animation:a-ring 9s steps(6) infinite"></div>
+
+    <div aria-hidden="true" style="position:absolute;right:188px;bottom:214px;width:14px;height:14px;background:#7ab52b;animation:a-cloudA 9s steps(5) infinite"></div>
+    <div aria-hidden="true" style="position:absolute;right:146px;bottom:206px;width:12px;height:12px;background:#d4ff6b;animation:a-cloudB 9s steps(5) infinite"></div>
+    <div aria-hidden="true" style="position:absolute;right:220px;bottom:200px;width:10px;height:10px;background:#4e8f1e;animation:a-cloudA 9s steps(5) infinite"></div>
+    <div aria-hidden="true" style="position:absolute;right:176px;bottom:208px;width:14px;height:14px;background:#e8521f;animation:a-flameA 9s steps(5) infinite"></div>
+    <div aria-hidden="true" style="position:absolute;right:214px;bottom:202px;width:12px;height:12px;background:#ffb03a;animation:a-flameB 9s steps(5) infinite"></div>
+    <div aria-hidden="true" style="position:absolute;right:140px;bottom:198px;width:10px;height:10px;background:#8f1f0d;animation:a-flameB 9s steps(5) infinite"></div>
+    <div aria-hidden="true" style="position:absolute;right:170px;bottom:250px;width:12px;height:12px;background:#6a7280;animation:a-debris 9s steps(6) infinite"></div>
+    <div aria-hidden="true" style="position:absolute;right:170px;bottom:290px;width:10px;height:10px;background:#9bb06a;animation:a-debris 9s steps(6) infinite"></div>
+
+    <p aria-hidden="true" style="position:absolute;right:120px;bottom:392px;margin:0;font-family:'Press Start 2P',monospace;font-size:16px;color:#d4ff6b;animation:a-dmg1 9s steps(6) infinite">-620</p>
+    <p aria-hidden="true" style="position:absolute;right:92px;bottom:352px;margin:0;font-family:'Press Start 2P',monospace;font-size:12px;color:#7ab52b;animation:a-tick1 9s steps(5) infinite">-90</p>
+    <p aria-hidden="true" style="position:absolute;right:120px;bottom:392px;margin:0;font-family:'Press Start 2P',monospace;font-size:16px;color:#ffb03a;animation:a-dmg2 9s steps(6) infinite">-1 050</p>
+    <p aria-hidden="true" style="position:absolute;right:120px;bottom:392px;margin:0;font-family:'Press Start 2P',monospace;font-size:20px;color:#ffd98a;animation:a-dmg3 9s steps(6) infinite">-2 480!</p>
+  </div>
+<div class="g g-arq cartoes" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="cartao" style="border-top-color:#4e8f1e;animation:k3-1 9s steps(1) infinite"><h3 style="color:#d4ff6b">FLECHA ENVENENADA</h3><p>veneno por 6 s, 4 ticks de 90</p></div><div class="cartao" style="border-top-color:#e8521f;animation:k3-2 9s steps(1) infinite"><h3 style="color:#ffb03a">FLECHA EM CHAMAS</h3><p>rastro de brasas e queimadura por 3 s</p></div><div class="cartao" style="border-top-color:#ffd98a;animation:k3-3 9s steps(1) infinite"><h3 style="color:#ffd98a">FLECHA EXPLOSIVA</h3><p>anel de choque, estilhaços e recuo do troll</p></div></div>
+<!-- bar -->
+<div class="g g-bar"><div style="position:absolute;left:48px;top:22px;right:430px;display:flex;justify-content:space-between;align-items:flex-end">
+    <div>
+      <p style="margin:0 0 12px;font-family:'Press Start 2P',monospace;font-size:10px;letter-spacing:2px;color:#6a7280">CLASSE 03 · CORPO A CORPO</p>
+      <h2 style="margin:0;font-family:'Press Start 2P',monospace;font-size:26px;color:#ffd98a;text-shadow:3px 3px 0 #4e170f">BÁRBARO · DUAS FÚRIAS</h2>
+    </div>
+    <p class="tempo">loop de 9 s · frenesi 0–4,5 s · tornado 4,5–9 s<br>12 fps · giro em steps(8) por volta</p>
+  </div></div>
+<div class="g g-bar" style="position:absolute;left:48px;top:92px;width:1184px;height:500px;background:#0f0d17;border:4px solid #241f31;box-sizing:border-box;overflow:hidden">
+    <div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:0;height:92px;background:#15121c"></div>
+    <div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:92px;height:5px;background:#2b2638"></div>
+    <div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:84px;height:4px;background:repeating-linear-gradient(90deg,#2b2638 0 8px,transparent 8px 20px)"></div>
+
+    <div style="position:absolute;right:28px;top:22px;width:290px">
+      <p style="margin:0 0 8px;font-family:'Press Start 2P',monospace;font-size:9px;color:#e0483a">TROLL ANCIÃO · NV. 42</p>
+      <div style="height:18px;border:3px solid #0a0810;background:#2b1a16">
+        <div style="height:100%;background:#a3271f;width:100%;animation:b-drain 9s steps(1) infinite"></div>
+      </div>
+    </div>
+
+    <p aria-hidden="true" style="position:absolute;left:28px;top:24px;margin:0;font-family:'Press Start 2P',monospace;font-size:11px;color:#e0483a;animation:b-label1 9s steps(1) infinite">FRENESI · CARGA</p>
+    <p aria-hidden="true" style="position:absolute;left:28px;top:24px;margin:0;font-family:'Press Start 2P',monospace;font-size:11px;color:#cfd6e2;animation:b-label2 9s steps(1) infinite">TORNADO DE LÂMINAS</p>
+
+    <div class="troll" role="img" aria-label="Troll gigante sofrendo os golpes do bárbaro" style="position:absolute;right:60px;bottom:92px;animation:b-trollhit 9s steps(1) infinite">
+      <div style="position:relative">
+        <div data-m="troll" style="display:grid;grid-template-columns:repeat(28,9px);grid-auto-rows:9px;width:252px;line-height:0;animation:b-breathe 2.4s steps(1) infinite"></div>
+        <div aria-hidden="true" style="position:absolute;inset:0;background:#ffffff;mix-blend-mode:screen;opacity:0;animation:b-flash 9s steps(1) infinite"></div>
+      </div>
+    </div>
+    <div aria-hidden="true" style="position:absolute;right:48px;bottom:84px;width:276px;height:12px;background:#0a0810"></div>
+
+    <div style="position:absolute;left:70px;bottom:92px;animation:b-fren 9s steps(1) infinite">
+      <div style="position:relative;animation:b-frenMove 9s steps(10) infinite">
+        <div data-m="barbaro" aria-hidden="true" style="position:absolute;left:0;bottom:0;display:grid;grid-template-columns:repeat(16,7px);grid-auto-rows:7px;width:112px;line-height:0;filter:grayscale(.4);animation:b-ghost2 9s steps(8) infinite"></div>
+        <div data-m="barbaro" aria-hidden="true" style="position:absolute;left:0;bottom:0;display:grid;grid-template-columns:repeat(16,7px);grid-auto-rows:7px;width:112px;line-height:0;animation:b-ghost1 9s steps(8) infinite"></div>
+        <div style="position:relative;animation:b-frenShake 9s steps(1) infinite">
+          <div data-m="barbaro" role="img" aria-label="Bárbaro em frenesi com duas espadas" style="display:grid;grid-template-columns:repeat(16,7px);grid-auto-rows:7px;width:112px;line-height:0"></div>
+          <div data-m="espada" aria-hidden="true" style="position:absolute;left:-26px;bottom:24px;display:grid;grid-template-columns:repeat(5,6px);grid-auto-rows:6px;width:30px;line-height:0;transform:rotate(-24deg)"></div>
+          <div data-m="espada" aria-hidden="true" style="position:absolute;left:108px;bottom:24px;display:grid;grid-template-columns:repeat(5,6px);grid-auto-rows:6px;width:30px;line-height:0;transform:rotate(24deg)"></div>
+        </div>
+        <div aria-hidden="true" style="position:absolute;left:-18px;bottom:-14px;width:148px;height:148px;border:8px solid #e0483a;border-radius:50%;animation:b-charge 9s steps(6) infinite"></div>
+        <div aria-hidden="true" style="position:absolute;left:4px;bottom:-30px;width:104px;height:12px;background:#2b1a16;border:3px solid #0a0810">
+          <div style="height:100%;background:#e0483a;width:0;animation:b-chargebar 9s steps(8) infinite"></div>
+        </div>
+      </div>
+    </div>
+
+    <div aria-hidden="true" style="position:absolute;left:790px;bottom:210px;width:120px;height:144px">
+      <div data-m="corte" style="position:absolute;inset:0;display:grid;grid-template-columns:repeat(10,10px);grid-auto-rows:10px;width:100px;line-height:0;animation:b-s1 9s steps(4) infinite"></div>
+      <div data-m="corte" style="position:absolute;inset:0;display:grid;grid-template-columns:repeat(10,10px);grid-auto-rows:10px;width:100px;line-height:0;animation:b-s2 9s steps(4) infinite"></div>
+      <div data-m="corte" style="position:absolute;inset:0;display:grid;grid-template-columns:repeat(10,10px);grid-auto-rows:10px;width:100px;line-height:0;animation:b-s3 9s steps(4) infinite"></div>
+      <div data-m="corte" style="position:absolute;inset:0;display:grid;grid-template-columns:repeat(10,10px);grid-auto-rows:10px;width:100px;line-height:0;animation:b-s4 9s steps(4) infinite"></div>
+      <div data-m="corte" style="position:absolute;inset:0;display:grid;grid-template-columns:repeat(10,10px);grid-auto-rows:10px;width:100px;line-height:0;animation:b-s5 9s steps(5) infinite"></div>
+    </div>
+
+    <div style="position:absolute;left:70px;bottom:92px;animation:b-torn 9s steps(1) infinite">
+      <div style="position:relative;animation:b-tornMove 9s steps(10) infinite">
+        <div style="position:relative;width:112px;height:140px;animation:b-spin 9s steps(40) infinite">
+          <div data-m="barbaro" role="img" aria-label="Bárbaro girando em tornado com duas espadas" style="display:grid;grid-template-columns:repeat(16,7px);grid-auto-rows:7px;width:112px;line-height:0"></div>
+          <div data-m="espada" aria-hidden="true" style="position:absolute;left:-78px;top:44px;display:grid;grid-template-columns:repeat(5,6px);grid-auto-rows:6px;width:30px;line-height:0;transform:rotate(-90deg)"></div>
+          <div data-m="espada" aria-hidden="true" style="position:absolute;left:160px;top:44px;display:grid;grid-template-columns:repeat(5,6px);grid-auto-rows:6px;width:30px;line-height:0;transform:rotate(90deg)"></div>
+        </div>
+        <div aria-hidden="true" style="position:absolute;left:52px;bottom:4px;width:14px;height:14px;background:#6a7280;animation:b-dust 9s steps(16) infinite"></div>
+        <div aria-hidden="true" style="position:absolute;left:52px;bottom:18px;width:12px;height:12px;background:#2b2638;animation:b-dust 9s steps(16) infinite"></div>
+        <div aria-hidden="true" style="position:absolute;left:52px;bottom:34px;width:10px;height:10px;background:#9aa3b0;animation:b-dust 9s steps(16) infinite"></div>
+      </div>
+    </div>
+
+    <p aria-hidden="true" style="position:absolute;right:140px;bottom:392px;margin:0;font-family:'Press Start 2P',monospace;font-size:16px;color:#ffd98a;animation:b-dmgA 9s steps(6) infinite">-310 ×5</p>
+    <p aria-hidden="true" style="position:absolute;right:140px;bottom:392px;margin:0;font-family:'Press Start 2P',monospace;font-size:20px;color:#e0483a;animation:b-dmgB 9s steps(6) infinite">-1 900!</p>
+    <p aria-hidden="true" style="position:absolute;right:140px;bottom:392px;margin:0;font-family:'Press Start 2P',monospace;font-size:18px;color:#cfd6e2;animation:b-dmgC 9s steps(8) infinite">-240 ×12</p>
+    <p aria-hidden="true" style="position:absolute;left:470px;top:40px;margin:0;font-family:'Press Start 2P',monospace;font-size:22px;color:#ffd98a;animation:b-combo 9s steps(6) infinite">COMBO ×5</p>
+  </div>
+<div class="g g-bar cartoes" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="cartao" style="border-top-color:#e0483a;animation:k2-1 9s steps(1) infinite"><h3 style="color:#e0483a">FRENESI</h3><p>carga, investida e 5 cortes; o 5º é crítico</p></div><div class="cartao" style="border-top-color:#cfd6e2;animation:k2-2 9s steps(1) infinite"><h3 style="color:#cfd6e2">TORNADO DE LÂMINAS</h3><p>5 voltas deslizando até o troll, 12 ticks</p></div></div>
+
+<div id="scan" aria-hidden="true"></div>
+</div>
+</div>
+<script>
+(function () {
+  const MAPAS = {"mago":["......kkk.......",".....kaaak......","....kaaaaak.....","...kaaaaaaak....","...kbbbbbbbk....","...kaSSSSSak....","...kaSeeeSak....","...kaSSsSSak....","....kaaaaak.....","..kkkaaaaakkk...","..kaaaaaaaaaak..","..kaaabbbaaaak..","...kaaaaaaaak...","...kaaAaaAaak...","...kaaAaaAaak...","..kaaaaaaaaaak..","..kaAAAAAAAAak..","..kAAAAAAAAAAk..","...kkk....kkk...","....kk....kk...."],"cajado":[".bEb.","bEEEb","bEkEb","bEEEb",".bEb.","..W..","..w..","..w..","..W..","..w..","..w..","..W..","..w..","..w..","..W..","..w.."],"orbe":["...eee...","..eEEEe..",".eEEEEEe.","eEEEzEEEe","eEEzzzEEe","eEEEzEEEe",".eEEEEEe.","..eEEEe..","...eee..."],"impacto":["....e......","..e.E.e....","...EEE..e..",".eEEzzzEe..","..EzzzzzE..","eEEzzzzzEEe","..EzzzzzE..",".eEEzzzEe..","..e.EEE.e..","....E.e....","..e....e..."],"troll":["...........kkkkkk...........",".........kkgggggggkk........","........kgggggggggggk.......","........kggGGGGGGGggk.......","......kkkgyygggggyygkkk.....","......kgkgyygggggyygkgk.....","......kgkkgggggggggkkgk.....",".......kkgtgggggggtgkk......","........kgtkgggggtkgk.......",".......kkggkkgggkkggkk......","....kkkggggggggggggggkkk....","...kkgggggggggggggggggkk....","..kgggggggGGGGGGGggggggggk..","..kggggggGnnnnnnnnGggggggk..","..kggggggGnnnnnnnnGggggggk..","..kggggggGnnnnnnnnGggggggk..","..kggggggGnnnnnnnnGggggggk..","..kggggggGnnnnnnnnGggggggk..","..kggggggGnnnnnnnnGggggggk..","..kgggggggGnnnnnnGgggggggk..","..kggggLLLLLLLLLLLLLLggggk..","..kgggkLLLLLLLLLLLLLLkgggk..","..kgggkllllllllllllllkgggk..","..kgggk.kggggkkggggk.kgggk..","..kgggk.kggggkkggggk.kgggk..","...kkk..kggggkkggggk..kkk...","......kggggkkggggk..........","........kggggkkggggk........","........kggggkkggggk........",".......kkggggkkggggkk.......",".......kgggggkkgggggk.......","......kgnnnngkkgnnnngk......","......kkkkkkkkkkkkkkkk......"],"arqueiro":[".....kkkk.......","....kaaaak......","...kaaaaaak.....","...kaSSSSak.....","...kaSeeSak.....","...kaSSsSak.....","....kllllk......","...klaaaalk.....","..klaaaaaalk....","..klaaaaaaalk...","..kkaaaaaaakk...","...klllllllk....","...kbbbbbbbk....","...kaaaaaaak....","...kaaAkaaak....","...kllLkLllk....","...kllLkLllk....","..kkLLkkLLkk....","..kLLk..kLLk....","...kk....kk....."],"arco":["..ll...",".cl.l..",".c..ll.",".c...l.",".c...ll",".c....l",".c....l",".c....l",".c...Ll",".c...Ll",".c....l",".c....l",".c....l",".c...ll",".c...l.",".c..ll.",".cl.l..","..ll..."],"flecha":["ee..........",".ee.....m...","eeewwwwwwmMM",".ee.....m...","ee.........."],"barbaro":["....HHHHHH......","...HkkkkkkH.....","...Hksssssk.....","...Hkseeesk.....","....ksSsSsk.....","....kkssskk.....","...kaassaaak....","..kaasssssaak...","..kassSSSssak...","..kaasssssaak...","...ksssssssk....","...kbbbbbbbk....","...kaaaaaaak....","...kaaAkaaak....","...ksssksssk....","...ksssksssk....","..kkSSskSSSkk...","..kLllkkllLk....","...kkk..kkk.....","...kk....kk....."],"espada":["..m..",".mzm.",".mzm.",".mzm.",".mzm.",".mzm.",".mzm.",".mzm.",".mMm.","kbbbk","..w..","..w..","..W..",".kbk."],"corte":[".....zz...","...zzzz...","..zzm.....",".zzm......","zzm.......","zm........","zm........","zzm.......",".zzm......","..zzm.....","...zzzz...",".....zz..."]};
+
+  // grades de pixels: cada caractere do mapa vira um <i class="c-?"> ('.' = transparente)
+  document.querySelectorAll('[data-m]').forEach(function (el) {
+    const mapa = MAPAS[el.dataset.m];
+    if (!mapa) return;
+    let h = '';
+    for (const linha of mapa) for (const ch of linha) h += ch === '.' ? '<i></i>' : '<i class="c-' + ch + '"></i>';
+    el.innerHTML = h;
+  });
+
+  // palco fixo de 1280×720, escalado para caber na moldura 16:9
+  const cena = document.getElementById('cena'), palco = document.getElementById('palco');
+  function ajustar() {
+    const w = cena.clientWidth, h = cena.clientHeight, k = Math.min(w / 1280, h / 720);
+    palco.style.transform = 'translate(' + (w - 1280 * k) / 2 + 'px,' + (h - 720 * k) / 2 + 'px) scale(' + k + ')';
+  }
+  ajustar();
+  if (window.ResizeObserver) new ResizeObserver(ajustar).observe(cena); else window.addEventListener('resize', ajustar);
+
+  // Mago → Arqueiro → Bárbaro, um laço de 9 s cada; ?classe=mago|arq|bar fixa uma
+  const ORDEM = ['mago', 'arq', 'bar'];
+  let i = ORDEM.indexOf(new URLSearchParams(location.search).get('classe'));
+  const fixa = i >= 0;
+  if (i < 0) i = 0;
+  palco.dataset.c = ORDEM[i];
+  if (!fixa) setInterval(function () { i = (i + 1) % ORDEM.length; palco.dataset.c = ORDEM[i]; }, 9000);
+})();
+</script>
+</body>
+</html>

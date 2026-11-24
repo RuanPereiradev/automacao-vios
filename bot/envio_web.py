@@ -34,6 +34,8 @@ ARQUIVO_VILA = Path(__file__).parent / "vila" / "vila.html"  # HTML único da vi
 ARQUIVO_FORTALEZA = Path(__file__).parent / "vila" / "fortaleza.html"
 # Vila 06: a muralha do bot do Previdenciário (servida em /vila/previdenciario; vídeos fora do git)
 ARQUIVO_MURALHA = Path(__file__).parent / "vila" / "muralha.html"
+# Vila 07: o Abismo, três heróis contra o Troll Ancião (servida em /vila/abismo; só anima, não lê nenhum bot)
+ARQUIVO_ABISMO = Path(__file__).parent / "vila" / "abismo.html"
 PASTA_ENVIOS = "envios"  # dentro da pasta de saída: um .json por envio (histórico que não some)
 DATAS = ("criado", "inicio", "fim", "editado")
 
@@ -994,6 +996,12 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         """Vila 06: a muralha do bot do Previdenciário (HTML único; só assiste ao estado do bot)."""
         return Response(ARQUIVO_MURALHA.read_bytes(), 200, {"Content-Type": "text/html; charset=utf-8",
                                                             "Cache-Control": "no-cache"})
+
+    @app.route("/vila/abismo")
+    def vila_abismo():
+        """Vila 07: o Abismo (HTML único; Mago, Arqueiro e Bárbaro contra o Troll Ancião, sem dados de bot)."""
+        return Response(ARQUIVO_ABISMO.read_bytes(), 200, {"Content-Type": "text/html; charset=utf-8",
+                                                           "Cache-Control": "no-cache"})
 
     @app.route("/vila/previdenciario/estado")
     def vila_previdenciario_estado():

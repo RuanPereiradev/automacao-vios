@@ -12,6 +12,18 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Vila dos Bots: Vila 07, o Abismo (24/11/2026)
+- Nova aba **07 · Abismo** na vila (`/vila` e página inicial): três heróis em pixel art (Mago, Arqueiro, Bárbaro) contra o
+  Troll Ancião, com o desenho do kit "Abismo — Kit de Animação Pixelada". Cada classe roda um laço de 9 s (Mago: esferas
+  de eletricidade, gélida e de fogo; Arqueiro: flechas envenenada, em chamas e explosiva; Bárbaro: frenesi e tornado de
+  lâminas) e a cena passa para a próxima; o cartão do ataque da vez acende. A cena só anima: não lê nenhum bot.
+- Página `bot/vila/abismo.html` (HTML único, sem imagens: cada pixel é um elemento numa grade CSS), servida em
+  `/vila/abismo` (mesma senha das páginas). `?classe=mago|arq|bar` fixa uma classe.
+- Aba ligada por `doc/vila/ligar_vila07_abismo.py` (rodar depois do da Vila 06; já aplicado em `bot/vila/vila.html`).
+  O mapa continua com 5 lotes: as abas 06 e 07 são só camadas. `?vila=6` e `?vila=7` passam a abrir direto a Mikasa e
+  o Abismo.
+- Testes: `tests/test_vila07.py` (mapas, animações, aba ligada e rota com senha).
+
 ### Adicionado — Aba Cumprimentos: "Análise principal" e as análises do PJe na página (24/11/2026)
 - Topo da página `/cumprimentos` com a análise principal (cada número leva à seção): cumprimentos fora do VIOS
   pendentes, associados novos no PJe, associados já existentes de clientes do VIOS para conferir, processos do VIOS
