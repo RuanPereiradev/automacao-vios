@@ -14,8 +14,12 @@ Não abre documento, não peticiona, não assina, não altera nada no PJe.
 
 Alertas:
 - A 1ª rodada completa é BASE: guarda o que já existe (auditoria, sem alerta).
-- Depois, associado NOVO de um processo que já estava no acervo = alerta. VERMELHO se o associado não está no VIOS;
-  se já está no VIOS, fica como informação. (Um processo que acabou de entrar no acervo vira base só dele.)
+- Depois, associado NOVO de um processo que já estava no acervo = alerta. Um processo que acabou de entrar no acervo
+  vira base só dele. Nível do associado novo:
+    VERMELHO  principal está no VIOS (cliente nosso no polo passivo) e o associado não está no VIOS;
+    AMARELO   associado fora do VIOS, mas o principal também está fora da lista do VIOS (antigo, arquivado, outra
+              área: o teste de 24/11 mostrou que a maioria dos processos com associação do acervo é assim);
+    INFO      o associado já está no VIOS.
 """
 import json
 import time
@@ -391,7 +395,7 @@ def rodar(estado, lido, hoje=None, simular=False):
                 reg["nivel"] = "BASE"
                 res["base"].append(reg)
             else:
-                reg["nivel"] = "INFO" if info else "VERMELHO"
+                reg["nivel"] = "INFO" if info else ("VERMELHO" if p else "AMARELO")
                 res["novos"].append(reg)
             if not simular:
                 ea.gravar_associado(numero, a, hoje, not base, reg["nivel"])
@@ -430,14 +434,23 @@ def relatorio(res):
                 + (" · já avisado pelo DJEN" if r["no_djen"] else ""))
 
     verm = [r for r in res["novos"] if r["nivel"] == "VERMELHO"]
-    info = [r for r in res["novos"] if r["nivel"] != "VERMELHO"]
+    amar = [r for r in res["novos"] if r["nivel"] == "AMARELO"]
+    info = [r for r in res["novos"] if r["nivel"] == "INFO"]
     if not res.get("base_global"):
-        L += [f"🔴 VERMELHO · associado NOVO fora do VIOS ({len(verm)})"] + ([linha(r) for r in verm] or ["  (nenhum)"])
+        L += [f"🔴 VERMELHO · associado NOVO fora do VIOS, com o principal no VIOS ({len(verm)})"]
+        L += [linha(r) for r in verm] or ["  (nenhum)"]
+        L += ["", f"🟡 AMARELO · associado novo fora do VIOS, principal também fora da lista do VIOS ({len(amar)})"]
+        L += [linha(r) for r in amar] or ["  (nenhum)"]
         L += ["", f"Associado novo que já está no VIOS ({len(info)})"] + ([linha(r) for r in info] or ["  (nenhum)"]) + [""]
     if res["base"]:
         fora = [r for r in res["base"] if not r["no_vios"]]
-        L += [f"BASE: associados que já existiam ({len(res['base'])}); destes, fora do VIOS ({len(fora)}):"]
-        L += [linha(r) for r in fora] or ["  (nenhum)"]
+        cliente = [r for r in fora if r["principal_no_vios"]]
+        outros = [r for r in fora if not r["principal_no_vios"]]
+        L += [f"BASE: associados que já existiam ({len(res['base'])}); fora do VIOS: {len(fora)}."]
+        L += [f"  Com o principal NO VIOS (cliente nosso; conferir) ({len(cliente)}):"]
+        L += [linha(r) for r in cliente] or ["  (nenhum)"]
+        L += [f"  Com o principal também fora do VIOS ({len(outros)}):"]
+        L += [linha(r) for r in outros] or ["  (nenhum)"]
         L.append("")
     if res["fora_do_acervo"]:
         L += [f"Processos do TRT7 do VIOS fora do Acervo Geral do login ({len(res['fora_do_acervo'])}) — sem a proteção do nível 3:"]

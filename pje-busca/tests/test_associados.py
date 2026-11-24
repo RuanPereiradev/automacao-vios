@@ -53,12 +53,13 @@ class Rodada(unittest.TestCase):
         self.assertEqual(r1["novos"], [])
         self.assertEqual(r1["fora_do_acervo"], [FORA])
         self.assertIn("PRIMEIRA RODADA (base)", VA.relatorio(r1))
+        self.assertIn("Com o principal NO VIOS (cliente nosso; conferir) (1)", VA.relatorio(r1))
         # o caso real: o principal P2 (já no acervo) ganha o 1º associado -> alerta
         r2 = self.rodar(lido({P1: [CPS], P2: [NOVO]}), 25)
         self.assertFalse(r2["base_global"])
         self.assertEqual([(x["principal"], x["numero"], x["nivel"]) for x in r2["novos"]], [(P2, NOVO, "VERMELHO")])
         self.assertEqual(r2["novos"][0]["principal_ci"], "21045")
-        self.assertIn("🔴 VERMELHO · associado NOVO fora do VIOS (1)", VA.relatorio(r2))
+        self.assertIn("🔴 VERMELHO · associado NOVO fora do VIOS, com o principal no VIOS (1)", VA.relatorio(r2))
         r3 = self.rodar(lido({P1: [CPS], P2: [NOVO]}), 26)
         self.assertEqual(r3["novos"], [])  # não repete o aviso
         rod = self.est.db.execute("SELECT acervo, verificados, novos, vermelhos, completa, base FROM assoc_rodadas "
@@ -70,6 +71,14 @@ class Rodada(unittest.TestCase):
         r = self.rodar(lido({P1: [CPS], P2: [NOVO]}, acervo=(P1, P2)), 25)
         self.assertEqual(r["novos"], [])
         self.assertEqual([x["numero"] for x in r["base"]], [NOVO])
+
+    def test_principal_fora_do_vios_e_amarelo(self):
+        outro = "0002500-30.2012.5.07.0024"  # no acervo, mas fora da lista do VIOS
+        self.rodar(lido({}, acervo=(P1, P2, outro)), 24)
+        r = self.rodar(lido({outro: [NOVO]}, acervo=(P1, P2, outro)), 25)
+        self.assertEqual([(x["numero"], x["nivel"]) for x in r["novos"]], [(NOVO, "AMARELO")])
+        self.assertIn("🟡 AMARELO", VA.relatorio(r))
+        self.assertIn("🔴 VERMELHO · associado NOVO fora do VIOS, com o principal no VIOS (0)", VA.relatorio(r))
 
     def test_associado_que_ja_esta_no_vios_e_informacao(self):
         self.rodar(lido({}), 24)

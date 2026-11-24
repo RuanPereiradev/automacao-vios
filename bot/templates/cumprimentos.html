@@ -144,14 +144,16 @@
 
   <div class="cartao">
     <h1>Associados novos no PJe (nível 3)</h1>
-    <p class="suave">Processo que o juiz associou a um principal do VIOS depois da 1ª leitura (a 1ª leitura de cada principal vira
-      base, sem alerta). Em vermelho, os que não estão no VIOS.</p>
+    <p class="suave">Processo que o juiz associou a um processo do Acervo Geral depois da base (a 1ª rodada completa é base, sem
+      alerta). <b>Vermelho</b>: o principal é do VIOS (cliente nosso) e o associado não está no VIOS. <b>Amarelo</b>: principal e
+      associado fora da lista do VIOS (antigo, arquivado ou de outra área), para conferir sem urgência.</p>
     {% for i in p.assoc.alertas %}
-      <div class="caso{{ ' feito' if i.situacao != 'pendente' or not i.vermelho }}">
+      <div class="caso{{ ' feito' if i.situacao != 'pendente' or not (i.vermelho or i.amarelo) }}"{% if i.amarelo and i.situacao == 'pendente' %} style="border-left-color: var(--ambar)"{% endif %}>
         <div class="linha1">
           <span class="cnj">{{ i.numero }}</span>
           <button class="secundario copiar" type="button" data-copiar="{{ i.numero }}">Copiar nº</button>
-          {% if i.vermelho %}<span class="selo {{ 's-pend' if i.situacao == 'pendente' else 's-ok' }}">{{ i.situacao_texto }}</span>
+          {% if i.vermelho or i.amarelo %}<span class="selo {{ 's-ok' if i.situacao != 'pendente' else ('s-pend' if i.vermelho else 's-ja') }}">{{ i.situacao_texto }}</span>
+            {% if i.amarelo %}<span class="selo s-ja">principal fora do VIOS</span>{% endif %}
           {% else %}<span class="selo s-ja">já está no VIOS</span>{% endif %}
           {% if i.no_djen %}<span class="selo s-ja">também avisado pelo DJEN</span>{% endif %}
         </div>
@@ -161,7 +163,7 @@
           <div><span>Empresa:</span> {{ i.empresa or "-" }}{% if i.advogado %} · adv. {{ i.advogado }}{% endif %}</div>
           <div><span>Visto no PJe em:</span> {{ i.visto_br }}{% if i.dias == 0 %} · hoje{% elif i.dias and i.dias > 0 %} · há {{ i.dias }} dias{% endif %}</div>
         </div>
-        {% if i.vermelho %}{{ conferencia(i) }}{% endif %}
+        {% if i.vermelho or i.amarelo %}{{ conferencia(i) }}{% endif %}
       </div>
     {% else %}
       <p class="suave">{% if p.assoc.rodada %}Nenhum associado novo desde a base.{% else %}A leitura dos associados no PJe ainda não rodou.{% endif %}</p>

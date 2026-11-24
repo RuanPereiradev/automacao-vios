@@ -273,11 +273,11 @@ def _associados(db, conf, hoje):
             "numero": a["associado"], "orgao": a["orgao"] or "-", "principal": a["principal"],
             "principal_ci": p["ci"] if p else "", "empresa": p["empresa"] if p else "",
             "advogado": p["advogado"] if p else "", "visto_br": data_br(a["visto_em"]),
-            "dias": _dias(a["visto_em"], hoje), "vermelho": a["nivel"] == "VERMELHO",
+            "dias": _dias(a["visto_em"], hoje), "vermelho": a["nivel"] == "VERMELHO", "amarelo": a["nivel"] == "AMARELO",
             "no_vios": a["associado"] in vios, "no_djen": a["associado"] in djen, "situacao": situacao,
             "situacao_texto": SITUACOES.get(situacao, situacao), "quem": c.get("quem", ""), "obs": c.get("obs", ""),
             "quando": c.get("quando", "")})
-    out["alertas"].sort(key=lambda i: (i["situacao"] != "pendente", not i["vermelho"], i["dias"] or 0))
+    out["alertas"].sort(key=lambda i: (i["situacao"] != "pendente", not i["vermelho"], not i["amarelo"], i["dias"] or 0))
     out["pendentes"] = sum(1 for i in out["alertas"] if i["situacao"] == "pendente" and i["vermelho"])
     return out
 

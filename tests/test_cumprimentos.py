@@ -112,6 +112,7 @@ CREATE TABLE assoc_rodadas (data TEXT PRIMARY KEY, acervo INTEGER, verificados I
         db.executemany("INSERT INTO assoc_associados VALUES ('n', ?, '2ª Vara', ?, ?, ?)", [
             ("0000010-10.2026.5.07.0038", "2026-11-25", 1, "VERMELHO"),   # novo, fora do VIOS
             ("n2", "2026-11-25", 1, "INFO"),                                # novo, já no VIOS
+            ("0000012-12.2026.5.07.0038", "2026-11-25", 1, "AMARELO"),     # novo, principal fora do VIOS
             ("0000011-11.2026.5.07.0038", "2026-11-24", 0, "BASE")])        # base: não aparece
         db.execute("INSERT INTO assoc_rodadas VALUES ('2026-11-25', 358, 1, 1, 1, 0, 2, 1, 1, 0)")
         db.commit()
@@ -121,8 +122,9 @@ CREATE TABLE assoc_rodadas (data TEXT PRIMARY KEY, acervo INTEGER, verificados I
     def test_nivel3_associados_novos(self):
         self._associados()
         a = C.painel(self.pasta, hoje=date(2026, 11, 26))["assoc"]
-        self.assertEqual([(i["numero"], i["vermelho"]) for i in a["alertas"]],
-                         [("0000010-10.2026.5.07.0038", True), ("n2", False)])
+        self.assertEqual([(i["numero"], i["vermelho"], i["amarelo"]) for i in a["alertas"]],
+                         [("0000010-10.2026.5.07.0038", True, False), ("0000012-12.2026.5.07.0038", False, True),
+                          ("n2", False, False)])
         self.assertEqual((a["pendentes"], a["principais"], a["fora_acervo"]), (1, 1, 1))
         self.assertEqual(a["alertas"][0]["principal_ci"], "1")          # o principal 'n' está no VIOS (CI 1)
         self.assertEqual(a["rodada"]["data_br"], "25/11/2026")

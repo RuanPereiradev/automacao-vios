@@ -21,6 +21,10 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 - Base: a 1ª rodada COMPLETA é base de tudo; depois, associado novo de processo que já estava no acervo = alerta
   (o 1º associado de um principal também alerta). Processo que acabou de entrar no acervo vira base só dele.
 - Opções novas: `--paginas N` e `--sem-cobertura` (teste, não grava), `--simular`. Sai `--numero`/`--limite`.
+- Teste no PJe real (24/11/2026, 1ª página): 10 de 10 lidos, 16 associados, 0 erro. A maioria dos processos com
+  associação do acervo está fora da lista do VIOS (antigos/arquivados/outra área), então o nível do associado novo
+  passou a ser: VERMELHO só com o principal no VIOS; AMARELO com o principal fora do VIOS; INFO se já está no VIOS.
+  A base separa "principal no VIOS (conferir)" do resto. A aba Cumprimentos mostra o amarelo.
   As tabelas do teste anterior são recriadas sozinhas. JavaScript conferido no PJe real (filtro, páginas, janela, Esc).
 
 ### Adicionado — pje-busca: documento de contexto do vigia de cumprimentos (24/11/2026)

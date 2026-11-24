@@ -50,7 +50,8 @@ Em 24/11 são 162 empresas e 363 processos.
 - **Não** abre documento, não peticiona e não altera nada.
 - A pesquisa pelo número no campo do acervo **não** serve. Na 1ª tentativa (24/11), a lista parou de atualizar depois de 3 buscas e quase tudo saiu como "fora do acervo", por engano.
 - A 1ª rodada completa é **base**. Depois disso:
-  - associado novo de um processo que já estava no acervo, e fora do VIOS = **vermelho**;
+  - associado novo fora do VIOS, com o **principal no VIOS** (cliente nosso) = **vermelho**;
+  - associado novo fora do VIOS, com o principal também fora da lista do VIOS (antigo, arquivado, outra área) = **amarelo**;
   - associado novo que já está no VIOS = informação;
   - processo que acabou de entrar no acervo vira base só dele.
 - Achado na conferência: o CumPrSe **0001772-66.2024.5.07.0024** (DFA) **está no Acervo Geral do login** e aparece associado ao principal 0000064-49.2022.5.07.0024.
