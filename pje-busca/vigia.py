@@ -13,6 +13,7 @@
   python3 vigia.py associados                     # nível 3: "Processos associados" de cada principal no PJe (Mac)
   python3 vigia.py associados --paginas 1 --sem-cobertura          # teste: só a 1ª página do filtro, sem gravar
   python3 vigia.py associados --simular                            # tudo, sem gravar
+  python3 vigia.py fora                           # onde estão (pelo DJEN) os processos do VIOS fora do acervo do PJe
 
 Lista lida (PROJETO (1).md, seção 4.2): Processos > Área VIGIA_VIOS_AREA_ID (3 = Trabalhista) + cliente na parte
 VIGIA_VIOS_TIPO_PARTE (P = passiva) + ativos [+ VIGIA_VIOS_ADVOGADO_ID, opcional]. Só leitura (GET), pela sessão do
@@ -240,9 +241,13 @@ def cmd_associados(args):
                 pass
         parcial = paginas < VA.MAX_PAGINAS or not cobertura
         res = VA.rodar(est, lido, simular=simular or parcial)
+        fora = []
+        if not res["simulado"] and res["fora_do_acervo"]:
+            print("Classificando pelo DJEN os processos fora do acervo e dos arquivados...", flush=True)
+            fora = _classificar_fora(est)
     finally:
         est.fechar()
-    texto = VA.relatorio(res)
+    texto = VA.relatorio(res) + VA.relatorio_fora(fora)
     if not res["simulado"]:
         SAIDA.mkdir(parents=True, exist_ok=True)
         arq = SAIDA / f"associados_{res['data']}.txt"
@@ -254,9 +259,31 @@ def cmd_associados(args):
     return 0 if res["completa"] else 1
 
 
+def _classificar_fora(est):
+    import vigia_associados as VA
+    import vigia_djen as VD
+    cfg = config()
+    return VA.ligar_fora(est, lambda n: VD.consultar_numero(n, itens=100),
+                         padrao_escritorio=cfg.get("VIGIA_ESCRITORIO_ADVOGADOS") or VA.ESCRITORIO_PADRAO,
+                         pausa=float(cfg.get("VIGIA_DJEN_PAUSA_S") or 1.5), aviso=print)
+
+
+def cmd_fora(_args):
+    """Só classifica pelo DJEN (sem PJe) os processos do VIOS que a última rodada de associados deu como fora do
+    acervo e dos arquivados: 2º grau/TST, sem o escritório nas publicações (habilitação), só no nome pessoal."""
+    import vigia_associados as VA
+    est = VE.Estado(DADOS / "vigia.sqlite")
+    try:
+        lista = _classificar_fora(est)
+    finally:
+        est.fechar()
+    print(VA.relatorio_fora(lista) or "Nenhum processo fora do acervo e dos arquivados (rode antes: vigia.py associados).")
+    return 0
+
+
 def main(args):
     cmds = {"vios": cmd_vios, "status": cmd_status, "fila": cmd_fila, "djen": cmd_djen, "principais": cmd_principais,
-            "associados": cmd_associados}
+            "associados": cmd_associados, "fora": cmd_fora}
     if not args or args[0] not in cmds:
         print(__doc__)
         return 2

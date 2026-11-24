@@ -919,7 +919,7 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         """Cumprimentos de sentença e execuções contra clientes que não estão no VIOS (vigia do pje-busca, DJEN)."""
         return render_template("cumprimentos.html", p=cumprimentos.painel(pasta_vigia),
                                info=cumprimentos.status(pasta_vigia), situacoes=cumprimentos.SITUACOES,
-                               situacoes_nome=cumprimentos.SITUACOES_NOME)
+                               situacoes_nome=cumprimentos.SITUACOES_NOME, grupos_fora=cumprimentos.GRUPOS_FORA)
 
     @app.route("/cumprimentos/status")
     def cumprimentos_status():

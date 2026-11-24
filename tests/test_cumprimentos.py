@@ -116,6 +116,11 @@ CREATE TABLE assoc_rodadas (data TEXT PRIMARY KEY, acervo INTEGER, verificados I
             ("0000012-12.2026.5.07.0038", "2026-11-25", 1, "AMARELO"),     # novo, principal fora do VIOS
             ("0000011-11.2026.5.07.0038", "2026-11-24", 0, "BASE")])        # base: não aparece
         db.execute("INSERT INTO assoc_rodadas VALUES ('2026-11-25', 358, 1, 1, 1, 0, 2, 1, 1, 0)")
+        db.execute("INSERT INTO assoc_associados VALUES ('n', '0000013-13.2024.5.07.0024', '1ª Vara', '2026-11-24', 0, 'BASE')")
+        db.executescript("""CREATE TABLE assoc_fora (numero TEXT PRIMARY KEY, grupo TEXT, orgao TEXT, classe TEXT, ultima TEXT,
+  escritorio INTEGER, publicacoes INTEGER, verificado_em TEXT);
+INSERT INTO assoc_fora VALUES ('x', 'segundo_grau', '6ª Turma', 'AIRR', '2026-11-09', 1, 27, '2026-11-25');
+INSERT INTO assoc_fora VALUES ('k2', 'sem_escritorio', '1ª Vara do Trabalho de Sobral', 'ATSum', '2026-11-03', 0, 1, '2026-11-25');""")
         db.commit()
         db.close()
         (self.pasta / "saida" / "associados_2026-11-25.txt").write_text("VIGIA · ASSOCIADOS\n", encoding="utf-8")
@@ -130,6 +135,12 @@ CREATE TABLE assoc_rodadas (data TEXT PRIMARY KEY, acervo INTEGER, verificados I
         self.assertEqual(a["alertas"][0]["principal_ci"], "1")          # o principal 'n' está no VIOS (CI 1)
         self.assertEqual(a["rodada"]["data_br"], "25/11/2026")
         self.assertEqual([(x["numero"], x["ci"]) for x in a["arquivados_vios"]], [("n2", "2")])
+        # base de principal do VIOS fora do VIOS (a base 0000011... tem principal 'n', que está no VIOS)
+        self.assertIn("0000013-13.2024.5.07.0024", [x["numero"] for x in a["base_conferir"]])
+        self.assertEqual([(x["numero"], x["grupo"]) for x in a["fora"]], [("k2", "sem_escritorio"), ("x", "segundo_grau")])
+        self.assertEqual(a["fora_contagem"], {"sem_escritorio": 1, "segundo_grau": 1})
+        r = C.resumo(self.pasta)
+        self.assertEqual((r["habilitacao_pendentes"], r["base_pendentes"]), (1, 2))
         self.assertEqual(C.resumo(self.pasta)["assoc_pendentes"], 1)
         C.conferir(self.pasta, "0000010-10.2026.5.07.0038", "habilitado", "Dra. Fulana")   # conferência vale para o associado
         self.assertEqual(C.painel(self.pasta)["assoc"]["pendentes"], 0)

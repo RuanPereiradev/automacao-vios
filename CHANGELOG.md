@@ -12,6 +12,28 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Aba Cumprimentos: "Análise principal" e as análises do PJe na página (24/11/2026)
+- Topo da página `/cumprimentos` com a análise principal (cada número leva à seção): cumprimentos fora do VIOS
+  pendentes, associados novos no PJe, associados já existentes de clientes do VIOS para conferir, processos do VIOS
+  sem o escritório nas publicações (habilitação), ativos no VIOS mas arquivados no PJe e empresas sem publicação.
+- Seções novas, com a mesma conferência da equipe: "Associados já existentes de clientes do VIOS" (base do PJe) e
+  "Processos do VIOS fora do PJe do escritório", agrupados em Habilitação a conferir · Sociedade fora do processo ·
+  Sem publicação no DJEN · 2º grau/TST.
+- pje-busca: `vigia.py fora` (e o fim do `vigia.py associados`) classifica pelo DJEN os processos do VIOS fora do
+  acervo e dos arquivados (órgão da última publicação e se há advogado do escritório: `VIGIA_ESCRITORIO_ADVOGADOS`,
+  padrão "FEITOSA"); tabela `assoc_fora`. Testes em `pje-busca/tests/test_associados.py` e `tests/test_cumprimentos.py`.
+
+### Adicionado — Jarvis: IA pelo Google Gemini (24/11/2026)
+- Os créditos da Anthropic acabaram. Novo provedor `LLM_PROVEDOR=gemini` (`jarvis/nucleo/ia/gemini_ia.py`): API
+  `generateContent` pela biblioteca padrão do Python (nada a instalar), saída JSON validada pelo schema
+  (`responseJsonSchema`), chave `GEMINI_API_KEY` no cabeçalho, novas tentativas com espera em 503/429/500.
+- Modelo padrão por provedor quando `LLM_MODELO` está vazio (gemini: `gemini-3.6-flash`). Preço do Gemini na tabela
+  de custos (US$ 1,50 / 7,50 por milhão) para o teto `LLM_LIMITE_US` continuar valendo. Motivos de erro
+  "sem crédito ou cota no Gemini" e "IA sobrecarregada".
+- Conferido com a chave do escritório: `gemini-3.6-flash` e `gemini-3.5-flash` responderam no formato do schema;
+  os modelos Pro deram cota esgotada (RESOURCE_EXHAUSTED) e alguns Flash, 503 por alta demanda.
+- Testes em `jarvis/tests/test_gemini.py` (API simulada). `jarvis/README.md` e `.env.example` atualizados.
+
 ### Adicionado — pje-busca: aba "Arquivados" do PJe no nível 3 (24/11/2026)
 - A 1ª rodada completa (358 no acervo, 60 com associação, 0 erro) deu 97 processos do VIOS "fora do acervo". Conferido:
   parte está ARQUIVADA no PJe e continua ativa no VIOS (ex.: 0000029-50.2026.5.07.0024, arquivamento definitivo em

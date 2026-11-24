@@ -65,6 +65,16 @@
   th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--borda); vertical-align: top; }
   th { color: var(--suave); font-weight: 600; font-size: 13px; }
   .niveis { margin: 6px 0 0; padding-left: 20px; }
+  .analise { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+  .analise .item { display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: var(--texto);
+                   background: var(--cartao2); border: 1px solid var(--borda); border-radius: 12px; padding: 12px 14px; }
+  .analise .item:hover { border-color: var(--metal); }
+  .analise .item b { font-size: 26px; line-height: 1.1; }
+  .analise .item small { color: var(--suave); font-size: 12px; }
+  .analise .item.alerta { border-color: rgba(255, 90, 60, .6); box-shadow: 0 0 16px rgba(255, 90, 60, .15); }
+  .analise .item.alerta b { color: #ff7b5c; }
+  .analise .item.atencao { border-color: rgba(227, 167, 47, .5); }
+  .analise .item.atencao b { color: var(--ambar); }
   .principal { margin: 0 0 10px; font-size: 14px; padding: 8px 12px; border-radius: 8px; background: var(--cartao); border: 1px solid var(--borda); }
   .principal.ok { border-color: rgba(240, 196, 106, .55); }
   .principal.ok b { color: #f0c46a; }
@@ -94,22 +104,32 @@
       <code>python3 vigia.py djen</code>. Se o pje-busca estiver noutra pasta, aponte <code>PJE_BUSCA_PASTA</code> no <code>.env</code> do Sam.</p>
   </div>
 {% else %}
+  {%- set base_pend = p.assoc.base_conferir | selectattr('situacao', 'equalto', 'pendente') | list | length -%}
+  {%- set fc = p.assoc.fora_contagem -%}
+  {%- set hab_pend = p.assoc.fora | selectattr('grupo', 'equalto', 'sem_escritorio') | selectattr('situacao', 'equalto', 'pendente') | list | length -%}
   <div class="cartao">
-    <div class="numeros">
-      <div class="numero{{ ' alerta' if p.pendentes }}"><b>{{ p.pendentes }}</b>pendente(s) de conferência</div>
-      <div class="numero{{ ' alerta' if p.maior_espera and p.maior_espera > 15 }}"><b>{{ p.maior_espera if p.maior_espera is not none else "—" }}</b>dias: maior espera desde a 1ª publicação</div>
-      <div class="numero"><b>{{ p.vermelhos | length }}</b>cumprimento(s)/execução(ões) fora do VIOS</div>
-      <div class="numero"><b>{{ p.empresas }}</b>empresas vigiadas</div>
-      <div class="numero{{ ' alerta' if p.assoc.pendentes }}"><b>{{ p.assoc.pendentes }}</b>associado(s) novo(s) no PJe fora do VIOS</div>
-      <div class="numero{{ ' alerta' if p.sem_pub_pendentes }}"><b>{{ p.sem_pub_pendentes }}</b>empresa(s) sem publicação para conferir o nome</div>
-      <div class="numero"><b>{{ p.rodada.data_br if p.rodada else "—" }}</b>última verificação no DJEN
-        {% if p.rodada and p.rodada.dias and p.rodada.dias > 1 %}<small class="aviso">há {{ p.rodada.dias }} dias</small>{% endif %}</div>
+    <h1>Análise principal</h1>
+    <div class="analise">
+      <a class="item{{ ' alerta' if p.pendentes }}" href="#djen"><b>{{ p.pendentes }}</b><span>cumprimento(s) de sentença/execução fora do VIOS pendente(s)</span>
+        <small>{{ p.vermelhos | length }} no total{% if p.maior_espera is not none %} · maior espera {{ p.maior_espera }} dias{% endif %}</small></a>
+      <a class="item{{ ' alerta' if p.assoc.pendentes }}" href="#associados"><b>{{ p.assoc.pendentes }}</b><span>associado(s) novo(s) no PJe, cliente do VIOS</span>
+        <small>nível 3 · última leitura {{ p.assoc.rodada.data_br if p.assoc.rodada else "—" }}</small></a>
+      <a class="item{{ ' atencao' if base_pend }}" href="#base"><b>{{ base_pend }}</b><span>associado(s) já existente(s) de clientes do VIOS para conferir</span>
+        <small>{{ p.assoc.base_conferir | length }} na base do PJe</small></a>
+      <a class="item{{ ' alerta' if hab_pend }}" href="#fora"><b>{{ hab_pend }}</b><span>processo(s) do VIOS sem o escritório nas publicações: conferir habilitação</span>
+        <small>{{ fc.get('so_pessoal', 0) }} sem a sociedade · {{ fc.get('segundo_grau', 0) }} em 2º grau/TST</small></a>
+      <a class="item" href="#arquivados"><b>{{ p.assoc.arquivados_vios | length }}</b><span>ativo(s) no VIOS, mas arquivado(s) no PJe: atualizar o VIOS</span>
+        <small>não é alerta</small></a>
+      <a class="item{{ ' atencao' if p.sem_pub_pendentes }}" href="#empresas"><b>{{ p.sem_pub_pendentes }}</b><span>empresa(s) sem publicação no DJEN: conferir o nome</span>
+        <small>{{ p.empresas }} empresas vigiadas</small></a>
     </div>
-    <p class="suave">Processos do TRT7 publicados no DJEN com o cliente no polo passivo que <b>não</b> estão na lista do VIOS.
-      Confira cada um no PJe (o escritório está habilitado? há bloqueio?) e registre aqui o que foi feito.</p>
+    <p class="suave" style="margin: 10px 0 0">Última verificação no DJEN: <b>{{ p.rodada.data_br if p.rodada else "—" }}</b>
+      {% if p.rodada and p.rodada.dias and p.rodada.dias > 1 %}<span class="aviso">(há {{ p.rodada.dias }} dias)</span>{% endif %}
+      · associados no PJe: <b>{{ p.assoc.rodada.data_br if p.assoc.rodada else "—" }}</b>.
+      Confira cada item no PJe e registre aqui o que foi feito.</p>
   </div>
 
-  <div class="cartao">
+  <div class="cartao" id="djen">
     <h1>Cumprimento de sentença / execução fora do VIOS</h1>
     {% for i in p.vermelhos %}
       <div class="caso{{ ' feito' if i.situacao != 'pendente' }}">
@@ -142,7 +162,7 @@
     {% endfor %}
   </div>
 
-  <div class="cartao">
+  <div class="cartao" id="associados">
     <h1>Associados novos no PJe (nível 3)</h1>
     <p class="suave">Processo que o juiz associou a um processo do Acervo Geral depois da base (a 1ª rodada completa é base, sem
       alerta). <b>Vermelho</b>: o principal é do VIOS (cliente nosso) e o associado não está no VIOS. <b>Amarelo</b>: principal e
@@ -168,6 +188,62 @@
     {% else %}
       <p class="suave">{% if p.assoc.rodada %}Nenhum associado novo desde a base.{% else %}A leitura dos associados no PJe ainda não rodou.{% endif %}</p>
     {% endfor %}
+  </div>
+
+  <div class="cartao" id="base">
+    <h1>Associados já existentes de clientes do VIOS: conferir ({{ p.assoc.base_conferir | length }})</h1>
+    <p class="suave">Na 1ª leitura do PJe (base), estes processos já estavam associados a um principal do VIOS e não estão no VIOS.
+      Não é alerta novo: conferir uma vez o que são (cumprimento, ação anterior do mesmo reclamante, acordo...).</p>
+    {% for i in p.assoc.base_conferir %}
+      <div class="caso{{ ' feito' if i.situacao != 'pendente' }}" style="{{ '' if i.situacao != 'pendente' else 'border-left-color: var(--ambar)' }}">
+        <div class="linha1">
+          <span class="cnj">{{ i.numero }}</span>
+          <button class="secundario copiar" type="button" data-copiar="{{ i.numero }}">Copiar nº</button>
+          <span class="selo {{ 's-ok' if i.situacao != 'pendente' else 's-ja' }}">{{ i.situacao_texto }}</span>
+          {% if i.no_djen %}<span class="selo s-ja">também no DJEN</span>{% endif %}
+        </div>
+        <div class="dados">
+          <div><span>Vara:</span> {{ i.orgao }}</div>
+          <div><span>Principal:</span> {{ i.principal }} (CI {{ i.principal_ci }})</div>
+          <div><span>Empresa:</span> {{ i.empresa }}</div>
+          <div><span>Advogado:</span> {{ i.advogado or "-" }}</div>
+        </div>
+        {{ conferencia(i) }}
+      </div>
+    {% else %}
+      <p class="suave">{% if p.assoc.rodada %}Nenhum.{% else %}A leitura dos associados no PJe ainda não rodou.{% endif %}</p>
+    {% endfor %}
+  </div>
+
+  <div class="cartao" id="fora">
+    <h1>Processos do VIOS fora do PJe do escritório ({{ p.assoc.fora | length }})</h1>
+    <p class="suave">Ativos no VIOS, mas fora do Acervo Geral e dos Arquivados do login do PJe. Classificados pelo DJEN
+      (última publicação e advogados). Sem a proteção do nível 3: só o DJEN acompanha.</p>
+    {% for g, rotulo in grupos_fora.items() %}
+      {% set itens = p.assoc.fora | selectattr('grupo', 'equalto', g) | list %}
+      {% if itens %}
+        <h2 style="margin-top: 14px">{{ rotulo[0] }} ({{ itens | length }})</h2>
+        <p class="suave" style="margin-top: 0">{{ rotulo[1] }}</p>
+        {% for i in itens %}
+          <div class="caso{{ ' feito' if i.situacao != 'pendente' or g == 'segundo_grau' }}"
+               style="{{ 'border-left-color: var(--ambar)' if g in ('so_pessoal', 'sem_publicacao') and i.situacao == 'pendente' else '' }}">
+            <div class="linha1">
+              <span class="cnj">{{ i.numero }}</span>
+              <button class="secundario copiar" type="button" data-copiar="{{ i.numero }}">Copiar nº</button>
+              {% if g != 'segundo_grau' %}<span class="selo {{ 's-ok' if i.situacao != 'pendente' else ('s-pend' if g == 'sem_escritorio' else 's-ja') }}">{{ i.situacao_texto }}</span>{% endif %}
+            </div>
+            <div class="dados">
+              <div><span>Onde:</span> {{ i.orgao }}</div>
+              <div><span>Classe:</span> {{ i.classe }}</div>
+              <div><span>Empresa:</span> {{ i.empresa or "-" }}{% if i.ci %} (CI {{ i.ci }}){% endif %}</div>
+              <div><span>Última publicação:</span> {{ i.ultima_br }}{% if i.advogado %} · adv. VIOS {{ i.advogado }}{% endif %}</div>
+            </div>
+            {% if g != 'segundo_grau' %}{{ conferencia(i) }}{% endif %}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endfor %}
+    {% if not p.assoc.fora %}<p class="suave">Sem classificação ainda: rode <code>python3 vigia.py fora</code> (ou a próxima leitura dos associados).</p>{% endif %}
   </div>
 
   <div class="cartao">
@@ -213,7 +289,7 @@
   </div>
 
   {% if p.assoc.arquivados_vios %}
-  <div class="cartao">
+  <div class="cartao" id="arquivados">
     <details>
       <summary>Ativos no VIOS, mas arquivados no PJe ({{ p.assoc.arquivados_vios | length }}): atualizar o VIOS</summary>
       <p class="suave">Processos que estão na aba "Arquivados" do PJe e continuam ativos no VIOS (ex.: acordo cumprido e arquivamento
@@ -229,7 +305,7 @@
   </div>
   {% endif %}
 
-  <div class="cartao">
+  <div class="cartao" id="empresas">
     <h1>Empresas sem nenhuma publicação no DJEN ({{ p.sem_publicacao | length }})</h1>
     <p class="suave">A busca do DJEN é pelo nome. Se a empresa está cadastrada no tribunal com outro nome, o robô não vê os processos
       dela. Para conferir: abra no PJe um processo da empresa, copie o nome do <b>polo passivo</b> exatamente como está e salve como

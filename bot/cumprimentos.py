@@ -51,6 +51,16 @@ SITUACOES_NOME = {
     "nome_corrigido": "Nome corrigido: o robô passa a buscar também por ele",
     "nome_certo": "Nome está certo (sem processo no TRT7)",
 }
+# processos do VIOS fora do acervo e dos arquivados do PJe, classificados pelo DJEN (vigia_associados.GRUPOS_FORA)
+GRUPOS_FORA = {
+    "sem_escritorio": ("Habilitação a conferir", "1º grau, sem advogado do escritório nas publicações do DJEN: "
+                       "conferir se o escritório está habilitado no PJe (senão as intimações não chegam pelo painel)."),
+    "so_pessoal": ("Sociedade fora do processo", "1º grau, com advogado do escritório nas publicações, mas fora do "
+                   "acervo da sociedade: incluir a sociedade no processo."),
+    "sem_publicacao": ("Sem publicação no DJEN", "Conferir no PJe onde está o processo."),
+    "segundo_grau": ("2º grau / TST", "Recurso, TST ou ação originária do TRT: o acervo do 1º grau não mostra; "
+                     "o DJEN acompanha."),
+}
 NUMERO_CNJ = re.compile(r"^\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}$")
 DATA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # só o necessário: nenhuma variável do Ultron (senha da página, chaves) vai para o vigia
@@ -250,7 +260,8 @@ def _item(r, conf, hoje, principais=None):
 
 def _associados(db, conf, hoje):
     """Nível 3: associados novos (depois da base) e a última rodada no PJe."""
-    out = {"rodada": None, "alertas": [], "pendentes": 0, "principais": 0, "fora_acervo": 0, "arquivados_vios": []}
+    out = {"rodada": None, "alertas": [], "pendentes": 0, "principais": 0, "fora_acervo": 0, "arquivados_vios": [],
+           "base_conferir": [], "fora": [], "fora_contagem": {}}
     if not _tabela(db, "assoc_associados"):
         return out
     r = db.execute("SELECT * FROM assoc_rodadas ORDER BY data DESC LIMIT 1").fetchone() \
@@ -286,6 +297,36 @@ def _associados(db, conf, hoje):
             "situacao_texto": SITUACOES.get(situacao, situacao), "quem": c.get("quem", ""), "obs": c.get("obs", ""),
             "quando": c.get("quando", "")})
     out["alertas"].sort(key=lambda i: (i["situacao"] != "pendente", not i["vermelho"], not i["amarelo"], i["dias"] or 0))
+    # base: associados que já existiam, de principais do VIOS, que não estão no VIOS (conferir uma vez)
+    for a in db.execute("SELECT * FROM assoc_associados WHERE novo = 0 ORDER BY principal, associado"):
+        if a["principal"] not in vios or a["associado"] in vios:
+            continue
+        c = conf.get(a["associado"]) or {}
+        situacao = c.get("situacao") or "pendente"
+        p = vios[a["principal"]]
+        out["base_conferir"].append({
+            "numero": a["associado"], "orgao": a["orgao"] or "-", "principal": a["principal"], "principal_ci": p["ci"],
+            "empresa": p["empresa"], "advogado": p["advogado"], "no_djen": a["associado"] in djen,
+            "situacao": situacao, "situacao_texto": SITUACOES.get(situacao, situacao), "quem": c.get("quem", ""),
+            "obs": c.get("obs", ""), "quando": c.get("quando", "")})
+    out["base_conferir"].sort(key=lambda i: (i["situacao"] != "pendente", i["principal"]))
+    # processos do VIOS fora do acervo e dos arquivados, classificados pelo DJEN (vigia.py fora / associados)
+    if _tabela(db, "assoc_fora"):
+        ordem = list(GRUPOS_FORA)
+        for f in db.execute("SELECT * FROM assoc_fora"):
+            c = conf.get(f["numero"]) or {}
+            situacao = c.get("situacao") or "pendente"
+            p = vios.get(f["numero"]) or {}
+            out["fora"].append({
+                "numero": f["numero"], "grupo": f["grupo"], "grupo_titulo": GRUPOS_FORA.get(f["grupo"], (f["grupo"], ""))[0],
+                "orgao": f["orgao"] or "-", "classe": (f["classe"] or "-").upper(), "ultima_br": data_br(f["ultima"]),
+                "ci": p["ci"] if p else "", "empresa": p["empresa"] if p else "", "advogado": p["advogado"] if p else "",
+                "situacao": situacao, "situacao_texto": SITUACOES.get(situacao, situacao), "quem": c.get("quem", ""),
+                "obs": c.get("obs", ""), "quando": c.get("quando", "")})
+        out["fora"].sort(key=lambda i: (ordem.index(i["grupo"]) if i["grupo"] in ordem else 9,
+                                        i["situacao"] != "pendente", i["numero"]))
+        for i in out["fora"]:
+            out["fora_contagem"][i["grupo"]] = out["fora_contagem"].get(i["grupo"], 0) + 1
     out["pendentes"] = sum(1 for i in out["alertas"] if i["situacao"] == "pendente" and i["vermelho"])
     return out
 
@@ -296,7 +337,8 @@ def painel(pasta, hoje=None):
     info = {"configurado": configurado(pasta), "rodada": None, "vermelhos": [], "acoes": [], "outros": 0,
             "empresas": 0, "processos_vios": 0, "pendentes": 0, "maior_espera": None, "relatorios": [],
             "sem_publicacao": [], "sem_pub_pendentes": 0,
-            "assoc": {"rodada": None, "alertas": [], "pendentes": 0, "principais": 0, "fora_acervo": 0}}
+            "assoc": {"rodada": None, "alertas": [], "pendentes": 0, "principais": 0, "fora_acervo": 0,
+                      "arquivados_vios": [], "base_conferir": [], "fora": [], "fora_contagem": {}}}
     if not info["configurado"]:
         return info
     conf = conferencias(pasta)
@@ -343,9 +385,11 @@ def resumo(pasta):
     except sqlite3.Error:
         log.exception("Não consegui ler o banco do vigia")
         return {"configurado": False}
+    pend = lambda lst: sum(1 for i in lst if i["situacao"] == "pendente")  # noqa: E731
     return {"configurado": p["configurado"], "pendentes": p["pendentes"], "total": len(p["vermelhos"]),
             "ultima": p["rodada"]["data_br"] if p["rodada"] else None, "sem_pub_pendentes": p["sem_pub_pendentes"],
-            "assoc_pendentes": p["assoc"]["pendentes"],
+            "assoc_pendentes": p["assoc"]["pendentes"], "base_pendentes": pend(p["assoc"]["base_conferir"]),
+            "habilitacao_pendentes": pend([i for i in p["assoc"]["fora"] if i["grupo"] == "sem_escritorio"]),
             "assoc_ultima": p["assoc"]["rodada"]["data_br"] if p["assoc"]["rodada"] else None}
 
 
@@ -366,7 +410,8 @@ def conferir(pasta, numero, situacao, quem="", obs="", agora=None):
         existe = (_tabela(db, "djen_processos") and db.execute(
             "SELECT 1 FROM djen_processos WHERE numero = ?", (numero,)).fetchone()) or \
             (_tabela(db, "assoc_associados") and db.execute(
-                "SELECT 1 FROM assoc_associados WHERE associado = ?", (numero,)).fetchone())
+                "SELECT 1 FROM assoc_associados WHERE associado = ?", (numero,)).fetchone()) or \
+            (_tabela(db, "assoc_fora") and db.execute("SELECT 1 FROM assoc_fora WHERE numero = ?", (numero,)).fetchone())
     finally:
         db.close()
     if not existe:

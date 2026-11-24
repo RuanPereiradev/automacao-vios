@@ -133,6 +133,39 @@ class Rodada(unittest.TestCase):
         self.assertTrue(ea.eh_base())
 
 
+class Fora(unittest.TestCase):
+    def pub(self, orgao, data, adv=""):
+        return {"nomeOrgao": orgao, "data_disponibilizacao": data, "nomeClasse": "AçãO TRABALHISTA",
+                "destinatarioadvogados": [{"advogado": {"nome": adv, "numero_oab": "1"}}] if adv else []}
+
+    def test_classificar(self):
+        c = VA.classificar_fora
+        self.assertEqual(c("0000064-49.2022.5.07.0024", [self.pub("OJ de Análise de Recurso", "2024-06-07")])["grupo"],
+                         "segundo_grau")
+        self.assertEqual(c("0001829-88.2026.5.07.0000", [])["grupo"], "segundo_grau")   # originária do TRT
+        self.assertEqual(c("0001850-89.2026.5.07.0024", [self.pub("1ª Vara do Trabalho de Sobral", "2026-11-03",
+                                                                   "OUTRO ADVOGADO")])["grupo"], "sem_escritorio")
+        r = c("0000089-42.2025.5.07.0029", [self.pub("Única Vara do Trabalho de Tianguá", "2026-11-09",
+                                                     "KARLOS RONEELY ROCHA FEITOSA")])
+        self.assertEqual((r["grupo"], r["escritorio"], r["ultima"]), ("so_pessoal", True, "2026-11-09"))
+        self.assertEqual(c("0004900-86.1990.5.07.0024", [])["grupo"], "sem_publicacao")
+        self.assertEqual(c("x.5.07.0024", [self.pub("1ª Vara", "2026-01-01", "JOHNYS")], r"JOHNYS")["grupo"],
+                         "so_pessoal")
+
+    def test_ligar_fora_grava_e_relatorio(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        est = VE.Estado(Path(tmp.name) / "v.sqlite")
+        self.addCleanup(est.fechar)
+        est.aplicar(linhas_vios(), True, hoje=date(2026, 11, 1))
+        VA.rodar(est, lido({P1: [CPS]}), hoje=date(2026, 11, 24))     # FORA fica fora do acervo
+        r = VA.ligar_fora(est, lambda n: [self.pub("1ª Vara do Trabalho de Sobral", "2026-11-03")], pausa=0,
+                          hoje=date(2026, 11, 24), aviso=lambda *_: None)
+        self.assertEqual([(x["numero"], x["grupo"]) for x in r], [(FORA, "sem_escritorio")])
+        self.assertEqual(est.db.execute("SELECT grupo FROM assoc_fora").fetchone()[0], "sem_escritorio")
+        self.assertIn("conferir a habilitação", VA.relatorio_fora(r))
+
+
 class PjeFalso:
     """Imita o Acervo Geral: filtro "Processos com Associação", páginas de 10, janela de associados de 5 em 5."""
 

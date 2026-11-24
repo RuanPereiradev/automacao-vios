@@ -24,6 +24,7 @@ Alertas:
     INFO      o associado já está no VIOS.
 """
 import json
+import re
 import time
 from datetime import date
 
@@ -43,6 +44,9 @@ CREATE TABLE IF NOT EXISTS assoc_acervo (
 CREATE TABLE IF NOT EXISTS assoc_rodadas (
   data TEXT PRIMARY KEY, acervo INTEGER, verificados INTEGER, com_associados INTEGER, fora_acervo INTEGER,
   erros INTEGER, novos INTEGER, vermelhos INTEGER, completa INTEGER, base INTEGER, arquivados INTEGER);
+CREATE TABLE IF NOT EXISTS assoc_fora (
+  numero TEXT PRIMARY KEY, grupo TEXT, orgao TEXT, classe TEXT, ultima TEXT, escritorio INTEGER, publicacoes INTEGER,
+  verificado_em TEXT);
 CREATE TABLE IF NOT EXISTS assoc_arquivados (
   numero TEXT PRIMARY KEY, primeira_vez TEXT, ultima_vez TEXT);
 """
@@ -478,6 +482,72 @@ def rodar(estado, lido, hoje=None, simular=False):
     if not simular:
         ea.fechar_rodada(hoje, res)
     return res
+
+
+# ---------------- processos do VIOS fora do acervo e dos arquivados: onde estão (pelo DJEN) ----------------
+GRUPOS_FORA = {
+    "sem_escritorio": "1º grau, sem advogado do escritório nas publicações: conferir a habilitação no PJe",
+    "so_pessoal": "1º grau, com advogado do escritório, mas fora do acervo da sociedade: incluir a sociedade",
+    "segundo_grau": "2º grau, TST ou ação originária do TRT (o acervo do 1º grau não mostra; o DJEN acompanha)",
+    "sem_publicacao": "Sem publicação no DJEN: conferir no PJe",
+}
+ESCRITORIO_PADRAO = r"FEITOSA"  # advogados do escritório nas publicações do DJEN (VIGIA_ESCRITORIO_ADVOGADOS)
+
+
+def classificar_fora(numero, itens, padrao_escritorio=ESCRITORIO_PADRAO):
+    """Publicações do DJEN de um processo -> {grupo, orgao, classe, ultima, escritorio, publicacoes}."""
+    itens = sorted(itens or [], key=lambda i: i.get("data_disponibilizacao") or "", reverse=True)
+    rx = re.compile(padrao_escritorio or ESCRITORIO_PADRAO, re.I)
+    escritorio = any(rx.search((a.get("advogado") or {}).get("nome") or "") or
+                     rx.search(str((a.get("advogado") or {}).get("numero_oab") or ""))
+                     for i in itens for a in (i.get("destinatarioadvogados") or []))
+    u = itens[0] if itens else {}
+    orgao = (u.get("nomeOrgao") or "").strip()
+    if numero.endswith(".5.07.0000") or (orgao and not re.search(r"\bVara\b", orgao, re.I)):
+        grupo = "segundo_grau"
+    elif not itens:
+        grupo = "sem_publicacao"
+    else:
+        grupo = "so_pessoal" if escritorio else "sem_escritorio"
+    return {"numero": numero, "grupo": grupo, "orgao": orgao, "classe": (u.get("nomeClasse") or "").strip(),
+            "ultima": (u.get("data_disponibilizacao") or "")[:10], "escritorio": escritorio, "publicacoes": len(itens)}
+
+
+def ligar_fora(estado, consulta, hoje=None, padrao_escritorio=ESCRITORIO_PADRAO, pausa=1.5, aviso=print):
+    """Classifica pelo DJEN os processos do VIOS que a última rodada deu como fora do acervo e dos arquivados."""
+    hoje = (hoje or date.today()).isoformat()
+    ea = EstadoAssoc(estado)
+    numeros = [r[0] for r in ea.db.execute("SELECT numero FROM assoc_principais WHERE situacao = 'fora_do_acervo' "
+                                           "ORDER BY numero")]
+    saida = []
+    for n in numeros:
+        try:
+            r = classificar_fora(n, consulta(n), padrao_escritorio)
+        except Exception as erro:  # noqa: BLE001
+            aviso(f"  {n}: erro no DJEN ({erro})")
+            continue
+        saida.append(r)
+        time.sleep(pausa)
+    ea.db.execute("DELETE FROM assoc_fora")
+    for r in saida:
+        ea.db.execute("INSERT INTO assoc_fora VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                      (r["numero"], r["grupo"], r["orgao"], r["classe"], r["ultima"], int(r["escritorio"]),
+                       r["publicacoes"], hoje))
+    ea.db.commit()
+    return saida
+
+
+def relatorio_fora(lista):
+    if not lista:
+        return ""
+    L = [f"ONDE ESTÃO os processos do VIOS fora do acervo e dos arquivados ({len(lista)}), pelo DJEN:"]
+    for g, texto in GRUPOS_FORA.items():
+        grupo = [r for r in lista if r["grupo"] == g]
+        if grupo:
+            L.append(f"  {texto} ({len(grupo)}):")
+            L += [f"    - {r['numero']} · {r['orgao'] or '-'} · {r['classe'] or '-'} · última publicação {r['ultima'] or '-'}"
+                  for r in grupo]
+    return "\n".join(L) + "\n"
 
 
 def relatorio(res):
