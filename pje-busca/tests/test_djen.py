@@ -145,6 +145,96 @@ class Rodada(unittest.TestCase):
         r = VD.rodar(self.est, consulta_numero=lambda n: [], hoje=date(2026, 8, 1), consulta=lambda n: [], pausa=0, simular=True)
         self.assertEqual(r["sem_publicacao"], ["MM COMERCIO DE CALCADOS LTDA"])
 
+    def test_nome_conferido_pela_equipe_vira_busca_e_auditoria(self):
+        chave = "MM COMERCIO DE CALCADOS LTDA (MATRIZ)"
+        VD.rodar(self.est, consulta_numero=lambda n: [], hoje=date(2026, 7, 2), consulta=lambda n: [], pausa=0)
+        linha = self.est.db.execute("SELECT data, publicacoes, nomes FROM djen_consultas WHERE empresa = ?", (chave,)).fetchone()
+        self.assertEqual((linha[0], linha[1]), ("2026-07-02", 0))           # sem publicação fica registrado
+        correto = "MM CALCADOS EIRELI"
+        arq = Path(self.tmp.name) / "nomes_conferidos.json"
+        arq.write_text('{"%s": {"situacao": "nome_corrigido", "nomes": ["  MM CALCADOS   EIRELI "]}}' % chave, encoding="utf-8")
+        manuais = VD.nomes_conferidos(arq)
+        self.assertEqual(manuais, {chave: [correto]})
+        consultas = []
+
+        def busca(nome):
+            consultas.append(nome)
+            return [PUB[2]] if nome == correto else []
+        r = VD.rodar(self.est, consulta_numero=lambda n: [], hoje=date(2026, 7, 3), consulta=busca, pausa=0, manuais=manuais)
+        self.assertIn(correto, consultas)
+        self.assertEqual(r["vermelhos"], [])                                 # 1ª busca com o nome novo: auditoria
+        self.assertEqual([x["numero"] for x in r["fora_do_vios"]], ["0001368-02.2026.5.07.0038"])
+        self.assertIn("NOMES CONFERIDOS pela equipe", VD.relatorio(r))
+        self.assertEqual(self.est.db.execute("SELECT publicacoes FROM djen_consultas WHERE empresa = ?", (chave,)).fetchone()[0], 1)
+        r2 = VD.rodar(self.est, consulta_numero=lambda n: [], hoje=date(2026, 7, 4), consulta=lambda n: [NOVA] if n == correto else [],
+                      pausa=0, manuais=manuais)
+        self.assertEqual([x["numero"] for x in r2["amarelos"]], ["0009999-11.2026.5.07.0038"])  # depois, alerta normal
+
+    def test_nomes_conferidos_arquivo_ruim(self):
+        arq = Path(self.tmp.name) / "x.json"
+        self.assertEqual(VD.nomes_conferidos(arq), {})
+        arq.write_text("não é json", encoding="utf-8")
+        self.assertEqual(VD.nomes_conferidos(arq), {})
+        arq.write_text('{"A": {"nomes": ["ab", "OK NOME"]}, "B": {"situacao": "sem_processo"}}', encoding="utf-8")
+        self.assertEqual(VD.nomes_conferidos(arq), {"A": ["OK NOME"]})
+
+
+# publicações reais (resumidas) dos cumprimentos da DFA no DJEN, conferidas em 24/11/2026
+CPS_CITA = [{"texto": "CumPrSe 0001772-66.2024.5.07.0024 REQUERENTE: ROBSON RODRIGUES TEIXEIRA ... autos principais "
+                      "0000064-49.2022.5.07.0024",
+             "destinatarios": [{"nome": "ROBSON RODRIGUES TEIXEIRA", "polo": "A"},
+                               {"nome": "DFA REPRESENTACOES LTDA - EPP", "polo": "P"}]}]
+CPS_SEM_NUMERO = [{"texto": "CumPrSe 0001226-95.2026.5.07.0038 REQUERENTE: ANTONIO KELSON FERREIRA CARVALHO",
+                   "destinatarios": [{"nome": "ANTONIO KELSON FERREIRA CARVALHO", "polo": "A"},
+                                     {"nome": "DFA DISTRIBUICAO E LOGISTICA LTDA", "polo": "P"}]}]
+VIOS = [{"numero": "0000064-49.2022.5.07.0024", "ci": "21045", "empresa": "DFA REPRESENTACOES LTDA (MATRIZ)",
+         "autor": "ROBSON RODRIGUES TEIXEIRA", "advogado": "ADV 1"},
+        {"numero": "0000743-70.2023.5.07.0038", "ci": "21042", "empresa": "DFA DISTRIBUICAO E LOGISTICA LTDA (MATRIZ)",
+         "autor": "Autor: ANTONIO KELSON FERREIRA CARVALHO", "advogado": "ADV 1"},
+        {"numero": "0009000-10.2024.5.07.0024", "ci": "9", "empresa": "OUTRA", "autor": "ANTONIO KELSON FERREIRA CARVALHO",
+         "advogado": ""}]
+
+
+class Principal(unittest.TestCase):
+    def test_citado_na_publicacao(self):
+        r = VD.achar_principal("0001772-66.2024.5.07.0024", CPS_CITA, VIOS)
+        self.assertEqual((r["principal"], r["ci"]), ("0000064-49.2022.5.07.0024", "21045"))
+        self.assertEqual(r["como"], "citado na publicação e mesmo exequente")
+
+    def test_mesmo_exequente_prefere_mesma_vara(self):
+        r = VD.achar_principal("0001226-95.2026.5.07.0038", CPS_SEM_NUMERO, VIOS)
+        self.assertEqual((r["principal"], r["ci"]), ("0000743-70.2023.5.07.0038", "21042"))
+        self.assertTrue(r["como"].startswith("mesmo exequente e mesma vara"))
+        self.assertIn("0009000-10.2024.5.07.0024", r["como"])        # avisa que há outro com o mesmo exequente
+        self.assertEqual(r["exequente"], "ANTONIO KELSON FERREIRA CARVALHO")
+
+    def test_nao_achado(self):
+        r = VD.achar_principal("0001226-95.2026.5.07.0038", CPS_SEM_NUMERO, VIOS[:1])
+        self.assertEqual((r["principal"], r["ci"]), (None, ""))
+        r = VD.achar_principal("0001772-66.2024.5.07.0024", CPS_CITA, [])
+        self.assertEqual(r["principal"], "0000064-49.2022.5.07.0024")
+        self.assertIn("não está no VIOS", r["como"])
+
+    def test_rodada_liga_o_principal_do_cumprimento(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        est = VE.Estado(Path(tmp.name) / "v.sqlite")
+        self.addCleanup(est.fechar)
+        principal = {"ci": "27466", "numero": "CNJ: 0002754-04.2025.5.07.0038",
+                     "cliente": "MM COMERCIO DE CALCADOS LTDA (MATRIZ)", "ativa": "Autor: ALINE CRISTINA MACEDO VIEIRA"}
+        est.aplicar([principal], True, hoje=date(2026, 7, 1))
+        VD.rodar(est, consulta_numero=lambda n: [], hoje=date(2026, 7, 2), consulta=lambda n: [PUB[0], PUB[3]], pausa=0)
+        pubs_cps = [{"texto": "CumPrSe 0001368-02.2026.5.07.0038 REQUERENTE: ALINE CRISTINA MACEDO VIEIRA",
+                     "destinatarios": [{"nome": "ALINE CRISTINA MACEDO VIEIRA", "polo": "A"}]}]
+        r = VD.rodar(est, consulta_numero=lambda n: [], hoje=date(2026, 7, 31), consulta=lambda n: PUB, pausa=0,
+                     consulta_principal=lambda n: pubs_cps if n == "0001368-02.2026.5.07.0038" else [])
+        self.assertEqual([(x["numero"], x["principal"], x["ci"]) for x in r["principais"]],
+                         [("0001368-02.2026.5.07.0038", "0002754-04.2025.5.07.0038", "27466")])
+        self.assertIn("NO VIOS (CI 27466", VD.relatorio(r))
+        r2 = VD.rodar(est, consulta_numero=lambda n: [], hoje=date(2026, 8, 1), consulta=lambda n: PUB, pausa=0,
+                      consulta_principal=lambda n: self.fail("não deveria consultar de novo"))
+        self.assertEqual(r2["principais"], [])                        # já achado: não consulta de novo
+
 
 if __name__ == "__main__":
     unittest.main()

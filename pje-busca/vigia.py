@@ -9,6 +9,7 @@
   python3 vigia.py djen --simular                 # consulta e classifica, sem gravar
   python3 vigia.py djen --empresa "MM COMERCIO"   # só as empresas cujo nome contém o texto (teste)
   python3 vigia.py djen --refazer-base            # apaga só o estado do DJEN e refaz a base (auditoria completa)
+  python3 vigia.py principais                     # só acha o processo principal (no VIOS) de cada cumprimento
 
 Lista lida (PROJETO (1).md, seção 4.2): Processos > Área VIGIA_VIOS_AREA_ID (3 = Trabalhista) + cliente na parte
 VIGIA_VIOS_TIPO_PARTE (P = passiva) + ativos [+ VIGIA_VIOS_ADVOGADO_ID, opcional]. Só leitura (GET), pela sessão do
@@ -155,7 +156,9 @@ def cmd_djen(args):
         tribunal_sigla = cfg.get("VIGIA_DJEN_TRIBUNAL") or "TRT7"
         res = VD.rodar(est, so=so, simular=simular, pausa=pausa,
                        consulta=lambda nome: VD.consultar(nome, tribunal_sigla, pausa=pausa),
-                       consulta_numero=VD.consultar_numero)
+                       consulta_numero=VD.consultar_numero,
+                       manuais=VD.nomes_conferidos(DADOS / "nomes_conferidos.json"),
+                       consulta_principal=lambda n: VD.consultar_numero(n, itens=100))
         texto = VD.relatorio(res)
         if not simular and not so:
             SAIDA.mkdir(parents=True, exist_ok=True)
@@ -171,8 +174,28 @@ def cmd_djen(args):
     return 0
 
 
+def cmd_principais(_args):
+    """Só a ligação cumprimento -> processo principal no VIOS (rápido: 1 consulta ao DJEN por cumprimento)."""
+    import vigia_djen as VD
+    cfg = config()
+    est = VE.Estado(DADOS / "vigia.sqlite")
+    try:
+        ed = VD.EstadoDjen(est)
+        res = VD.ligar_principais(ed, date.today().isoformat(), lambda n: VD.consultar_numero(n, itens=100),
+                                  pausa=float(cfg.get("VIGIA_DJEN_PAUSA_S") or 1.5))
+    finally:
+        est.fechar()
+    for r in res:
+        if r["ci"]:
+            print(f"{r['numero']} -> principal {r['principal']} · NO VIOS (CI {r['ci']}, {r['empresa']}) · {r['como']}")
+        else:
+            print(f"{r['numero']} -> principal NÃO achado no VIOS · {r['como']}")
+    print(f"{len(res)} cumprimento(s) verificado(s)")
+    return 0
+
+
 def main(args):
-    cmds = {"vios": cmd_vios, "status": cmd_status, "fila": cmd_fila, "djen": cmd_djen}
+    cmds = {"vios": cmd_vios, "status": cmd_status, "fila": cmd_fila, "djen": cmd_djen, "principais": cmd_principais}
     if not args or args[0] not in cmds:
         print(__doc__)
         return 2

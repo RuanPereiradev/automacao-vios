@@ -12,6 +12,37 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Vila dos Bots: aba Cumprimentos de sentença (24/11/2026)
+- Cartão **Cumprimentos** na entrada e página `/cumprimentos` (`bot/cumprimentos.py`, `bot/templates/cumprimentos.html`):
+  cumprimentos de sentença e execuções contra clientes que não estão no VIOS, lidos do banco do vigia do pje-busca
+  (DJEN), com pendentes em cima e há quantos dias saiu a 1ª publicação.
+- Conferência da equipe em cada processo (situação, quem conferiu, observação, com histórico) em
+  `pje-busca/dados/cumprimentos_conferencia.json` (fora do git, permissão 600).
+- Botão "Verificar agora no DJEN" (`vigia.py djen` em segundo plano, ambiente limpo, uma execução por vez) e os
+  relatórios completos de cada dia. Ações de cumprimento de convenção (sindicato) ficam à parte, sem alerta.
+- Banco do vigia aberto só para leitura; nada do pje-busca é importado. Nova variável opcional `PJE_BUSCA_PASTA`.
+- Testes em `tests/test_cumprimentos.py` (dados fictícios).
+- Lista **Empresas sem nenhuma publicação no DJEN** na mesma página (CNPJ, processos do TRT7 no VIOS, nomes buscados)
+  com conferência do nome: "Nome corrigido" grava até 3 nomes do tribunal em `pje-busca/dados/nomes_conferidos.json`
+  (fora do git, permissão 600), rota `POST /cumprimentos/nome`.
+
+### Adicionado — pje-busca e aba Cumprimentos: processo principal de cada cumprimento no VIOS (24/11/2026)
+- `vigia_djen.achar_principal`: lê as publicações do próprio cumprimento (até 100) e procura o principal na lista do
+  VIOS — 1º pelo número citado no texto da publicação; 2º pelo mesmo exequente (polo ativo = Autor no VIOS), de
+  preferência na mesma vara. Resultado em `djen_principais`, refeito a cada rodada enquanto não for achado.
+- Novo comando `python3 vigia.py principais` (só essa ligação, rápido). A rodada do `djen` também faz.
+- A aba Cumprimentos mostra em cada cumprimento "Cliente nosso: o processo principal X está no VIOS (CI, empresa,
+  advogado)" e como foi achado, ou "Principal não achado no VIOS".
+- Conferido com dados reais: 0001772-66.2024.5.07.0024 → 0000064-49.2022.5.07.0024 (citado e mesmo exequente);
+  0001226-95.2026.5.07.0038 → 0000743-70.2023.5.07.0038 (mesmo exequente e vara); 0001368-02.2026.5.07.0038 →
+  0002754-04.2025.5.07.0038. Testes em `pje-busca/tests/test_djen.py` e `tests/test_cumprimentos.py`.
+
+### Alterado — pje-busca: vigia do DJEN usa os nomes conferidos pela equipe (24/11/2026)
+- `vigia.py djen` lê `dados/nomes_conferidos.json` (gravado pela aba Cumprimentos) e busca também por esses nomes
+  (origem `manual` em `djen_nomes`; 1ª busca com nome novo vira auditoria). Seção "NOMES CONFERIDOS" no relatório.
+- Nova tabela `djen_consultas` (resultado de cada empresa na última rodada: publicações e nomes buscados).
+- Testes novos em `pje-busca/tests/test_djen.py`.
+
 ### Adicionado — Orelha: função `comentarios`, comentários dos últimos 90 dias de uma lista de processos (23/11/2026)
 - `./rodar.sh --funcoes comentarios` lê os números de `orelha/entrada/comentarios.txt` (fora do git), acha o CI
   de cada um pela busca "Nro do Processo" (só GET; o número pode estar no CNJ ou em "Outros"), abre a ficha e lê

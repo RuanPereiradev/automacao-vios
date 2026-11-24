@@ -12,6 +12,21 @@ Níveis de alerta (prioridade do projeto):
   (o nível 3, "processos associados" do principal no PJe, fica em outro comando).
 "Desconhecido" = não está na lista do VIOS (vigia vios) nem já foi avisado pelo DJEN antes.
 A 1ª rodada vira base: não alerta, mas lista UMA vez os processos do DJEN que não estão no VIOS (auditoria).
+
+Nome conferido pela equipe: na aba Cumprimentos da Vila dos Bots, quem confere uma empresa SEM publicação pode
+informar o nome dela no tribunal. A vila grava em dados/nomes_conferidos.json ({empresa: {"nomes": [...]}}) e o
+vigia passa a buscar também por esse nome (origem "manual" em djen_nomes; a 1ª busca com ele vira auditoria).
+O resultado de cada empresa na última rodada (quantas publicações, com quais nomes) fica em djen_consultas.
+
+Processo principal de cada cumprimento/execução (VERMELHO), para saber se é cliente nosso: lê as publicações do
+próprio cumprimento (até 100) e procura na lista do VIOS (tabela processos), nesta ordem:
+  1. número de processo citado no texto da publicação que está no VIOS ("citado na publicação");
+  2. processo do VIOS com o MESMO exequente (polo ativo da publicação = Autor no VIOS), de preferência na mesma vara
+     (o cumprimento é distribuído por dependência à vara do principal).
+Confirmado em 24/11/2026: 0001772-66.2024.5.07.0024 cita 0000064-49.2022.5.07.0024 (VIOS CI 21045, mesmo exequente);
+0001226-95.2026.5.07.0038 não cita o número, mas o exequente é o autor do 0000743-70.2023.5.07.0038 (VIOS CI 21042,
+mesma vara); 0001368-02.2026.5.07.0038 -> 0002754-04.2025.5.07.0038 (mesmo exequente, mesma vara).
+Resultado em djen_principais (refeito a cada rodada enquanto o principal não for achado no VIOS).
 """
 import json
 import re
@@ -20,6 +35,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import date
+from pathlib import Path
 
 from vigia_estado import normalizar, numero_cnj, tribunal
 
@@ -41,6 +57,11 @@ CREATE TABLE IF NOT EXISTS djen_nomes (
   empresa TEXT, nome TEXT, origem TEXT, PRIMARY KEY (empresa, nome));
 CREATE TABLE IF NOT EXISTS djen_empresas (
   empresa TEXT PRIMARY KEY, calibrado_em TEXT, base_feita INTEGER);
+CREATE TABLE IF NOT EXISTS djen_consultas (
+  empresa TEXT PRIMARY KEY, data TEXT, publicacoes INTEGER, nomes TEXT);
+CREATE TABLE IF NOT EXISTS djen_principais (
+  numero TEXT PRIMARY KEY, principal TEXT, ci TEXT, empresa TEXT, advogado TEXT, como TEXT, exequente TEXT,
+  verificado_em TEXT);
 CREATE TABLE IF NOT EXISTS djen_rodadas (
   data TEXT PRIMARY KEY, empresas INTEGER, publicacoes INTEGER, vermelhos INTEGER, amarelos INTEGER,
   sem_publicacao INTEGER, erros INTEGER, base INTEGER);
@@ -89,11 +110,62 @@ def polo_cliente(item, nomes):
     return "A" if "A" in polos else None
 
 
-def consultar_numero(numero, abrir=None):
+def consultar_numero(numero, abrir=None, itens=5):
     """Publicações de um processo pelo número (só dígitos), para ler os destinatários e o polo de cada um."""
     abrir = abrir or _abrir
-    q = urllib.parse.urlencode({"numeroProcesso": re.sub(r"\D", "", numero), "itensPorPagina": 5, "pagina": 1})
+    q = urllib.parse.urlencode({"numeroProcesso": re.sub(r"\D", "", numero), "itensPorPagina": int(itens), "pagina": 1})
     return abrir(f"{API}?{q}").get("items") or []
+
+
+CNJ_TEXTO = re.compile(r"\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b")
+PREFIXO_AUTOR = re.compile(r"^\s*(AUTOR|AUTORA|CLIENTE|RECLAMANTE|REQUERENTE|EXEQUENTE)\s*:\s*", re.I)
+
+
+def _autores(texto):
+    """Campo "Autor" do VIOS ("Autor: FULANO / BELTRANO", "Cliente: FULANO") -> nomes normalizados."""
+    return {normalizar(PREFIXO_AUTOR.sub("", a)) for a in re.split(r"\s*/\s*|\s*;\s*", texto or "") if a.strip()}
+
+
+def achar_principal(numero, itens, vios):
+    """Processo principal de um cumprimento/execução na lista do VIOS.
+
+    itens: publicações do próprio cumprimento no DJEN; vios: [{numero, ci, empresa, orgao, autor, advogado}].
+    Devolve {"principal", "ci", "empresa", "advogado", "como", "exequente"} (principal None se nada bate)."""
+    citados, exequentes = [], []
+    for i in itens:
+        for n in CNJ_TEXTO.findall(i.get("texto") or ""):
+            if n != numero and n not in citados:
+                citados.append(n)
+        for d in i.get("destinatarios") or []:
+            nome = (d.get("nome") or "").strip()
+            if (d.get("polo") or "").upper() == "A" and nome and nome not in exequentes:
+                exequentes.append(nome)
+    alvo = {normalizar(e) for e in exequentes}
+    vara = numero[-4:]
+    candidatos = [v for v in vios if v.get("numero") and v["numero"] != numero]
+
+    def saida(v, como):
+        return {"principal": v["numero"], "ci": v.get("ci") or "", "empresa": v.get("empresa") or "",
+                "advogado": v.get("advogado") or "", "como": como, "exequente": " / ".join(exequentes)}
+
+    por_numero = {v["numero"]: v for v in candidatos}
+    for n in citados:
+        if n in por_numero:
+            v = por_numero[n]
+            mesmo = bool(alvo & _autores(v.get("autor")))
+            return saida(v, "citado na publicação" + (" e mesmo exequente" if mesmo else ""))
+    mesmos = [v for v in candidatos if alvo & _autores(v.get("autor"))]
+    mesmos.sort(key=lambda v: (v["numero"][-4:] != vara, v["numero"]))
+    if mesmos:
+        v = mesmos[0]
+        como = "mesmo exequente" + (" e mesma vara" if v["numero"][-4:] == vara else " (vara diferente)")
+        if len(mesmos) > 1:
+            como += f"; outros com o mesmo exequente: {', '.join(x['numero'] for x in mesmos[1:4])}"
+        return saida(v, como)
+    como = ("citado na publicação, mas não está no VIOS: " + ", ".join(citados[:3])) if citados else \
+        "nenhum processo do VIOS com o mesmo exequente"
+    return {"principal": citados[0] if citados else None, "ci": "", "empresa": "", "advogado": "", "como": como,
+            "exequente": " / ".join(exequentes)}
 
 
 def nomes_do_tribunal(nome_vios, itens):
@@ -220,6 +292,34 @@ class EstadoDjen:
                         (empresa, hoje, 0 if novos else int(cal[1])))
         return novos
 
+    def gravar_manuais(self, empresa, nomes):
+        """Nomes informados pela equipe (aba Cumprimentos). Nome novo => a próxima busca da empresa vira auditoria."""
+        novos = 0
+        for n in nomes:
+            novos += self.db.execute("INSERT OR IGNORE INTO djen_nomes VALUES (?, ?, 'manual')", (empresa, n)).rowcount
+        if novos:
+            self.db.execute("INSERT INTO djen_empresas VALUES (?, NULL, 0) ON CONFLICT(empresa) DO UPDATE SET base_feita = 0",
+                            (empresa,))
+        return novos
+
+    def processos_vios(self):
+        return [dict(zip(("numero", "ci", "empresa", "orgao", "autor", "advogado"), r)) for r in self.db.execute(
+            "SELECT numero, ci, empresa, orgao, autor, advogado FROM processos WHERE numero != ''")]
+
+    def sem_principal(self):
+        """Cumprimentos/execuções (VERMELHO) ainda sem principal achado no VIOS."""
+        return [r[0] for r in self.db.execute(
+            "SELECT p.numero FROM djen_processos p LEFT JOIN djen_principais x ON x.numero = p.numero "
+            "WHERE p.nivel = 'VERMELHO' AND (x.numero IS NULL OR x.ci IS NULL OR x.ci = '') ORDER BY p.numero")]
+
+    def gravar_principal(self, numero, r, hoje):
+        self.db.execute("INSERT OR REPLACE INTO djen_principais VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        (numero, r["principal"], r["ci"], r["empresa"], r["advogado"], r["como"], r["exequente"], hoje))
+
+    def gravar_consulta(self, empresa, hoje, publicacoes, nomes):
+        self.db.execute("INSERT OR REPLACE INTO djen_consultas VALUES (?, ?, ?, ?)",
+                        (empresa, hoje, int(publicacoes), json.dumps(nomes, ensure_ascii=False)))
+
     def base_feita(self, empresa, hoje):
         self.db.execute("INSERT INTO djen_empresas VALUES (?, ?, 1) ON CONFLICT(empresa) DO UPDATE SET base_feita = 1",
                         (empresa, hoje))
@@ -236,8 +336,23 @@ class EstadoDjen:
         self.db.commit()
 
 
+def nomes_conferidos(caminho):
+    """dados/nomes_conferidos.json (gravado pela aba Cumprimentos da vila) -> {empresa: [nomes]}."""
+    try:
+        dados = json.loads(Path(caminho).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    for empresa, c in (dados.items() if isinstance(dados, dict) else []):
+        nomes = [re.sub(r"\s+", " ", str(n)).strip() for n in ((c or {}).get("nomes") or [])]
+        nomes = [n for n in nomes if 3 <= len(n) <= 120]
+        if nomes:
+            out[empresa] = nomes[:3]
+    return out
+
+
 def rodar(estado, hoje=None, so=None, consulta=consultar, consulta_numero=consultar_numero, pausa=1.5,
-          simular=False, aviso=print, dias_calibrar=30):
+          simular=False, aviso=print, dias_calibrar=30, manuais=None, consulta_principal=None):
     """Consulta o DJEN para cada empresa do vigia e classifica. Devolve o resultado (para o relatório).
 
     Por empresa: (1) calibra o nome a cada `dias_calibrar` dias, lendo no DJEN os destinatários do polo passivo de
@@ -268,7 +383,11 @@ def rodar(estado, hoje=None, so=None, consulta=consultar, consulta_numero=consul
                     if ed.gravar_nomes(chave, achados, hoje):
                         base_feita = False
                         res["calibradas"].append((chave, achados))
-            nomes = list(dict.fromkeys([nome_busca(nome_vios)] + ed.nomes(chave)))
+            extra = (manuais or {}).get(chave) or []
+            if extra and not simular and ed.gravar_manuais(chave, extra):
+                base_feita = False
+                res.setdefault("manuais", []).append((chave, extra))
+            nomes = list(dict.fromkeys([nome_busca(nome_vios)] + ed.nomes(chave) + (extra if simular else [])))
             itens, vistos = [], set()
             for nome in nomes:
                 for i in consulta(nome):
@@ -281,6 +400,8 @@ def rodar(estado, hoje=None, so=None, consulta=consultar, consulta_numero=consul
             res["erros"].append((chave, str(erro)))
             continue
         res["publicacoes"] += len(itens)
+        if not simular:
+            ed.gravar_consulta(chave, hoje, len(itens), nomes)
         if not itens:
             res["sem_publicacao"].append(" / ".join(nomes))
         uteis = []
@@ -308,11 +429,29 @@ def rodar(estado, hoje=None, so=None, consulta=consultar, consulta_numero=consul
             ed.base_feita(chave, hoje)
         if n % 20 == 0:
             aviso(f"  DJEN: {n}/{len(empresas)} empresas consultadas")
+    if not simular:
+        res["principais"] = ligar_principais(ed, hoje, consulta_principal or consulta_numero, pausa)
     if not simular and not so:
         ed.fechar_rodada(hoje, res, base_global)
     elif not simular:
         estado.db.commit()
     return res
+
+
+def ligar_principais(ed, hoje, consulta, pausa=1.5):
+    """Para cada cumprimento/execução ainda sem principal no VIOS: lê as publicações dele e procura o principal."""
+    vios, saida = ed.processos_vios(), []
+    for numero in ed.sem_principal():
+        try:
+            r = achar_principal(numero, consulta(numero), vios)
+        except Exception as erro:  # noqa: BLE001 — um erro não para os outros
+            r = {"principal": None, "ci": "", "empresa": "", "advogado": "", "como": f"erro ao consultar: {erro}",
+                 "exequente": ""}
+        ed.gravar_principal(numero, r, hoje)
+        saida.append(dict(r, numero=numero))
+        time.sleep(pausa)
+    ed.db.commit()
+    return saida
 
 
 def relatorio(res):
@@ -342,6 +481,17 @@ def relatorio(res):
     if res.get("calibradas"):
         L += ["", f"NOMES CALIBRADOS pelo tribunal ({len(res['calibradas'])})"]
         L += [f"  - {e}: {', '.join(ns)}" for e, ns in res["calibradas"]]
+    if res.get("principais"):
+        L += ["", f"PROCESSO PRINCIPAL dos cumprimentos/execuções ({len(res['principais'])})"]
+        for r in res["principais"]:
+            if r["ci"]:
+                L.append(f"  - {r['numero']} -> principal {r['principal']} · NO VIOS (CI {r['ci']}, {r['empresa']}, "
+                         f"adv. {r['advogado'] or '-'}) · {r['como']} · exequente: {r['exequente'] or '-'}")
+            else:
+                L.append(f"  - {r['numero']} -> principal NÃO achado no VIOS · {r['como']} · exequente: {r['exequente'] or '-'}")
+    if res.get("manuais"):
+        L += ["", f"NOMES CONFERIDOS pela equipe (aba Cumprimentos) ({len(res['manuais'])})"]
+        L += [f"  - {e}: {', '.join(ns)}" for e, ns in res["manuais"]]
     if res.get("autor"):
         L += ["", f"Publicações ignoradas porque o cliente é o AUTOR (polo ativo): {res['autor']}"]
     if res["sem_publicacao"]:

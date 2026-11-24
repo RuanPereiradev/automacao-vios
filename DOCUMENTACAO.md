@@ -741,6 +741,47 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   Bot com HTTPS de certificado próprio (RN22.4): copiar o certificado para cá e apontar `VILA06_CERTIFICADO`.
 - Testes: `.venv/bin/python -m unittest tests.test_vila06`.
 
+### Passo 44 — Cumprimentos de sentença na Vila dos Bots (`/cumprimentos`)
+- Objetivo: ninguém mais deixar passar um cumprimento de sentença (ou execução) contra cliente do escritório
+  que ainda não está no VIOS. Os alertas vêm do **vigia do pje-busca** (`pje-busca/vigia.py djen`), que consulta
+  todo dia a API pública do DJEN pelo nome de cada empresa da lista do VIOS (sem login e sem CAPTCHA) e grava em
+  `pje-busca/dados/vigia.sqlite` os processos do TRT7 contra o cliente que não estão no VIOS.
+- A Vila dos Bots ganhou o cartão **Cumprimentos** (quantos estão pendentes de conferência e a data da última
+  verificação) e a página `/cumprimentos`:
+  - números do topo: pendentes de conferência, maior espera (dias desde a 1ª publicação no DJEN), total fora do
+    VIOS, empresas vigiadas e a última verificação;
+  - **Cumprimento de sentença / execução fora do VIOS**: um bloco por processo (número com botão de copiar,
+    classe, vara, empresa, 1ª publicação e há quantos dias), pendentes em cima;
+  - **conferência da equipe** em cada processo: situação (Pendente · Providência em curso · Escritório já atua ·
+    Não é do escritório/falso alerta), quem conferiu e observação. Guarda o histórico em
+    `pje-busca/dados/cumprimentos_conferencia.json` (fora do git, permissão 600);
+  - **Verificação**: dados da última rodada, botão "Verificar agora no DJEN" (abre `vigia.py djen` em segundo
+    plano, ambiente limpo, uma execução por vez; saída em `pje-busca/logs/djen_vila.log`) e os relatórios
+    completos de cada dia (`pje-busca/saida/djen_AAAA-MM-DD.txt`);
+  - **Processo principal** de cada cumprimento: o vigia (`vigia.py djen` ou `vigia.py principais`) lê as
+    publicações do cumprimento e procura o principal na lista do VIOS, primeiro pelo número citado no texto e
+    depois pelo mesmo exequente (de preferência na mesma vara, porque o cumprimento é distribuído por dependência).
+    Achou no VIOS: "Cliente nosso" com CI, empresa e advogado; senão, "Principal não achado no VIOS"
+    (tabela `djen_principais`). A lista do VIOS usada é a do vigia (Trabalhista, cliente no polo passivo);
+  - **Empresas sem nenhuma publicação no DJEN**: a busca é pelo nome, então empresa cadastrada no tribunal com
+    outro nome some da vigilância. Cada empresa mostra CNPJ, quantos processos do TRT7 ela tem no VIOS (em
+    amarelo quando tem: o nome quase certamente está diferente) e com quais nomes foi buscada. A equipe confere
+    (Pendente · Nome corrigido · Nome está certo) e, em "Nome corrigido", informa até 3 nomes exatamente como estão
+    no polo passivo do PJe. Fica em `pje-busca/dados/nomes_conferidos.json` (fora do git, permissão 600); o
+    `vigia.py djen` lê esse arquivo e passa a buscar também por esses nomes (origem `manual` em `djen_nomes`; a 1ª
+    busca com nome novo vira auditoria, sem alerta). O resultado de cada empresa na última rodada fica na tabela
+    `djen_consultas` (antes da 1ª rodada com ela, a lista vem do último relatório);
+  - **Ações de cumprimento (sindicato)**, recolhidas: ação de cumprimento de convenção (art. 872 da CLT) não é
+    cumprimento de sentença, fica só para conferência.
+- `bot/cumprimentos.py` **só lê** o banco do vigia (SQLite em modo somente leitura) e não importa nada do
+  pje-busca. O nível 3 (associação do cumprimento ao processo principal no PJe) entra na mesma página depois.
+- Rotas: `/cumprimentos`, `/cumprimentos/status`, `POST /cumprimentos/rodar`, `POST /cumprimentos/conferir`,
+  `POST /cumprimentos/nome` (JSON da própria página), `/cumprimentos/relatorio/<AAAA-MM-DD>` (só arquivos da pasta `saida/` do vigia).
+  Todas atrás da senha das páginas (`ENVIO_SENHA`).
+- Configuração: `PJE_BUSCA_PASTA` só se o pje-busca estiver fora deste repositório. Antes da 1ª vez:
+  `cd pje-busca && python3 vigia.py vios` (lista do VIOS) e `python3 vigia.py djen` (base do DJEN).
+- Testes: `tests/test_cumprimentos.py` (dados fictícios).
+
 ### Passo 21 — Rodar no Mac e no Linux
 - O projeto roda nos dois sistemas com os mesmos arquivos e comandos.
 - Scripts `rodar*.sh` sem `readlink -f` (funcionam no macOS e no Linux);
@@ -1511,6 +1552,7 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `ZANGAO_PASTA` | não | Pasta do Zangão neste computador (com `.venv` e `.env` dele); liga os botões da Vila 02 | `~/zangao` |
 | `ALBI_PASTA` | não | Pasta do Albi (com `.venv` e `.env` dele); vazio = `albi/` deste repositório | `~/albi` |
 | `ORELHA_PASTA` | não | Pasta do Orelha, de onde o Sam lê o horário e os relatórios (`/orelha`); vazio = `orelha/` deste repositório | `~/orelha` |
+| `PJE_BUSCA_PASTA` | não | Pasta do pje-busca (vigia do DJEN), de onde a página `/cumprimentos` lê os alertas; vazio = `pje-busca/` deste repositório | `~/pje-busca` |
 | `VILA06_URL` | não | Endereço do bot do Previdenciário para a Vila 06 (vazio = simulação) | vazio |
 | `VILA06_TOKEN` | não | Mesmo `VILA_TOKEN` do `.env` do bot (RN28) | (no `.env`) |
 | `VILA06_CERTIFICADO` | não | Certificado próprio do bot (HTTPS na rede interna) | vazio |
