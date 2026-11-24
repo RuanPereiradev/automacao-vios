@@ -12,7 +12,7 @@ processos do TRT7 contra o cliente que NÃO estão no VIOS. Esta aba:
   o caso, informa o nome certo em dados/nomes_conferidos.json, que o vigia passa a usar na busca seguinte;
 - nível 3: mostra os "Processos associados" NOVOS que o vigia leu no PJe (vigia.py associados) — associado que não
   está no VIOS é alerta vermelho, com a mesma conferência da equipe; o botão "Verificar associados no PJe" abre
-  `vigia.py associados` (usa o Chrome do Mac e o login pelo Presto; leva uns 30 a 40 minutos);
+  `vigia.py associados` (usa o Chrome do Mac e o login pelo Presto; leva uns 10 a 15 minutos);
 - o botão "Verificar agora" abre `vigia.py djen` em segundo plano (só a API pública do DJEN: sem login, sem
   CAPTCHA, sem senha), com ambiente limpo, uma execução por vez.
 """

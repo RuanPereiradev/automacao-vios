@@ -105,15 +105,15 @@ CREATE TABLE assoc_principais (numero TEXT PRIMARY KEY, situacao TEXT, qtd INTEG
   base_feita INTEGER, erro TEXT);
 CREATE TABLE assoc_associados (principal TEXT, associado TEXT, orgao TEXT, visto_em TEXT, novo INTEGER, nivel TEXT,
   PRIMARY KEY (principal, associado));
-CREATE TABLE assoc_rodadas (data TEXT PRIMARY KEY, verificados INTEGER, com_associados INTEGER, fora_acervo INTEGER,
-  erros INTEGER, novos INTEGER, vermelhos INTEGER, completa INTEGER);""")
+CREATE TABLE assoc_rodadas (data TEXT PRIMARY KEY, acervo INTEGER, verificados INTEGER, com_associados INTEGER,
+  fora_acervo INTEGER, erros INTEGER, novos INTEGER, vermelhos INTEGER, completa INTEGER, base INTEGER);""")
         db.execute("INSERT INTO assoc_principais VALUES ('n', 'ok', 2, '2026-11-25', 1, '')")
         db.execute("INSERT INTO assoc_principais VALUES ('x', 'fora_do_acervo', 0, '2026-11-25', 0, '')")
         db.executemany("INSERT INTO assoc_associados VALUES ('n', ?, '2ª Vara', ?, ?, ?)", [
             ("0000010-10.2026.5.07.0038", "2026-11-25", 1, "VERMELHO"),   # novo, fora do VIOS
             ("n2", "2026-11-25", 1, "INFO"),                                # novo, já no VIOS
             ("0000011-11.2026.5.07.0038", "2026-11-24", 0, "BASE")])        # base: não aparece
-        db.execute("INSERT INTO assoc_rodadas VALUES ('2026-11-25', 1, 1, 1, 0, 2, 1, 1)")
+        db.execute("INSERT INTO assoc_rodadas VALUES ('2026-11-25', 358, 1, 1, 1, 0, 2, 1, 1, 0)")
         db.commit()
         db.close()
         (self.pasta / "saida" / "associados_2026-11-25.txt").write_text("VIGIA · ASSOCIADOS\n", encoding="utf-8")

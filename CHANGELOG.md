@@ -12,6 +12,21 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Corrigido — pje-busca: nível 3 lê pelo filtro "Processos com Associação" (24/11/2026)
+- A 1ª rodada (busca pelo número no campo do Acervo Geral) dava "fora do acervo" para quase tudo: depois de algumas
+  buscas a lista do PJe deixa de atualizar (o campo mostra o número novo e a lista continua no anterior).
+- Agora `vigia.py associados` liga o filtro "Processos com Associação" (60 de 358 processos em 24/11/2026), percorre
+  as páginas ("Próximo"; volta ao "Primeiro"), abre a janela de cada linha, lê a tabela (5 por página) e fecha com Esc;
+  depois desliga o filtro e lê a lista do acervo inteiro só para saber o que do VIOS está fora dele (`assoc_acervo`).
+- Base: a 1ª rodada COMPLETA é base de tudo; depois, associado novo de processo que já estava no acervo = alerta
+  (o 1º associado de um principal também alerta). Processo que acabou de entrar no acervo vira base só dele.
+- Opções novas: `--paginas N` e `--sem-cobertura` (teste, não grava), `--simular`. Sai `--numero`/`--limite`.
+  As tabelas do teste anterior são recriadas sozinhas. JavaScript conferido no PJe real (filtro, páginas, janela, Esc).
+
+### Adicionado — pje-busca: documento de contexto do vigia de cumprimentos (24/11/2026)
+- `pje-busca/doc/CONTEXTO_cumprimentos_2026-11-24.md`: problema, níveis do vigia, resultados, aba Cumprimentos,
+  comandos, arquivos, pendências e riscos (sem senhas).
+
 ### Adicionado — Vila dos Bots: aba Cumprimentos de sentença (24/11/2026)
 - Cartão **Cumprimentos** na entrada e página `/cumprimentos` (`bot/cumprimentos.py`, `bot/templates/cumprimentos.html`):
   cumprimentos de sentença e execuções contra clientes que não estão no VIOS, lidos do banco do vigia do pje-busca

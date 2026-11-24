@@ -172,8 +172,8 @@
     <h1>Verificação</h1>
     {% if info.rodando %}
       <p><span class="selo s-andamento">{{ info.comando_texto }}: rodando</span> desde {{ info.inicio[11:16] }}.
-        {% if info.comando == "associados" %}Leva uns 30 a 40 minutos (cerca de 240 principais) e usa o Chrome do Mac: não mexa na
-        janela do PJe enquanto roda.{% else %}Leva uns 10 a 25 minutos (cerca de 160 empresas, com pausa entre as consultas).{% endif %}
+        {% if info.comando == "associados" %}Leva uns 10 a 15 minutos (os processos com associação e a lista do acervo) e usa o
+        Chrome do Mac: não mexa na janela do PJe enquanto roda.{% else %}Leva uns 10 a 25 minutos (cerca de 160 empresas, com pausa entre as consultas).{% endif %}
         Esta página se atualiza sozinha.</p>
       <script>setTimeout(() => location.reload(), 15000);</script>
     {% else %}
@@ -184,19 +184,19 @@
         <p class="aviso">O DJEN ainda não foi consultado.</p>
       {% endif %}
       {% if p.assoc.rodada %}
-        <p>Associados no PJe: <b>{{ p.assoc.rodada.data_br }}</b> · {{ p.assoc.rodada.verificados }} principais lidos ·
-          {{ p.assoc.rodada.com_associados }} com associados · {{ p.assoc.rodada.fora_acervo }} fora do acervo ·
-          {{ p.assoc.rodada.erros }} erro(s){% if not p.assoc.rodada.completa %} · <span class="aviso">incompleta</span>{% endif %}.</p>
+        <p>Associados no PJe: <b>{{ p.assoc.rodada.data_br }}</b> · {{ p.assoc.rodada.acervo or "-" }} processos no Acervo Geral ·
+          {{ p.assoc.rodada.verificados }} com associação lidos · {{ p.assoc.rodada.fora_acervo }} do VIOS fora do acervo ·
+          {{ p.assoc.rodada.erros }} erro(s){% if p.assoc.rodada.base %} · <span class="suave">rodada de base</span>{% endif %}{% if not p.assoc.rodada.completa %} · <span class="aviso">incompleta</span>{% endif %}.</p>
       {% endif %}
       <p class="acoes"><button class="primario" data-comando="djen">Verificar agora no DJEN</button>
         <button class="secundario" data-comando="associados">Verificar associados no PJe</button>
-        <span id="aviso-verificar" class="suave">DJEN: API pública, sem login. Associados: Chrome do Mac + login pelo Presto, 30 a 40 min.</span></p>
+        <span id="aviso-verificar" class="suave">DJEN: API pública, sem login. Associados: Chrome do Mac + login pelo Presto, 10 a 15 min.</span></p>
     {% endif %}
     <ul class="niveis suave">
       <li><b>Nível 1 · DJEN</b> (ativo): a publicação do cumprimento sai dias depois da distribuição (no caso que gerou o bloqueio, 2 dias).</li>
       <li><b>Nível 2 · processo novo</b> (ativo): ação nova contra o cliente fora do VIOS sai no relatório do dia ({{ p.outros }} na base).</li>
-      <li><b>Nível 3 · associação no PJe</b> (ativo): "Processos associados" de cada principal do TRT7 no Acervo Geral; associado
-        novo fora do VIOS é alerta.{% if p.assoc.fora_acervo %} {{ p.assoc.fora_acervo }} principal(is) fora do acervo do login.{% endif %}</li>
+      <li><b>Nível 3 · associação no PJe</b> (ativo): filtro "Processos com Associação" do Acervo Geral; associado novo de um
+        processo do acervo, fora do VIOS, é alerta.{% if p.assoc.fora_acervo %} {{ p.assoc.fora_acervo }} principal(is) fora do acervo do login.{% endif %}</li>
     </ul>
     {% if p.relatorios %}
       <p class="acoes" style="margin-top: 10px"><span class="suave">Relatório completo do dia:</span>

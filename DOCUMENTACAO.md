@@ -763,11 +763,12 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
     depois pelo mesmo exequente (de preferência na mesma vara, porque o cumprimento é distribuído por dependência).
     Achou no VIOS: "Cliente nosso" com CI, empresa e advogado; senão, "Principal não achado no VIOS"
     (tabela `djen_principais`). A lista do VIOS usada é a do vigia (Trabalhista, cliente no polo passivo);
-  - **Associados novos no PJe (nível 3)**: `vigia.py associados` entra no PJe pelo Presto e lê, no Acervo Geral, a
-    janela "Processos associados" de cada principal ativo do TRT7 da lista do VIOS (cerca de 240, 30 a 40 min, com
-    o Chrome do Mac). A 1ª leitura de cada principal é base; depois, associado novo fora do VIOS é alerta vermelho
-    com a mesma conferência. Botão "Verificar associados no PJe" na página (não mexer na janela do PJe enquanto
-    roda); principal fora do Acervo Geral do login aparece como "fora do acervo";
+  - **Associados novos no PJe (nível 3)**: `vigia.py associados` entra no PJe pelo Presto, liga no Acervo Geral o
+    filtro "Processos com Associação", abre a janela "Processos associados" de cada linha (todas as páginas) e,
+    no fim, percorre o acervo inteiro para saber quais processos do VIOS estão fora dele (10 a 15 min, com o Chrome
+    do Mac). A 1ª rodada completa é base; depois, associado novo fora do VIOS é alerta vermelho com a mesma
+    conferência. Botão "Verificar associados no PJe" na página (não mexer na janela do PJe enquanto roda). A busca
+    pelo número no campo do acervo não é usada: a lista deixa de atualizar depois de algumas buscas;
   - **Empresas sem nenhuma publicação no DJEN**: a busca é pelo nome, então empresa cadastrada no tribunal com
     outro nome some da vigilância. Cada empresa mostra CNPJ, quantos processos do TRT7 ela tem no VIOS (em
     amarelo quando tem: o nome quase certamente está diferente) e com quais nomes foi buscada. A equipe confere
