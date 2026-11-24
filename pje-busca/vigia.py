@@ -227,8 +227,12 @@ def cmd_associados(args):
             print("NÃO ENTROU no PJe:", e)
             return 1
         print("Login ok; lendo os processos com associação no Acervo Geral...", flush=True)
+        def ir(url):
+            CM.ir(w, t, url)
+            CM.esperar(w, t, maximo=45, folga=3)
+
         lido = VA.ler_acervo(lambda c: CM.js(w, t, c), cobertura=cobertura, max_paginas=paginas,
-                             aviso=lambda m: print(m, flush=True))
+                             aviso=lambda m: print(m, flush=True), ir=ir)
         if lido["erro"]:
             try:
                 A._salvar(pasta, "erro", CM.capturar(w, t))

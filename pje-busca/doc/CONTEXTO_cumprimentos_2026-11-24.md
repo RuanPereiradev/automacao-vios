@@ -46,7 +46,10 @@ Em 24/11 são 162 empresas e 363 processos.
   1. clica em "Processos associados";
   2. lê a tabela "Processo Associado · Órgão Julgador" (5 por página, botão "Próximo");
   3. fecha com Esc.
-- Depois desliga o filtro e percorre o acervo inteiro só para saber quais processos do VIOS estão **fora** dele.
+- Depois desliga o filtro e percorre o acervo inteiro e a aba **Arquivados**, 100 por página, para classificar cada processo do VIOS:
+  - no acervo;
+  - **arquivado no PJe**, mas ainda ativo no VIOS: atualizar o VIOS (ex.: 0000029-50.2026.5.07.0024, arquivado em 09/11/2026 depois de acordo);
+  - fora dos dois: 2º grau/TST, ou a sociedade não está no processo.
 - **Não** abre documento, não peticiona e não altera nada.
 - A pesquisa pelo número no campo do acervo **não** serve. Na 1ª tentativa (24/11), a lista parou de atualizar depois de 3 buscas e quase tudo saiu como "fora do acervo", por engano.
 - A 1ª rodada completa é **base**. Depois disso:
@@ -73,6 +76,10 @@ Em 24/11 são 162 empresas e 363 processos.
 - **Empresas sem nenhuma publicação:** 27. Destas, **12 têm processo do TRT7 no VIOS**, ou seja, provável nome diferente no tribunal.
   São elas: A Afonso Linhares (5 processos), Kaio Supermercado (3), Supermercado Popular (3), F. V. R. Marques (2), Comercial Bezerra, Express Transportes, K L C, Mercantil Onofre Serrano, Onofre Pousada, SCC Melo, Utilmix e Varejão Chocobalas.
   Outra hipótese: os processos são anteriores ao DJEN. A conferência fica na aba.
+- **1ª rodada completa do nível 3 (24/11/2026):** 358 processos no acervo, 60 com associação, 60 lidos, 0 erro, 69 associados na base.
+  - O PJe confirmou as duas ligações deduzidas pelo DJEN: 0001226-95.2026 → 0000743-70.2023 e 0001772-66.2024 → 0000064-49.2022.
+  - Associados de principais do VIOS para conferir: 0001669-59.2024 (Casa das Redes; advogados de fora do escritório), 0001668-95.2025 (Afrânio; agravo de instrumento em recurso de revista na 5ª Turma), 0000682-42.2023 (F. V. R. Marques) e 0000930-15.2022 (DFA). Os dois últimos não têm publicação no DJEN.
+  - 97 processos do VIOS ficaram "fora do acervo". Na amostra, parte estava em 2º grau/TST e parte arquivada; daí a leitura da aba Arquivados.
 - **Teste do nível 3 (24/11/2026, PJe real):** `vigia.py associados --numero 0002754-04.2025.5.07.0038 --simular`.
   Login pelo Presto ok. Leu 1 associado: 0001368-02.2026.5.07.0038 (2ª VT Sobral), marcado como base.
 

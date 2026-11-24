@@ -187,7 +187,9 @@
       {% endif %}
       {% if p.assoc.rodada %}
         <p>Associados no PJe: <b>{{ p.assoc.rodada.data_br }}</b> · {{ p.assoc.rodada.acervo or "-" }} processos no Acervo Geral ·
-          {{ p.assoc.rodada.verificados }} com associação lidos · {{ p.assoc.rodada.fora_acervo }} do VIOS fora do acervo ·
+          {{ p.assoc.rodada.verificados }} com associação lidos ·
+          {% if p.assoc.rodada.arquivados is not none %}{{ p.assoc.rodada.arquivados }} ativos no VIOS mas arquivados no PJe · {% endif %}
+          {{ p.assoc.rodada.fora_acervo }} do VIOS fora do acervo e dos arquivados ·
           {{ p.assoc.rodada.erros }} erro(s){% if p.assoc.rodada.base %} · <span class="suave">rodada de base</span>{% endif %}{% if not p.assoc.rodada.completa %} · <span class="aviso">incompleta</span>{% endif %}.</p>
       {% endif %}
       <p class="acoes"><button class="primario" data-comando="djen">Verificar agora no DJEN</button>
@@ -209,6 +211,23 @@
         {% for r in p.relatorios_assoc %}<a class="botao secundario copiar" href="{{ url_for('cumprimentos_relatorio', data=r.data, tipo='associados') }}" target="_blank" rel="noopener">{{ r.data_br }}</a>{% endfor %}</p>
     {% endif %}
   </div>
+
+  {% if p.assoc.arquivados_vios %}
+  <div class="cartao">
+    <details>
+      <summary>Ativos no VIOS, mas arquivados no PJe ({{ p.assoc.arquivados_vios | length }}): atualizar o VIOS</summary>
+      <p class="suave">Processos que estão na aba "Arquivados" do PJe e continuam ativos no VIOS (ex.: acordo cumprido e arquivamento
+        definitivo). Não são alerta: servem para a equipe encerrar no VIOS.</p>
+      <table>
+        <tr><th>Processo</th><th>CI</th><th>Empresa</th><th>Advogado</th><th>Visto em</th></tr>
+        {% for a in p.assoc.arquivados_vios %}
+          <tr><td><span class="cnj" style="font-size: 14px">{{ a.numero }}</span></td><td>{{ a.ci or "-" }}</td>
+            <td>{{ a.empresa or "-" }}</td><td>{{ a.advogado or "-" }}</td><td>{{ a.visto_br }}</td></tr>
+        {% endfor %}
+      </table>
+    </details>
+  </div>
+  {% endif %}
 
   <div class="cartao">
     <h1>Empresas sem nenhuma publicação no DJEN ({{ p.sem_publicacao | length }})</h1>

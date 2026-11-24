@@ -7,8 +7,10 @@ associados"). Conferido em 23/11/2026: o principal 0002754-04.2025.5.07.0038 mos
 Como lê (24/11/2026, conferido no PJe real): o Acervo Geral tem o filtro "Processos com Associação" (botão da barra do
 título). Com ele ligado a lista mostra só os processos do acervo que têm associação (60 de 358 nesse dia). Para cada
 linha: clica em "Processos associados" (abre uma janela só de consulta), lê a tabela "Processo Associado · Órgão
-Julgador" (paginação de 5 em 5, botão "Próximo") e fecha com Esc. Depois desliga o filtro e percorre o acervo inteiro
-só para saber quais processos do VIOS estão nele ("fora do acervo" = o advogado do login não está no processo).
+Julgador" (paginação de 5 em 5, botão "Próximo") e fecha com Esc. Depois desliga o filtro e percorre o acervo inteiro e
+a aba "Arquivados" (100 por página) só para saber onde está cada processo do VIOS: no acervo, ARQUIVADO no PJe (ainda
+ativo no VIOS: atualizar o VIOS; ex. 0000029-50.2026.5.07.0024, arquivado em 09/11/2026) ou fora dos dois (2º grau/TST
+ou a sociedade do login não está no processo).
 A pesquisa pelo número no campo do acervo NÃO serve: a lista deixa de atualizar depois de algumas buscas.
 Não abre documento, não peticiona, não assina, não altera nada no PJe.
 
@@ -26,7 +28,9 @@ import time
 from datetime import date
 
 ACERVO = "https://pje.trt7.jus.br/pjekz/painel/usuario-externo/acervo-geral"
-MAX_PAGINAS = 100  # 10 por página: até 1.000 processos no acervo
+ARQUIVADOS = "https://pje.trt7.jus.br/pjekz/painel/usuario-externo/arquivados"
+MAX_PAGINAS = 100  # 100 por página (listas grandes): até 10.000 processos
+POR_PAGINA = "100"  # opções do PJe: 10, 20, 50, 75, 100
 
 ESQUEMA_ASSOC = """
 CREATE TABLE IF NOT EXISTS assoc_principais (
@@ -38,7 +42,9 @@ CREATE TABLE IF NOT EXISTS assoc_acervo (
   numero TEXT PRIMARY KEY, primeira_vez TEXT, ultima_vez TEXT);
 CREATE TABLE IF NOT EXISTS assoc_rodadas (
   data TEXT PRIMARY KEY, acervo INTEGER, verificados INTEGER, com_associados INTEGER, fora_acervo INTEGER,
-  erros INTEGER, novos INTEGER, vermelhos INTEGER, completa INTEGER, base INTEGER);
+  erros INTEGER, novos INTEGER, vermelhos INTEGER, completa INTEGER, base INTEGER, arquivados INTEGER);
+CREATE TABLE IF NOT EXISTS assoc_arquivados (
+  numero TEXT PRIMARY KEY, primeira_vez TEXT, ultima_vez TEXT);
 """
 
 # ---------------- JavaScript da página do Acervo Geral ----------------
@@ -48,7 +54,11 @@ _CNJ = r"/\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/"
 # tira o filtro de número (se houver) e liga/desliga "Processos com Associação"
 JS_FILTRO = r"""(function(ligar){
   var mudou = false;
-  [].forEach.call(document.querySelectorAll('mat-chip, .mat-chip'), function(c) {
+  var tirou = false;
+  [].forEach.call(document.querySelectorAll('button[aria-label^="Remover Filtro"]'), function(x) {
+    if (%(cnj)s.test(x.getAttribute('aria-label') || '')) { x.click(); mudou = tirou = true; }
+  });
+  if (!tirou) [].forEach.call(document.querySelectorAll('mat-chip, .mat-chip'), function(c) {
     if (%(cnj)s.test(c.innerText || '')) {
       var x = c.querySelector('[matchipremove], button, mat-icon, i'); if (x) { x.click(); mudou = true; }
     }
@@ -62,12 +72,12 @@ JS_FILTRO = r"""(function(ligar){
 # a página atual da lista (fora da janela de associados): números, botão de associados, "1 - 10 de 60"
 JS_PAGINA = r"""(function(){
   %(fora)s
-  var linhas = [];
-  [].forEach.call(document.querySelectorAll('button[aria-label^="Detalhes do Processo"]'), function(b) {
-    if (!fora(b)) return;
-    var m = (b.getAttribute('aria-label') || '').match(%(cnj)s);
-    if (!m) return;
-    var l = b.closest('tr, mat-row, [role=row]') || b.parentElement;
+  var linhas = [], vistos = {};
+  [].forEach.call(document.querySelectorAll('tbody tr, mat-row'), function(l) {
+    if (!fora(l)) return;
+    var m = (l.innerText || '').match(%(cnj)s);
+    if (!m || vistos[m[0]]) return;
+    vistos[m[0]] = 1;
     linhas.push({numero: m[0], botao: !!l.querySelector('button[aria-label="Processos associados"]')});
   });
   var pag = [].filter.call(document.querySelectorAll('pje-paginador'), fora).pop();
@@ -105,14 +115,30 @@ JS_PAGINA_PRIMEIRA = r"""(function(){
 # clica em "Processos associados" da linha do processo
 JS_ABRIR = r"""(function(numero){
   %(fora)s
-  var det = [].filter.call(document.querySelectorAll('button[aria-label^="Detalhes do Processo"]'), function(b) {
-    return fora(b) && (b.getAttribute('aria-label') || '').indexOf(numero) >= 0; })[0];
-  if (!det) return 'sem_linha';
-  var l = det.closest('tr, mat-row, [role=row]') || det.parentElement;
+  var l = [].filter.call(document.querySelectorAll('tbody tr, mat-row'), function(x) {
+    return fora(x) && ((x.innerText || '').match(/\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/) || [])[0] === numero; })[0];
+  if (!l) return 'sem_linha';
   var b = l.querySelector('button[aria-label="Processos associados"]');
   if (!b) return 'sem_botao';
   b.click(); return 'ok';
 })(%%s)""" % {"fora": _FORA_DO_DIALOGO}
+
+# "Linhas por página" da lista principal: abre o seletor (passo 1) e escolhe a opção (passo 2)
+JS_TAMANHO_ABRIR = r"""(function(){
+  %(fora)s
+  var pag = [].filter.call(document.querySelectorAll('pje-paginador'), fora).pop();
+  var sels = pag ? pag.querySelectorAll('mat-select') : [];
+  var s = sels[sels.length - 1];
+  if (!s) return 'sem';
+  if ((s.innerText || '').trim() === %%(n)s) return 'ja';
+  s.click(); return 'ok';
+})()""" % {"fora": _FORA_DO_DIALOGO}
+
+JS_TAMANHO_ESCOLHER = r"""(function(n){
+  var o = [].filter.call(document.querySelectorAll('mat-option'), function(x) { return (x.innerText || '').trim() === n; })[0];
+  if (!o) return 'sem';
+  o.click(); return 'ok';
+})(%s)"""
 
 _CAIXA = ("[].slice.call(document.querySelectorAll('mat-dialog-container')).filter(function(c) {"
           " return /associad|rg[ãa]o julgador/i.test(c.innerText || ''); }).pop()")
@@ -217,6 +243,19 @@ def _filtro(js, ligar):
     return p
 
 
+def _tamanho(js, n=POR_PAGINA):
+    """Põe a lista principal com n linhas por página (paginação). Sem o seletor, segue com o que houver."""
+    antes = _assinatura(_pagina(js))
+    r = js(JS_TAMANHO_ABRIR.replace("%(n)s", json.dumps(n)))
+    if r != "ok":
+        return
+    if _esperar(lambda: js(JS_TAMANHO_ESCOLHER % json.dumps(n)) == "ok", 5):
+        try:
+            _esperar_lista(js, antes)
+        except LeituraErro:
+            _esperar_lista(js)
+
+
 def percorrer(js, cada_linha=None, max_paginas=MAX_PAGINAS):
     """Percorre as páginas da lista atual. Devolve (números vistos, total informado pela página)."""
     vistos, total = [], None
@@ -278,10 +317,12 @@ def ler_associados(js, numero):
     return {"situacao": "ok", "associados": list(vistos.values()), "erro": ""}
 
 
-def ler_acervo(js, cobertura=True, max_paginas=MAX_PAGINAS, aviso=print):
+def ler_acervo(js, cobertura=True, max_paginas=MAX_PAGINAS, aviso=print, ir=None):
     """Lê no PJe (aba do Acervo Geral já aberta e logada):
-    {"principais": {numero: {"situacao", "associados", "erro"}}, "acervo": [números] ou None, "total_assoc", "erro"}."""
-    out = {"principais": {}, "acervo": None, "total_assoc": None, "erro": ""}
+    {"principais": {numero: {"situacao", "associados", "erro"}}, "acervo": [números] ou None,
+     "arquivados": [números] ou None, "total_assoc", "erro"}.
+    ir(url): leva a aba para outro endereço e espera carregar (para a aba "Arquivados"); sem ir, não lê os arquivados."""
+    out = {"principais": {}, "acervo": None, "arquivados": None, "total_assoc": None, "erro": ""}
     try:
         _filtro(js, True)
 
@@ -294,7 +335,14 @@ def ler_acervo(js, cobertura=True, max_paginas=MAX_PAGINAS, aviso=print):
         if cobertura:
             aviso("  lendo a lista do acervo inteiro (para saber o que está fora dele)...")
             _filtro(js, False)
+            _tamanho(js)
             out["acervo"], _ = percorrer(js, None, max_paginas)
+            if ir:
+                aviso("  lendo a aba Arquivados (processos arquivados no PJe)...")
+                ir(ARQUIVADOS)
+                _filtro(js, False)
+                _tamanho(js)
+                out["arquivados"], _ = percorrer(js, None, max_paginas)
     except LeituraErro as e:
         out["erro"] = str(e)
     finally:
@@ -315,6 +363,8 @@ class EstadoAssoc:
         if cols and "acervo" not in cols:  # esquema do 1º teste (busca pelo número): recomeça a base
             self.db.executescript("DROP TABLE IF EXISTS assoc_rodadas; DROP TABLE IF EXISTS assoc_principais; "
                                   "DROP TABLE IF EXISTS assoc_associados;")
+        elif cols and "arquivados" not in cols:  # rodada de 24/11 sem a aba Arquivados: só acrescenta a coluna
+            self.db.execute("ALTER TABLE assoc_rodadas ADD COLUMN arquivados INTEGER")
         self.db.executescript(ESQUEMA_ASSOC)
 
     def eh_base(self):
@@ -345,6 +395,11 @@ class EstadoAssoc:
             self.db.execute("INSERT INTO assoc_acervo VALUES (?, ?, ?) ON CONFLICT(numero) DO UPDATE SET ultima_vez = ?",
                             (n, hoje, hoje, hoje))
 
+    def gravar_arquivados(self, numeros, hoje):
+        for n in numeros:
+            self.db.execute("INSERT INTO assoc_arquivados VALUES (?, ?, ?) ON CONFLICT(numero) DO UPDATE SET ultima_vez = ?",
+                            (n, hoje, hoje, hoje))
+
     def gravar_principal(self, numero, situacao, qtd, hoje, erro=""):
         self.db.execute("INSERT OR REPLACE INTO assoc_principais VALUES (?, ?, ?, ?, 1, ?)",
                         (numero, situacao, qtd, hoje, erro))
@@ -354,11 +409,12 @@ class EstadoAssoc:
                         (principal, a["numero"], a.get("orgao") or "", hoje, int(novo), nivel))
 
     def fechar_rodada(self, hoje, res):
-        self.db.execute("INSERT OR REPLACE INTO assoc_rodadas VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        self.db.execute("INSERT OR REPLACE INTO assoc_rodadas (data, acervo, verificados, com_associados, fora_acervo, "
+                        "erros, novos, vermelhos, completa, base, arquivados) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         (hoje, res["acervo"], res["verificados"], res["com_associados"], len(res["fora_do_acervo"]),
                          len(res["erros"]), len(res["novos"]),
                          sum(1 for n in res["novos"] if n["nivel"] == "VERMELHO"), int(res["completa"]),
-                         int(res["base_global"])))
+                         int(res["base_global"]), len(res["arquivados_vios"])))
         self.db.commit()
 
 
@@ -372,7 +428,8 @@ def rodar(estado, lido, hoje=None, simular=False):
     acervo = lido.get("acervo")
     res = {"data": hoje, "simulado": simular, "base_global": base_global, "acervo": len(acervo) if acervo else 0,
            "total_assoc": lido.get("total_assoc"), "verificados": 0, "com_associados": 0, "novos": [], "base": [],
-           "fora_do_acervo": [], "erros": [], "completa": not lido.get("erro"), "interrompido": lido.get("erro", "")}
+           "fora_do_acervo": [], "arquivados_vios": [], "arquivados_total": len(lido["arquivados"]) if lido.get("arquivados") else 0,
+           "erros": [], "completa": not lido.get("erro"), "interrompido": lido.get("erro", "")}
     for numero, r in lido.get("principais", {}).items():
         if r["situacao"] != "ok":
             res["erros"].append((numero, r.get("erro") or "erro"))
@@ -402,12 +459,18 @@ def rodar(estado, lido, hoje=None, simular=False):
         if not simular:
             ea.gravar_principal(numero, "ok", len(r["associados"]), hoje)
     if acervo is not None:
-        no_acervo = set(acervo)
-        res["fora_do_acervo"] = [n for n in ea.vios_trt7_ativos() if n not in no_acervo]
+        no_acervo, arquivados = set(acervo), set(lido.get("arquivados") or [])
+        fora = [n for n in ea.vios_trt7_ativos() if n not in no_acervo]
+        res["arquivados_vios"] = [n for n in fora if n in arquivados]
+        res["fora_do_acervo"] = [n for n in fora if n not in arquivados]
         if not simular:
             ea.gravar_acervo(acervo, hoje)
+            if lido.get("arquivados"):
+                ea.gravar_arquivados(lido["arquivados"], hoje)
             for n in res["fora_do_acervo"]:
                 ea.gravar_principal(n, "fora_do_acervo", 0, hoje)
+            for n in res["arquivados_vios"]:
+                ea.gravar_principal(n, "arquivado_pje", 0, hoje)
     else:
         res["completa"] = False
     if res["erros"]:
@@ -420,7 +483,8 @@ def rodar(estado, lido, hoje=None, simular=False):
 def relatorio(res):
     L = [f"VIGIA · PROCESSOS ASSOCIADOS NO PJe · {res['data']}", "=" * 60,
          f"Acervo Geral: {res['acervo'] or '-'} processos · com associação: {res['total_assoc'] if res['total_assoc'] is not None else '-'}"
-         f" · lidos: {res['verificados']} · erros: {len(res['erros'])} · processos do VIOS fora do acervo: "
+         f" · lidos: {res['verificados']} · erros: {len(res['erros'])} · arquivados no PJe: {res['arquivados_total'] or '-'}"
+         f" · processos do VIOS arquivados no PJe: {len(res['arquivados_vios'])} · fora do acervo e dos arquivados: "
          f"{len(res['fora_do_acervo'])}" + (" · (simulação: nada gravado)" if res.get("simulado") else ""), ""]
     if res.get("interrompido"):
         L += [f"INCOMPLETA: {res['interrompido']}", ""]
@@ -452,8 +516,13 @@ def relatorio(res):
         L += [f"  Com o principal também fora do VIOS ({len(outros)}):"]
         L += [linha(r) for r in outros] or ["  (nenhum)"]
         L.append("")
+    if res["arquivados_vios"]:
+        L += [f"ATIVOS no VIOS, mas ARQUIVADOS no PJe ({len(res['arquivados_vios'])}) — atualizar o VIOS:"]
+        L += [f"  - {n}" for n in res["arquivados_vios"]]
+        L.append("")
     if res["fora_do_acervo"]:
-        L += [f"Processos do TRT7 do VIOS fora do Acervo Geral do login ({len(res['fora_do_acervo'])}) — sem a proteção do nível 3:"]
+        L += [f"Processos do TRT7 do VIOS fora do Acervo Geral e dos Arquivados do login ({len(res['fora_do_acervo'])})"
+              " — 2º grau/TST ou a sociedade não está no processo; sem a proteção do nível 3 (só o DJEN):"]
         L += [f"  - {n}" for n in res["fora_do_acervo"]]
         L.append("")
     if res["erros"]:

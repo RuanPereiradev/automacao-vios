@@ -109,6 +109,7 @@ CREATE TABLE assoc_rodadas (data TEXT PRIMARY KEY, acervo INTEGER, verificados I
   fora_acervo INTEGER, erros INTEGER, novos INTEGER, vermelhos INTEGER, completa INTEGER, base INTEGER);""")
         db.execute("INSERT INTO assoc_principais VALUES ('n', 'ok', 2, '2026-11-25', 1, '')")
         db.execute("INSERT INTO assoc_principais VALUES ('x', 'fora_do_acervo', 0, '2026-11-25', 0, '')")
+        db.execute("INSERT INTO assoc_principais VALUES ('n2', 'arquivado_pje', 0, '2026-11-25', 1, '')")
         db.executemany("INSERT INTO assoc_associados VALUES ('n', ?, '2ª Vara', ?, ?, ?)", [
             ("0000010-10.2026.5.07.0038", "2026-11-25", 1, "VERMELHO"),   # novo, fora do VIOS
             ("n2", "2026-11-25", 1, "INFO"),                                # novo, já no VIOS
@@ -128,6 +129,7 @@ CREATE TABLE assoc_rodadas (data TEXT PRIMARY KEY, acervo INTEGER, verificados I
         self.assertEqual((a["pendentes"], a["principais"], a["fora_acervo"]), (1, 1, 1))
         self.assertEqual(a["alertas"][0]["principal_ci"], "1")          # o principal 'n' está no VIOS (CI 1)
         self.assertEqual(a["rodada"]["data_br"], "25/11/2026")
+        self.assertEqual([(x["numero"], x["ci"]) for x in a["arquivados_vios"]], [("n2", "2")])
         self.assertEqual(C.resumo(self.pasta)["assoc_pendentes"], 1)
         C.conferir(self.pasta, "0000010-10.2026.5.07.0038", "habilitado", "Dra. Fulana")   # conferência vale para o associado
         self.assertEqual(C.painel(self.pasta)["assoc"]["pendentes"], 0)

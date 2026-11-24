@@ -66,6 +66,28 @@ class Rodada(unittest.TestCase):
                                   "WHERE data = '2026-11-25'").fetchone()
         self.assertEqual(tuple(rod), (2, 2, 1, 1, 1, 0))
 
+    def test_arquivado_no_pje_separado_do_fora_do_acervo(self):
+        l = lido({P1: [CPS]})
+        l["arquivados"] = [FORA, "0000123-12.2019.5.07.0024"]
+        r = self.rodar(l, 24)
+        self.assertEqual((r["arquivados_vios"], r["fora_do_acervo"], r["arquivados_total"]), ([FORA], [], 2))
+        self.assertIn("ATIVOS no VIOS, mas ARQUIVADOS no PJe (1)", VA.relatorio(r))
+        sit = self.est.db.execute("SELECT situacao FROM assoc_principais WHERE numero = ?", (FORA,)).fetchone()[0]
+        self.assertEqual(sit, "arquivado_pje")
+        self.assertEqual(self.est.db.execute("SELECT arquivados FROM assoc_rodadas").fetchone()[0], 1)
+
+    def test_coluna_arquivados_acrescentada_sem_perder_a_base(self):
+        self.est.db.executescript(
+            "CREATE TABLE assoc_rodadas (data TEXT PRIMARY KEY, acervo INTEGER, verificados INTEGER, com_associados INTEGER,"
+            " fora_acervo INTEGER, erros INTEGER, novos INTEGER, vermelhos INTEGER, completa INTEGER, base INTEGER);"
+            "INSERT INTO assoc_rodadas VALUES ('2026-11-24', 358, 60, 60, 97, 0, 0, 0, 1, 1);"
+            "CREATE TABLE assoc_associados (principal TEXT, associado TEXT, orgao TEXT, visto_em TEXT, novo INTEGER,"
+            " nivel TEXT, PRIMARY KEY (principal, associado));"
+            f"INSERT INTO assoc_associados VALUES ('{P1}', '{CPS}', '', '2026-11-24', 0, 'BASE');")
+        ea = VA.EstadoAssoc(self.est)
+        self.assertFalse(ea.eh_base())                       # a base de 24/11 continua valendo
+        self.assertEqual(ea.conhecidos(P1), {CPS})
+
     def test_processo_que_acabou_de_entrar_no_acervo_vira_base(self):
         self.rodar(lido({P1: [CPS]}, acervo=(P1,)), 24)
         r = self.rodar(lido({P1: [CPS], P2: [NOVO]}, acervo=(P1, P2)), 25)
@@ -114,15 +136,22 @@ class Rodada(unittest.TestCase):
 class PjeFalso:
     """Imita o Acervo Geral: filtro "Processos com Associação", páginas de 10, janela de associados de 5 em 5."""
 
-    def __init__(self, acervo, associados):
-        self.acervo, self.assoc = list(acervo), dict(associados)
+    def __init__(self, acervo, associados, arquivados=()):
+        self.acervo, self.assoc, self.arquivados_lista = list(acervo), dict(associados), list(arquivados)
+        self.aba = "acervo"
         self.filtro, self.pagina, self.dialogo, self.pag_dialogo = False, 1, None, 1
         self.abertos = []
 
+    def ir(self, url):
+        self.aba, self.pagina, self.filtro = ("arquivados" if url == VA.ARQUIVADOS else "acervo"), 1, False
+
     def lista(self):
-        return [n for n in self.acervo if n in self.assoc] if self.filtro else self.acervo
+        base = self.arquivados_lista if self.aba == "arquivados" else self.acervo
+        return [n for n in base if n in self.assoc] if self.filtro else base
 
     def js(self, c):
+        if "mat-select" in c:
+            return "ja"  # já com 100 por página
         if c.startswith("(function(ligar)"):
             ligar = c.rstrip().endswith("(true)")
             mudou = ligar != self.filtro
@@ -182,13 +211,15 @@ class LerAcervo(unittest.TestCase):
         assoc = {acervo[3]: [CPS], acervo[14]: muitos, acervo[24]: [NOVO]}
         pje = PjeFalso(acervo, assoc)
         pje.pagina = 2  # o PJe guarda a página: tem de voltar para a 1ª
+        pje.arquivados_lista = [f"00099{i:02d}-33.2020.5.07.0024" for i in range(13)]
         with mock.patch.object(VA.time, "sleep"):
-            r = VA.ler_acervo(pje.js, aviso=lambda *_: None)
+            r = VA.ler_acervo(pje.js, aviso=lambda *_: None, ir=pje.ir)
         self.assertEqual(r["erro"], "")
         self.assertEqual(sorted(r["principais"]), sorted(assoc))
         self.assertEqual([a["numero"] for a in r["principais"][acervo[14]]["associados"]], muitos)
         self.assertEqual(r["acervo"], acervo)          # cobertura: o acervo inteiro (3 páginas)
         self.assertEqual(r["total_assoc"], 3)
+        self.assertEqual(r["arquivados"], pje.arquivados_lista)  # aba Arquivados (2 páginas)
         self.assertFalse(pje.filtro)                   # deixa o acervo sem filtro
         self.assertIsNone(pje.dialogo)                 # nenhuma janela aberta
 

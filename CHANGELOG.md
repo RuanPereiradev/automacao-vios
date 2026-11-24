@@ -12,6 +12,17 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — pje-busca: aba "Arquivados" do PJe no nível 3 (24/11/2026)
+- A 1ª rodada completa (358 no acervo, 60 com associação, 0 erro) deu 97 processos do VIOS "fora do acervo". Conferido:
+  parte está ARQUIVADA no PJe e continua ativa no VIOS (ex.: 0000029-50.2026.5.07.0024, arquivamento definitivo em
+  09/11/2026 após acordo) e parte está no 2º grau/TST.
+- `vigia.py associados` agora também percorre a aba "Arquivados" (3.188 processos; 100 por página) e separa:
+  "ativos no VIOS, mas arquivados no PJe" (atualizar o VIOS) e "fora do acervo e dos arquivados". Listas grandes com
+  100 linhas por página. Linhas lidas pelo texto da linha (na aba Arquivados o botão de detalhes não tem aria-label).
+- Tabela `assoc_arquivados`; coluna `arquivados` em `assoc_rodadas` (acrescentada sem perder a base de 24/11).
+- Aba Cumprimentos: lista recolhida "Ativos no VIOS, mas arquivados no PJe" (CI, empresa, advogado) para a equipe
+  encerrar no VIOS. JavaScript conferido no PJe real (aba Arquivados, 100 por página).
+
 ### Corrigido — pje-busca: nível 3 lê pelo filtro "Processos com Associação" (24/11/2026)
 - A 1ª rodada (busca pelo número no campo do Acervo Geral) dava "fora do acervo" para quase tudo: depois de algumas
   buscas a lista do PJe deixa de atualizar (o campo mostra o número novo e a lista continua no anterior).

@@ -250,7 +250,7 @@ def _item(r, conf, hoje, principais=None):
 
 def _associados(db, conf, hoje):
     """Nível 3: associados novos (depois da base) e a última rodada no PJe."""
-    out = {"rodada": None, "alertas": [], "pendentes": 0, "principais": 0, "fora_acervo": 0}
+    out = {"rodada": None, "alertas": [], "pendentes": 0, "principais": 0, "fora_acervo": 0, "arquivados_vios": []}
     if not _tabela(db, "assoc_associados"):
         return out
     r = db.execute("SELECT * FROM assoc_rodadas ORDER BY data DESC LIMIT 1").fetchone() \
@@ -264,6 +264,14 @@ def _associados(db, conf, hoje):
     vios = {}
     if _tabela(db, "processos"):
         vios = {x["numero"]: x for x in db.execute("SELECT numero, ci, empresa, advogado FROM processos")}
+    if _tabela(db, "assoc_principais"):
+        # ativos no VIOS, mas arquivados no PJe: a equipe atualiza o VIOS
+        for x in db.execute("SELECT numero, verificado_em FROM assoc_principais WHERE situacao = 'arquivado_pje' "
+                            "ORDER BY numero"):
+            p = vios.get(x["numero"]) or {}
+            out["arquivados_vios"].append({"numero": x["numero"], "ci": p["ci"] if p else "",
+                                           "empresa": p["empresa"] if p else "", "advogado": p["advogado"] if p else "",
+                                           "visto_br": data_br(x["verificado_em"])})
     djen = {x[0] for x in db.execute("SELECT numero FROM djen_processos")} if _tabela(db, "djen_processos") else set()
     for a in db.execute("SELECT * FROM assoc_associados WHERE novo = 1 ORDER BY visto_em DESC, associado"):
         c = conf.get(a["associado"]) or {}
