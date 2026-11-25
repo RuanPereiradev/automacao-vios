@@ -12,6 +12,60 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Sam: tarefas previdenciárias renomeadas no VIOS e envio como rascunho (25/11/2026)
+- O VIOS renomeou as tarefas do previdenciário: **MINUTAR IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026** e **MINUTAR
+  RÉPLICA/ PETIÇÃO INTERMEDIÁRIA (PREVIDENCIÁRIO)**. Entram na lista oficial (`bot/skill.py`, `NOVAS_NO_VIOS`) e a
+  análise do bot passa a usá-las (`bot/analise.py`: laudo -> impugnação; o resto -> réplica/petição intermediária).
+- Os nomes de 10/11 ("MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO..." e "MINUTAR PETIÇÃO INTERMEDIÁRIA (PREVIDENCIÁRIO)") e o da
+  skill continuam aceitos no .txt (`bot/lancamento.py`, `APELIDOS`): no VIOS vale o nome antigo se ainda existir;
+  senão, o novo.
+- Envio como **rascunho**: a edição na página é guardada sozinha (`POST /envio/<id>/rascunho`, 1,5 s depois da
+  última alteração; o aviso mostra a hora) e, ao abrir a página, o envio ainda não testado é conferido de novo com a
+  lista oficial e os responsáveis atuais. Depois de atualizar o Sam, basta recarregar a página: não precisa subir o
+  .txt de novo. O botão de envio continua bloqueado até "Salvar e conferir" (ou recarregar).
+- Testes em `tests/test_sam_rascunho.py` (os de página precisam do Flask/Selenium da `.venv`).
+
+### Adicionado — pje-busca: agenda diária do vigia no Mac mini (24/11/2026)
+- `./servidor_mac.sh vigia instalar` cria dois serviços do launchd (seg a sex): `vigia.py agenda manha` às 7h40
+  (`vios` e depois `djen`; o `djen` roda mesmo se o `vios` falhar) e `vigia.py agenda madrugada` às 3h20
+  (`associados`). Também `parar`, `status`, `log` e `agora manha|madrugada`; `./servidor_mac.sh tudo` mostra a agenda.
+- Alerta só na aba Cumprimentos (decisão de 24/11/2026): nada é enviado para fora.
+- A rodada da madrugada abre `pje-busca/agenda_madrugada.command` no Terminal (`open -a Terminal`): o login pelo Presto
+  precisa de clique e digitação de verdade, e só o Terminal tem a permissão de Acessibilidade (1º teste pelo launchd,
+  24/11/2026: "O macOS não deixou ... mexer no mouse/teclado"). A permissão não é dada ao Python.
+  O Terminal abre em segundo plano (`open -g`) e o login do PJe põe o Chrome na frente antes da credencial e do
+  PIN (`acesso_pje.entrar_trt7`): com outra janela por cima o clique de verdade caía no lugar errado e o login
+  ficava parado na tela do PDPJ (teste de 24/11/2026, 16h23).
+- `pje-busca/src/vigia_agenda.py`: mesma trava do botão da aba (`logs/.vila_djen.json`), uma execução por vez; se o
+  botão estiver rodando, espera até 1 hora e desiste registrando o motivo. Resultado em `logs/agenda_ultima.json`.
+  Cada passo roda sem buffer (`PYTHONUNBUFFERED`), para o `./servidor_mac.sh vigia log` mostrar o andamento.
+- Aba Cumprimentos: "Rodada agendada (...): rodando" e o resultado da última rodada agendada no cartão Verificação;
+  o botão espera a rodada agendada terminar.
+- Testes em `pje-busca/tests/test_agenda.py` e `tests/test_cumprimentos.py`.
+
+### Alterado — pje-busca: regra segura da classe dos associados novos (nível 3) (24/11/2026)
+- Antes de avisar, `vigia.py associados` consulta no DJEN a classe de cada associado novo fora do VIOS
+  (`vigia_associados.classe_djen`). Só sai do alerta quando o DJEN **confirma** que não é cumprimento: todas as
+  classes reconhecidas como outra coisa (ação trabalhista, homologação de acordo, ação de cumprimento do sindicato,
+  tutela, consignação...) viram o nível `OUTRA`, que continua listado no relatório e na aba.
+- Na dúvida continua alerta: classe de cumprimento/execução/liquidação (basta uma publicação), sem publicação no DJEN,
+  erro na consulta ou classe que o robô não reconhece (agravo de petição, embargos...).
+- Número do associado anterior ao do principal = só observação ("anterior ao principal"), nunca tira o alerta.
+- `assoc_associados` ganha `classe`, `motivo` e `anterior` (acrescentadas sem perder a base de 24/11).
+- Aba Cumprimentos: classe do DJEN, motivo e observação da data em cada associado novo; selo "outra classe".
+- Testes em `pje-busca/tests/test_associados.py` e `tests/test_cumprimentos.py`.
+
+### Adicionado — Jarvis: IA em duas etapas (`--fila`) (24/11/2026)
+- Para gerar o relatório sem chave de API (análise escrita pelo Claude numa conversa): `./rodar.sh --fila --grupo ...`.
+  1ª rodada: cada pergunta à IA vira um arquivo em `<SAIDA_PASTA>/ia_fila/pedidos/` (fora do git) e a célula sai
+  "aguardando a análise". As respostas (mesmo JSON do schema) vão em `ia_fila/respostas.json` ou
+  `ia_fila/respostas/*.json`; a 2ª rodada lê o VIOS de novo e monta planilha e PDF com elas.
+- Chave estável entre as rodadas (instruções + 1ª linha do texto: "Processo: <nº>", "CI: <nº>", "Grupo: <nome>").
+  Sem custo na tabela de gastos.
+- Corrigido no mesmo dia: processos sem número no VIOS (ou com o mesmo número em dois cadastros) tinham a mesma chave
+  e um pedido sobrescrevia o outro. A chave de "Processo:" passa a levar também um hash curto das linhas do cadastro
+  (cliente, polo, partes — antes de "TAREFAS"), que não mudam quando entra tarefa nova entre as rodadas. `jarvis/nucleo/ia/fila_ia.py`; testes em `jarvis/tests/test_fila.py`.
+
 ### Adicionado — Vila dos Bots: Vila 07, o Abismo (24/11/2026)
 - Nova aba **07 · Abismo** na vila (`/vila` e página inicial): três heróis em pixel art (Mago, Arqueiro, Bárbaro) contra o
   Troll Ancião, com o desenho do kit "Abismo — Kit de Animação Pixelada". Cada classe roda um laço de 9 s (Mago: esferas

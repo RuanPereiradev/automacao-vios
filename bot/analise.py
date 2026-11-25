@@ -47,11 +47,11 @@ FORA_DA_DESCRICAO = re.compile(r"^\s*(RESPONSÁVEL A MARCAR NA TAREFA|ADVOGADA? 
 # rótulos das linhas de prazo da descrição (skill de 10/11/2026)
 ROTULO_D2 = "PRAZO FATAL D -2"
 JOHNYS = "FRANCISCO JOHNYS VASCONCELOS BARBOSA"
-# Em 10/11/2026 o VIOS dividiu a tarefa da skill em duas (a skill ainda usa o nome antigo):
-# laudo -> "MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO"; o resto (ex.: proposta de acordo do INSS) -> petição intermediária
+# Em 10/11/2026 o VIOS dividiu a tarefa da skill em duas (a skill ainda usa o nome antigo) e em 25/11/2026 renomeou:
+# laudo -> "MINUTAR IMPUGNAÇÃO LAUDO"; o resto (réplica, proposta de acordo do INSS...) -> réplica/petição intermediária
 LAUDO_PREV_ANTIGA = "MINUTAR PETIÇÃO INTERMEDIÁRIA/RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026"
-LAUDO_PREV = "MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026"
-INTERMEDIARIA_PREV = "MINUTAR PETIÇÃO INTERMEDIÁRIA (PREVIDENCIÁRIO)"  # substitui Carlos (CARL) nas tarefas trabalhistas
+LAUDO_PREV = "MINUTAR IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026"
+INTERMEDIARIA_PREV = "MINUTAR RÉPLICA/ PETIÇÃO INTERMEDIÁRIA (PREVIDENCIÁRIO)"  # substitui Carlos (CARL) nas tarefas trabalhistas
 # tarefas cuja DATA (sem hora fixa) recua para o dia de trabalho anterior quando cai em feriado (skill de 13/11/2026)
 # sentença e acórdão sempre geram ANALISAR (o advogado decide se recorre)
 ATOS_DE_ANALISE = {"SENTENÇA", "ACÓRDÃO"}

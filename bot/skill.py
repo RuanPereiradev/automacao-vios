@@ -29,8 +29,10 @@ def carregar_texto(pasta):
     return "\n\n".join(partes)
 
 
-# tarefas que já existem no VIOS e ainda não estão na skill (o VIOS dividiu a de laudo em 10/11/2026)
-NOVAS_NO_VIOS = ["MINUTAR RÉPLICA/IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026", "MINUTAR PETIÇÃO INTERMEDIÁRIA (PREVIDENCIÁRIO)"]
+# tarefas que já existem no VIOS e ainda não estão na skill. Em 10/11/2026 o VIOS dividiu a de laudo em duas; em
+# 25/11/2026 a réplica passou para a da petição intermediária e a de laudo ficou só "IMPUGNAÇÃO LAUDO". Os nomes
+# de 10/11 continuam aceitos (bot/lancamento.py, APELIDOS: no VIOS vale o nome antigo, se existir, senão o novo).
+NOVAS_NO_VIOS = ["MINUTAR IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026", "MINUTAR RÉPLICA/ PETIÇÃO INTERMEDIÁRIA (PREVIDENCIÁRIO)"]
 
 
 def tarefas_oficiais(pasta):

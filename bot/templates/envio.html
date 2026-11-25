@@ -505,11 +505,26 @@ SENTENÇA
     </details>
   </div>
   <script>
-    // alteração não salva: bloqueia o envio até salvar (senão iria a versão anterior)
-    document.getElementById('form-editar').addEventListener('input', () => {
-      document.getElementById('nao-salvo').hidden = false;
-      document.querySelectorAll('#form-enviar button').forEach(b => b.disabled = true);
-    });
+    // alteração não salva: bloqueia o envio até salvar e conferir (senão iria a versão anterior).
+    // Rascunho: cada alteração é guardada no servidor em 1,5 s; ao recarregar a página, o rascunho volta conferido.
+    (() => {
+      const form = document.getElementById('form-editar');
+      const aviso = document.getElementById('nao-salvo');
+      let tempo = null;
+      async function guardar() {
+        try {
+          const r = await fetch("{{ url_for('rascunho', envio_id=envio_id) }}", { method: "POST", body: new FormData(form) });
+          const d = await r.json();
+          if (r.ok && aviso) aviso.textContent = "Rascunho salvo às " + d.quando + ". Clique em \"Salvar e conferir\" (ou recarregue a página) antes de enviar.";
+        } catch (e) { /* sem conexão: o aviso continua pedindo para salvar */ }
+      }
+      form.addEventListener('input', () => {
+        if (aviso) aviso.hidden = false;
+        document.querySelectorAll('#form-enviar button').forEach(b => b.disabled = true);
+        clearTimeout(tempo);
+        tempo = setTimeout(guardar, 1500);
+      });
+    })();
   </script>
   {% endif %}
 {% endif %}

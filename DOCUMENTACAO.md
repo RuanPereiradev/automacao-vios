@@ -472,7 +472,10 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   **Salvar e conferir**: a página refaz o `.txt` com os campos e confere de
   novo (mesmas regras da subida). Há também **Editar como texto**, para colar
   ou acrescentar blocos. Com alteração não salva, os botões de envio ficam
-  bloqueados. Depois de um envio, dá para corrigir as CIs com erro e enviar de
+  bloqueados. **Rascunho:** cada alteração é guardada sozinha no servidor
+  (1,5 s depois de parar de digitar) e, ao abrir a página, o envio ainda não
+  testado é conferido de novo com a lista oficial atual; depois de atualizar o
+  Sam, basta recarregar a página (não precisa subir o `.txt` de novo). Depois de um envio, dá para corrigir as CIs com erro e enviar de
   novo (as já gravadas aparecem como "Já lançada" e não vão outra vez).
 - Botões: **Testar sem gravar** (preenche o formulário do VIOS e tira print,
   como o modo teste) e **Enviar ao VIOS** (grava). O robô entra no VIOS uma
@@ -767,7 +770,10 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
     filtro "Processos com Associação", abre a janela "Processos associados" de cada linha (todas as páginas) e,
     no fim, percorre o acervo inteiro para saber quais processos do VIOS estão fora dele (10 a 15 min, com o Chrome
     do Mac). A 1ª rodada completa é base; depois, associado novo fora do VIOS é alerta vermelho com a mesma
-    conferência. Botão "Verificar associados no PJe" na página (não mexer na janela do PJe enquanto roda). A busca
+    conferência. **Regra segura da classe**: antes de avisar, o vigia consulta no DJEN a classe do associado; só sai
+    do alerta (fica listado como "outra classe") quando o DJEN confirma uma classe que não é cumprimento (ação
+    trabalhista, homologação de acordo, ação de cumprimento do sindicato...). Sem publicação, erro na consulta ou
+    classe que o robô não reconhece continua alerta; número anterior ao do principal é só observação. Botão "Verificar associados no PJe" na página (não mexer na janela do PJe enquanto roda). A busca
     pelo número no campo do acervo não é usada: a lista deixa de atualizar depois de algumas buscas;
   - **Empresas sem nenhuma publicação no DJEN**: a busca é pelo nome, então empresa cadastrada no tribunal com
     outro nome some da vigilância. Cada empresa mostra CNPJ, quantos processos do TRT7 ela tem no VIOS (em
@@ -786,7 +792,29 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   Todas atrás da senha das páginas (`ENVIO_SENHA`).
 - Configuração: `PJE_BUSCA_PASTA` só se o pje-busca estiver fora deste repositório. Antes da 1ª vez:
   `cd pje-busca && python3 vigia.py vios` (lista do VIOS) e `python3 vigia.py djen` (base do DJEN).
-- Testes: `tests/test_cumprimentos.py` (dados fictícios).
+- **Agenda diária** (Mac mini, launchd): `./servidor_mac.sh vigia instalar` liga, de segunda a sexta,
+  `vigia.py agenda manha` às 7h40 (`vios` e depois `djen`) e `vigia.py agenda madrugada` às 3h20 (`associados`).
+  O alerta fica **só na aba** (nada é enviado para fora). A rodada agendada usa a mesma trava do botão da aba: uma
+  execução por vez; se o botão estiver rodando, ela espera até 1 hora e depois desiste, registrando o motivo. A aba
+  mostra "Rodada agendada (...): rodando" e, depois, o resultado da última (`pje-busca/logs/agenda_ultima.json`).
+  Comandos: `./servidor_mac.sh vigia status | log | parar | agora manha | agora madrugada`. Na 1ª rodada pelo
+  launchd o macOS pode pedir permissão para o Python controlar o Chrome: rodar `vigia agora` com alguém no Mac.
+  A da madrugada abre `pje-busca/agenda_madrugada.command` numa janela do Terminal, porque o login pelo Presto precisa
+  de clique e digitação de verdade e só o Terminal tem a permissão de Acessibilidade (não dar essa permissão ao Python).
+  As duas precisam do login do Mac aberto (Chrome e Terminal rodam na sessão do usuário).
+- Testes: `tests/test_cumprimentos.py` (dados fictícios) e `pje-busca/tests/test_agenda.py`.
+
+### Passo 45 — Vila 07: o Abismo (três heróis contra o Troll Ancião)
+- Cena em pixel art feita a partir do kit de design "Abismo": Mago, Arqueiro e Bárbaro atacam o Troll Ancião, um laço de
+  9 s por classe (12 fps; herói 16×20 px, troll 28×33 px), com barra de vida, números de dano e o cartão do ataque da vez
+  aceso. A cena **só anima**: não lê nenhum bot nem evento.
+- Página: **`bot/vila/abismo.html`**, servida em **`/vila/abismo`** (mesma senha das páginas); aparece por cima do palco
+  quando a aba **07 · Abismo** é escolhida (patch `doc/vila/ligar_vila07_abismo.py`, rodar depois do da Vila 06). O mapa
+  continua com 5 lotes: as abas 06 e 07 são só camadas; `?vila=6` e `?vila=7` abrem direto a Mikasa e o Abismo.
+- Sem arquivo de imagem: cada pixel é um `<i>` numa grade CSS e os desenhos ficam em `MAPAS`, no fim da página (uma
+  letra por cor). Para trocar uma cor, mudar a classe `.c-<letra>` no `<style>`. `?classe=mago`, `arq` ou `bar` fixa uma
+  classe (útil para conferir um ataque).
+- Testes: `.venv/bin/python -m unittest tests.test_vila07`.
 
 ### Passo 21 — Rodar no Mac e no Linux
 - O projeto roda nos dois sistemas com os mesmos arquivos e comandos.
@@ -835,7 +863,9 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   - `./servidor_mac.sh whatsapp instalar | status | atualizar | log | desinstalar` chama os scripts do próprio bot
     (`scripts/mac/`; `instalar` e `atualizar` pedem a senha de administrador do Mac);
   - `./servidor_mac.sh coletor instalar | parar | status | log` é o mesmo que `consulta/servico_mac.sh`;
-  - `./servidor_mac.sh tudo` mostra os três serviços (página dos bots, coletor, bot de WhatsApp);
+  - `./servidor_mac.sh vigia instalar | parar | status | log | agora manha|madrugada`: agenda diária do vigia do
+    pje-busca (ver o passo da aba Cumprimentos);
+  - `./servidor_mac.sh tudo` mostra os três serviços (página dos bots, coletor, bot de WhatsApp) e a agenda do vigia;
   - `./servidor_mac.sh atualizar-tudo` atualiza **o bot primeiro** e só depois faz o `git pull` daqui e reinicia a
     página e o coletor (o bot antigo recusa campo novo do coletor). Se o pull trouxe dependência nova, rodar
     `./instalar.sh` e `./servidor_mac.sh coletor instalar`.

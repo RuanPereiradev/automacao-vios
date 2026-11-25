@@ -520,9 +520,21 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         evento_conferido(pasta_saida, envio_id, envios[envio_id])
         return redirect(url_for("ver", envio_id=envio_id))
 
+    def reconferir(envio_id, envio):
+        """Rascunho: ao abrir a página, confere de novo o envio ainda não testado com a lista oficial e os
+        responsáveis atuais (depois de atualizar o Sam, basta recarregar a página: não precisa subir o .txt)."""
+        if envio["estado"] != "conferir" or not _editavel(envio):
+            return
+        novo = conferir(envio_txt.gerar(envio["cis"]))
+        if novo and json.dumps(novo, sort_keys=True, default=str) != json.dumps(envio["cis"], sort_keys=True, default=str):
+            envio["cis"] = novo
+            salvar_envio(pasta_saida, envio_id, envio)
+            evento_conferido(pasta_saida, envio_id, envio)
+
     @app.route("/envio/<envio_id>")
     def ver(envio_id):
         envio = envios.get(envio_id) or abort(404)
+        reconferir(envio_id, envio)
         aptas = [c for c in envio["cis"] if not c["problemas"] and not c["ja_lancada"]]
         capturadas = _capturas(pasta_saida)
         nao_capturadas = [c["ci"] for c in envio["cis"] if c["ci"] not in capturadas]
@@ -547,6 +559,23 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         salvar_envio(pasta_saida, envio_id, envio)
         evento_conferido(pasta_saida, envio_id, envio)  # editou: a vila recebe a conferência nova
         return redirect(url_for("ver", envio_id=envio_id))
+
+    @app.route("/envio/<envio_id>/rascunho", methods=["POST"])
+    def rascunho(envio_id):
+        """Rascunho automático da edição (a página manda os campos a cada alteração): grava sem recarregar.
+        Ao recarregar a página, o rascunho é conferido de novo (reconferir)."""
+        envio = envios.get(envio_id) or abort(404)
+        if not _editavel(envio) or envio["estado"] == "enviando":
+            return jsonify(erro="este envio não pode ser editado agora"), 409
+        cis = _cis_do_form(request.form)
+        if not cis:
+            return jsonify(erro="nada para guardar"), 400
+        envio["cis"] = conferir(envio_txt.gerar(cis))
+        envio["estado"] = "conferir"
+        envio["editado"] = datetime.now()
+        salvar_envio(pasta_saida, envio_id, envio)
+        return jsonify(ok=True, quando=f"{envio['editado']:%H:%M:%S}",
+                       problemas=sum(1 for c in envio["cis"] if c["problemas"]))
 
     @app.route("/envio/<envio_id>/enviar", methods=["POST"])
     def enviar(envio_id):
