@@ -232,8 +232,37 @@ class Principal(unittest.TestCase):
                          [("0001368-02.2026.5.07.0038", "0002754-04.2025.5.07.0038", "27466")])
         self.assertIn("NO VIOS (CI 27466", VD.relatorio(r))
         r2 = VD.rodar(est, consulta_numero=lambda n: [], hoje=date(2026, 8, 1), consulta=lambda n: PUB, pausa=0,
-                      consulta_principal=lambda n: self.fail("não deveria consultar de novo"))
+                      consulta_principal=lambda n: self.fail("não deveria consultar de novo"),
+                      consulta_andamentos=lambda n: [])
         self.assertEqual(r2["principais"], [])                        # já achado: não consulta de novo
+
+
+    def test_andamentos_sem_repeticao_e_gravados(self):
+        pub = lambda dest, polo, extra="": {  # noqa: E731
+            "data_disponibilizacao": "2026-11-16", "tipoComunicacao": "Intimação", "tipoDocumento": "Notificação",
+            "nomeOrgao": "2ª Vara do Trabalho de Sobral",
+            "texto": "<p>DESPACHO homologo os cálculos.</p> Intimado(s) / Citado(s) - " + dest + extra,
+            "destinatarios": [{"nome": dest, "polo": polo}]}
+        itens = [pub("EXEQUENTE X", "A"), pub("EMPRESA Y", "P"),
+                 {"data_disponibilizacao": "2026-07-06", "tipoComunicacao": "Lista de distribuição",
+                  "texto": "Processo distribuído", "destinatarios": []}]
+        a = VD.andamentos(itens)
+        self.assertEqual([x["data"] for x in a], ["2026-11-16", "2026-07-06"])   # mesma decisão vira uma só
+        self.assertEqual(a[0]["texto"], "DESPACHO homologo os cálculos.")
+        self.assertEqual(a[0]["destinatarios"], "EXEQUENTE X (A); EMPRESA Y (P)")
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        est = VE.Estado(Path(tmp.name) / "v.sqlite")
+        self.addCleanup(est.fechar)
+        ed = VD.EstadoDjen(est)
+        ed.gravar("0001226-95.2026.5.07.0038", "DFA", {"classe": "CUMPRIMENTO PROVISÓRIO DE SENTENÇA", "orgao": "",
+                  "primeira_publicacao": "2026-07-06", "tipo": ""}, "2026-11-24", "VERMELHO")
+        r = VD.atualizar_andamentos(ed, "2026-11-26", lambda n: itens, pausa=0)
+        self.assertEqual(r, [{"numero": "0001226-95.2026.5.07.0038", "andamentos": 2, "erro": ""}])
+        VD.atualizar_andamentos(ed, "2026-11-27", lambda n: itens, pausa=0)   # de novo: não duplica
+        self.assertEqual(est.db.execute("SELECT COUNT(*) FROM djen_andamentos").fetchone()[0], 2)
+        r = VD.atualizar_andamentos(ed, "2026-11-27", lambda n: (_ for _ in ()).throw(OSError("fora do ar")), pausa=0)
+        self.assertEqual(r[0]["erro"], "fora do ar")
 
 
 if __name__ == "__main__":

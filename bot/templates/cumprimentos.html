@@ -24,6 +24,41 @@
   </div>
 {% endmacro %}
 
+{# análise escrita (dados/cumprimentos_resumos.json) e andamentos do DJEN do processo #}
+{% macro detalhes(i) %}
+  {% if i.analise %}
+    {% set a = i.analise %}
+    <div class="analise risco-{{ a.risco or 'sem' }}">
+      <div class="analise-topo">
+        {% if a.risco_texto %}<span class="selo risco">{{ a.risco_texto }}</span>{% endif %}
+        <b>{{ a.situacao }}</b>
+      </div>
+      {% if a.prazo %}<p class="prazo">⏱ {{ a.prazo }}</p>{% endif %}
+      {% if a.proximos %}
+        <p class="rotulo">O que fazer</p>
+        <ol class="proximos">{% for x in a.proximos %}<li>{{ x }}</li>{% endfor %}</ol>
+      {% endif %}
+      {% if a.fatos %}
+        <details><summary>O que aconteceu no processo ({{ a.fatos | length }})</summary>
+          <ul class="fatos">{% for x in a.fatos %}<li>{{ x }}</li>{% endfor %}</ul>
+        </details>
+      {% endif %}
+      <p class="suave pequeno">{% if a.fonte %}Fonte: {{ a.fonte }}{% endif %}{% if a.atualizado_br %} · análise de {{ a.atualizado_br }}{% endif %}</p>
+    </div>
+  {% endif %}
+  {% if i.andamentos %}
+    <details class="andamentos"><summary>Publicações no DJEN ({{ i.andamentos | length }}) · última em {{ i.andamentos[0].data_br }}</summary>
+      {% for x in i.andamentos %}
+        <div class="andamento">
+          <div class="pequeno"><b>{{ x.data_br }}</b> · {{ x.tipo }}{% if x.documento %} ({{ x.documento }}){% endif %}
+            {% if x.destinatarios %}<span class="suave"> · para: {{ x.destinatarios }}</span>{% endif %}</div>
+          <p class="texto-pub">{{ x.texto }}</p>
+        </div>
+      {% endfor %}
+    </details>
+  {% endif %}
+{% endmacro %}
+
 {# cabeçalho de um item: número + copiar + empresa #}
 {% macro topo(i, empresa) %}
   <div class="topo-item">
@@ -46,6 +81,7 @@
     {% else %}
       <p class="principal suave">Processo principal ainda não verificado (sai na próxima verificação).</p>
     {% endif %}
+    {{ detalhes(i) }}
     {{ botoes(i) }}
   </div>
 {% endmacro %}
@@ -57,6 +93,7 @@
       · {{ i.orgao }} · visto em {{ i.visto_br }}</p>
     {% if i.amarelo %}<p class="principal suave">O principal também não está na lista do VIOS (antigo, arquivado ou de outra área): conferir sem urgência.</p>{% endif %}
     {% if i.classe or i.motivo %}<p class="principal suave">Classe no DJEN: {{ i.classe or "-" }}{% if i.motivo %} · {{ i.motivo }}{% endif %}</p>{% endif %}
+    {{ detalhes(i) }}
     {{ botoes(i) }}
   </div>
 {% endmacro %}
@@ -67,6 +104,7 @@
     <p class="frase">Já estava associado ao processo {{ i.principal }} (CI {{ i.principal_ci }}) · {{ i.orgao }}
       {% if i.advogado %}· adv. {{ i.advogado }}{% endif %}</p>
     <p class="principal suave">Não é alerta novo: abrir no PJe uma vez e dizer o que é (cumprimento, ação anterior, acordo...).</p>
+    {{ detalhes(i) }}
     {{ botoes(i) }}
   </div>
 {% endmacro %}
@@ -77,6 +115,7 @@
     <p class="frase"><b>{{ grupos_fora[i.grupo][0] if i.grupo in grupos_fora else i.grupo }}</b> · {{ i.orgao }}
       {% if i.ci %}· CI {{ i.ci }}{% endif %} · última publicação {{ i.ultima_br }}</p>
     {% if i.grupo in grupos_fora %}<p class="principal suave">{{ grupos_fora[i.grupo][1] }}</p>{% endif %}
+    {{ detalhes(i) }}
     {{ botoes(i) }}
   </div>
 {% endmacro %}
@@ -193,6 +232,23 @@
   .msg { font-size: 13px; color: var(--suave); }
   .msg.erro { color: #ff7b72; }
   .vazio { color: var(--verde); margin: 6px 0 12px; }
+  .analise { border: 1px solid var(--borda); border-radius: 10px; padding: 12px 14px; margin: 6px 0 10px; background: var(--cartao); }
+  .analise.risco-alto { border-color: rgba(255, 90, 60, .55); background: linear-gradient(90deg, rgba(255, 90, 60, .08), var(--cartao) 60%); }
+  .analise.risco-medio { border-color: rgba(227, 167, 47, .5); }
+  .analise.risco-baixo { border-color: rgba(63, 185, 80, .45); }
+  .analise-topo { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-size: 15px; }
+  .risco-alto .selo.risco { color: #ff7b5c; border-color: rgba(255, 90, 60, .6); background: rgba(255, 90, 60, .12); }
+  .risco-medio .selo.risco { color: var(--ambar); border-color: rgba(227, 167, 47, .5); background: rgba(227, 167, 47, .1); }
+  .risco-baixo .selo.risco { color: var(--verde); border-color: rgba(63, 185, 80, .45); background: rgba(63, 185, 80, .1); }
+  .prazo { margin: 8px 0 0; font-weight: 600; color: #ff9a7f; }
+  .risco-medio .prazo, .risco-baixo .prazo { color: var(--ambar); }
+  .rotulo { margin: 10px 0 2px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--suave); }
+  .proximos, .fatos { margin: 4px 0 6px; padding-left: 22px; font-size: 14px; }
+  .proximos li, .fatos li { margin: 3px 0; }
+  .analise details { margin-top: 6px; }
+  details.andamentos { margin: 0 0 10px; }
+  .andamento { border-left: 2px solid var(--borda); padding: 4px 0 4px 12px; margin: 8px 0; }
+  .texto-pub { margin: 4px 0 0; font-size: 13px; color: var(--metal); white-space: pre-wrap; max-height: 220px; overflow: auto; }
   details.feitos { margin-top: 12px; }
   details summary { cursor: pointer; font-weight: 600; color: var(--suave); }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }

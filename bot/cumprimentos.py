@@ -34,7 +34,11 @@ PASTA_PADRAO = Path(__file__).resolve().parent.parent / "pje-busca"
 SCRIPT = "vigia.py"
 BANCO = Path("dados") / "vigia.sqlite"
 CONFERENCIA = Path("dados") / "cumprimentos_conferencia.json"
-NOMES = Path("dados") / "nomes_conferidos.json"  # lido pelo vigia (vigia_djen.nomes_conferidos)
+NOMES = Path("dados") / "nomes_conferidos.json"
+# análise de cada alerta (situação, risco, prazo, fatos, próximos passos), escrita a partir dos autos/DJEN
+# {numero: {risco, situacao, prazo, fatos: [], proximos: [], fonte, atualizado_em}}; só leitura aqui
+RESUMOS = Path("dados") / "cumprimentos_resumos.json"
+RISCOS = {"alto": "Risco alto", "medio": "Risco médio", "baixo": "Risco baixo"}  # lido pelo vigia (vigia_djen.nomes_conferidos)
 EXECUCAO = Path("logs") / ".vila_djen.json"  # execução em andamento (pid, início)
 LOG = Path("logs") / "djen_vila.log"  # saída de cada verificação disparada pela vila
 COMANDOS = {"djen": "Verificação no DJEN", "associados": "Processos associados no PJe"}
@@ -239,6 +243,33 @@ def conferir_nome(pasta, empresa, situacao, quem="", obs="", nomes="", agora=Non
     return atual
 
 
+def analises(pasta):
+    """dados/cumprimentos_resumos.json -> {numero: análise} (só as entradas válidas)."""
+    out = {}
+    for numero, a in _ler_json(Path(pasta) / RESUMOS).items():
+        if not (NUMERO_CNJ.match(str(numero)) and isinstance(a, dict)):
+            continue
+        lista = lambda k: [str(x) for x in (a.get(k) or []) if str(x).strip()] if isinstance(a.get(k), list) else []  # noqa: E731
+        risco = str(a.get("risco") or "").lower()
+        out[numero] = {"risco": risco if risco in RISCOS else "", "risco_texto": RISCOS.get(risco, ""),
+                       "situacao": str(a.get("situacao") or ""), "prazo": str(a.get("prazo") or ""),
+                       "fatos": lista("fatos"), "proximos": lista("proximos"), "fonte": str(a.get("fonte") or ""),
+                       "atualizado_br": data_br(str(a.get("atualizado_em") or ""))}
+    return out
+
+
+def _andamentos(db):
+    """{numero: [andamentos do DJEN, mais recente primeiro]} (tabela djen_andamentos do vigia, se já existir)."""
+    out = {}
+    if not _tabela(db, "djen_andamentos"):
+        return out
+    for r in db.execute("SELECT * FROM djen_andamentos ORDER BY numero, data DESC, chave"):
+        out.setdefault(r["numero"], []).append({
+            "data_br": data_br(r["data"]), "tipo": r["tipo"] or "", "documento": r["documento"] or "",
+            "destinatarios": r["destinatarios"] or "", "texto": r["texto"] or ""})
+    return out
+
+
 def conferencias(pasta):
     """{numero: {"situacao", "quem", "obs", "quando", "historico": [...]}}."""
     return _ler_json(Path(pasta) / CONFERENCIA)
@@ -388,6 +419,7 @@ def painel(pasta, hoje=None):
                     info["outros"] += 1
         info["sem_publicacao"] = sem_publicacao(db, pasta)
         info["assoc"] = _associados(db, conf, hoje)
+        andamentos = _andamentos(db)
     finally:
         db.close()
     # pendentes primeiro; dentro de cada grupo, a publicação mais recente em cima
@@ -398,6 +430,11 @@ def painel(pasta, hoje=None):
     info["relatorios"] = relatorios(pasta)[:10]
     info["relatorios_assoc"] = relatorios(pasta, "associados")[:10]
     info["sem_pub_pendentes"] = sum(1 for e in info["sem_publicacao"] if e["situacao"] == "pendente")
+    # análise escrita e andamentos do DJEN em cada processo da lista (quando houver)
+    analise = analises(pasta)
+    for i in info["vermelhos"] + info["assoc"]["alertas"] + info["assoc"]["base_conferir"] + info["assoc"]["fora"]:
+        i["analise"] = analise.get(i["numero"])
+        i["andamentos"] = andamentos.get(i["numero"], [])
     return info
 
 

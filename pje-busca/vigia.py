@@ -10,10 +10,13 @@
   python3 vigia.py djen --empresa "MM COMERCIO"   # só as empresas cujo nome contém o texto (teste)
   python3 vigia.py djen --refazer-base            # apaga só o estado do DJEN e refaz a base (auditoria completa)
   python3 vigia.py principais                     # só acha o processo principal (no VIOS) de cada cumprimento
+  python3 vigia.py andamentos                     # só as publicações (DJEN) dos cumprimentos fora do VIOS, para a aba
   python3 vigia.py associados                     # nível 3: "Processos associados" de cada principal no PJe (Mac)
   python3 vigia.py associados --paginas 1 --sem-cobertura          # teste: só a 1ª página do filtro, sem gravar
   python3 vigia.py associados --simular                            # tudo, sem gravar
   python3 vigia.py fora                           # onde estão (pelo DJEN) os processos do VIOS fora do acervo do PJe
+  python3 vigia.py agenda manha                   # rodada agendada: vios e djen (launchd: ./servidor_mac.sh vigia)
+  python3 vigia.py agenda madrugada               # rodada agendada: associados no PJe
 
 Lista lida (PROJETO (1).md, seção 4.2): Processos > Área VIGIA_VIOS_AREA_ID (3 = Trabalhista) + cliente na parte
 VIGIA_VIOS_TIPO_PARTE (P = passiva) + ativos [+ VIGIA_VIOS_ADVOGADO_ID, opcional]. Só leitura (GET), pela sessão do
@@ -198,8 +201,24 @@ def cmd_principais(_args):
     return 0
 
 
+def cmd_andamentos(_args):
+    """Só as publicações (DJEN) dos cumprimentos/execuções fora do VIOS, para a aba Cumprimentos (rápido)."""
+    import vigia_djen as VD
+    cfg = config()
+    est = VE.Estado(DADOS / "vigia.sqlite")
+    try:
+        ed = VD.EstadoDjen(est)
+        res = VD.atualizar_andamentos(ed, date.today().isoformat(), lambda n: VD.consultar_numero(n, itens=100),
+                                      pausa=float(cfg.get("VIGIA_DJEN_PAUSA_S") or 1.5))
+    finally:
+        est.fechar()
+    for r in res:
+        print(f"{r['numero']}: {r['andamentos']} andamento(s)" + (f" · ERRO: {r['erro']}" if r["erro"] else ""))
+    return 0 if all(not r["erro"] for r in res) else 1
+
+
 def cmd_associados(args):
-    """Nível 3: entra no PJe pelo Presto e, no Acervo Geral, lê os "Processos associados" (filtro "Processos com
+    """Nível 3: entra no PJe pelo Loy Trust (ou pelo Presto) e, no Acervo Geral, lê os "Processos associados" (filtro "Processos com
     Associação") e a lista do acervo inteiro (para saber o que do VIOS está fora dele)."""
     import acesso_pje as A
     import chrome_mac as CM
@@ -208,8 +227,8 @@ def cmd_associados(args):
     paginas = int(args[args.index("--paginas") + 1]) if "--paginas" in args else VA.MAX_PAGINAS
     cobertura = "--sem-cobertura" not in args
     cfg = A.config_presto()
-    if not cfg.get("PRESTO_PIN"):
-        print("Falta PRESTO_PIN no pje-busca/.env")
+    if A.acesso(cfg) == "presto" and not cfg.get("PRESTO_PIN"):
+        print("Falta PRESTO_PIN no pje-busca/.env (VIGIA_ACESSO=presto)")
         return 2
     est = VE.Estado(DADOS / "vigia.sqlite")
     try:
@@ -240,7 +259,10 @@ def cmd_associados(args):
             except Exception:  # noqa: BLE001
                 pass
         parcial = paginas < VA.MAX_PAGINAS or not cobertura
-        res = VA.rodar(est, lido, simular=simular or parcial)
+        import vigia_djen as VD
+        # regra segura: classe de cada associado novo fora do VIOS pelo DJEN (na dúvida, continua alerta)
+        res = VA.rodar(est, lido, simular=simular or parcial, consulta=lambda n: VD.consultar_numero(n, itens=100),
+                       pausa=float(config().get("VIGIA_DJEN_PAUSA_S") or 1.5))
         fora = []
         if not res["simulado"] and res["fora_do_acervo"]:
             print("Classificando pelo DJEN os processos fora do acervo e dos arquivados...", flush=True)
@@ -281,9 +303,18 @@ def cmd_fora(_args):
     return 0
 
 
+def cmd_agenda(args):
+    """Rodada agendada (launchd): manha = vios + djen; madrugada = associados. Mesma trava do botão da aba."""
+    import vigia_agenda as AG
+    if not args or args[0] not in AG.ETAPAS:
+        print("uso: python3 vigia.py agenda manha | madrugada")
+        return 2
+    return AG.rodar(AQUI, args[0], aviso=lambda m: print(m, flush=True))
+
+
 def main(args):
     cmds = {"vios": cmd_vios, "status": cmd_status, "fila": cmd_fila, "djen": cmd_djen, "principais": cmd_principais,
-            "associados": cmd_associados, "fora": cmd_fora}
+            "andamentos": cmd_andamentos, "associados": cmd_associados, "fora": cmd_fora, "agenda": cmd_agenda}
     if not args or args[0] not in cmds:
         print(__doc__)
         return 2

@@ -147,6 +147,45 @@ INSERT INTO assoc_fora VALUES ('k2', 'sem_escritorio', '1ª Vara do Trabalho de 
         self.assertTrue(C.relatorio(self.pasta, "2026-11-25", "associados"))
         self.assertIsNone(C.relatorio(self.pasta, "2026-11-25", "../x"))
 
+    def test_nivel3_classe_do_djen(self):
+        # regra segura: classe, motivo e observação da data aparecem; "outra classe" fica listada, sem alerta
+        self._associados()
+        db = sqlite3.connect(self.pasta / "dados" / "vigia.sqlite")
+        for c in ("classe TEXT", "motivo TEXT", "anterior INTEGER"):
+            db.execute(f"ALTER TABLE assoc_associados ADD COLUMN {c}")
+        db.execute("UPDATE assoc_associados SET classe = 'CUMPRIMENTO DE SENTENÇA', motivo = 'classe de cumprimento', "
+                   "anterior = 1 WHERE associado = '0000010-10.2026.5.07.0038'")
+        db.execute("INSERT INTO assoc_associados VALUES ('n', '0000014-14.2026.5.07.0038', '2ª Vara', '2026-11-25', 1, "
+                   "'OUTRA', 'AÇÃO TRABALHISTA - RITO ORDINÁRIO', 'o DJEN confirma outra classe: não é cumprimento', 0)")
+        db.commit()
+        db.close()
+        a = C.painel(self.pasta, hoje=date(2026, 11, 26))["assoc"]
+        por = {i["numero"]: i for i in a["alertas"]}
+        self.assertEqual((por["0000010-10.2026.5.07.0038"]["classe"], por["0000010-10.2026.5.07.0038"]["anterior"]),
+                         ("CUMPRIMENTO DE SENTENÇA", True))
+        outra = por["0000014-14.2026.5.07.0038"]
+        self.assertEqual((outra["outra"], outra["vermelho"], outra["amarelo"]), (True, False, False))
+        self.assertEqual(a["pendentes"], 1)  # só o vermelho conta
+        self.assertEqual(por["n2"]["classe"], "")
+
+    def test_rodada_agendada(self):
+        # resultado da última rodada agendada (pje-busca/src/vigia_agenda.py) e a trava "rodando"
+        self.assertIsNone(C.agenda(self.pasta))
+        (self.pasta / "logs").mkdir(exist_ok=True)
+        (self.pasta / C.ULTIMA_AGENDA).write_text(json.dumps({
+            "etapa": "manha", "texto": "VIOS + DJEN", "inicio": "2026-11-25T07:40:02", "ok": False, "motivo": "",
+            "passos": [{"comando": "vios", "codigo": 1}, {"comando": "djen", "codigo": 0}]}), encoding="utf-8")
+        a = C.agenda(self.pasta)
+        self.assertEqual((a["data_br"], a["hora"], a["ok"], a["falhas"]), ("25/11/2026", "07:40", False, ["vios"]))
+        self.assertEqual(C.painel(self.pasta)["agenda"]["texto"], "VIOS + DJEN")
+        (self.pasta / C.EXECUCAO).write_text(json.dumps({"pid": 4242, "inicio": "2026-11-25T03:20:00",
+                                                         "comando": "agenda-madrugada"}), encoding="utf-8")
+        with mock.patch.object(C, "_vivo", return_value=True):
+            st = C.status(self.pasta)
+            self.assertEqual((st["rodando"], st["comando_texto"]), (True, "Rodada agendada (associados no PJe)"))
+            with self.assertRaisesRegex(C.CumprimentosErro, "já está rodando"):
+                C.rodar(self.pasta, comando="djen")  # o botão espera a rodada agendada
+
     def test_rodar_associados(self):
         with mock.patch.object(C.subprocess, "Popen") as popen, mock.patch.object(C.threading, "Thread"):
             popen.return_value.pid = 4243
@@ -220,6 +259,27 @@ INSERT INTO assoc_fora VALUES ('k2', 'sem_escritorio', '1ª Vara do Trabalho de 
         sem = C.painel(self.pasta)["sem_publicacao"]
         self.assertEqual([(e["empresa"], e["buscados"], e["data_br"]) for e in sem],
                          [("QUIETA LTDA", ["QUIETA LTDA", "QUIETA COMERCIO LTDA"], "25/11/2026")])
+
+    def test_analise_e_andamentos_no_processo(self):
+        (self.pasta / C.RESUMOS).write_text(json.dumps({
+            A: {"risco": "alto", "situacao": "Cálculos homologados", "prazo": "48 h vencidas",
+                "fatos": ["15/11 — despacho"], "proximos": ["Habilitar", ""], "fonte": "DJEN",
+                "atualizado_em": "2026-11-26"},
+            "lixo": {"risco": "alto"}, B: "não é objeto"}), encoding="utf-8")
+        db = sqlite3.connect(self.pasta / "dados" / "vigia.sqlite")
+        db.execute("CREATE TABLE djen_andamentos (numero TEXT, chave TEXT, data TEXT, tipo TEXT, documento TEXT, "
+                   "orgao TEXT, destinatarios TEXT, texto TEXT, visto_em TEXT, PRIMARY KEY (numero, chave))")
+        db.executemany("INSERT INTO djen_andamentos VALUES (?, ?, ?, 'Intimação', 'Notificação', '', 'X (P)', ?, '')", [
+            (A, "a1", "2026-09-25", "intimado para impugnar"), (A, "a2", "2026-11-16", "homologo os cálculos")])
+        db.commit()
+        db.close()
+        verm = {i["numero"]: i for i in C.painel(self.pasta)["vermelhos"]}
+        a = verm[A]["analise"]
+        self.assertEqual((a["risco"], a["risco_texto"], a["proximos"], a["atualizado_br"]),
+                         ("alto", "Risco alto", ["Habilitar"], "26/11/2026"))
+        self.assertEqual([x["data_br"] for x in verm[A]["andamentos"]], ["16/11/2026", "25/09/2026"])
+        self.assertIsNone(verm[B]["analise"])
+        self.assertEqual(verm[B]["andamentos"], [])
 
     def test_conferir_nome(self):
         empresa = "SEM NOME LTDA (MATRIZ)"
@@ -304,6 +364,24 @@ class Rotas(unittest.TestCase):
         self.assertIn("Cliente nosso:".encode(), r.data)
         self.assertIn(b"0000009-99.2025.5.07.0038", r.data)
         self.assertIn("ainda não verificado".encode(), r.data)   # o B ainda não tem linha
+
+    def test_pagina_mostra_analise_e_publicacoes(self):
+        (self.pasta / C.RESUMOS).write_text(json.dumps({A: {"risco": "alto", "situacao": "Cálculos homologados",
+                                                            "proximos": ["Habilitar hoje"]}}), encoding="utf-8")
+        db = sqlite3.connect(self.pasta / "dados" / "vigia.sqlite")
+        db.execute("CREATE TABLE djen_andamentos (numero TEXT, chave TEXT, data TEXT, tipo TEXT, documento TEXT, "
+                   "orgao TEXT, destinatarios TEXT, texto TEXT, visto_em TEXT, PRIMARY KEY (numero, chave))")
+        db.execute("INSERT INTO djen_andamentos VALUES (?, 'a', '2026-11-16', 'Intimação', '', '', '', "
+                   "'homologo os cálculos <script>', '')", (A,))
+        db.commit()
+        db.close()
+        r = self.app.get("/cumprimentos", headers=self.auth)
+        self.assertIn("Risco alto".encode(), r.data)
+        self.assertIn(b"Habilitar hoje", r.data)
+        self.assertIn("Publicações no DJEN (1)".encode(), r.data)
+        self.assertIn(b"homologo os c", r.data)
+        self.assertNotIn(b"<script>'", r.data)
+        self.assertIn(b"&lt;script&gt;", r.data)   # texto do DJEN escapado
 
     def test_conferir_nome_pela_pagina(self):
         r = self.app.get("/cumprimentos", headers=self.auth)

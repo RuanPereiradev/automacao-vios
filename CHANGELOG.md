@@ -12,6 +12,17 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — Cumprimentos: análise e publicações do DJEN em cada alerta (26/11/2026)
+- Cada processo da aba Cumprimentos pode mostrar uma **análise** (risco, situação, prazo, o que fazer e o que
+  aconteceu no processo, com fonte e data), lida de `pje-busca/dados/cumprimentos_resumos.json` (fora do git,
+  permissão 600). `bot/cumprimentos.py`: `analises()`, `RESUMOS`, `RISCOS`. Primeira carga: os dois cumprimentos da
+  DFA (0001226-95.2026, pelo DJEN, e 0001772-66.2024, pelos autos no PJe).
+- **Publicações no DJEN** de cada cumprimento/execução fora do VIOS, com data, tipo, destinatários e texto
+  (recolhidas no item): `pje-busca/src/vigia_djen.py` grava em `djen_andamentos` (`andamentos`,
+  `atualizar_andamentos`; a mesma decisão intimada a cada parte vira uma só). Roda no fim de `vigia.py djen` (todo dia
+  às 7h40) e sozinho com `vigia.py andamentos`. Serve também para processo em que o escritório não está habilitado.
+- Testes: `tests/test_cumprimentos.py` e `pje-busca/tests/test_djen.py`.
+
 ### Alterado — Vila: página Cumprimentos mais simples (26/11/2026)
 - `bot/templates/cumprimentos.html` refeito: faixa de situação no topo (vermelha com o número de alertas ou verde),
   campo "Quem está conferindo" salvo no navegador e quatro abas (Urgente · Conferir · Atualizar o VIOS ·

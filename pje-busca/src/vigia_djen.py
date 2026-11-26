@@ -62,6 +62,9 @@ CREATE TABLE IF NOT EXISTS djen_consultas (
 CREATE TABLE IF NOT EXISTS djen_principais (
   numero TEXT PRIMARY KEY, principal TEXT, ci TEXT, empresa TEXT, advogado TEXT, como TEXT, exequente TEXT,
   verificado_em TEXT);
+CREATE TABLE IF NOT EXISTS djen_andamentos (
+  numero TEXT, chave TEXT, data TEXT, tipo TEXT, documento TEXT, orgao TEXT, destinatarios TEXT, texto TEXT,
+  visto_em TEXT, PRIMARY KEY (numero, chave));
 CREATE TABLE IF NOT EXISTS djen_rodadas (
   data TEXT PRIMARY KEY, empresas INTEGER, publicacoes INTEGER, vermelhos INTEGER, amarelos INTEGER,
   sem_publicacao INTEGER, erros INTEGER, base INTEGER);
@@ -316,6 +319,17 @@ class EstadoDjen:
         self.db.execute("INSERT OR REPLACE INTO djen_principais VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                         (numero, r["principal"], r["ci"], r["empresa"], r["advogado"], r["como"], r["exequente"], hoje))
 
+    def alertas(self):
+        """Cumprimentos/execuções (VERMELHO) fora do VIOS: os que a aba mostra com os andamentos."""
+        return [r[0] for r in self.db.execute("SELECT numero FROM djen_processos WHERE nivel = 'VERMELHO' ORDER BY numero")]
+
+    def gravar_andamentos(self, numero, andamentos, hoje):
+        for x in andamentos:
+            self.db.execute("INSERT INTO djen_andamentos VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(numero, chave) "
+                            "DO UPDATE SET destinatarios = excluded.destinatarios, visto_em = excluded.visto_em",
+                            (numero, x["chave"], x["data"], x["tipo"], x["documento"], x["orgao"],
+                             x["destinatarios"], x["texto"], hoje))
+
     def gravar_consulta(self, empresa, hoje, publicacoes, nomes):
         self.db.execute("INSERT OR REPLACE INTO djen_consultas VALUES (?, ?, ?, ?)",
                         (empresa, hoje, int(publicacoes), json.dumps(nomes, ensure_ascii=False)))
@@ -352,7 +366,7 @@ def nomes_conferidos(caminho):
 
 
 def rodar(estado, hoje=None, so=None, consulta=consultar, consulta_numero=consultar_numero, pausa=1.5,
-          simular=False, aviso=print, dias_calibrar=30, manuais=None, consulta_principal=None):
+          simular=False, aviso=print, dias_calibrar=30, manuais=None, consulta_principal=None, consulta_andamentos=None):
     """Consulta o DJEN para cada empresa do vigia e classifica. Devolve o resultado (para o relatório).
 
     Por empresa: (1) calibra o nome a cada `dias_calibrar` dias, lendo no DJEN os destinatários do polo passivo de
@@ -431,6 +445,8 @@ def rodar(estado, hoje=None, so=None, consulta=consultar, consulta_numero=consul
             aviso(f"  DJEN: {n}/{len(empresas)} empresas consultadas")
     if not simular:
         res["principais"] = ligar_principais(ed, hoje, consulta_principal or consulta_numero, pausa)
+        res["andamentos"] = atualizar_andamentos(ed, hoje, consulta_andamentos or consulta_principal or consulta_numero,
+                                                 pausa)
     if not simular and not so:
         ed.fechar_rodada(hoje, res, base_global)
     elif not simular:
@@ -449,6 +465,56 @@ def ligar_principais(ed, hoje, consulta, pausa=1.5):
                  "exequente": ""}
         ed.gravar_principal(numero, r, hoje)
         saida.append(dict(r, numero=numero))
+        time.sleep(pausa)
+    ed.db.commit()
+    return saida
+
+
+FIM_INTIMADOS = re.compile(r"\s*Intimado\(s\)\s*/\s*Citado\(s\).*$", re.S | re.I)
+TEXTO_MAX = 8000
+
+
+def _texto_limpo(html):
+    """Texto da publicação sem HTML, sem espaços repetidos e sem o rodapé "Intimado(s) / Citado(s) - ..."."""
+    import html as H
+    t = H.unescape(re.sub(r"<[^>]+>", " ", html or ""))
+    t = re.sub(r"\s+", " ", t).strip()
+    return FIM_INTIMADOS.sub("", t).strip()
+
+
+def andamentos(itens):
+    """Publicações de um processo -> andamentos sem repetição (a mesma decisão intimada a cada parte vira uma só,
+    com os destinatários juntos), do mais recente para o mais antigo. Só o que a publicação já traz (público)."""
+    import hashlib
+    por = {}
+    for i in itens:
+        texto = _texto_limpo(i.get("texto"))
+        data = (i.get("data_disponibilizacao") or i.get("datadisponibilizacao") or "")[:10]
+        chave = hashlib.sha1(f"{data}|{texto}".encode("utf-8")).hexdigest()[:16]
+        dest = [f"{(d.get('nome') or '').strip()} ({(d.get('polo') or '').upper()})" for d in i.get("destinatarios") or []
+                if (d.get("nome") or "").strip()]
+        x = por.setdefault(chave, {"chave": chave, "data": data, "tipo": (i.get("tipoComunicacao") or "").strip(),
+                                   "documento": (i.get("tipoDocumento") or "").strip(),
+                                   "orgao": (i.get("nomeOrgao") or "").strip(), "dest": [], "texto": texto[:TEXTO_MAX]})
+        for d in dest:
+            if d not in x["dest"]:
+                x["dest"].append(d)
+    out = [dict(x, destinatarios="; ".join(x.pop("dest"))) for x in por.values()]
+    out.sort(key=lambda x: x["data"], reverse=True)
+    return out
+
+
+def atualizar_andamentos(ed, hoje, consulta, pausa=1.5):
+    """Para cada cumprimento/execução fora do VIOS (VERMELHO): grava as publicações dele no DJEN (djen_andamentos),
+    para a aba Cumprimentos mostrar o que já aconteceu no processo, mesmo sem o escritório habilitado."""
+    saida = []
+    for numero in ed.alertas():
+        try:
+            lista = andamentos(consulta(numero))
+            ed.gravar_andamentos(numero, lista, hoje)
+            saida.append({"numero": numero, "andamentos": len(lista), "erro": ""})
+        except Exception as erro:  # noqa: BLE001 — um erro não para os outros
+            saida.append({"numero": numero, "andamentos": 0, "erro": str(erro)})
         time.sleep(pausa)
     ed.db.commit()
     return saida

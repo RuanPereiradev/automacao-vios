@@ -21,7 +21,7 @@ Sem senhas e sem conteúdo do `.env`.
 |---|---|---|---|
 | 1 | Cumprimento de sentença / execução contra o cliente | API pública do DJEN (sem login, sem CAPTCHA), busca pelo **nome** da parte | Pronto |
 | 2 | Qualquer processo novo contra o cliente fora do VIOS | Mesma busca do DJEN (amarelo) | Pronto (sai no relatório do dia) |
-| 3 | Juiz associou um processo ao principal | PJe > Acervo Geral > filtro "Processos com Associação" > "Processos associados" (login pelo Presto) | Pronto; JavaScript conferido no PJe real; falta a 1ª rodada completa |
+| 3 | Juiz associou um processo ao principal | PJe > Acervo Geral > filtro "Processos com Associação" > "Processos associados" (login pelo Loy Trust desde 26/11/2026; antes, Presto) | Pronto; JavaScript conferido no PJe real; falta a 1ª rodada completa |
 
 **Lista de clientes vigiados:** foto diária do VIOS (`vigia.py vios`): área Trabalhista, cliente no polo passivo, processos ativos.
 Em 24/11 são 162 empresas e 363 processos.
@@ -57,6 +57,15 @@ Em 24/11 são 162 empresas e 363 processos.
   - associado novo fora do VIOS, com o principal também fora da lista do VIOS (antigo, arquivado, outra área) = **amarelo**;
   - associado novo que já está no VIOS = informação;
   - processo que acabou de entrar no acervo vira base só dele.
+- **Regra segura da classe** (24/11/2026): antes de avisar, o vigia consulta no DJEN a classe do associado novo fora do VIOS.
+
+  | O que o DJEN diz do associado | Resultado |
+  |---|---|
+  | Classe de cumprimento, execução ou liquidação (basta uma publicação) | alerta (vermelho/amarelo) |
+  | Sem publicação, erro na consulta ou classe que o robô não reconhece (agravo de petição, embargos...) | alerta: conferir |
+  | Todas as classes confirmadas como outra coisa (ação trabalhista, homologação de acordo, ação de cumprimento do sindicato...) | "outra classe": sai do alerta, **continua listado** na aba e no relatório |
+
+  O número do associado anterior ao do principal vira só observação: nunca tira o alerta.
 - Achado na conferência: o CumPrSe **0001772-66.2024.5.07.0024** (DFA) **está no Acervo Geral do login** e aparece associado ao principal 0000064-49.2022.5.07.0024.
   Ou seja, o advogado do login já está habilitado nele; falta só o processo no VIOS.
 
@@ -112,14 +121,16 @@ Endereço: `http://192.168.30.21:5001/cumprimentos`, atrás da senha das página
 | `python3 vigia.py djen` | Verificação diária no DJEN (inclui calibração de nomes e ligação com o principal) |
 | `python3 vigia.py djen --refazer-base` | Apaga só o estado do DJEN e refaz a auditoria |
 | `python3 vigia.py principais` | Só liga cada cumprimento ao principal no VIOS (rápido) |
-| `python3 vigia.py associados` | Nível 3 no PJe (filtro de associação + lista do acervo, 10–15 min, Chrome do Mac + Presto) |
+| `python3 vigia.py andamentos` | Só grava as publicações (DJEN) dos cumprimentos fora do VIOS, para a aba (rápido) |
+| `python3 vigia.py associados` | Nível 3 no PJe (filtro de associação + lista do acervo, 10–15 min, Chrome do Mac + Loy Trust) |
 | `python3 vigia.py associados --paginas 1 --sem-cobertura` | Teste rápido: só a 1ª página do filtro, sem gravar |
 | `python3 vigia.py status` / `fila` | Resumo do estado / processos do TRT7 |
 | `cd ~/automacao-vios && ./servidor_mac.sh instalar` | Reinicia a Vila dos Bots depois de mudanças |
 
 **Requisitos do nível 3:**
 - Chrome aberto no perfil de trabalho, com "Permitir JavaScript de Apple Events" ligado (`albi/presto.py liberar-chrome`).
-- Presto funcionando e `PRESTO_PIN` no `pje-busca/.env`.
+- Loy Trust instalado e com sessão aberta no Chrome do Mac (padrão desde 26/11/2026; `VIGIA_ACESSO=loy`).
+  Com `VIGIA_ACESSO=presto`: Presto funcionando e `PRESTO_PIN` no `pje-busca/.env`.
 
 ## 6. Onde fica cada coisa
 
@@ -150,10 +161,15 @@ Endereço: `http://192.168.30.21:5001/cumprimentos`, atrás da senha das página
    - associados já existentes fora do VIOS.
 3. **Advogado confere os dois cumprimentos da DFA** e registra na aba.
 4. **Equipe confere os nomes** das 12 empresas com processo no TRT7 e sem publicação no DJEN.
-5. **Agendamento diário** no Mac mini (launchd):
-   - `vios`, depois `djen` de manhã;
-   - `associados` de madrugada.
-6. **Canal do alerta** de vermelho novo: e-mail, WhatsApp ou só a aba. **Decisão pendente.**
+5. **Agendamento diário** no Mac mini (launchd): **feito** (24/11/2026). `./servidor_mac.sh vigia instalar`:
+   seg a sex, `vios` + `djen` às 7h40 e `associados` às 3h20 (`vigia.py agenda manha|madrugada`, mesma trava do botão
+   da aba). 1ª rodada da manhã pelo launchd ok (24/11/2026: 363 processos, DJEN 162 empresas, 0 erro). A da
+   madrugada roda numa janela do Terminal (`agenda_madrugada.command`), que tem a permissão de Acessibilidade exigida
+   pelo login do Presto. Rodada de 25/11 às 3h20: entrou no console do Presto, mas o quadro não apareceu porque a
+   **tela do Mac estava bloqueada**. Correção: o robô liga a tela, para logo se estiver bloqueada e a rodada roda
+   com `caffeinate -dims`; falta desligar o bloqueio automático no Mac mini (`./servidor_mac.sh vigia tela liberar`)
+   e repetir o teste.
+6. **Canal do alerta**: **só a aba**, por enquanto (decisão de 24/11/2026).
 7. **Segurança:**
    - trocar as senhas e chaves que apareceram em texto durante a configuração (Sonar, Presto/VIOS, chave da IA);
    - deixar no `pje-busca/.env` só `PRESTO_*`, `VIOS_*` e `VIGIA_*`;
@@ -171,3 +187,5 @@ Endereço: `http://192.168.30.21:5001/cumprimentos`, atrás da senha das página
 | Sessão do PJe / Presto cai ou Chrome fecha | Rodada incompleta | Rodada marcada "incompleta"; rodar de novo |
 | Lista do VIOS limitada a Trabalhista ativo, polo passivo | Principal arquivado ou de outra área não é ligado | Aparece como "Principal não achado no VIOS" para conferência humana |
 | Sem agendamento | Nada roda sozinho | Pendência 5 |
+| Loy Trust sem sessão ou extensão atualizada mudar a janelinha | Nível 3 não entra no PJe | Robô para com o motivo; `VIGIA_ACESSO=presto` como reserva; testes em `tests/test_loy.py` |
+| Tela do Mac bloqueada na madrugada | Rodada dos associados não entra no PJe | `vigia tela liberar`; robô para com o motivo; sala do servidor trancada |

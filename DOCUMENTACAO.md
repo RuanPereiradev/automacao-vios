@@ -761,6 +761,12 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
     Escritório já atua · Não é nosso · + observação); o que já foi conferido sai da lista e fica em "Já
     conferidos", com "Desfazer". Nas empresas: "Salvar nome" (nome exato do polo passivo) ou "O nome está certo".
     As rotas e os dados não mudaram. Os itens abaixo descrevem o conteúdo de cada parte:
+  - **Análise e publicações em cada processo** (desde 26/11/2026): quadro com risco (alto/médio/baixo), situação,
+    prazo, "O que fazer" e "O que aconteceu no processo", lido de `pje-busca/dados/cumprimentos_resumos.json`
+    (`{numero: {risco, situacao, prazo, fatos, proximos, fonte, atualizado_em}}`, fora do git, permissão 600); e
+    "Publicações no DJEN", gravadas pelo vigia na tabela `djen_andamentos` (no fim de `vigia.py djen` e com
+    `vigia.py andamentos`). As publicações vêm da API pública do DJEN, então aparecem mesmo sem o escritório
+    habilitado no processo;
   - números do topo: pendentes de conferência, maior espera (dias desde a 1ª publicação no DJEN), total fora do
     VIOS, empresas vigiadas e a última verificação;
   - **Cumprimento de sentença / execução fora do VIOS**: um bloco por processo (número com botão de copiar,
