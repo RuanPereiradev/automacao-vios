@@ -205,6 +205,11 @@ para `AAAA-MM/teste/` como a planilha. Falha no PDF não impede a planilha (fica
 - Provedor e chave no `.env`: `LLM_PROVEDOR=anthropic` (`ANTHROPIC_API_KEY`, modelo padrão `claude-sonnet-5-5`),
   `openai` (`OPENAI_API_KEY`, padrão `gpt-5.6`) ou `gemini` (`GEMINI_API_KEY`, padrão `gemini-3.6-flash`).
   `LLM_MODELO` troca o modelo. Desde 24/11/2026 o escritório usa o **Gemini** (os créditos da Anthropic acabaram).
+- **Em duas etapas, sem chave de API** (`./rodar.sh --fila --grupo "..."`, `nucleo/ia/fila_ia.py`): a 1ª rodada
+  grava cada pergunta em `<SAIDA_PASTA>/ia_fila/pedidos/`; as respostas (JSON do schema) são escritas em
+  `ia_fila/respostas.json` (ex.: pelo Claude numa conversa) e a 2ª rodada monta planilha e PDF com elas.
+  A chave de cada resposta é o hash das instruções + a 1ª linha do texto; em "Processo: <nº>" entra também um hash
+  das linhas do cadastro (cliente, polo, partes), para processos sem número ou com número repetido não colidirem.
 - Gemini (`nucleo/ia/gemini_ia.py`): API `generateContent` pela biblioteca padrão (nada a instalar), saída JSON
   pelo schema (`responseJsonSchema`), chave no cabeçalho, novas tentativas com espera quando o Google responde 503
   (alta demanda) ou 429. Use um projeto com **faturamento ativo**: no plano gratuito o Google pode usar o conteúdo

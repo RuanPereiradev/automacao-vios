@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 PRECOS = [
     ("luna", (1.0, 6.0)),
     ("terra", (2.5, 15.0)),
+    ("fila", (0.0, 0.0)),  # análise escrita fora do Jarvis (nucleo/ia/fila_ia.py): sem custo de API
     ("gpt-5.6", (5.0, 30.0)),
     # Gemini: preço padrão do plano pago (até 31/12/2026 há preço promocional menor: o teto fica com folga)
     ("gemini-3.6-flash", (1.50, 7.50)),

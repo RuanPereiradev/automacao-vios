@@ -29,7 +29,8 @@ MODELO_PADRAO = "claude-sonnet-5-5"
 # grupos com o relatório completo (o formato que a Casa do Celular pediu); os outros saem resumidos
 COMPLETO_PADRAO = "CASA DO CELULAR|CASA DO CELULAR MG/SP"
 # modelo de cada provedor quando LLM_MODELO está vazio
-MODELOS_PADRAO = {"anthropic": MODELO_PADRAO, "openai": "gpt-5.6", "gemini": "gemini-3.6-flash"}
+MODELOS_PADRAO = {"anthropic": MODELO_PADRAO, "openai": "gpt-5.6", "gemini": "gemini-3.6-flash",
+                  "fila": "fila (análise escrita pelo Claude no chat)"}
 
 
 def _opcao(args, nome):
@@ -273,7 +274,9 @@ def main(*args):
     args = list(args)
     # --grupos: só lista os grupos do VIOS; --grupos --salvar: põe os que faltam no PROCESSOS_GRUPOS do .env
     so_grupos, salvar = "--grupos" in args, "--salvar" in args
-    args = [a for a in args if a not in ("--grupos", "--salvar")]
+    # --fila: IA em duas etapas (nucleo/ia/fila_ia.py), por cima do LLM_PROVEDOR do .env
+    fila = "--fila" in args
+    args = [a for a in args if a not in ("--grupos", "--salvar", "--fila")]
     # --grupo "CASA DO CELULAR|CASA DO CELULAR MG/SP" (sem --grupo: PROCESSOS_GRUPOS do .env)
     grupos_txt = _opcao(args, "--grupo")
     # --limite N: só os N primeiros processos de cada grupo (para testar)
@@ -290,8 +293,8 @@ def main(*args):
     if not pedidos:
         log.error("Informe os grupos: --grupo \"CASA DO CELULAR\" ou PROCESSOS_GRUPOS no %s", caminho_env)
         return 1
-    provedor = os.getenv("LLM_PROVEDOR", "anthropic").strip().lower() or "anthropic"
-    modelo = os.getenv("LLM_MODELO", "").strip() or MODELOS_PADRAO.get(provedor, MODELO_PADRAO)
+    provedor = "fila" if fila else (os.getenv("LLM_PROVEDOR", "anthropic").strip().lower() or "anthropic")
+    modelo = MODELOS_PADRAO["fila"] if fila else (os.getenv("LLM_MODELO", "").strip() or MODELOS_PADRAO.get(provedor, MODELO_PADRAO))
     try:
         agente = ia.criar(provedor, modelo, os.getenv("LLM_ESFORCO", "").strip())
     except ia.IAErro as e:

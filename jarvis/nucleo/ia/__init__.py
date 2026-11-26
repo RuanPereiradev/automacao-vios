@@ -17,7 +17,10 @@ def criar(provedor, modelo, esforco=""):
     if provedor == "anthropic":
         from nucleo.ia.anthropic_ia import AnthropicIA
         return AnthropicIA(modelo, esforco)
+    if provedor == "fila":
+        from nucleo.ia.fila_ia import FilaIA
+        return FilaIA(modelo, esforco)
     if provedor == "gemini":
         from nucleo.ia.gemini_ia import GeminiIA
         return GeminiIA(modelo, esforco)
-    raise IAErro(f"LLM_PROVEDOR inválido: '{provedor}' (use openai, anthropic ou gemini)")
+    raise IAErro(f"LLM_PROVEDOR inválido: '{provedor}' (use openai, anthropic, gemini ou fila)")
