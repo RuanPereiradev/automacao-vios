@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 from flask import (Flask, Response, abort, jsonify, redirect, render_template, request, send_file,
                    send_from_directory, url_for)
 
-from bot import albi, conferencia, config, cumprimentos, duplicidade, envio_auto, envio_txt, eventos, jarvis, orelha, skill, vila06, zangao
+from bot import albi, conferencia, config, cumprimentos, duplicidade, envio_auto, envio_txt, eventos, jarvis, monitor, orelha, skill, vila06, zangao
 from bot.lancamento import REGISTRO, RESULTADOS, lancar, ler_intimacao
 from bot.login import fazer_login
 from bot.navegador import criar_driver
@@ -425,7 +425,8 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         """Entrada do sistema: a Vila dos Bots (neutra, sem nenhum bot fixo) com um cartão para cada bot."""
         return render_template("vila_dos_bots.html", albi_pronto=albi.configurado(pasta_albi),
                                jarvis_pronto=jarvis.configurado(pasta_jarvis), zangao_pronto=bool(pasta_zangao),
-                               orelha_info=orelha.status(pasta_orelha), cumprimentos_info=cumprimentos.resumo(pasta_vigia))
+                               orelha_info=orelha.status(pasta_orelha), cumprimentos_info=cumprimentos.resumo(pasta_vigia),
+                               monitor_info=monitor.resumo(pasta_vigia))
 
     @app.route("/sam")
     def inicio():
@@ -1001,6 +1002,30 @@ def criar_app(caminho_env=".env", pasta_skill=None, senha=""):
         """Relatório completo do DJEN daquele dia (texto gerado pelo vigia)."""
         arquivo = cumprimentos.relatorio(pasta_vigia, data, request.args.get("tipo", "djen")) or abort(404)
         return send_file(arquivo, mimetype="text/plain; charset=utf-8")
+
+    @app.route("/monitor")
+    def monitor_pagina():
+        """Monitor de processos (carteira do DPJ): última movimentação e teor pelo DJEN, DataJud e PJe (só leitura)."""
+        return render_template("monitor.html", p=monitor.painel(pasta_vigia), info=cumprimentos.status(pasta_vigia))
+
+    @app.route("/monitor/processo/<numero>")
+    def monitor_processo(numero):
+        """Um processo do monitor: teor inteiro e histórico das três fontes."""
+        item = monitor.processo(pasta_vigia, numero) or abort(404)
+        return render_template("monitor_processo.html", i=item)
+
+    @app.route("/monitor/conferir", methods=["POST"])
+    def monitor_conferir():
+        """"Visto" da equipe na movimentação atual: {"numero", "quem", "obs", "desfazer"}."""
+        if not _mesma_origem():
+            return jsonify(erro="pedido recusado"), 403
+        d = request.get_json(silent=True) or {}
+        try:
+            registro = monitor.conferir(pasta_vigia, d.get("numero"), d.get("quem"), d.get("obs"),
+                                        desfazer=bool(d.get("desfazer")))
+        except monitor.MonitorErro as e:
+            return jsonify(erro=str(e)), 400
+        return jsonify(registro)
 
     @app.route("/vila")
     def vila():

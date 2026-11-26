@@ -84,6 +84,18 @@
       <p class="acoes">{% if cumprimentos_info.configurado %}<a class="botao primario" href="{{ url_for('cumprimentos_pagina') }}">Abrir Cumprimentos</a>
         {% else %}<span class="selo-off">Vigia não instalado (cd pje-busca &amp;&amp; python3 vigia.py vios)</span>{% endif %}</p>
     </div>
+    <div class="cartao bot">
+      <div class="topo-bot"><h2>Monitor de processos</h2></div>
+      <p class="suave">Última movimentação e teor de cada processo da carteira, pelo DJEN, pelo DataJud e pelo próprio
+        tribunal (PJe, só leitura).</p>
+      {% if monitor_info.configurado %}
+        {% if monitor_info.pendentes %}<p class="aviso">{{ monitor_info.pendentes }} processo(s) com movimentação nova.</p>
+        {% else %}<p>Nenhuma novidade sem conferência.</p>{% endif %}
+        <p class="suave">{{ monitor_info.total }} processo(s) monitorado(s){% if monitor_info.ultima %} · última atualização: {{ monitor_info.ultima }}{% endif %}</p>
+      {% endif %}
+      <p class="acoes">{% if monitor_info.configurado %}<a class="botao primario" href="{{ url_for('monitor_pagina') }}">Abrir Monitor</a>
+        {% else %}<span class="selo-off">Sem carteira (cd pje-busca &amp;&amp; python3 vigia.py monitor-importar lista.csv)</span>{% endif %}</p>
+    </div>
   </div>
 </main>
 {{ ultron_script() }}

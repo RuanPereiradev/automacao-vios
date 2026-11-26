@@ -2,7 +2,8 @@
 
 O vigia (pasta pje-busca/ deste repositório ou PJE_BUSCA_PASTA) consulta todo dia a API pública do DJEN pelo nome
 de cada empresa da lista do VIOS (área Trabalhista, cliente no polo passivo) e grava em dados/vigia.sqlite os
-processos do TRT7 contra o cliente que NÃO estão no VIOS. Esta aba:
+processos da Justiça do Trabalho (TRT7 e os outros TRTs em que o cliente tem processo) contra o cliente que
+NÃO estão no VIOS. Esta aba:
 - só LÊ esse banco (sqlite em modo somente leitura): nada do pje-busca é importado e nada no banco é alterado;
 - mostra em destaque os cumprimentos de sentença / execuções (nível VERMELHO do vigia) e, à parte, as ações de
   cumprimento (sindicato cobrando convenção coletiva, que não são cumprimento de sentença);
@@ -41,9 +42,11 @@ RESUMOS = Path("dados") / "cumprimentos_resumos.json"
 RISCOS = {"alto": "Risco alto", "medio": "Risco médio", "baixo": "Risco baixo"}  # lido pelo vigia (vigia_djen.nomes_conferidos)
 EXECUCAO = Path("logs") / ".vila_djen.json"  # execução em andamento (pid, início)
 LOG = Path("logs") / "djen_vila.log"  # saída de cada verificação disparada pela vila
-COMANDOS = {"djen": "Verificação no DJEN", "associados": "Processos associados no PJe"}
+COMANDOS = {"djen": "Verificação no DJEN", "associados": "Processos associados no PJe",
+            "monitor": "Monitor de processos (DJEN e DataJud)"}  # "monitor": botão da página /monitor (bot/monitor.py)
 # rodadas agendadas (pje-busca/src/vigia_agenda.py, launchd): usam a mesma trava; só aparecem como "rodando"
-AGENDA = {"agenda-manha": "Rodada agendada (VIOS + DJEN)", "agenda-madrugada": "Rodada agendada (associados no PJe)"}
+AGENDA = {"agenda-manha": "Rodada agendada (VIOS + DJEN + monitor)",
+          "agenda-madrugada": "Rodada agendada (associados + monitor no PJe)"}
 ULTIMA_AGENDA = Path("logs") / "agenda_ultima.json"
 # ação de cumprimento (art. 872 da CLT: sindicato cobrando a convenção) não é cumprimento de sentença
 ACAO_CUMPRIMENTO = re.compile(r"^\s*A[ÇC][ÃA]O\s+DE\s+CUMPRIMENTO\b", re.I)
@@ -56,7 +59,7 @@ SITUACOES = {
 SITUACOES_NOME = {
     "pendente": "Pendente de conferência",
     "nome_corrigido": "Nome corrigido: o robô passa a buscar também por ele",
-    "nome_certo": "Nome está certo (sem processo no TRT7)",
+    "nome_certo": "Nome está certo (sem processo trabalhista)",
 }
 # processos do VIOS fora do acervo e dos arquivados do PJe, classificados pelo DJEN (vigia_associados.GRUPOS_FORA)
 GRUPOS_FORA = {
@@ -189,7 +192,8 @@ def sem_publicacao(db, pasta):
     trt7 = {}
     if _tabela(db, "processos"):
         trt7 = {r[0]: r[1] for r in db.execute(
-            "SELECT empresa, COUNT(*) FROM processos WHERE tribunal = '5.07' AND ativo = 1 GROUP BY empresa")}
+            "SELECT empresa, COUNT(*) FROM processos WHERE tribunal LIKE '5.%' AND tribunal != '5.00' AND ativo = 1 "
+            "GROUP BY empresa")}  # Justiça do Trabalho (TRT7 e outros TRTs; desde 26/11/2026)
     conf = nomes_conferidos(pasta)
     saida = []
     for chave, nomes, quando in achados:

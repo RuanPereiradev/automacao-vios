@@ -1,0 +1,74 @@
+{# Monitor de processos: um processo, com o teor inteiro e o histórico das três fontes (bot/monitor.py, processo). #}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ i.numero }} — Monitor de processos</title>
+{% include "_estilo.html" %}
+<style>
+  .marca b { color: #8fd3ff; text-shadow: 0 0 12px rgba(143, 211, 255, .55); }
+  .cnj { font: 700 20px ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .pequeno { font-size: 13px; }
+  .texto-pub { margin: 6px 0 4px; font-size: 14px; color: var(--metal); white-space: pre-wrap;
+               border-left: 2px solid var(--borda); padding-left: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+  th { color: var(--suave); font-weight: 600; font-size: 13px; }
+  details summary { cursor: pointer; color: var(--metal); }
+  .f-tribunal { color: #f0c46a; }
+</style>
+</head>
+<body>
+<header>
+  <a href="{{ url_for('monitor_pagina') }}"><span><span class="marca"><b>M</b>ONITOR</span><br>
+    <span class="sub">voltar para a lista</span></span></a>
+</header>
+<main>
+  <div class="cartao">
+    <div class="cnj">{{ i.numero }}</div>
+    <p><b>{{ i.cliente }}</b><br><span class="suave">{{ i.tribunal }} {{ i.grau }}º grau · {{ i.vara }}{% if i.acao %} · {{ i.acao }}{% endif %}
+      {% if i.ci %} · CI {{ i.ci }}{% endif %}{% if i.situacao_vios %} · no VIOS: {{ i.situacao_vios }}{% endif %}</span></p>
+    {% if i.ultima %}<p>Última movimentação: <b>{{ i.ultima.data_br }}</b> · {{ i.ultima.texto }} <span class="suave">({{ i.ultima.fonte_texto }})</span>
+      {% if i.dias is not none %} · <span class="{{ 'aviso' if i.dias > 180 }}">há {{ i.dias }} dia(s)</span>{% endif %}</p>
+    {% else %}<p class="suave">Nenhuma movimentação lida ainda.</p>{% endif %}
+  </div>
+
+  <div class="cartao">
+    <h2>Tribunal (PJe)</h2>
+    {% if i.trib.mov %}
+      <p><b>{{ i.trib.data_br }} {{ i.trib.hora }}</b> · {{ i.trib.mov }}</p>
+      {% if i.trib.docs %}<p class="pequeno suave">Documento(s): {{ i.trib.docs }}</p>{% endif %}
+      {% if i.trib.teor_de %}<p class="pequeno suave">Teor de: {{ i.trib.teor_de }}</p>{% endif %}
+      {% if i.trib.teor %}<p class="texto-pub">{{ i.trib.teor }}</p>{% endif %}
+      <p class="pequeno suave">Lido no PJe em {{ i.trib.lido_br }}</p>
+    {% elif i.sistema == 'api' %}<p class="suave">Este tribunal/grau ainda não tem leitura no PJe: acompanhe pelo DJEN e pelo DataJud.</p>
+    {% else %}<p class="suave">O rodízio do tribunal ainda não leu este processo.</p>{% endif %}
+    {% if i.trib.erro %}<p class="erro pequeno">Última tentativa: {{ i.trib.erro }}</p>{% endif %}
+  </div>
+
+  <div class="cartao">
+    <h2>Última publicação no DJEN</h2>
+    {% if i.djen.data_br != '-' %}
+      <p><b>{{ i.djen.data_br }}</b> · {{ i.djen.tipo }} · {{ i.djen.orgao }}</p>
+      <p class="texto-pub">{{ i.djen.texto }}</p>
+    {% else %}<p class="suave">Nenhuma publicação encontrada no DJEN.</p>{% endif %}
+    {% if i.dj.mov %}<p class="pequeno">DataJud: <b>{{ i.dj.data_br }}</b> · {{ i.dj.mov }}</p>{% endif %}
+    {% if i.dj.erro %}<p class="pequeno erro">DataJud: {{ i.dj.erro }}</p>{% endif %}
+  </div>
+
+  <div class="cartao">
+    <h2>Histórico lido ({{ i.movimentos | length }})</h2>
+    <table>
+      <tr><th>Data</th><th>Fonte</th><th>Movimentação / publicação</th></tr>
+      {% for m in i.movimentos %}
+        <tr><td class="pequeno" style="white-space: nowrap">{{ m.data_br }}</td>
+          <td class="pequeno {{ 'f-tribunal' if m.fonte == 'tribunal' }}">{{ m.fonte_texto }}</td>
+          <td class="pequeno">{{ m.descricao }}{% if m.documento %} <span class="suave">· {{ m.documento }}</span>{% endif %}
+            {% if m.teor and m.fonte == 'djen' %}<details><summary>texto</summary><p class="texto-pub">{{ m.teor }}</p></details>{% endif %}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+</main>
+</body>
+</html>

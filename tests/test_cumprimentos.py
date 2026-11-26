@@ -182,7 +182,7 @@ INSERT INTO assoc_fora VALUES ('k2', 'sem_escritorio', '1ª Vara do Trabalho de 
                                                          "comando": "agenda-madrugada"}), encoding="utf-8")
         with mock.patch.object(C, "_vivo", return_value=True):
             st = C.status(self.pasta)
-            self.assertEqual((st["rodando"], st["comando_texto"]), (True, "Rodada agendada (associados no PJe)"))
+            self.assertEqual((st["rodando"], st["comando_texto"]), (True, "Rodada agendada (associados + monitor no PJe)"))
             with self.assertRaisesRegex(C.CumprimentosErro, "já está rodando"):
                 C.rodar(self.pasta, comando="djen")  # o botão espera a rodada agendada
 

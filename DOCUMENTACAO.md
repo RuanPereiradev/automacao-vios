@@ -809,7 +809,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
 - Configuração: `PJE_BUSCA_PASTA` só se o pje-busca estiver fora deste repositório. Antes da 1ª vez:
   `cd pje-busca && python3 vigia.py vios` (lista do VIOS) e `python3 vigia.py djen` (base do DJEN).
 - **Agenda diária** (Mac mini, launchd): `./servidor_mac.sh vigia instalar` liga, de segunda a sexta,
-  `vigia.py agenda manha` às 7h40 (`vios` e depois `djen`) e `vigia.py agenda madrugada` às 3h20 (`associados`).
+  `vigia.py agenda manha` às 7h40 (`vios`, `djen` e `monitor`) e `vigia.py agenda madrugada` às 3h20
+  (`associados` e `monitor-tribunal`; o monitor está no Passo 46).
   O alerta fica **só na aba** (nada é enviado para fora). A rodada agendada usa a mesma trava do botão da aba: uma
   execução por vez; se o botão estiver rodando, ela espera até 1 hora e depois desiste, registrando o motivo. A aba
   mostra "Rodada agendada (...): rodando" e, depois, o resultado da última (`pje-busca/logs/agenda_ultima.json`).
@@ -822,6 +823,10 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   "a tela do Mac está bloqueada" (ele não digita a senha do Mac). Conferir com `./servidor_mac.sh vigia tela`;
   `vigia tela liberar` desliga o bloqueio automático e o repouso do Mac (`vigia tela bloquear` desfaz). A rodada
   liga a tela apagada sozinha (`caffeinate`).
+- **DJEN em todos os TRTs do cliente** (desde 26/11/2026): `vigia.py djen` busca cada empresa no TRT7 e nos outros
+  TRTs em que ela tem processo no VIOS (TRT22, TRT17, TRT16...). A 1ª busca em cada TRT novo de cada empresa é base
+  (auditoria no relatório, sem alerta); depois, processo novo fora do VIOS alerta igual ao TRT7. O nível 3 (associados
+  no PJe) continua só no TRT7.
 - **Login no PJe pelo Loy Trust** (padrão desde 26/11/2026): o robô abre a janelinha da extensão Loy Trust numa aba
   (`chrome-extension://<id>/popup.html`, sem clicar no ícone da barra), escolhe o portal, clica em "Acessar com Loy
   Trust" e usa a aba do tribunal que a extensão abre. Tudo por JavaScript: não precisa de PIN no `.env` nem de clique
@@ -834,9 +839,58 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   | `LOY_PORTAL` | Portal como aparece na lista do Loy | `TRT7CE - 1º Grau` |
   | `LOY_CERTIFICADO` | Parte do nome do certificado esperado (confere antes de entrar) | não confere |
   | `LOY_EXTENSAO` | Id da extensão, se mudar | id da Chrome Web Store |
+  | `VIGIA_DJEN_OUTROS_TRTS` | `0` desliga a busca do DJEN nos outros TRTs (só TRT7) | ligado |
 
 - Testes: `tests/test_cumprimentos.py` (dados fictícios), `pje-busca/tests/test_agenda.py`, `test_tela.py` e
   `test_loy.py`.
+
+### Passo 46 — Monitor de processos (`/monitor`): última movimentação e teor da carteira (26/11/2026)
+- Objetivo: para cada processo de uma carteira (CSV de processos exportado do VIOS; 1ª carga, a carteira do DPJ com
+  785 processos), saber **qual foi a última movimentação e o que ela diz (teor)**, sem abrir processo por processo.
+- Fontes (caminho "Balanceado", escolhido em 26/11/2026), todas só de leitura:
+
+  | Fonte | O que traz | Quando |
+  |---|---|---|
+  | DJEN (CNJ, sem login) | Texto das publicações | Todo dia pela OAB do escritório (1 ou 2 consultas) + rodízio pelo número |
+  | DataJud (CNJ, chave pública) | Movimentos padronizados, sem texto (pode atrasar dias) | Rodízio diário |
+  | Tribunal (PJe pelo Loy Trust) | Linha do tempo e texto do documento da última movimentação | Rodízio de madrugada; quem teve novidade no DJEN/DataJud primeiro |
+
+  Cobertura no tribunal nesta fase: TJCE 1º e 2º grau e TRF5 (PJe "legado") e TRT7 e TRT22 1º grau (PJe novo). TRT7
+  2º grau (o login do 2º grau derruba a sessão do 1º), TRF1 e tribunais de fora do CE/PI: só DJEN e DataJud.
+  No PJe o robô só pesquisa, abre "Detalhes do processo" e lê o documento (autorizado em 26/11/2026); não peticiona,
+  não assina, não altera nada; captcha = para e registra o erro.
+- Passo a passo (Mac mini, pasta `pje-busca`):
+  1. `python3 vigia.py monitor-importar ~/Downloads/processos-dpj.csv` — carrega a carteira (uma cópia do CSV fica em
+     `dados/monitor/`, fora do git). Importar de novo uma lista nova substitui a anterior (quem saiu deixa de ser
+     monitorado; o histórico fica); `--acrescentar` só soma.
+  2. `python3 vigia.py monitor --tudo` — base inicial pelo DJEN e pelo DataJud (todos os processos, cerca de 1 hora).
+  3. `python3 vigia.py monitor-tribunal --so 0000921-40.2009.8.06.0053` — teste com um processo no PJe (Loy Trust com
+     sessão aberta no Chrome); depois `--limite 10`.
+  4. Daí em diante, a agenda do vigia faz sozinha: `monitor` às 7h40 e `monitor-tribunal` às 3h20 (a da madrugada
+     precisa da tela do Mac desbloqueada: o visualizador de PDF do TRT só desenha o texto com a aba visível).
+- Configuração (`pje-busca/.env`, todas opcionais):
+
+  | Variável | Para quê | Padrão |
+  |---|---|---|
+  | `MONITOR_OABS` | OAB(s) do escritório para a busca diária no DJEN, separadas por `;` | `23104/CE` |
+  | `MONITOR_DJEN_POR_DIA` | Processos consultados no DJEN pelo número, por dia (rodízio) | `150` |
+  | `MONITOR_DATAJUD_POR_DIA` | Processos consultados no DataJud por dia (rodízio) | `250` |
+  | `MONITOR_TRIBUNAL_POR_NOITE` | Processos lidos no PJe por madrugada (rodízio) | `150` |
+  | `MONITOR_PAUSA_S` / `MONITOR_PAUSA_TRIBUNAL_S` | Pausa entre consultas (APIs / PJe), em segundos | `1.5` / `2` |
+  | `MONITOR_LER_TEOR` | `0` = no PJe só a movimentação, sem abrir o documento | ligado |
+  | `MONITOR_DATAJUD_CHAVE` | Chave do DataJud, se o CNJ trocar a chave pública | chave pública do CNJ |
+
+- Página **`/monitor`** (Vila dos Bots, mesma senha das outras): faixa com o número de novidades; abas **Novidades**
+  (processo que andou desde a leitura anterior, com o teor do tribunal e a publicação do DJEN, e o botão "Visto": o
+  visto vale para a movimentação vista; se o processo andar de novo, ele volta), **Todos** (filtro por número,
+  cliente, vara ou texto, e por tribunal), **Parados há +180 dias**, **Erros no tribunal** ("não encontrado" =
+  outro sistema ou segredo; "fora do acervo" = escritório não habilitado) e **Como funciona** (cobertura por tribunal
+  e botão "Atualizar DJEN e DataJud"). Cada processo tem página própria (`/monitor/processo/<número>`) com o teor
+  inteiro e o histórico das três fontes. Rotas: `/monitor`, `/monitor/processo/<número>`, `POST /monitor/conferir`.
+- Arquivos: `pje-busca/src/monitor.py`, `pje-busca/vigia.py` (comandos `monitor-*`), `bot/monitor.py`,
+  `bot/templates/monitor.html` e `monitor_processo.html`. Dados (fora do git): `pje-busca/dados/monitor.sqlite` e
+  `pje-busca/dados/monitor_conferencia.json`; relatórios em `pje-busca/saida/monitor_*.txt`.
+- Testes: `pje-busca/tests/test_monitor.py` e `tests/test_monitor_web.py`.
 
 ### Passo 45 — Vila 07: o Abismo (três heróis contra o Troll Ancião)
 - Cena em pixel art feita a partir do kit de design "Abismo": Mago, Arqueiro e Bárbaro atacam o Troll Ancião, um laço de
@@ -1622,7 +1676,7 @@ Seletores sempre no formato `css:<seletor>` ou `xpath:<expressão>`.
 | `ZANGAO_PASTA` | não | Pasta do Zangão neste computador (com `.venv` e `.env` dele); liga os botões da Vila 02 | `~/zangao` |
 | `ALBI_PASTA` | não | Pasta do Albi (com `.venv` e `.env` dele); vazio = `albi/` deste repositório | `~/albi` |
 | `ORELHA_PASTA` | não | Pasta do Orelha, de onde o Sam lê o horário e os relatórios (`/orelha`); vazio = `orelha/` deste repositório | `~/orelha` |
-| `PJE_BUSCA_PASTA` | não | Pasta do pje-busca (vigia do DJEN), de onde a página `/cumprimentos` lê os alertas; vazio = `pje-busca/` deste repositório | `~/pje-busca` |
+| `PJE_BUSCA_PASTA` | não | Pasta do pje-busca (vigia do DJEN e monitor), de onde as páginas `/cumprimentos` e `/monitor` leem os dados; vazio = `pje-busca/` deste repositório | `~/pje-busca` |
 | `VILA06_URL` | não | Endereço do bot do Previdenciário para a Vila 06 (vazio = simulação) | vazio |
 | `VILA06_TOKEN` | não | Mesmo `VILA_TOKEN` do `.env` do bot (RN28) | (no `.env`) |
 | `VILA06_CERTIFICADO` | não | Certificado próprio do bot (HTTPS na rede interna) | vazio |

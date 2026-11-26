@@ -1,0 +1,346 @@
+{# Monitor de processos (carteira do DPJ): última movimentação e teor de cada processo, pelo DJEN, pelo DataJud e
+   pelo tribunal (PJe). Dados de bot/monitor.py (só leitura de pje-busca/dados/monitor.sqlite; o "Visto" fica num
+   JSON ao lado). Abas: Novidades, Todos, Parados, Erros no tribunal, Como funciona. #}
+{%- set lupa -%}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="2" y="2" width="8" height="2" fill="#8fd3ff"/><rect x="2" y="8" width="8" height="2" fill="#8fd3ff"/><rect x="1" y="3" width="2" height="6" fill="#8fd3ff"/><rect x="9" y="3" width="2" height="6" fill="#8fd3ff"/><rect x="3" y="4" width="6" height="4" fill="#1d3b52"/><rect x="10" y="10" width="2" height="2" fill="#c9d1d9"/><rect x="12" y="12" width="3" height="3" fill="#c9d1d9"/></svg>
+{%- endset -%}
+
+{% macro ultima(i) %}
+  {% if i.ultima %}
+    <b>{{ i.ultima.data_br }}</b> · {{ i.ultima.texto }} <span class="selo fonte f-{{ i.ultima.fonte }}">{{ i.ultima.fonte_texto }}</span>
+  {% else %}<span class="suave">Nenhuma movimentação lida ainda</span>{% endif %}
+{% endmacro %}
+
+{% macro cartao(i, botoes=True) %}
+  <div class="item{{ ' visto' if i.visto }}" id="p-{{ i.numero }}">
+    <div class="topo-item">
+      <a class="cnj" href="{{ url_for('monitor_processo', numero=i.numero) }}">{{ i.numero }}</a>
+      <button class="copiar" type="button" data-copiar="{{ i.numero }}">Copiar nº</button>
+      <span class="cliente">{{ i.cliente }}</span>
+      {% if i.novidade_fonte and not i.visto %}<span class="selo novo">Novo · {{ i.novidade_fonte }} · {{ i.novidade_br }}</span>{% endif %}
+    </div>
+    <div class="suave pequeno">{{ i.tribunal }} {{ i.grau }}º grau · {{ i.vara }}{% if i.acao %} · {{ i.acao }}{% endif %}</div>
+    <p class="frase">{{ ultima(i) }}</p>
+    {% if i.trib.mov %}
+      <details class="fonte-det"{% if i.trib.teor %} open{% endif %}>
+        <summary>Tribunal: {{ i.trib.data_br }}{% if i.trib.hora %} {{ i.trib.hora }}{% endif %} · {{ i.trib.mov }}</summary>
+        {% if i.trib.docs %}<div class="pequeno suave">Documento(s): {{ i.trib.docs }}</div>{% endif %}
+        {% if i.trib.teor_de %}<div class="pequeno suave">Teor de: {{ i.trib.teor_de }}</div>{% endif %}
+        {% if i.trib.teor %}<p class="texto-pub">{{ i.trib.teor }}{% if i.trib.teor_cortado %}… <a href="{{ url_for('monitor_processo', numero=i.numero) }}">ler tudo</a>{% endif %}</p>{% endif %}
+        <div class="pequeno suave">Lido no PJe em {{ i.trib.lido_br }}</div>
+      </details>
+    {% endif %}
+    {% if i.djen.data_br != '-' %}
+      <details class="fonte-det"{% if not i.trib.teor %} open{% endif %}>
+        <summary>Última publicação no DJEN: {{ i.djen.data_br }} · {{ i.djen.tipo }}{% if i.djen.qtd %} ({{ i.djen.qtd }} no total){% endif %}</summary>
+        <p class="texto-pub">{{ i.djen.texto }}{% if i.djen.texto_cortado %}… <a href="{{ url_for('monitor_processo', numero=i.numero) }}">ler tudo</a>{% endif %}</p>
+      </details>
+    {% endif %}
+    {% if i.dj.mov %}<div class="pequeno suave">DataJud: {{ i.dj.data_br }} · {{ i.dj.mov }}</div>{% endif %}
+    {% if i.trib.erro %}<div class="pequeno erro">Tribunal: {{ i.trib.erro }}</div>{% endif %}
+    {% if botoes %}
+      <div class="botoes" data-numero="{{ i.numero }}">
+        {% if not i.visto %}
+          <button class="b-ok" data-acao="visto" type="button">Visto</button>
+          <button class="b-obs" type="button">+ observação</button>
+          <textarea class="obs" placeholder="Observação (opcional): ex. tarefa criada no VIOS" maxlength="500" hidden>{{ i.obs }}</textarea>
+        {% else %}
+          <span class="selo s-ok">Visto</span>
+          <span class="suave pequeno">{{ i.visto_quem }}{% if i.visto_quando %} · {{ i.visto_quando[8:10] }}/{{ i.visto_quando[5:7] }} {{ i.visto_quando[11:16] }}{% endif %}{% if i.obs %} · {{ i.obs }}{% endif %}</span>
+          <button class="b-desfazer" data-acao="desfazer" type="button">Desfazer</button>
+        {% endif %}
+        <span class="msg"></span>
+      </div>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitor de processos — Vila dos Bots</title>
+<link rel="icon" href="data:image/svg+xml,{{ lupa | urlencode }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+{% include "_estilo.html" %}
+<style>
+  .logo { width: 44px; height: 44px; display: block; image-rendering: pixelated; }
+  .marca b { color: #8fd3ff; text-shadow: 0 0 12px rgba(143, 211, 255, .55); }
+  main { max-width: 1150px; }
+  .pequeno { font-size: 13px; }
+  [hidden] { display: none !important; }
+  .faixa { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; border-radius: 14px; padding: 18px 22px;
+           margin-bottom: 14px; border: 1px solid var(--borda); background: var(--cartao); }
+  .faixa .grande { font-size: 22px; font-weight: 800; }
+  .faixa.ruim { border-color: rgba(88, 166, 255, .6); background: linear-gradient(90deg, rgba(88, 166, 255, .14), var(--cartao) 70%); }
+  .faixa.ruim .grande { color: #8fd3ff; }
+  .faixa.bom .grande { color: var(--verde); }
+  .faixa .direita { margin-left: auto; text-align: right; font-size: 13px; color: var(--suave); }
+  .quem { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--suave); }
+  .quem input, .filtros input, .filtros select { font: inherit; color: var(--texto); background: var(--cartao2);
+           border: 1px solid var(--borda); border-radius: 8px; padding: 6px 10px; }
+  .quem input { width: 200px; }
+  .abas { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
+  .aba { font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; color: var(--texto); background: var(--cartao);
+         border: 1px solid var(--borda); border-radius: 12px; padding: 12px 18px; display: flex; gap: 10px; align-items: center; }
+  .aba .n { min-width: 26px; text-align: center; border-radius: 999px; padding: 2px 8px; font-size: 13px;
+            background: var(--cartao2); border: 1px solid var(--borda); color: var(--suave); }
+  .aba.tem .n { background: rgba(88, 166, 255, .18); border-color: rgba(88, 166, 255, .6); color: #8fd3ff; }
+  .aba.ativa { border-color: var(--metal); background: var(--cartao2); box-shadow: 0 0 0 1px var(--metal) inset; }
+  .painel-aba { display: none; }
+  .painel-aba.ativo { display: block; }
+  .explica { margin: -4px 0 14px; color: var(--suave); font-size: 14px; }
+  .item { border: 1px solid var(--borda); border-left: 5px solid #58a6ff; border-radius: 12px; padding: 14px 16px;
+          margin: 10px 0; background: var(--cartao2); }
+  .item.visto { border-left-color: var(--verde); opacity: .8; }
+  .topo-item { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .cnj { font: 700 16px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .02em; text-decoration: none; }
+  .cliente { font-weight: 600; }
+  .copiar { font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 8px; cursor: pointer;
+            color: var(--suave); background: transparent; border: 1px solid var(--borda); }
+  .frase { margin: 8px 0 6px; font-size: 15px; }
+  .selo.novo { color: #8fd3ff; border-color: rgba(88, 166, 255, .6); background: rgba(88, 166, 255, .12); }
+  .selo.fonte { font-weight: 600; color: var(--suave); border-color: var(--borda); }
+  .selo.f-tribunal { color: #f0c46a; border-color: rgba(240, 196, 106, .45); }
+  details.fonte-det { margin: 4px 0 6px; }
+  details summary { cursor: pointer; font-weight: 600; color: var(--metal); font-size: 14px; }
+  .texto-pub { margin: 6px 0 4px; font-size: 13px; color: var(--metal); white-space: pre-wrap; max-height: 260px; overflow: auto;
+               border-left: 2px solid var(--borda); padding-left: 10px; }
+  .botoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .botoes button { font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 9px; padding: 8px 14px;
+                   border: 1px solid var(--borda); background: var(--cartao); color: var(--texto); }
+  .botoes .b-ok { border-color: rgba(63, 185, 80, .55); color: var(--verde); }
+  .botoes .b-obs, .botoes .b-desfazer { color: var(--suave); font-weight: 500; }
+  .botoes textarea { flex-basis: 100%; min-height: 44px; font: inherit; font-size: 14px; color: var(--texto);
+                     background: var(--cartao); border: 1px solid var(--borda); border-radius: 8px; padding: 8px 10px; }
+  .msg { font-size: 13px; color: var(--suave); }
+  .msg.erro { color: #ff7b72; }
+  .vazio { color: var(--verde); margin: 6px 0 12px; }
+  .filtros { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  .filtros input[type=search] { min-width: 320px; flex: 1; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+  th { color: var(--suave); font-weight: 600; font-size: 13px; position: sticky; top: 72px; background: var(--cartao); }
+  td.cnj-c { white-space: nowrap; }
+  td.cnj-c a { font: 600 13px ui-monospace, SFMono-Regular, Menlo, monospace; text-decoration: none; }
+  td.dias { text-align: right; white-space: nowrap; }
+  .parado { color: var(--ambar); font-weight: 700; }
+  .contagem td, .contagem th { padding: 6px 8px; }
+</style>
+</head>
+<body>
+<header>
+  <a href="{{ url_for('monitor_pagina') }}"><span class="logo">{{ lupa | safe }}</span>
+    <span><span class="marca"><b>M</b>ONITOR</span><br><span class="sub">última movimentação e teor dos processos da carteira</span></span></a>
+  <span class="acoes" style="margin-left: auto">
+    <a class="botao secundario" href="{{ url_for('cumprimentos_pagina') }}">Cumprimentos</a>
+    <a class="botao secundario" href="{{ url_for('vila_dos_bots') }}">Vila dos Bots</a>
+  </span>
+</header>
+<main>
+{% if not p.configurado %}
+  <div class="cartao">
+    <h1>O monitor ainda não tem carteira neste servidor</h1>
+    <p class="aviso">No Mac mini, uma vez: <code>cd pje-busca &amp;&amp; python3 vigia.py monitor-importar &lt;lista.csv&gt;</code>
+      (CSV de processos exportado do VIOS) e depois <code>python3 vigia.py monitor --tudo</code> (base inicial pelo DJEN e
+      pelo DataJud, cerca de 1 hora). Depois disso, as rodadas agendadas mantêm tudo em dia.</p>
+  </div>
+{% else %}
+  {%- set api = p.rodadas.get('api') -%}
+  {%- set trib = p.rodadas.get('tribunal') -%}
+  <div class="faixa {{ 'ruim' if p.pendentes else 'bom' }}">
+    <div>
+      {% if p.pendentes %}
+        <div class="grande">{{ p.pendentes }} processo(s) com movimentação nova</div>
+        <div class="suave">Veja a aba <b>Novidades</b> e marque "Visto" depois de conferir.</div>
+      {% else %}
+        <div class="grande">✓ Nenhuma novidade sem conferência</div>
+        <div class="suave">{{ p.total }} processos monitorados.</div>
+      {% endif %}
+    </div>
+    <div class="direita">
+      DJEN e DataJud: <b>{{ api.data_br ~ ' ' ~ api.hora if api else "—" }}</b><br>
+      Tribunal (PJe): <b>{{ trib.data_br ~ ' ' ~ trib.hora if trib else "—" }}</b>
+      {% if info.rodando %}<br><span class="selo s-andamento">{{ info.comando_texto }}: rodando</span>{% endif %}
+    </div>
+  </div>
+
+  <div class="faixa" style="padding: 10px 16px">
+    <label class="quem">Quem está conferindo: <input id="quem" maxlength="60" placeholder="Seu nome"></label>
+    <span class="suave pequeno">Fica salvo neste computador e vai junto em cada "Visto".</span>
+  </div>
+
+  <nav class="abas">
+    <button class="aba{{ ' tem' if p.pendentes }}" data-aba="novidades">🔵 Novidades <span class="n">{{ p.pendentes }}</span></button>
+    <button class="aba" data-aba="todos">📋 Todos <span class="n">{{ p.total }}</span></button>
+    <button class="aba" data-aba="parados">⏸ Parados há +180 dias <span class="n">{{ p.parados | length }}</span></button>
+    <button class="aba" data-aba="erros">⚠ Erros no tribunal <span class="n">{{ p.erros | length }}</span></button>
+    <button class="aba" data-aba="como">⚙ Como funciona</button>
+  </nav>
+
+  <section class="painel-aba cartao" data-painel="novidades">
+    <p class="explica">Processos que andaram desde a leitura anterior (últimos {{ 15 }} dias). Confira e marque "Visto": se o
+      processo andar de novo, ele volta para esta lista.</p>
+    {% set nv = p.novidades | rejectattr('visto') | list %}
+    {% for i in nv %}{{ cartao(i) }}{% else %}<p class="vazio">Nenhuma novidade pendente.</p>{% endfor %}
+    {% set vs = p.novidades | selectattr('visto') | list %}
+    {% if vs %}<details><summary>Já vistos ({{ vs | length }})</summary>{% for i in vs %}{{ cartao(i) }}{% endfor %}</details>{% endif %}
+  </section>
+
+  <section class="painel-aba cartao" data-painel="todos">
+    <div class="filtros">
+      <input type="search" id="busca" placeholder="Filtrar por número, cliente, vara ou texto da movimentação">
+      <select id="f-tribunal"><option value="">Todos os tribunais</option>
+        {% for t in p.por_tribunal %}<option value="{{ t.tribunal }}">{{ t.tribunal }} ({{ t.total }})</option>{% endfor %}</select>
+      <span class="suave pequeno" id="contador"></span>
+    </div>
+    <table id="tabela">
+      <tr><th>Processo</th><th>Cliente</th><th>Tribunal / vara</th><th>Última movimentação</th><th>Parado</th></tr>
+      {% for i in p.itens %}
+        <tr data-tribunal="{{ i.tribunal }} {{ i.grau }}º grau">
+          <td class="cnj-c"><a href="{{ url_for('monitor_processo', numero=i.numero) }}">{{ i.numero }}</a></td>
+          <td>{{ i.cliente }}</td>
+          <td class="pequeno">{{ i.tribunal }} {{ i.grau }}º · {{ i.vara }}</td>
+          <td class="pequeno">{{ ultima(i) }}</td>
+          <td class="dias">{% if i.dias is not none %}<span class="{{ 'parado' if i.dias > 180 }}">{{ i.dias }} d</span>{% else %}—{% endif %}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  </section>
+
+  <section class="painel-aba cartao" data-painel="parados">
+    <p class="explica">Sem nenhuma movimentação nas três fontes há mais de 180 dias (do mais parado para o menos). Vale
+      conferir se cabe petição para impulsionar (ex.: pedido de expedição de RPV/precatório, de cálculo, de sentença).</p>
+    <table>
+      <tr><th>Processo</th><th>Cliente</th><th>Tribunal / vara</th><th>Última movimentação</th><th>Parado</th></tr>
+      {% for i in p.parados %}
+        <tr><td class="cnj-c"><a href="{{ url_for('monitor_processo', numero=i.numero) }}">{{ i.numero }}</a></td>
+          <td>{{ i.cliente }}</td><td class="pequeno">{{ i.tribunal }} {{ i.grau }}º · {{ i.vara }}</td>
+          <td class="pequeno">{{ ultima(i) }}</td><td class="dias parado">{{ i.dias }} d</td></tr>
+      {% else %}<tr><td colspan="5" class="vazio">Nenhum processo parado há mais de 180 dias.</td></tr>{% endfor %}
+    </table>
+    {% if p.sem_movimento %}<p class="suave pequeno">{{ p.sem_movimento }} processo(s) ainda sem nenhuma movimentação lida
+      (o rodízio do tribunal ainda não chegou neles ou não há publicação).</p>{% endif %}
+  </section>
+
+  <section class="painel-aba cartao" data-painel="erros">
+    <p class="explica">Processos que o robô não conseguiu ler no PJe na última tentativa. "Não encontrado" costuma ser
+      processo em outro sistema (e-SAJ, Creta) ou em segredo; "fora do acervo" costuma ser escritório não habilitado.</p>
+    <table>
+      <tr><th>Processo</th><th>Cliente</th><th>Tribunal / vara</th><th>Erro</th><th>Tentativa</th></tr>
+      {% for i in p.erros %}
+        <tr><td class="cnj-c"><a href="{{ url_for('monitor_processo', numero=i.numero) }}">{{ i.numero }}</a></td>
+          <td>{{ i.cliente }}</td><td class="pequeno">{{ i.tribunal }} {{ i.grau }}º · {{ i.vara }}</td>
+          <td class="pequeno erro">{{ i.trib.erro }}</td><td class="pequeno">{{ i.trib.lido_br }}</td></tr>
+      {% else %}<tr><td colspan="5" class="vazio">Nenhum erro de leitura.</td></tr>{% endfor %}
+    </table>
+  </section>
+
+  <section class="painel-aba cartao" data-painel="como">
+    <h2>De onde vem cada informação</h2>
+    <ul class="como">
+      <li><b>DJEN</b> (Diário de Justiça Eletrônico Nacional, CNJ): o texto das publicações. Todo dia pela OAB do escritório
+        e, em rodízio, pelo número de cada processo.</li>
+      <li><b>DataJud</b> (CNJ): os movimentos padronizados do processo, sem o texto; pode atrasar alguns dias.</li>
+      <li><b>Tribunal</b> (PJe, login pelo Loy Trust): a linha do tempo do processo e o texto do documento da última
+        movimentação. De madrugada, em rodízio; quem teve novidade no DJEN ou no DataJud é lido primeiro. Só leitura: o
+        robô não peticiona, não assina, não altera nada.</li>
+    </ul>
+    <h2>Cobertura no tribunal</h2>
+    <table class="contagem">
+      <tr><th>Tribunal</th><th>Processos</th><th>Lidos no PJe</th><th></th></tr>
+      {% for t in p.por_tribunal %}
+        <tr><td>{{ t.tribunal }}</td><td>{{ t.total }}</td><td>{{ t.lidos if not t.so_api else "—" }}</td>
+          <td class="pequeno suave">{{ "só DJEN e DataJud nesta fase" if t.so_api }}</td></tr>
+      {% endfor %}
+    </table>
+    <h2 style="margin-top: 18px">Atualizar agora</h2>
+    <p class="suave">Consulta de novo o DJEN e o DataJud (sem login; uns 20 a 40 minutos). O tribunal roda de madrugada,
+      com o Chrome do Mac mini.</p>
+    <p class="acoes"><button class="botao primario" id="atualizar" type="button"{{ ' disabled' if info.rodando }}>Atualizar DJEN e DataJud</button>
+      <span class="suave pequeno" id="aviso-atualizar">{% if info.rodando %}{{ info.comando_texto }} em andamento.{% endif %}</span></p>
+    {% if api %}<p class="suave pequeno">Última rodada sem login: {{ api.data_br }} {{ api.hora }} · DJEN por número: {{ api.resumo.djen }} ·
+      DataJud: {{ api.resumo.datajud }} · publicações da OAB: {{ api.resumo.oab_publicacoes }} · erros: {{ api.resumo.erros }}</p>{% endif %}
+    {% if trib %}<p class="suave pequeno">Última rodada no tribunal: {{ trib.data_br }} {{ trib.hora }} · lidos: {{ trib.resumo.lidos }}
+      de {{ trib.resumo.fila }} · erros: {{ trib.resumo.erros }}</p>{% endif %}
+  </section>
+{% endif %}
+</main>
+<script>
+(() => {
+  const post = (url, corpo) => fetch(url, { method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo || {}) });
+  const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+  const ler = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
+
+  const abas = [...document.querySelectorAll('.aba')], paineis = [...document.querySelectorAll('.painel-aba')];
+  const abrir = nome => {
+    if (!paineis.some(p => p.dataset.painel === nome)) nome = 'novidades';
+    abas.forEach(a => a.classList.toggle('ativa', a.dataset.aba === nome));
+    paineis.forEach(p => p.classList.toggle('ativo', p.dataset.painel === nome));
+    history.replaceState(null, '', '#' + nome);
+  };
+  abas.forEach(a => a.addEventListener('click', () => abrir(a.dataset.aba)));
+  abrir(location.hash.slice(1) || 'novidades');
+
+  const quem = document.getElementById('quem');
+  if (quem) { quem.value = ler('cumprimentos_quem'); quem.addEventListener('input', () => guardar('cumprimentos_quem', quem.value.trim())); }
+
+  document.querySelectorAll('[data-copiar]').forEach(b => b.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(b.dataset.copiar); b.textContent = 'Copiado'; }
+    catch (e) { b.textContent = b.dataset.copiar; }
+    setTimeout(() => { b.textContent = 'Copiar nº'; }, 1500);
+  }));
+  document.querySelectorAll('.b-obs').forEach(b => b.addEventListener('click', () => {
+    const t = b.parentElement.querySelector('textarea'); t.hidden = !t.hidden; if (!t.hidden) t.focus();
+  }));
+
+  document.querySelectorAll('.botoes [data-acao]').forEach(b => b.addEventListener('click', async () => {
+    const caixa = b.closest('.botoes'), msg = caixa.querySelector('.msg');
+    const nome = (quem && quem.value.trim()) || '';
+    if (!nome && b.dataset.acao === 'visto') {
+      msg.className = 'msg erro'; msg.textContent = 'Preencha "Quem está conferindo" lá em cima.'; quem && quem.focus(); return;
+    }
+    const obs = caixa.querySelector('textarea');
+    caixa.querySelectorAll('button').forEach(x => { x.disabled = true; });
+    msg.className = 'msg'; msg.textContent = 'Salvando…';
+    try {
+      const r = await post('{{ url_for("monitor_conferir") }}', { numero: caixa.dataset.numero, quem: nome,
+        obs: obs ? obs.value : '', desfazer: b.dataset.acao === 'desfazer' });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) { location.reload(); return; }
+      msg.className = 'msg erro'; msg.textContent = j.erro || 'HTTP ' + r.status;
+    } catch (e) { msg.className = 'msg erro'; msg.textContent = 'Sem conexão com o servidor.'; }
+    caixa.querySelectorAll('button').forEach(x => { x.disabled = false; });
+  }));
+
+  // filtro da aba Todos (no navegador: a lista inteira já veio na página)
+  const busca = document.getElementById('busca'), ftrib = document.getElementById('f-tribunal');
+  const linhas = [...document.querySelectorAll('#tabela tr[data-tribunal]')], contador = document.getElementById('contador');
+  const sem = s => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const filtrar = () => {
+    const q = sem(busca.value.trim()), t = ftrib.value;
+    let n = 0;
+    linhas.forEach(l => { const ok = (!t || l.dataset.tribunal === t) && (!q || sem(l.innerText).includes(q)); l.hidden = !ok; n += ok; });
+    contador.textContent = n + ' de ' + linhas.length;
+  };
+  if (busca) { busca.addEventListener('input', filtrar); ftrib.addEventListener('change', filtrar); filtrar(); }
+
+  const atualizar = document.getElementById('atualizar');
+  if (atualizar) atualizar.addEventListener('click', async () => {
+    const aviso = document.getElementById('aviso-atualizar');
+    atualizar.disabled = true; aviso.textContent = 'Enviando…';
+    try {
+      const r = await post('{{ url_for("cumprimentos_rodar") }}', { comando: 'monitor' });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) { aviso.textContent = 'Rodando. A página mostra o resultado quando terminar (recarregue mais tarde).'; return; }
+      aviso.textContent = 'Não deu para rodar: ' + (j.erro || 'HTTP ' + r.status) + '.';
+    } catch (e) { aviso.textContent = 'Sem conexão com o servidor. Tente de novo.'; }
+    atualizar.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

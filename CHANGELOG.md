@@ -12,6 +12,50 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Adicionado — pje-busca: monitor de processos (carteira do DPJ) e página `/monitor` (26/11/2026)
+- Novo monitor da **última movimentação e do teor** de uma carteira de processos (CSV de processos exportado do VIOS;
+  1ª carga: 785 processos do DPJ). Três fontes, da mais barata para a mais completa (caminho "Balanceado", escolhido
+  pelo Dr. Roneely em 26/11/2026):
+  - **DJEN**: todo dia, as publicações da OAB do escritório (`MONITOR_OABS`, padrão `23104/CE`) desde a última
+    rodada; em rodízio, `MONITOR_DJEN_POR_DIA` processos pelo número (publicação dirigida a outro advogado);
+  - **DataJud** (API pública do CNJ, chave pública): movimentos padronizados, em rodízio (`MONITOR_DATAJUD_POR_DIA`);
+  - **Tribunal** (PJe, login pelo Loy Trust, um portal por vez): linha do tempo do processo e **texto do documento da
+    última movimentação** (abrir o documento só para ler foi autorizado em 26/11/2026). Rodízio de madrugada
+    (`MONITOR_TRIBUNAL_POR_NOITE`, padrão 150); quem teve novidade no DJEN/DataJud passa na frente.
+    Leitores conferidos ao vivo em 26/11/2026 no TJCE 1º grau e no TRF5 (PJe "legado": consulta pelo número,
+    "Detalhes do processo", linha do tempo, documento pelo endereço de download) e no TRT7 (PJe novo: Acervo Geral ou
+    Arquivados filtrado pelo número, linha do tempo, documento no visualizador). Sem captcha em nenhum.
+  - Nesta fase só DJEN e DataJud: TRT7 2º grau (o login do 2º grau derruba a sessão do 1º), TRF1 e tribunais de fora
+    do CE/PI.
+- `pje-busca/src/monitor.py` (novo): leitura do CSV do VIOS (o número colado no campo seguinte, como
+  `...8.06.0163Outros: ...`, é tratado), estado em `pje-busca/dados/monitor.sqlite` (fora do git), novidade só depois
+  da 1ª leitura (a 1ª é base), relatórios em `saida/monitor_AAAA-MM-DD.txt` e `saida/monitor-tribunal_AAAA-MM-DD.txt`.
+- `vigia.py`: comandos `monitor-importar <csv>`, `monitor [--tudo]` e `monitor-tribunal [--limite N] [--so NÚMERO]
+  [--sem-teor]`; o `.env` passa a ler também `MONITOR_*`.
+- Agenda (`src/vigia_agenda.py`, `servidor_mac.sh`): manhã = `vios`, `djen`, `monitor`; madrugada = `associados`,
+  `monitor-tribunal`. Sem carteira importada o monitor não faz nada e não conta como falha.
+- Página **`/monitor`** na Vila dos Bots (`bot/monitor.py`, `bot/templates/monitor.html` e `monitor_processo.html`,
+  rotas em `bot/envio_web.py`): abas Novidades (com o teor e o botão "Visto", que vale para a movimentação vista),
+  Todos (filtro por texto e tribunal), Parados há mais de 180 dias, Erros no tribunal e Como funciona (cobertura e
+  botão "Atualizar DJEN e DataJud", com a mesma trava dos botões do vigia); página de cada processo com o teor inteiro
+  e o histórico das três fontes; cartão na Vila dos Bots. O "Visto" fica em `pje-busca/dados/monitor_conferencia.json`
+  (fora do git). Só leitura do banco do monitor.
+- Testes: `pje-busca/tests/test_monitor.py` (CSV, DJEN, DataJud, rodízio e os dois leitores do PJe com um Chrome de
+  mentira), `tests/test_monitor_web.py`; `test_agenda.py` e `test_cumprimentos.py` ajustados à agenda nova.
+
+### Adicionado — pje-busca: vigia do DJEN nos outros TRTs em que o cliente tem processo (26/11/2026)
+- `vigia.py djen` passa a buscar cada empresa também nos TRTs em que ela tem processo no VIOS, além do TRT7 (hoje:
+  TRT22, TRT17, TRT16, TRT6, TRT5 e TRT3). `pje-busca/src/vigia_djen.py`: `sigla_trt`, `codigo_trt`,
+  `EstadoDjen.outros_trts`, base por empresa e tribunal na tabela `djen_tribunais`; `rodar(..., consulta_outro,
+  principal)`.
+- A 1ª busca em cada TRT novo de cada empresa é **base** (vai para a auditoria do relatório, sem alerta), para os
+  processos antigos de lá não virarem alerta; depois, processo novo fora do VIOS nesses TRTs alerta igual ao TRT7.
+- A calibração do nome no tribunal usa processos trabalhistas de qualquer TRT (TRT7 primeiro). Desligar os outros
+  TRTs: `VIGIA_DJEN_OUTROS_TRTS=0` no `pje-busca/.env`. O nível 3 (associados no PJe) continua só no TRT7.
+- Aba Cumprimentos: "processos trabalhistas no VIOS" (todos os TRTs) no lugar de "processos no TRT7" nas empresas sem
+  publicação; "Como o robô funciona" atualizado.
+- Testes em `pje-busca/tests/test_djen.py`.
+
 ### Adicionado — Cumprimentos: análise e publicações do DJEN em cada alerta (26/11/2026)
 - Cada processo da aba Cumprimentos pode mostrar uma **análise** (risco, situação, prazo, o que fazer e o que
   aconteceu no processo, com fonte e data), lida de `pje-busca/dados/cumprimentos_resumos.json` (fora do git,
@@ -45,6 +89,8 @@ etapa estiver pronta e testada, vira uma nova versão com data.
   portal (`LOY_PORTAL`, padrão "TRT7CE - 1º Grau"), clica em "Acessar com Loy Trust", fecha a janelinha e espera a
   aba do tribunal sair do login. O fluxo do Presto virou `entrar_trt7_presto`, sem mudança.
 - `config_presto` lê também `LOY_*` e `VIGIA_ACESSO`; `vigia.py associados` só exige `PRESTO_PIN` no modo Presto.
+- Espera pela autenticação do Loy aumentada para 3 min (no TRT22 levou cerca de 1,5 min). Teste manual em 26/11/2026:
+  entrou sem captcha no TRT7 1º e 2º grau, TRT22, TRT17, TRT16, TJCE (PJe 1º grau) e JFCE.
 - Testes: `pje-busca/tests/test_loy.py`.
 
 ### Corrigido — pje-busca: rodada da madrugada com a tela do Mac bloqueada (25/11/2026)
