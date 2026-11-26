@@ -280,6 +280,101 @@ def achar(w, t, termo, clicar=False):
     return json.loads(js(w, t, f"{JS_ACHAR}({json.dumps(termo)}, {'true' if clicar else 'false'})"))
 
 
+# ---------------- Loy Trust (extensão de certificados e credenciais) ----------------
+# A janelinha da extensão (popup.html) abre também numa aba comum: o robô a preenche por JavaScript, sem clicar no
+# ícone da barra do Chrome (testado em 26/11/2026: "TRT7CE - 1º Grau" entrou no PJe do TRT7).
+LOY_ID = "foacbeippeghacocoooplemaihefjfdk"  # id da Loy Trust na Chrome Web Store
+
+JS_LOY_ESTADO = r"""(function(){
+  var linhas = (document.body ? document.body.innerText : '').split('\n').map(function(l){return l.trim();})
+      .filter(function(l){return l;});
+  var botao = Array.prototype.some.call(document.querySelectorAll('button'), function(b){
+      return /Acessar com Loy Trust/i.test(b.innerText);});
+  var senha = !!document.querySelector('input[type=password]');
+  var i = linhas.indexOf('Certificado'), cert = i >= 0 && linhas[i + 1] !== 'Portal' ? linhas[i + 1] : '';
+  var a = linhas.indexOf('Portal'), b = linhas.indexOf('Acessar com Loy Trust'), meio = [];
+  if (a >= 0 && b > a) meio = linhas.slice(a + 1, b).filter(function(l){
+      return !/^option |results? available|Selecione o portal/i.test(l);});
+  return JSON.stringify({pronto: botao, login: senha && !botao, certificado: cert,
+                         portal: meio.length === 1 ? meio[0] : '', opcoes: meio.length});
+})()"""
+
+JS_LOY_DIGITAR = r"""(function(nome){
+  var campos = document.querySelectorAll('input[type=text], input:not([type])');
+  var p = campos[campos.length - 1];
+  if (!p) return JSON.stringify({ok: false, erro: 'campo do portal não encontrado'});
+  ['mousedown', 'mouseup', 'click'].forEach(function(t){p.dispatchEvent(new MouseEvent(t, {bubbles: true}));});
+  p.focus();
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(p, nome);
+  p.dispatchEvent(new Event('input', {bubbles: true}));
+  return JSON.stringify({ok: true});
+})"""
+
+JS_LOY_ESCOLHER = r"""(function(nome){
+  var campos = document.querySelectorAll('input[type=text], input:not([type])');
+  var p = campos[campos.length - 1];
+  var alvo = Array.prototype.find.call(document.querySelectorAll('[id*="-option-"], [role=option]'), function(e){
+      return e.innerText.trim() === nome;});
+  if (alvo) { ['mousedown', 'mouseup', 'click'].forEach(function(t){
+      alvo.dispatchEvent(new MouseEvent(t, {bubbles: true}));}); return JSON.stringify({ok: true, como: 'opção'}); }
+  var exatos = (document.body.innerText.split('\n').filter(function(l){return l.trim() === nome;})).length;
+  if (!p || !exatos) return JSON.stringify({ok: false, erro: 'portal não está na lista do Loy'});
+  p.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true}));
+  return JSON.stringify({ok: true, como: 'enter'});
+})"""
+
+JS_LOY_ACESSAR = r"""(function(){
+  var b = Array.prototype.find.call(document.querySelectorAll('button'), function(b){
+      return /Acessar com Loy Trust/i.test(b.innerText);});
+  if (!b) return JSON.stringify({ok: false, erro: 'botão "Acessar com Loy Trust" não encontrado'});
+  if (b.disabled) return JSON.stringify({ok: false, erro: 'botão "Acessar com Loy Trust" desabilitado'});
+  b.click();
+  return JSON.stringify({ok: true});
+})()"""
+
+
+def loy_estado(w, t):
+    """{pronto, login, certificado, portal, opcoes} da janelinha do Loy Trust aberta na aba."""
+    return json.loads(js(w, t, JS_LOY_ESTADO))
+
+
+def loy_digitar_portal(w, t, nome):
+    return json.loads(js(w, t, f"{JS_LOY_DIGITAR}({json.dumps(nome)})"))
+
+
+def loy_escolher_portal(w, t, nome):
+    return json.loads(js(w, t, f"{JS_LOY_ESCOLHER}({json.dumps(nome)})"))
+
+
+def loy_acessar(w, t):
+    return json.loads(js(w, t, JS_LOY_ACESSAR))
+
+
+def tela_bloqueada(rodar=subprocess.run):
+    """True se a sessão do Mac está com a tela bloqueada, False se não, None se não deu para saber.
+
+    Com a tela bloqueada o Chrome fica atrás da tela de bloqueio e o quadro do Presto não aparece
+    (rodada da madrugada de 25/11/2026). O robô não destrava a tela: nunca digita a senha do Mac."""
+    import plistlib
+    try:
+        r = rodar(["ioreg", "-n", "Root", "-d1", "-a"], capture_output=True, timeout=10)
+        dados = plistlib.loads(r.stdout) if r.returncode == 0 else None
+    except (OSError, subprocess.TimeoutExpired, ValueError, plistlib.InvalidFileException):
+        return None
+    usuarios = (dados or {}).get("IOConsoleUsers") if isinstance(dados, dict) else None
+    if not usuarios:
+        return None
+    return any(bool(u.get("CGSSessionScreenIsLocked")) for u in usuarios if isinstance(u, dict))
+
+
+def acordar_tela(rodar=subprocess.run):
+    """Liga a tela se estiver apagada (caffeinate -u: "o usuário está ativo"). Não destrava a tela."""
+    try:
+        rodar(["caffeinate", "-u", "-t", "3"], capture_output=True, timeout=15)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+
 def print_tela(caminho):
     """Print da tela inteira (o macOS pede a permissão "Gravação de Tela" para o Terminal na primeira vez)."""
     try:

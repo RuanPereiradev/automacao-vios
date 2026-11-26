@@ -62,6 +62,8 @@ CREATE TABLE IF NOT EXISTS djen_consultas (
 CREATE TABLE IF NOT EXISTS djen_principais (
   numero TEXT PRIMARY KEY, principal TEXT, ci TEXT, empresa TEXT, advogado TEXT, como TEXT, exequente TEXT,
   verificado_em TEXT);
+CREATE TABLE IF NOT EXISTS djen_tribunais (
+  empresa TEXT, sigla TEXT, base_feita INTEGER, desde TEXT, PRIMARY KEY (empresa, sigla));
 CREATE TABLE IF NOT EXISTS djen_andamentos (
   numero TEXT, chave TEXT, data TEXT, tipo TEXT, documento TEXT, orgao TEXT, destinatarios TEXT, texto TEXT,
   visto_em TEXT, PRIMARY KEY (numero, chave));
@@ -182,6 +184,18 @@ def nomes_do_tribunal(nome_vios, itens):
     return out
 
 
+def sigla_trt(codigo):
+    """'5.22' -> 'TRT22' (Justiça do Trabalho, regionais 1 a 24); outro ramo ou TST -> ''."""
+    m = re.match(r"^5\.(\d{2})$", codigo or "")
+    return f"TRT{int(m.group(1))}" if m and 1 <= int(m.group(1)) <= 24 else ""
+
+
+def codigo_trt(sigla):
+    """'TRT22' -> '5.22'."""
+    m = re.match(r"^TRT(\d{1,2})$", (sigla or "").upper())
+    return f"5.{int(m.group(1)):02d}" if m else ""
+
+
 def consultar(nome, tribunal_sigla="TRT7", abrir=None, pausa=1.0):
     """Todas as publicações do DJEN para o nome no tribunal. `abrir` (para testes) recebe a URL e devolve o JSON."""
     abrir = abrir or _abrir
@@ -282,9 +296,25 @@ class EstadoDjen:
         return (r[0], bool(r[1])) if r else (None, False)
 
     def processos_trt7(self, empresa, limite=2):
+        """Até `limite` processos trabalhistas (TRT7 primeiro) da empresa no VIOS, para calibrar o nome no tribunal."""
         return [r[0] for r in self.db.execute(
-            "SELECT numero FROM processos WHERE empresa = ? AND tribunal = '5.07' ORDER BY ultima_vez DESC, numero LIMIT ?",
-            (empresa, int(limite)))]
+            "SELECT numero FROM processos WHERE empresa = ? AND tribunal LIKE '5.%' AND tribunal != '5.00' "
+            "ORDER BY tribunal = '5.07' DESC, ultima_vez DESC, numero LIMIT ?", (empresa, int(limite)))]
+
+    def outros_trts(self, empresa, principal="TRT7"):
+        """Outros TRTs (além do principal) em que a empresa tem processo no VIOS: ['TRT16', 'TRT22'...]."""
+        siglas = {sigla_trt(r[0]) for r in self.db.execute(
+            "SELECT DISTINCT tribunal FROM processos WHERE empresa = ?", (empresa,))}
+        return sorted(x for x in siglas if x and x != principal.upper())
+
+    def base_tribunal(self, empresa, sigla):
+        r = self.db.execute("SELECT base_feita FROM djen_tribunais WHERE empresa = ? AND sigla = ?",
+                            (empresa, sigla)).fetchone()
+        return bool(r and r[0])
+
+    def base_tribunal_feita(self, empresa, sigla, hoje):
+        self.db.execute("INSERT INTO djen_tribunais VALUES (?, ?, 1, ?) ON CONFLICT(empresa, sigla) DO UPDATE SET "
+                        "base_feita = 1", (empresa, sigla, hoje))
 
     def gravar_nomes(self, empresa, nomes, hoje):
         novos = 0
@@ -366,14 +396,19 @@ def nomes_conferidos(caminho):
 
 
 def rodar(estado, hoje=None, so=None, consulta=consultar, consulta_numero=consultar_numero, pausa=1.5,
-          simular=False, aviso=print, dias_calibrar=30, manuais=None, consulta_principal=None, consulta_andamentos=None):
+          simular=False, aviso=print, dias_calibrar=30, manuais=None, consulta_principal=None, consulta_andamentos=None,
+          consulta_outro=None, principal="TRT7"):
     """Consulta o DJEN para cada empresa do vigia e classifica. Devolve o resultado (para o relatório).
 
     Por empresa: (1) calibra o nome a cada `dias_calibrar` dias, lendo no DJEN os destinatários do polo passivo de
     até 2 processos do TRT7 já conhecidos (o nome no tribunal pode ser diferente do VIOS: ex. COPCEL); (2) busca por
     todos os nomes (VIOS + tribunal); (3) descarta publicação em que o cliente só aparece no polo ativo (ele é o
     autor: consignação, homologação de acordo...); (4) a 1ª busca com um nome novo vira base daquela empresa (vai
-    para a auditoria, sem alerta)."""
+    para a auditoria, sem alerta).
+
+    Outros TRTs (desde 26/11/2026): com `consulta_outro(nome, sigla)`, busca também nos TRTs em que a empresa tem
+    processo no VIOS (ex.: TRT22, TRT17, TRT16). A 1ª busca em cada TRT novo de cada empresa é base (auditoria, sem
+    alerta), para os processos antigos de lá não virarem alerta."""
     from datetime import date as _date, timedelta
     hoje_d = hoje or _date.today()
     hoje = hoje_d.isoformat()
@@ -402,9 +437,11 @@ def rodar(estado, hoje=None, so=None, consulta=consultar, consulta_numero=consul
                 base_feita = False
                 res.setdefault("manuais", []).append((chave, extra))
             nomes = list(dict.fromkeys([nome_busca(nome_vios)] + ed.nomes(chave) + (extra if simular else [])))
+            outros = ed.outros_trts(chave, principal) if consulta_outro else []
             itens, vistos = [], set()
-            for nome in nomes:
-                for i in consulta(nome):
+            buscas = [(nome, None) for nome in nomes] + [(nome, sigla) for sigla in outros for nome in nomes]
+            for nome, sigla in buscas:
+                for i in (consulta(nome) if sigla is None else consulta_outro(nome, sigla)):
                     k = i.get("id") or (i.get("numeroprocessocommascara"), i.get("data_disponibilizacao"), i.get("tipoComunicacao"))
                     if k not in vistos:
                         vistos.add(k)
@@ -425,14 +462,17 @@ def rodar(estado, hoje=None, so=None, consulta=consultar, consulta_numero=consul
                 continue
             uteis.append(i)
         base = base_global or not base_feita
+        codigos = dict({codigo_trt(principal): None}, **{codigo_trt(x): x for x in outros})
+        base_outros = {x: ed.base_tribunal(chave, x) for x in outros}
         for numero, info in resumir(uteis).items():
-            if tribunal(numero) != "5.07":
+            if tribunal(numero) not in codigos:
                 continue
             nivel = classificar(numero, info, vios, avisados)
             if nivel is None:
                 continue
+            sigla = codigos[tribunal(numero)]
             reg = {"numero": numero, "empresa": chave, "busca": nomes[0], **info}
-            if base:
+            if base or (sigla and not base_outros[sigla]):
                 res["fora_do_vios"].append(dict(reg, nivel=nivel))
             else:
                 res["vermelhos" if nivel == "VERMELHO" else "amarelos"].append(reg)
@@ -441,6 +481,8 @@ def rodar(estado, hoje=None, so=None, consulta=consultar, consulta_numero=consul
                 ed.gravar(numero, chave, info, hoje, nivel)
         if not simular and not so:
             ed.base_feita(chave, hoje)
+            for sigla in outros:
+                ed.base_tribunal_feita(chave, sigla, hoje)
         if n % 20 == 0:
             aviso(f"  DJEN: {n}/{len(empresas)} empresas consultadas")
     if not simular:
@@ -537,8 +579,8 @@ def relatorio(res):
         L.append("")
     if res["fora_do_vios"]:
         titulo = ("PRIMEIRA RODADA (base): nada é alerta hoje." if res["base"] else
-                  "AUDITORIA (empresas com nome recém-calibrado: primeira busca com o nome do tribunal, sem alerta).")
-        L += [titulo, "Processos do TRT7 no DJEN com o cliente no polo passivo (ou sem polo informado) que NÃO estão",
+                  "AUDITORIA (empresa com nome recém-calibrado ou 1ª busca num TRT novo: sem alerta).")
+        L += [titulo, "Processos trabalhistas no DJEN com o cliente no polo passivo (ou sem polo informado) que NÃO estão",
               "na lista do VIOS (o escritório pode não estar neles):", ""]
         verm = [r for r in res["fora_do_vios"] if r["nivel"] == "VERMELHO"]
         amar = [r for r in res["fora_do_vios"] if r["nivel"] != "VERMELHO"]

@@ -23,6 +23,9 @@ Sem senhas e sem conteúdo do `.env`.
 | 2 | Qualquer processo novo contra o cliente fora do VIOS | Mesma busca do DJEN (amarelo) | Pronto (sai no relatório do dia) |
 | 3 | Juiz associou um processo ao principal | PJe > Acervo Geral > filtro "Processos com Associação" > "Processos associados" (login pelo Loy Trust desde 26/11/2026; antes, Presto) | Pronto; JavaScript conferido no PJe real; falta a 1ª rodada completa |
 
+**Tribunais (desde 26/11/2026):** o DJEN busca cada empresa no TRT7 e nos outros TRTs em que ela tem processo no
+VIOS (TRT22, TRT17, TRT16, TRT6, TRT5, TRT3); 1ª busca em cada TRT novo = base. O nível 3 continua só no TRT7.
+
 **Lista de clientes vigiados:** foto diária do VIOS (`vigia.py vios`): área Trabalhista, cliente no polo passivo, processos ativos.
 Em 24/11 são 162 empresas e 363 processos.
 

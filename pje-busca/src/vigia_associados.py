@@ -22,11 +22,19 @@ Alertas:
     AMARELO   associado fora do VIOS, mas o principal também está fora da lista do VIOS (antigo, arquivado, outra
               área: o teste de 24/11 mostrou que a maioria dos processos com associação do acervo é assim);
     INFO      o associado já está no VIOS.
+  Regra segura da classe (24/11/2026): antes de avisar, o vigia consulta no DJEN a classe do associado novo fora do
+  VIOS. O alerta (vermelho/amarelo) só deixa de ser alerta quando o DJEN CONFIRMA uma classe que não é de cumprimento
+  (ação trabalhista, homologação de acordo, ação de cumprimento do sindicato...): vira OUTRA, que continua listada.
+  Classe de cumprimento/execução/liquidação, classe que o robô não reconhece (agravo de petição, embargos...), sem
+  publicação no DJEN ou erro na consulta = continua alerta. A data (associado mais antigo que o principal) é só
+  observação: nunca tira o alerta.
 """
 import json
 import re
 import time
 from datetime import date
+
+from vigia_djen import CLASSES_VERMELHAS
 
 ACERVO = "https://pje.trt7.jus.br/pjekz/painel/usuario-externo/acervo-geral"
 ARQUIVADOS = "https://pje.trt7.jus.br/pjekz/painel/usuario-externo/arquivados"
@@ -37,8 +45,8 @@ ESQUEMA_ASSOC = """
 CREATE TABLE IF NOT EXISTS assoc_principais (
   numero TEXT PRIMARY KEY, situacao TEXT, qtd INTEGER, verificado_em TEXT, base_feita INTEGER, erro TEXT);
 CREATE TABLE IF NOT EXISTS assoc_associados (
-  principal TEXT, associado TEXT, orgao TEXT, visto_em TEXT, novo INTEGER, nivel TEXT,
-  PRIMARY KEY (principal, associado));
+  principal TEXT, associado TEXT, orgao TEXT, visto_em TEXT, novo INTEGER, nivel TEXT, classe TEXT, motivo TEXT,
+  anterior INTEGER, PRIMARY KEY (principal, associado));
 CREATE TABLE IF NOT EXISTS assoc_acervo (
   numero TEXT PRIMARY KEY, primeira_vez TEXT, ultima_vez TEXT);
 CREATE TABLE IF NOT EXISTS assoc_rodadas (
@@ -370,6 +378,10 @@ class EstadoAssoc:
         elif cols and "arquivados" not in cols:  # rodada de 24/11 sem a aba Arquivados: só acrescenta a coluna
             self.db.execute("ALTER TABLE assoc_rodadas ADD COLUMN arquivados INTEGER")
         self.db.executescript(ESQUEMA_ASSOC)
+        cols = [r[1] for r in self.db.execute("PRAGMA table_info(assoc_associados)")]
+        for c, tipo in (("classe", "TEXT"), ("motivo", "TEXT"), ("anterior", "INTEGER")):
+            if c not in cols:  # base de 24/11 (antes da regra da classe): só acrescenta a coluna
+                self.db.execute(f"ALTER TABLE assoc_associados ADD COLUMN {c} {tipo}")
 
     def eh_base(self):
         return self.db.execute("SELECT COUNT(*) FROM assoc_rodadas WHERE completa = 1").fetchone()[0] == 0
@@ -408,9 +420,11 @@ class EstadoAssoc:
         self.db.execute("INSERT OR REPLACE INTO assoc_principais VALUES (?, ?, ?, ?, 1, ?)",
                         (numero, situacao, qtd, hoje, erro))
 
-    def gravar_associado(self, principal, a, hoje, novo, nivel):
-        self.db.execute("INSERT OR IGNORE INTO assoc_associados VALUES (?, ?, ?, ?, ?, ?)",
-                        (principal, a["numero"], a.get("orgao") or "", hoje, int(novo), nivel))
+    def gravar_associado(self, principal, a, hoje, novo, nivel, classe="", motivo="", anterior=None):
+        self.db.execute("INSERT OR IGNORE INTO assoc_associados (principal, associado, orgao, visto_em, novo, nivel, "
+                        "classe, motivo, anterior) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (principal, a["numero"], a.get("orgao") or "", hoje, int(novo), nivel, classe, motivo,
+                         None if anterior is None else int(anterior)))
 
     def fechar_rodada(self, hoje, res):
         self.db.execute("INSERT OR REPLACE INTO assoc_rodadas (data, acervo, verificados, com_associados, fora_acervo, "
@@ -422,8 +436,71 @@ class EstadoAssoc:
         self.db.commit()
 
 
-def rodar(estado, lido, hoje=None, simular=False):
-    """Compara o que foi lido no PJe (saída de ler_acervo) com o que já foi visto e grava."""
+# ---------------- regra segura da classe do associado novo (DJEN) ----------------
+# classes que o DJEN confirma como OUTRA COISA (não é cumprimento de sentença): só elas tiram o alerta.
+# Fora desta lista (agravo de petição, embargos à execução/de terceiro, recurso...) = "não reconhecida" = alerta.
+CLASSES_OUTRAS = re.compile(
+    r"A[CÇ][AÃ]O\s+TRABALHISTA|RECLAMA[CÇ][AÃ]O\s+TRABALHISTA|\bRITO\s+(ORDIN|SUMAR)|A[CÇ][AÃ]O\s+DE\s+CUMPRIMENTO"
+    r"|HOMOLOGA[CÇ][AÃ]O\s+D[AE]\s+TRANSA|CONSIGNA[CÇ][AÃ]O\s+EM\s+PAGAMENTO|TUTELA\s+(CAUTELAR|ANTECIPADA)"
+    r"|PRODU[CÇ][AÃ]O\s+ANTECIPADA|INQU[EÉ]RITO\s+PARA\s+APURA|A[CÇ][AÃ]O\s+CIVIL\s+P[UÚ]BLICA"
+    r"|MANDADO\s+DE\s+SEGURAN", re.I)
+MOTIVOS = {
+    "cumprimento": "classe de cumprimento/execução/liquidação no DJEN",
+    "nao_reconhecida": "classe que o robô não reconhece: conferir",
+    "sem_publicacao": "sem publicação no DJEN: classe desconhecida, conferir",
+    "erro": "erro ao consultar o DJEN: classe desconhecida, conferir",
+    "sem_consulta": "classe não consultada: conferir",
+    "outra": "o DJEN confirma outra classe: não é cumprimento",
+}
+_CNJ_PARTES = re.compile(r"^(\d{7})-\d{2}\.(\d{4})\.\d\.\d{2}\.(\d{4})$")
+
+
+def classe_djen(itens):
+    """Publicações do DJEN de um processo -> (situacao, classes). situacao: cumprimento | outra | nao_reconhecida |
+    sem_publicacao. Basta UMA publicação com classe de cumprimento para alertar; para "outra", TODAS as classes
+    precisam ser reconhecidas como outra coisa."""
+    classes = sorted({(i.get("nomeClasse") or "").strip() for i in itens or [] if (i.get("nomeClasse") or "").strip()})
+    texto = "; ".join(classes)
+    if not classes:
+        return "sem_publicacao", ""
+    if any(CLASSES_VERMELHAS.search(c) for c in classes):
+        return "cumprimento", texto
+    if all(CLASSES_OUTRAS.search(c) for c in classes):
+        return "outra", texto
+    return "nao_reconhecida", texto
+
+
+def anterior_ao_principal(associado, principal):
+    """True se o número do associado indica processo mais antigo que o principal (ano menor, ou mesmo ano e mesma
+    vara com sequencial menor); None se não dá para comparar. Só observação: nunca tira o alerta."""
+    a, p = _CNJ_PARTES.match(associado or ""), _CNJ_PARTES.match(principal or "")
+    if not a or not p:
+        return None
+    if a.group(2) != p.group(2):
+        return a.group(2) < p.group(2)
+    if a.group(3) == p.group(3):
+        return a.group(1) < p.group(1)
+    return None
+
+
+def _classificar_novo(reg, consulta, pausa):
+    """Nível do associado novo fora do VIOS pela regra segura (altera reg: nivel, classe, motivo)."""
+    alerta = "VERMELHO" if reg["principal_no_vios"] else "AMARELO"
+    if consulta is None:
+        sit, classe = "sem_consulta", ""
+    else:
+        try:
+            sit, classe = classe_djen(consulta(reg["numero"]))
+        except Exception:  # noqa: BLE001 — DJEN fora do ar: na dúvida, alerta
+            sit, classe = "erro", ""
+        if pausa:
+            time.sleep(pausa)
+    reg.update({"nivel": "OUTRA" if sit == "outra" else alerta, "classe": classe, "motivo": MOTIVOS[sit]})
+
+
+def rodar(estado, lido, hoje=None, simular=False, consulta=None, pausa=1.5):
+    """Compara o que foi lido no PJe (saída de ler_acervo) com o que já foi visto e grava.
+    consulta(numero) -> publicações do DJEN do associado (regra segura da classe); None = não consulta (alerta)."""
     hoje = (hoje or date.today()).isoformat()
     ea = EstadoAssoc(estado)
     base_global = ea.eh_base()
@@ -451,15 +528,20 @@ def rodar(estado, lido, hoje=None, simular=False):
             info = vios.get(a["numero"])
             reg = {"principal": numero, "numero": a["numero"], "orgao": a.get("orgao") or "",
                    "principal_ci": p.get("ci", ""), "empresa": p.get("empresa", ""), "principal_no_vios": bool(p),
-                   "no_vios": bool(info), "no_djen": a["numero"] in djen}
+                   "no_vios": bool(info), "no_djen": a["numero"] in djen, "classe": "", "motivo": "",
+                   "anterior": anterior_ao_principal(a["numero"], numero)}
             if base:
                 reg["nivel"] = "BASE"
                 res["base"].append(reg)
+            elif info:
+                reg["nivel"] = "INFO"
+                res["novos"].append(reg)
             else:
-                reg["nivel"] = "INFO" if info else ("VERMELHO" if p else "AMARELO")
+                _classificar_novo(reg, consulta, pausa)
                 res["novos"].append(reg)
             if not simular:
-                ea.gravar_associado(numero, a, hoje, not base, reg["nivel"])
+                ea.gravar_associado(numero, a, hoje, not base, reg["nivel"], reg["classe"], reg["motivo"],
+                                    reg["anterior"])
         if not simular:
             ea.gravar_principal(numero, "ok", len(r["associados"]), hoje)
     if acervo is not None:
@@ -565,16 +647,22 @@ def relatorio(res):
         onde = "no VIOS" if r["no_vios"] else "NÃO está no VIOS"
         princ = f"CI {r['principal_ci']}, {r['empresa']}" if r["principal_no_vios"] else "principal fora do VIOS"
         return (f"  • {r['numero']} ({r['orgao'] or '-'}) associado a {r['principal']} ({princ}) · {onde}"
+                + (f" · classe: {r['classe']}" if r.get("classe") else "")
+                + (f" · {r['motivo']}" if r.get("motivo") else "")
+                + (" · número anterior ao do principal (só observação)" if r.get("anterior") else "")
                 + (" · já avisado pelo DJEN" if r["no_djen"] else ""))
 
     verm = [r for r in res["novos"] if r["nivel"] == "VERMELHO"]
     amar = [r for r in res["novos"] if r["nivel"] == "AMARELO"]
     info = [r for r in res["novos"] if r["nivel"] == "INFO"]
+    outra = [r for r in res["novos"] if r["nivel"] == "OUTRA"]
     if not res.get("base_global"):
         L += [f"🔴 VERMELHO · associado NOVO fora do VIOS, com o principal no VIOS ({len(verm)})"]
         L += [linha(r) for r in verm] or ["  (nenhum)"]
         L += ["", f"🟡 AMARELO · associado novo fora do VIOS, principal também fora da lista do VIOS ({len(amar)})"]
         L += [linha(r) for r in amar] or ["  (nenhum)"]
+        L += ["", f"⚪ OUTRA CLASSE · associado novo fora do VIOS que o DJEN confirma não ser cumprimento ({len(outra)})"]
+        L += [linha(r) for r in outra] or ["  (nenhum)"]
         L += ["", f"Associado novo que já está no VIOS ({len(info)})"] + ([linha(r) for r in info] or ["  (nenhum)"]) + [""]
     if res["base"]:
         fora = [r for r in res["base"] if not r["no_vios"]]

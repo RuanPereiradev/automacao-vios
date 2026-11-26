@@ -118,6 +118,77 @@ class Rodada(unittest.TestCase):
         # rodada incompleta não conta como base feita
         self.assertTrue(VA.EstadoAssoc(self.est).eh_base())
 
+    # ---- regra segura da classe (DJEN) ----
+    def _novo(self, consulta, principal=P2, associado=NOVO, acervo=(P1, P2)):
+        self.rodar(lido({}, acervo=acervo), 24)
+        r = self.rodar(lido({principal: [associado]}, acervo=acervo), 25, consulta=consulta, pausa=0)
+        return r, r["novos"][0]
+
+    def test_classe_de_cumprimento_continua_vermelho(self):
+        r, x = self._novo(lambda n: [{"nomeClasse": "CUMPRIMENTO DE SENTENÇA"}])
+        self.assertEqual((x["nivel"], x["classe"]), ("VERMELHO", "CUMPRIMENTO DE SENTENÇA"))
+        self.assertIn("classe de cumprimento", VA.relatorio(r))
+        g = self.est.db.execute("SELECT nivel, classe, motivo FROM assoc_associados WHERE associado = ?", (NOVO,)).fetchone()
+        self.assertEqual(g[:2], ("VERMELHO", "CUMPRIMENTO DE SENTENÇA"))
+
+    def test_outra_classe_confirmada_sai_do_alerta_mas_fica_listada(self):
+        r, x = self._novo(lambda n: [{"nomeClasse": "AÇÃO TRABALHISTA - RITO ORDINÁRIO"}])
+        self.assertEqual(x["nivel"], "OUTRA")
+        txt = VA.relatorio(r)
+        self.assertIn("🔴 VERMELHO · associado NOVO fora do VIOS, com o principal no VIOS (0)", txt)
+        self.assertIn("⚪ OUTRA CLASSE", txt)
+        self.assertIn(NOVO, txt)  # nada some
+        self.assertEqual(self.est.db.execute("SELECT vermelhos FROM assoc_rodadas WHERE data = '2026-11-25'"
+                                             ).fetchone()[0], 0)
+
+    def test_na_duvida_continua_alerta(self):
+        def erro(n):
+            raise OSError("DJEN fora do ar")
+        casos = [(lambda n: [], "sem publicação"), (erro, "erro ao consultar"),
+                 (lambda n: [{"nomeClasse": "AGRAVO DE PETIÇÃO"}], "não reconhece"),
+                 # uma publicação de cumprimento basta, mesmo com outra classe junto
+                 (lambda n: [{"nomeClasse": "AÇÃO TRABALHISTA - RITO SUMARÍSSIMO"},
+                             {"nomeClasse": "LIQUIDAÇÃO POR ARBITRAMENTO"}], "cumprimento")]
+        for i, (consulta, motivo) in enumerate(casos):
+            with self.subTest(motivo=motivo):
+                VA.EstadoAssoc(self.est)  # cria as tabelas na 1ª volta
+                self.est.db.executescript("DELETE FROM assoc_associados; DELETE FROM assoc_rodadas; "
+                                          "DELETE FROM assoc_acervo; DELETE FROM assoc_principais;")
+                _, x = self._novo(consulta)
+                self.assertEqual(x["nivel"], "VERMELHO")
+                self.assertIn(motivo, x["motivo"])
+
+    def test_sem_consulta_continua_alerta(self):
+        _, x = self._novo(None)
+        self.assertEqual(x["nivel"], "VERMELHO")
+
+    def test_principal_fora_do_vios_outra_classe(self):
+        outro = "0002500-30.2012.5.07.0024"
+        _, x = self._novo(lambda n: [{"nomeClasse": "HOMOLOGAÇÃO DA TRANSAÇÃO EXTRAJUDICIAL"}], principal=outro,
+                          acervo=(P1, P2, outro))
+        self.assertEqual(x["nivel"], "OUTRA")
+        _, y = self._novo(lambda n: [], principal=outro, associado="0009998-22.2026.5.07.0024", acervo=(P1, P2, outro))
+        self.assertEqual(y["nivel"], "AMARELO")
+
+    def test_data_anterior_e_so_observacao(self):
+        antigo = "0000100-10.2020.5.07.0024"  # mais antigo que o principal P2 (2022)
+        r, x = self._novo(lambda n: [], associado=antigo)
+        self.assertEqual((x["nivel"], x["anterior"]), ("VERMELHO", True))
+        self.assertIn("anterior ao do principal", VA.relatorio(r))
+        self.assertTrue(VA.anterior_ao_principal("0000010-11.2026.5.07.0038", "0000020-11.2026.5.07.0038"))
+        self.assertFalse(VA.anterior_ao_principal(CPS, P1))
+        self.assertIsNone(VA.anterior_ao_principal("0000010-11.2026.5.07.0024", "0000020-11.2026.5.07.0038"))
+
+    def test_colunas_da_classe_acrescentadas_na_base_antiga(self):
+        self.est.db.executescript(
+            "CREATE TABLE assoc_associados (principal TEXT, associado TEXT, orgao TEXT, visto_em TEXT, novo INTEGER,"
+            " nivel TEXT, PRIMARY KEY (principal, associado));"
+            f"INSERT INTO assoc_associados VALUES ('{P1}', '{CPS}', '', '2026-11-24', 0, 'BASE');")
+        ea = VA.EstadoAssoc(self.est)
+        cols = [r[1] for r in self.est.db.execute("PRAGMA table_info(assoc_associados)")]
+        self.assertTrue({"classe", "motivo", "anterior"} <= set(cols))
+        self.assertEqual(ea.conhecidos(P1), {CPS})
+
     def test_simular_nao_grava(self):
         self.rodar(lido({P1: [CPS]}), 24, simular=True)
         self.assertEqual(self.est.db.execute("SELECT COUNT(*) FROM assoc_associados").fetchone()[0], 0)

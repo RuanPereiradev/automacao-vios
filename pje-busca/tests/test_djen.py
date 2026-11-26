@@ -237,6 +237,44 @@ class Principal(unittest.TestCase):
         self.assertEqual(r2["principais"], [])                        # já achado: não consulta de novo
 
 
+    def test_siglas_dos_trts(self):
+        self.assertEqual((VD.sigla_trt("5.22"), VD.sigla_trt("5.07"), VD.sigla_trt("5.00"), VD.sigla_trt("8.06")),
+                         ("TRT22", "TRT7", "", ""))
+        self.assertEqual((VD.codigo_trt("TRT7"), VD.codigo_trt("trt22"), VD.codigo_trt("TST")), ("5.07", "5.22", ""))
+
+    def test_outros_trts_base_e_depois_alerta(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        est = VE.Estado(Path(tmp.name) / "v.sqlite")
+        self.addCleanup(est.fechar)
+        linhas = [{"ci": "1", "numero": "CNJ: 0002754-04.2025.5.07.0038", "cliente": "MM COMERCIO DE CALCADOS LTDA (MATRIZ)"},
+                  {"ci": "2", "numero": "CNJ: 0000100-10.2025.5.22.0101", "cliente": "MM COMERCIO DE CALCADOS LTDA (MATRIZ)"}]
+        est.aplicar(linhas, True, hoje=date(2026, 7, 1))
+        antigo_pi = {"numeroprocessocommascara": "0000500-50.2024.5.22.0101", "nomeClasse": "CUMPRIMENTO DE SENTENÇA",
+                     "data_disponibilizacao": "2024-05-02", "tipoComunicacao": "Intimação", "nomeOrgao": "1ª VT Teresina"}
+        novo_pi = dict(antigo_pi, numeroprocessocommascara="0000777-77.2026.5.22.0101", data_disponibilizacao="2026-12-01")
+        outro_ramo = dict(antigo_pi, numeroprocessocommascara="0000888-88.2026.8.06.0074")
+        buscas = []
+
+        def outro(nome, sigla, lista):
+            buscas.append(sigla)
+            return lista
+        VD.rodar(est, consulta_numero=lambda n: [], hoje=date(2026, 7, 2), consulta=lambda n: [], pausa=0)
+        # ^ base geral só no TRT7 (como era antes); abaixo, a 1ª busca no TRT22
+        r = VD.rodar(est, consulta_numero=lambda n: [], hoje=date(2026, 7, 3), consulta=lambda n: [], pausa=0,
+                     consulta_outro=lambda n, s: outro(n, s, [antigo_pi, outro_ramo]),
+                     consulta_principal=lambda n: [], consulta_andamentos=lambda n: [])
+        self.assertEqual(set(buscas), {"TRT22"})                                  # só o TRT em que tem processo
+        self.assertEqual(r["vermelhos"], [])                                       # 1ª busca no TRT22 = base
+        self.assertEqual([x["numero"] for x in r["fora_do_vios"]], ["0000500-50.2024.5.22.0101"])  # sem o TJCE
+        r2 = VD.rodar(est, consulta_numero=lambda n: [], hoje=date(2026, 12, 2), consulta=lambda n: [], pausa=0,
+                      consulta_outro=lambda n, s: outro(n, s, [antigo_pi, novo_pi]),
+                      consulta_principal=lambda n: [], consulta_andamentos=lambda n: [])
+        self.assertEqual([x["numero"] for x in r2["vermelhos"]], ["0000777-77.2026.5.22.0101"])
+        r3 = VD.rodar(est, consulta_numero=lambda n: [], hoje=date(2026, 12, 3), consulta=lambda n: [], pausa=0,
+                      consulta_principal=lambda n: [], consulta_andamentos=lambda n: [])   # sem consulta_outro: só TRT7
+        self.assertEqual(r3["vermelhos"], [])
+
     def test_andamentos_sem_repeticao_e_gravados(self):
         pub = lambda dest, polo, extra="": {  # noqa: E731
             "data_disponibilizacao": "2026-11-16", "tipoComunicacao": "Intimação", "tipoDocumento": "Notificação",

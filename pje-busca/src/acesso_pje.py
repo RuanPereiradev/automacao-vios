@@ -1,4 +1,10 @@
-"""Login no PJe do TRT7 pelo Presto, no Chrome que já está aberto no Mac (AppleScript).
+"""Login no PJe do TRT7 pelo Loy Trust (padrão desde 26/11/2026) ou pelo Presto, no Chrome aberto no Mac (AppleScript).
+
+Loy Trust (VIGIA_ACESSO=loy, padrão): abre a janelinha da extensão numa aba (chrome-extension://<id>/popup.html),
+escolhe o portal (LOY_PORTAL, padrão "TRT7CE - 1º Grau"), clica em "Acessar com Loy Trust" e pega a aba do tribunal
+que a extensão abre. Tudo por JavaScript, sem clique de verdade e sem PIN no .env (o certificado e o 2FA ficam no Loy).
+
+Presto (VIGIA_ACESSO=presto), fluxo antigo:
 
 Reaproveita o que já funciona no Albi (albi/presto.py, função login, e albi/chrome_mac.py, copiado
 para src/chrome_mac.py). Não usa Selenium: o perfil copiado pede confirmação da conta Google
@@ -25,6 +31,11 @@ TRT7_LOGIN = "https://pje.trt7.jus.br/primeirograu/login.seam"
 CONSOLE = "https://console.presto.oystr.com.br/"
 SITE_TRT7 = "Pje TRT 07 1g"  # nome do TRT7 na página Sites do console do Presto
 PADRAO_CAPTCHA = re.compile(r"captcha|recaptcha|não sou (um )?robô|nao sou (um )?robo", re.I)
+
+
+TELA_BLOQUEADA = ("a tela do Mac está bloqueada: com ela bloqueada o quadro do Presto não aparece e o robô não destrava "
+                  "a tela (não digita a senha do Mac). No Mac mini servidor, desligue o bloqueio automático da tela "
+                  "(./servidor_mac.sh vigia tela) ou deixe a sessão desbloqueada no horário da rodada")
 
 
 class AcessoErro(Exception):
@@ -167,7 +178,94 @@ def _abrir_pelo_console(cfg, destino):
     return w, t
 
 
+LOY_PORTAL_TRT7 = "TRT7CE - 1º Grau"
+
+
+def acesso(cfg):
+    """'loy' (padrão) ou 'presto', conforme VIGIA_ACESSO."""
+    v = (cfg.get("VIGIA_ACESSO") or "loy").strip().lower()
+    return v if v in ("loy", "presto") else "loy"
+
+
 def entrar_trt7(cfg, destino=None):
+    """Entra no PJe do TRT7 pelo Loy Trust (padrão) ou pelo Presto (VIGIA_ACESSO=presto). Devolve (janela, aba, url)."""
+    if acesso(cfg) == "presto":
+        return entrar_trt7_presto(cfg, destino)
+    return entrar_loy(cfg, destino)
+
+
+def _nova_aba(antes, ignorar, maximo=30):
+    """(janela, aba, url) da primeira aba http que não existia antes (a que a extensão abriu), ou None."""
+    def achar():
+        for w, t, u in CM.todas_abas():
+            if (w, t) not in antes and (w, t) != ignorar and u.startswith("http"):
+                return (w, t, u)
+        return None
+    return _esperar(achar, maximo, passo=1.0)
+
+
+def entrar_loy(cfg, destino=None):
+    """Entra no tribunal pelo Loy Trust. cfg: LOY_PORTAL (padrão TRT7CE - 1º Grau), LOY_CERTIFICADO (parte do nome,
+    opcional) e LOY_EXTENSAO (id, opcional). Lança AcessoErro com o motivo; capturas em destino."""
+    if not CM.disponivel():
+        raise AcessoErro("o acesso ao PJe só funciona no Mac (AppleScript do Chrome)")
+    CM.acordar_tela()
+    destino = destino or LOGS / datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    portal = cfg.get("LOY_PORTAL") or LOY_PORTAL_TRT7
+    antes = {(w, t) for w, t, _ in CM.todas_abas()}
+    w, t = CM.abrir_aba(f"chrome-extension://{cfg.get('LOY_EXTENSAO') or CM.LOY_ID}/popup.html")
+    nova = None
+    try:
+        CM.esperar(w, t, maximo=20, folga=2)
+        est = _esperar(lambda: (lambda e: e if e.get("pronto") or e.get("login") else None)(CM.loy_estado(w, t)), 20)
+        if not est:
+            _salvar(destino, "1_loy", CM.capturar(w, t))
+            raise AcessoErro("a janela do Loy Trust não abriu (a extensão está instalada e ligada neste Chrome?)")
+        if not est.get("pronto"):
+            raise AcessoErro("o Loy Trust está sem sessão: entre na extensão (login do Loy) neste Chrome e rode de novo")
+        cert = (cfg.get("LOY_CERTIFICADO") or "").strip()
+        if cert and cert.lower() not in (est.get("certificado") or "").lower():
+            raise AcessoErro(f"o certificado do Loy Trust é outro ({est.get('certificado') or 'nenhum'}); "
+                             f"esperado: {cert}")
+        if est.get("portal") != portal:
+            r = CM.loy_digitar_portal(w, t, portal)
+            if not r.get("ok"):
+                raise AcessoErro(f"Loy Trust: {r.get('erro')}")
+            time.sleep(1.0)
+            r = CM.loy_escolher_portal(w, t, portal)
+            if not r.get("ok"):
+                raise AcessoErro(f"Loy Trust: {r.get('erro')} ({portal})")
+            if not _esperar(lambda: CM.loy_estado(w, t).get("portal") == portal, 5, passo=0.5):
+                raise AcessoErro(f"o Loy Trust não ficou com o portal '{portal}' escolhido")
+        _salvar(destino, "1_loy", CM.capturar(w, t))
+        r = CM.loy_acessar(w, t)
+        if not r.get("ok"):
+            raise AcessoErro(f"Loy Trust: {r.get('erro')}")
+        # a autenticação do Loy (página "Autenticando...") levou ~1,5 min no TRT22 em 26/11/2026: espera até 3 min
+        nova = _nova_aba(antes, (w, t), maximo=180)
+    finally:
+        try:
+            CM.fechar_aba(w, t)
+        except CM.ChromeMacErro:
+            pass
+    if not nova:
+        if CM.tela_bloqueada():
+            raise AcessoErro(TELA_BLOQUEADA)
+        raise AcessoErro("o Loy Trust não abriu o tribunal em 3 min")
+    w2, t2, _ = nova
+    CM.esperar(w2, t2, maximo=45, folga=2)
+    final = _esperar(lambda: _logado(w2, t2), 60, passo=2)
+    cap = CM.capturar(w2, t2)
+    _salvar(destino, "2_final", cap)
+    if PADRAO_CAPTCHA.search(cap.get("texto", "") or ""):
+        raise AcessoErro("captcha na página do tribunal: resolva na janela do Chrome e rode de novo")
+    if not final:
+        raise AcessoErro("o Loy Trust abriu o tribunal, mas continua na tela de login depois de 60 s "
+                         "(veja as capturas em " + str(destino) + ")")
+    return w2, t2, final
+
+
+def entrar_trt7_presto(cfg, destino=None):
     """Entra no PJe do TRT7 pelo Presto. Devolve (janela, aba, url_final).
 
     cfg: dicionário com PRESTO_CREDENCIAL (opcional, parte do nome) e PRESTO_PIN.
@@ -177,8 +275,14 @@ def entrar_trt7(cfg, destino=None):
         raise AcessoErro("o acesso ao PJe só funciona no Mac (AppleScript do Chrome)")
     if CM.acessibilidade_ok() is False:
         raise AcessoErro(CM.SEM_ACESSIBILIDADE)
+    CM.acordar_tela()
+    if CM.tela_bloqueada():
+        raise AcessoErro(TELA_BLOQUEADA)
     destino = destino or LOGS / datetime.now().strftime("%Y-%m-%d_%H%M%S")
     w, t = _abrir_pelo_console(cfg, destino)
+    # o login usa clique e digitação de verdade: o Chrome precisa ser a janela da frente (outra janela por cima,
+    # como o Terminal da rodada agendada, faz o clique cair no lugar errado; 1º teste da agenda, 24/11/2026)
+    CM.para_frente(w, t)
     CM.esperar(w, t)
     ja = _logado(w, t)
     if ja:
@@ -211,9 +315,13 @@ def entrar_trt7(cfg, destino=None):
         ja = _logado(w, t)
         if ja:
             return w, t, ja
-        raise AcessoErro("o quadro do Presto não apareceu em 45 s")
+        _salvar(destino, "2_sem_quadro", CM.capturar(w, t))
+        if CM.tela_bloqueada():
+            raise AcessoErro(TELA_BLOQUEADA)
+        raise AcessoErro("o quadro do Presto não apareceu em 45 s (veja as capturas em " + str(destino) + ")")
 
     termo = cfg.get("PRESTO_CREDENCIAL", "")
+    CM.para_frente(w, t)
     r = CM.presto_credencial(w, t, termo)
     if not r.get("ok"):
         raise AcessoErro(f"não consegui escolher a credencial: {r.get('erro')}")
@@ -232,6 +340,7 @@ def entrar_trt7(cfg, destino=None):
     pin = cfg.get("PRESTO_PIN", "")
     if not pin:
         raise AcessoErro("o Presto pediu o PIN, mas PRESTO_PIN não está no .env")
+    CM.para_frente(w, t)
     r = CM.presto_pin(w, t, pin)
     if not r.get("ok"):
         raise AcessoErro(f"não consegui preencher o PIN: {r.get('erro')}")
@@ -245,15 +354,15 @@ def entrar_trt7(cfg, destino=None):
 
 
 def config_presto(arquivo=AQUI / ".env"):
-    """PRESTO_* do pje-busca/.env (sem python-dotenv); o ambiente tem preferência."""
+    """PRESTO_*, LOY_* e VIGIA_ACESSO do pje-busca/.env (sem python-dotenv); o ambiente tem preferência."""
     import os
     cfg = {}
     if arquivo.exists():
         for linha in arquivo.read_text(encoding="utf-8", errors="replace").splitlines():
-            m = re.match(r"\s*(PRESTO_\w+)\s*=\s*(.*?)\s*$", linha)
+            m = re.match(r"\s*(PRESTO_\w+|LOY_\w+|VIGIA_ACESSO)\s*=\s*(.*?)\s*$", linha)
             if m:
                 cfg[m.group(1)] = m.group(2).strip("'\"")
-    cfg.update({k: v for k, v in os.environ.items() if k.startswith("PRESTO_")})
+    cfg.update({k: v for k, v in os.environ.items() if k.startswith(("PRESTO_", "LOY_")) or k == "VIGIA_ACESSO"})
     return cfg
 
 

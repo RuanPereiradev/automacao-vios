@@ -126,8 +126,8 @@
       <span class="empresa forte">{{ e.nome }}</span>
       {% if e.cnpj %}<span class="suave pequeno">CNPJ {{ e.cnpj }}</span>{% endif %}
     </div>
-    <p class="frase">{% if e.processos_trt7 %}<b>{{ e.processos_trt7 }} processo(s) no TRT7 no VIOS</b>, mas nenhuma publicação no DJEN:
-      o nome no tribunal deve ser outro.{% else %}Nenhum processo no TRT7 no VIOS e nenhuma publicação no DJEN.{% endif %}</p>
+    <p class="frase">{% if e.processos_trt7 %}<b>{{ e.processos_trt7 }} processo(s) trabalhista(s) no VIOS</b>, mas nenhuma publicação no DJEN:
+      o nome no tribunal deve ser outro.{% else %}Nenhum processo trabalhista no VIOS e nenhuma publicação no DJEN.{% endif %}</p>
     <p class="principal suave">Buscado como: {{ e.buscados | join(" · ") }} (em {{ e.data_br }})</p>
     <div class="botoes nome" data-empresa="{{ e.empresa }}">
       {% if e.situacao == 'pendente' %}
@@ -341,9 +341,9 @@
     <h2 class="grupo" id="empresas">Empresas sem nenhuma publicação no DJEN ({{ p.sem_publicacao | length }})</h2>
     <p class="explica">O robô busca pelo nome. Abra no PJe um processo da empresa, copie o nome do <b>polo passivo</b> exatamente como
       está e clique em "Salvar nome": ele passa a buscar também por esse nome.</p>
-    {{ lista(emp_trt7, item_empresa, "Nenhuma empresa com processo no TRT7 ficou sem publicação.") }}
+    {{ lista(emp_trt7, item_empresa, "Nenhuma empresa com processo trabalhista ficou sem publicação.") }}
     {% if emp_outras %}
-      <details class="feitos"><summary>Sem processo no TRT7 no VIOS, sem pressa ({{ emp_outras | length }})</summary>
+      <details class="feitos"><summary>Sem processo trabalhista no VIOS, sem pressa ({{ emp_outras | length }})</summary>
         {{ lista(emp_outras, item_empresa, "Nada a conferir.") }}
       </details>
     {% endif %}
@@ -406,9 +406,9 @@
 
     <details style="margin-top: 16px"><summary>Como o robô funciona</summary>
       <ul class="como suave">
-        <li><b>DJEN</b> (todo dia, 7h40): busca as publicações de cada cliente (pelo nome) e avisa quando aparece cumprimento de
-          sentença ou execução contra ele que não está no VIOS. Ignora as publicações em que o cliente é o autor.</li>
-        <li><b>PJe</b> (todo dia, 3h20): entra no TRT7 pelo Loy Trust e vê os processos que o juiz associou aos processos do
+        <li><b>DJEN</b> (todo dia, 7h40): busca as publicações de cada cliente (pelo nome) no TRT7 e nos outros TRTs em que ele
+          tem processo no VIOS, e avisa quando aparece cumprimento de sentença ou execução contra ele que não está no VIOS. Ignora as publicações em que o cliente é o autor.</li>
+        <li><b>PJe</b> (todo dia, 3h20; só TRT7 por enquanto): entra no TRT7 pelo Loy Trust e vê os processos que o juiz associou aos processos do
           escritório. Associado novo fora do VIOS vira alerta, a não ser que o DJEN confirme que não é cumprimento.</li>
         <li>O robô só lê: não abre documento, não peticiona e não altera nada no PJe. O alerta fica só nesta página.</li>
         <li>{{ p.empresas }} empresas vigiadas{% if p.outros %} · {{ p.outros }} outros processos contra clientes fora do VIOS na base (só os novos avisam){% endif %}.</li>
