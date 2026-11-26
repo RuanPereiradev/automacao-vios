@@ -751,6 +751,16 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   `pje-busca/dados/vigia.sqlite` os processos do TRT7 contra o cliente que não estão no VIOS.
 - A Vila dos Bots ganhou o cartão **Cumprimentos** (quantos estão pendentes de conferência e a data da última
   verificação) e a página `/cumprimentos`:
+  - **Layout (desde 26/11/2026)**: no topo, uma faixa vermelha ("N alertas precisam de você") ou verde ("Nenhum
+    alerta pendente") com as datas da última verificação; o campo **Quem está conferindo** (fica salvo no navegador
+    e vai junto em cada conferência); e quatro abas: **Urgente** (cumprimentos fora do VIOS, associados novos no
+    PJe, habilitação a conferir), **Conferir** (associados já existentes, empresas com processo no TRT7 sem
+    publicação no DJEN, processos fora do PJe do escritório; as empresas sem processo no TRT7 ficam recolhidas),
+    **Atualizar o VIOS** (ativos no VIOS, arquivados no PJe) e **Verificação** (botões, últimas rodadas,
+    relatórios, "Como o robô funciona", ações de sindicato). Cada item tem botões diretos (Providência tomada ·
+    Escritório já atua · Não é nosso · + observação); o que já foi conferido sai da lista e fica em "Já
+    conferidos", com "Desfazer". Nas empresas: "Salvar nome" (nome exato do polo passivo) ou "O nome está certo".
+    As rotas e os dados não mudaram. Os itens abaixo descrevem o conteúdo de cada parte:
   - números do topo: pendentes de conferência, maior espera (dias desde a 1ª publicação no DJEN), total fora do
     VIOS, empresas vigiadas e a última verificação;
   - **Cumprimento de sentença / execução fora do VIOS**: um bloco por processo (número com botão de copiar,
@@ -766,7 +776,7 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
     depois pelo mesmo exequente (de preferência na mesma vara, porque o cumprimento é distribuído por dependência).
     Achou no VIOS: "Cliente nosso" com CI, empresa e advogado; senão, "Principal não achado no VIOS"
     (tabela `djen_principais`). A lista do VIOS usada é a do vigia (Trabalhista, cliente no polo passivo);
-  - **Associados novos no PJe (nível 3)**: `vigia.py associados` entra no PJe pelo Presto, liga no Acervo Geral o
+  - **Associados novos no PJe (nível 3)**: `vigia.py associados` entra no PJe pelo **Loy Trust** (ou pelo Presto), liga no Acervo Geral o
     filtro "Processos com Associação", abre a janela "Processos associados" de cada linha (todas as páginas) e,
     no fim, percorre o acervo inteiro para saber quais processos do VIOS estão fora dele (10 a 15 min, com o Chrome
     do Mac). A 1ª rodada completa é base; depois, associado novo fora do VIOS é alerta vermelho com a mesma
@@ -801,8 +811,26 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   launchd o macOS pode pedir permissão para o Python controlar o Chrome: rodar `vigia agora` com alguém no Mac.
   A da madrugada abre `pje-busca/agenda_madrugada.command` numa janela do Terminal, porque o login pelo Presto precisa
   de clique e digitação de verdade e só o Terminal tem a permissão de Acessibilidade (não dar essa permissão ao Python).
-  As duas precisam do login do Mac aberto (Chrome e Terminal rodam na sessão do usuário).
-- Testes: `tests/test_cumprimentos.py` (dados fictícios) e `pje-busca/tests/test_agenda.py`.
+  As duas precisam do login do Mac aberto (Chrome e Terminal rodam na sessão do usuário). A da madrugada precisa
+  também da **tela desbloqueada**: com a tela bloqueada o quadro do Presto não aparece e o robô para com o aviso
+  "a tela do Mac está bloqueada" (ele não digita a senha do Mac). Conferir com `./servidor_mac.sh vigia tela`;
+  `vigia tela liberar` desliga o bloqueio automático e o repouso do Mac (`vigia tela bloquear` desfaz). A rodada
+  liga a tela apagada sozinha (`caffeinate`).
+- **Login no PJe pelo Loy Trust** (padrão desde 26/11/2026): o robô abre a janelinha da extensão Loy Trust numa aba
+  (`chrome-extension://<id>/popup.html`, sem clicar no ícone da barra), escolhe o portal, clica em "Acessar com Loy
+  Trust" e usa a aba do tribunal que a extensão abre. Tudo por JavaScript: não precisa de PIN no `.env` nem de clique
+  de verdade; o certificado e o 2FA ficam no Loy. Requisitos: extensão Loy Trust instalada e **com sessão aberta** no
+  Chrome do Mac (se não estiver, o robô para com "o Loy Trust está sem sessão"). O Presto continua disponível.
+
+  | `pje-busca/.env` | Para quê | Padrão |
+  |---|---|---|
+  | `VIGIA_ACESSO` | `loy` ou `presto` (fluxo antigo, com `PRESTO_PIN`) | `loy` |
+  | `LOY_PORTAL` | Portal como aparece na lista do Loy | `TRT7CE - 1º Grau` |
+  | `LOY_CERTIFICADO` | Parte do nome do certificado esperado (confere antes de entrar) | não confere |
+  | `LOY_EXTENSAO` | Id da extensão, se mudar | id da Chrome Web Store |
+
+- Testes: `tests/test_cumprimentos.py` (dados fictícios), `pje-busca/tests/test_agenda.py`, `test_tela.py` e
+  `test_loy.py`.
 
 ### Passo 45 — Vila 07: o Abismo (três heróis contra o Troll Ancião)
 - Cena em pixel art feita a partir do kit de design "Abismo": Mago, Arqueiro e Bárbaro atacam o Troll Ancião, um laço de
@@ -863,8 +891,8 @@ situação da tarefa, que serão usados na criação de tarefas. Ler 11 linhas l
   - `./servidor_mac.sh whatsapp instalar | status | atualizar | log | desinstalar` chama os scripts do próprio bot
     (`scripts/mac/`; `instalar` e `atualizar` pedem a senha de administrador do Mac);
   - `./servidor_mac.sh coletor instalar | parar | status | log` é o mesmo que `consulta/servico_mac.sh`;
-  - `./servidor_mac.sh vigia instalar | parar | status | log | agora manha|madrugada`: agenda diária do vigia do
-    pje-busca (ver o passo da aba Cumprimentos);
+  - `./servidor_mac.sh vigia instalar | parar | status | log | tela [liberar|bloquear] | agora manha|madrugada`:
+    agenda diária do vigia do pje-busca (ver o passo da aba Cumprimentos);
   - `./servidor_mac.sh tudo` mostra os três serviços (página dos bots, coletor, bot de WhatsApp) e a agenda do vigia;
   - `./servidor_mac.sh atualizar-tudo` atualiza **o bot primeiro** e só depois faz o `git pull` daqui e reinicia a
     página e o coletor (o bot antigo recusa campo novo do coletor). Se o pull trouxe dependência nova, rodar

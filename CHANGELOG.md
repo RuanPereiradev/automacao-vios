@@ -12,6 +12,44 @@ etapa estiver pronta e testada, vira uma nova versão com data.
 
 ## [Não lançado]
 
+### Alterado — Vila: página Cumprimentos mais simples (26/11/2026)
+- `bot/templates/cumprimentos.html` refeito: faixa de situação no topo (vermelha com o número de alertas ou verde),
+  campo "Quem está conferindo" salvo no navegador e quatro abas (Urgente · Conferir · Atualizar o VIOS ·
+  Verificação) no lugar de uma página longa com nove seções.
+- Conferência com botões diretos (Providência tomada · Escritório já atua · Não é nosso · + observação) no lugar do
+  formulário com lista de situações; o que já foi conferido fica recolhido em "Já conferidos", com "Desfazer".
+- Empresas sem publicação: "Salvar nome" / "O nome está certo"; as que não têm processo no TRT7 ficam recolhidas e
+  não entram na contagem da aba Conferir.
+- Explicações técnicas (níveis, regra da classe) foram para "Como o robô funciona", na aba Verificação; textos
+  do login atualizados para o Loy Trust. Rotas, dados e `bot/cumprimentos.py` sem mudança.
+
+### Adicionado — pje-busca: login no PJe pelo Loy Trust (26/11/2026)
+- O nível 3 (associados no PJe) passa a entrar pelo **Loy Trust**, no lugar do Presto (o 2FA do TRT7 no Presto
+  deixou de funcionar). Teste real em 26/11/2026: "TRT7CE - 1º Grau" entrou no Meu Painel do TRT7, sem pedir 2FA.
+- `pje-busca/src/chrome_mac.py`: `LOY_ID`, `loy_estado`, `loy_digitar_portal`, `loy_escolher_portal`, `loy_acessar`.
+  A janelinha da extensão (`popup.html`) é aberta numa aba comum e preenchida por JavaScript: sem clicar no ícone da
+  barra, sem clique de verdade e sem PIN no `.env`.
+- `pje-busca/src/acesso_pje.py`: `entrar_trt7` escolhe o caminho por `VIGIA_ACESSO` (`loy`, padrão, ou `presto`);
+  `entrar_loy` abre a janelinha, confere a sessão do Loy e o certificado (`LOY_CERTIFICADO`, opcional), escolhe o
+  portal (`LOY_PORTAL`, padrão "TRT7CE - 1º Grau"), clica em "Acessar com Loy Trust", fecha a janelinha e espera a
+  aba do tribunal sair do login. O fluxo do Presto virou `entrar_trt7_presto`, sem mudança.
+- `config_presto` lê também `LOY_*` e `VIGIA_ACESSO`; `vigia.py associados` só exige `PRESTO_PIN` no modo Presto.
+- Testes: `pje-busca/tests/test_loy.py`.
+
+### Corrigido — pje-busca: rodada da madrugada com a tela do Mac bloqueada (25/11/2026)
+- A rodada de 25/11 às 3h20 parou em "o quadro do Presto não apareceu em 45 s": a captura mostrou a tela de bloqueio
+  do macOS. Com a tela bloqueada o Chrome fica atrás dela e o quadro do Presto não aparece.
+- `pje-busca/src/chrome_mac.py`: `tela_bloqueada()` (lê `ioreg`; None quando não dá para saber) e `acordar_tela()`
+  (`caffeinate -u`, só liga a tela apagada).
+- `pje-busca/src/acesso_pje.py`: antes do login liga a tela e, se estiver bloqueada, para logo com o motivo certo
+  (`TELA_BLOQUEADA`). Se o quadro do Presto não aparecer, grava a captura `2_sem_quadro` antes de parar.
+  O robô **não destrava a tela**: nunca digita a senha do Mac.
+- `pje-busca/agenda_madrugada.command`: liga a tela e roda com `caffeinate -dims` (tela e Mac acordados durante a rodada).
+- `./servidor_mac.sh vigia tela`: mostra bloqueio da tela, descanso de tela e energia; `vigia tela liberar` desliga o
+  bloqueio automático (o macOS pede a senha do Mac) e o repouso do Mac (`sudo pmset -a sleep 0`); `vigia tela bloquear`
+  volta o bloqueio.
+- Testes: `pje-busca/tests/test_tela.py`.
+
 ### Alterado — Sam: tarefas previdenciárias renomeadas no VIOS e envio como rascunho (25/11/2026)
 - O VIOS renomeou as tarefas do previdenciário: **MINUTAR IMPUGNAÇÃO LAUDO (PREVIDENCIÁRIO) 2026** e **MINUTAR
   RÉPLICA/ PETIÇÃO INTERMEDIÁRIA (PREVIDENCIÁRIO)**. Entram na lista oficial (`bot/skill.py`, `NOVAS_NO_VIOS`) e a

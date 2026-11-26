@@ -12,7 +12,7 @@ processos do TRT7 contra o cliente que NÃO estão no VIOS. Esta aba:
   o caso, informa o nome certo em dados/nomes_conferidos.json, que o vigia passa a usar na busca seguinte;
 - nível 3: mostra os "Processos associados" NOVOS que o vigia leu no PJe (vigia.py associados) — associado que não
   está no VIOS é alerta vermelho, com a mesma conferência da equipe; o botão "Verificar associados no PJe" abre
-  `vigia.py associados` (usa o Chrome do Mac e o login pelo Presto; leva uns 10 a 15 minutos);
+  `vigia.py associados` (usa o Chrome do Mac e o login pelo Loy Trust; leva uns 10 a 15 minutos);
 - o botão "Verificar agora" abre `vigia.py djen` em segundo plano (só a API pública do DJEN: sem login, sem
   CAPTCHA, sem senha), com ambiente limpo, uma execução por vez.
 """
@@ -38,6 +38,9 @@ NOMES = Path("dados") / "nomes_conferidos.json"  # lido pelo vigia (vigia_djen.n
 EXECUCAO = Path("logs") / ".vila_djen.json"  # execução em andamento (pid, início)
 LOG = Path("logs") / "djen_vila.log"  # saída de cada verificação disparada pela vila
 COMANDOS = {"djen": "Verificação no DJEN", "associados": "Processos associados no PJe"}
+# rodadas agendadas (pje-busca/src/vigia_agenda.py, launchd): usam a mesma trava; só aparecem como "rodando"
+AGENDA = {"agenda-manha": "Rodada agendada (VIOS + DJEN)", "agenda-madrugada": "Rodada agendada (associados no PJe)"}
+ULTIMA_AGENDA = Path("logs") / "agenda_ultima.json"
 # ação de cumprimento (art. 872 da CLT: sindicato cobrando a convenção) não é cumprimento de sentença
 ACAO_CUMPRIMENTO = re.compile(r"^\s*A[ÇC][ÃA]O\s+DE\s+CUMPRIMENTO\b", re.I)
 SITUACOES = {
@@ -258,6 +261,10 @@ def _item(r, conf, hoje, principais=None):
             "principal_verificado": x is not None}
 
 
+def _col(linha, nome):
+    return linha[nome] if nome in linha.keys() and linha[nome] is not None else ""
+
+
 def _associados(db, conf, hoje):
     """Nível 3: associados novos (depois da base) e a última rodada no PJe."""
     out = {"rodada": None, "alertas": [], "pendentes": 0, "principais": 0, "fora_acervo": 0, "arquivados_vios": [],
@@ -293,6 +300,9 @@ def _associados(db, conf, hoje):
             "principal_ci": p["ci"] if p else "", "empresa": p["empresa"] if p else "",
             "advogado": p["advogado"] if p else "", "visto_br": data_br(a["visto_em"]),
             "dias": _dias(a["visto_em"], hoje), "vermelho": a["nivel"] == "VERMELHO", "amarelo": a["nivel"] == "AMARELO",
+            # regra segura da classe (DJEN); a base antiga não tem essas colunas
+            "outra": a["nivel"] == "OUTRA", "classe": _col(a, "classe"), "motivo": _col(a, "motivo"),
+            "anterior": bool(_col(a, "anterior")),
             "no_vios": a["associado"] in vios, "no_djen": a["associado"] in djen, "situacao": situacao,
             "situacao_texto": SITUACOES.get(situacao, situacao), "quem": c.get("quem", ""), "obs": c.get("obs", ""),
             "quando": c.get("quando", "")})
@@ -331,6 +341,18 @@ def _associados(db, conf, hoje):
     return out
 
 
+def agenda(pasta):
+    """Última rodada agendada (logs/agenda_ultima.json do pje-busca), ou None."""
+    try:
+        a = json.loads((Path(pasta) / ULTIMA_AGENDA).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    inicio = a.get("inicio") or ""
+    falhas = [p["comando"] for p in a.get("passos") or [] if p.get("codigo") != 0]
+    return {"texto": a.get("texto") or a.get("etapa", ""), "data_br": data_br(inicio[:10]), "hora": inicio[11:16],
+            "ok": bool(a.get("ok")), "falhas": falhas, "motivo": a.get("motivo") or ""}
+
+
 def painel(pasta, hoje=None):
     """Tudo o que a página mostra. Só leitura do banco do vigia."""
     hoje = hoje or date.today()
@@ -341,6 +363,7 @@ def painel(pasta, hoje=None):
                       "arquivados_vios": [], "base_conferir": [], "fora": [], "fora_contagem": {}}}
     if not info["configurado"]:
         return info
+    info["agenda"] = agenda(pasta)
     conf = conferencias(pasta)
     db = _conectar(pasta)
     try:
@@ -471,7 +494,8 @@ def status(pasta):
         atual = None
     if atual and _vivo(int(atual.get("pid", 0))):
         comando = atual.get("comando") or "djen"
-        info.update(rodando=True, inicio=atual.get("inicio"), comando=comando, comando_texto=COMANDOS.get(comando, comando))
+        info.update(rodando=True, inicio=atual.get("inicio"), comando=comando,
+                    comando_texto=COMANDOS.get(comando) or AGENDA.get(comando, comando))
     return info
 
 
